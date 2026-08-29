@@ -13,7 +13,7 @@
 | SPDX per-file notices (R2-10) | **Done** | 74 source files headed; enforced by an architecture test from this commit forward |
 | CI gates (R2-11) | **Done** | Warnings-as-errors, whitespace format gate, 80% core-coverage threshold (88.6% at enablement), secret scan, dependency inventory |
 | Hostile-package suite | **Done (first pass)** | Entry-size ceiling, zip-slip inertness (nothing is ever extracted), corrupt/malformed loud failures; deeper fuzzing welcome |
-| Six-week staff pilot and defect burn-down | **HUMAN — scheduled 8 Sep–16 Oct 2026** | Coordination plan, protocols, walkthrough script, print checklist, and the seeded-error pilot kit all stand ready in `docs/pilots/` and `docs/evidence/pilot-kit/` |
+| Six-week staff pilot and defect burn-down | **HUMAN — six weeks, opening date pending** (moved 29 Aug 2026; downstream of Maryland's acceptance — see [the moved calendar](../handover/2026-08-29-the-moved-calendar.md)) | Coordination plan, protocols, walkthrough script, print checklist, and the seeded-error pilot kit all stand ready in `docs/pilots/` and `docs/evidence/pilot-kit/` |
 | District readiness (Gate 3) | **HUMAN — packet ready** | `docs/district/gate-3-readiness-packet.md` incl. the written-approval instrument; delivery target 4 Sep 2026 |
 | Second maintainer | **HUMAN** | The sustainability DoD item; recruitment plan in the coordination plan; still the bus factor's only cure |
 

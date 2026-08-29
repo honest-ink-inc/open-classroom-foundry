@@ -79,7 +79,7 @@ Unit (net10.0; no Storage, no App refs — but it DOES reference the SiteGenerat
 
 ## V. The humans' calendar, and what must not move
 
-Sep 1–4: SPF/DKIM/DMARC check, the three letters, pilot kit printing, the typist's NVDA self-run. Sep 8: the pilot opens. SDAT→EIN sequencing with the corrected SS-4 (details in the [first menu](2026-08-29-waiting-window.md) §II). None of that is forge work. The must-not-build lists of all four menus remain binding — most especially: the seat's territory, the instrument's territory, no printing without approval, no auto-approving CLI, and no version/tag/install/distribute from the keyboard.
+**Superseded 29 Aug 2026 — the pilot left 8 September; see [the moved calendar](2026-08-29-the-moved-calendar.md).** The tasks below stand; only their dates are void. ~~Sep 1–4: SPF/DKIM/DMARC check, the three letters, pilot kit printing, the typist's NVDA self-run. Sep 8: the pilot opens.~~ SDAT→EIN sequencing with the corrected SS-4 (details in the [first menu](2026-08-29-waiting-window.md) §II). None of that is forge work. The must-not-build lists of all four menus remain binding — most especially: the seat's territory, the instrument's territory, no printing without approval, no auto-approving CLI, and no version/tag/install/distribute from the keyboard.
 
 ## VI. Resuming
 

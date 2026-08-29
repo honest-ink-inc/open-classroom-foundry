@@ -1,6 +1,6 @@
 # Educator council — charter and recruitment kit
 
-**Status:** Formation **underway** (29 August 2026): seven invitations sent covering every seat below; two acceptances so far. **The pilot is now scheduled and materialized**: six-week staff pilot 8 September – 16 October 2026, coordinated by [docs/pilots/human-gates-coordination-plan.md](pilots/human-gates-coordination-plan.md), with the think-aloud protocol, seeded-error kit, print checklist, and NVDA script ready. Remaining before week 1: state the recognition/compensation policy in writing and confirm schedules. All Aboard co-design begins when the AAC/SLP seat accepts. Invitations and correspondence now flow from **contact@honest-ink.org** (Honest Ink, Inc.).
+**Status:** Formation **underway** (29 August 2026): seven invitations sent covering every seat below; two acceptances so far. **The pilot is materialized but its opening date moved (29 Aug 2026)** and is downstream of Maryland's acceptance of the articles — see [the moved calendar](handover/2026-08-29-the-moved-calendar.md); the six-week structure stands, coordinated by [docs/pilots/human-gates-coordination-plan.md](pilots/human-gates-coordination-plan.md), with the think-aloud protocol, seeded-error kit, print checklist, and NVDA script ready. Remaining before week 1: state the recognition/compensation policy in writing and confirm schedules. All Aboard co-design begins when the AAC/SLP seat accepts. Invitations and correspondence now flow from **contact@honest-ink.org** (Honest Ink, Inc.).
 
 ## What the council is
 

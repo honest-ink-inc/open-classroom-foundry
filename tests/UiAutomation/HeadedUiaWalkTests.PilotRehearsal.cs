@@ -8,7 +8,7 @@ namespace Foundry.Tests.UiAutomation;
 // teacher loop — cold start, forge a press, Gate B, approve, save to the
 // library, reopen, export the booklet PDF, low-ink variant — as ONE headed
 // scenario over real UIA, so a seam that slips is a red test before it is a
-// bad morning on September 8. The print step asserts the gate and the status
+// bad morning on pilot day. The print step asserts the gate and the status
 // path, never paper: rehearsal machines and CI runners have no printer worth
 // trusting. The library lives in a disposable directory the harness is
 // pointed at; the teacher's real Documents are never touched. Neither shell

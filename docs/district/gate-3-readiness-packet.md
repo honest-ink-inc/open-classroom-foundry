@@ -61,4 +61,4 @@ Both parties retain the signed instrument; the repository records only its exist
 
 1. Name the three seats (IT, privacy, safeguarding) — governance holds a place for each.
 2. One review meeting against §5 in September 2026.
-3. Staff-pilot awareness: the six-week pilot (8 Sep – 16 Oct) is **staff-only, synthetic-material, Green-lane, no student presence** — rungs 1–2 of our own gate ladder, and we welcome an observer.
+3. Staff-pilot awareness: the six-week pilot (opening date pending; we will confirm it with you before week 1) is **staff-only, synthetic-material, Green-lane, no student presence** — rungs 1–2 of our own gate ladder, and we welcome an observer.

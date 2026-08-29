@@ -20,19 +20,21 @@ Every machine row of the [hardening checklist](../release/hardening-checklist.md
 
 No gate's owner can waive another gate (GOVERNANCE). Gates 1–4 constitute the staff pilot; gate 5 runs in parallel; gates 6–9 are unscheduled but open now.
 
-## Calendar — six-week staff pilot, 8 September – 16 October 2026
+## Calendar — six-week staff pilot, opening date pending
+
+**The opening date moved (29 Aug 2026).** It is downstream of Maryland's acceptance of the articles and is deliberately not invented here — see [the moved calendar](../handover/2026-08-29-the-moved-calendar.md). The six-week *structure* below is unchanged and is written relative to the opening week; only the anchor is missing. Substitute real dates once SDAT answers and the accepted seats confirm.
 
 The pilot occupies Gate 4's first two rungs only: **synthetic/teacher-authored verification and the staff-only Green pilot.** No classroom output, no student presence, no Amber material of any kind. The Amber pilot is not in this window and cannot be until the written instrument of gate 5 is signed.
 
-| Week | Dates | Work | Needs |
+| Week | When | Work | Needs |
 |---|---|---|---|
-| Prep | Sep 1–4 | ~~State the compensation policy in writing~~ **ratified 29 Aug**; send the update letters; confirm schedule with accepted seats; print the pilot kit; deliver the district packet; typist self-runs the NVDA script once | SPF/DKIM check before the first send |
-| 1 | Sep 8–11 | Deterministic Press time-to-artifact think-alouds (2 sessions) — the recipes' stated budgets are on trial (constitution item 14) | 2 educator seats |
-| 2 | Sep 14–18 | All Aboard think-alouds **if the AAC/SLP seat has accepted** (governance requires it before co-design); otherwise continue Press + Board-to-Brief; AT reviewer walkthrough | AAC seat status known |
-| 3 | Sep 21–25 | Physical print inspection incl. booklet imposition; bilingual fixture review with the multilingual seat (EN–ES, EN–AR right-to-left) | Printer, ruler, multilingual seat |
-| 4 | Sep 28–Oct 2 | Seeded-error study, paper pass (packets A–H) | ≥3 educators, sealed key |
-| 5 | Oct 5–9 | Seeded-error study, in-app Gate B pass; defect burn-down begins | Builds on participants' machines |
-| 6 | Oct 12–16 | Burn-down completes; **real council evidence-ratification session** (the first non-rehearsal); 1.0-rc evidence bundle assembled | Quorum of accepted seats |
+| Prep | The 4–5 working days before week 1 | ~~State the compensation policy in writing~~ **ratified 29 Aug**; send the update letters; confirm schedule with accepted seats; print the pilot kit; deliver the district packet; typist self-runs the NVDA script once | SPF/DKIM check before the first send |
+| 1 | Opening week | Deterministic Press time-to-artifact think-alouds (2 sessions) — the recipes' stated budgets are on trial (constitution item 14) | 2 educator seats |
+| 2 | Week 1 + 1 | All Aboard think-alouds **if the AAC/SLP seat has accepted** (governance requires it before co-design); otherwise continue Press + Board-to-Brief; AT reviewer walkthrough | AAC seat status known |
+| 3 | Week 1 + 2 | Physical print inspection incl. booklet imposition; bilingual fixture review with the multilingual seat (EN–ES, EN–AR right-to-left) | Printer, ruler, multilingual seat |
+| 4 | Week 1 + 3 | Seeded-error study, paper pass (packets A–H) | ≥3 educators, sealed key |
+| 5 | Week 1 + 4 | Seeded-error study, in-app Gate B pass; defect burn-down begins | Builds on participants' machines |
+| 6 | Week 1 + 5 | Burn-down completes; **real council evidence-ratification session** (the first non-rehearsal); 1.0-rc evidence bundle assembled | Quorum of accepted seats |
 
 Crash-free session measurement (≥99.5%, plan §17) accumulates across all six weeks from the pilot machines' local, content-free diagnostics.
 
