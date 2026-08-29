@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
 namespace Foundry.Contracts;
 
 // The shared target/evidence/decision vocabulary of Release 0.3 (plan §13): the

@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
 namespace Foundry.Domain;
 
 /// <summary>The mandatory artifact-job states of implementation plan §6.3, failures explicit.</summary>

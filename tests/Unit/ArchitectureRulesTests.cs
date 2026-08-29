@@ -44,6 +44,21 @@ public class ArchitectureRulesTests
     }
 
     [Fact]
+    public void Every_source_file_carries_its_spdx_license_identifier()
+    {
+        var root = RepoRoot();
+        var files = Directory.EnumerateFiles(Path.Combine(root, "src"), "*.cs", SearchOption.AllDirectories)
+            .Concat(Directory.EnumerateFiles(Path.Combine(root, "tools"), "*.cs", SearchOption.AllDirectories))
+            .Where(f => !f.Contains($"{Path.DirectorySeparatorChar}obj{Path.DirectorySeparatorChar}", StringComparison.Ordinal)
+                && !f.Contains($"{Path.DirectorySeparatorChar}bin{Path.DirectorySeparatorChar}", StringComparison.Ordinal));
+
+        foreach (var file in files)
+        {
+            Assert.Contains("SPDX-License-Identifier: GPL-3.0-or-later", File.ReadLines(file).First(), StringComparison.Ordinal);
+        }
+    }
+
+    [Fact]
     public void Domain_references_no_projects()
     {
         Assert.Empty(ProjectReferences(@"src\Foundry.Domain\Foundry.Domain.csproj"));

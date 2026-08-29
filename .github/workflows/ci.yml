@@ -6,12 +6,12 @@
 #   [x] Unit, contract, schema, and migration tests (dotnet test — suites grow with the code)
 #   [x] Secret scan (gitleaks)
 #   [x] Dependency inventory artifact (SBOM-lite via `dotnet list package`)
-#   [x] Coverage collected (Cobertura via coverlet collector) and published as an artifact (R2-11, part 1)
-#   [ ] Coverage THRESHOLD enforcement — needs report aggregation tooling; R2-11 part 2
-#   [ ] Formatting gate (`dotnet format --verify-no-changes`) — blocked on a one-time line-ending
-#       normalization pass (.editorconfig says crlf; much of the tree is lf); do the normalization
-#       as its own commit, then enable
-#   [ ] Full SBOM (CycloneDX) and license audit tooling — replaces the inventory artifact
+#   [x] Coverage collected (Cobertura via coverlet collector) and published as an artifact
+#   [x] Coverage THRESHOLD: Domain+Application+Contracts line coverage >= 80% (measured 88.6% at enablement)
+#   [x] Formatting gate: whitespace verification (EOL/indentation/final-newline). Style-rule
+#       enforcement stays out deliberately — the blanket analyzer severity would drag
+#       info-level suggestions into the gate; revisit with a curated .editorconfig pass.
+#   [ ] Full SBOM (CycloneDX) and license audit tooling — CycloneDX blocked on .slnx support
 #   [x] Deterministic rendering comparisons (byte-identical render tests in the Rendering suite)
 
 name: CI
@@ -37,8 +37,21 @@ jobs:
       - name: Build (warnings are errors)
         run: dotnet build OpenClassroomFoundry.slnx --no-restore --configuration Release
 
+      - name: Whitespace format gate
+        run: dotnet format whitespace OpenClassroomFoundry.slnx --verify-no-changes
+
       - name: Test with coverage
         run: dotnet test OpenClassroomFoundry.slnx --no-build --configuration Release --logger "trx;LogFileName=test-results.trx" --collect:"XPlat Code Coverage"
+
+      - name: Coverage threshold (core assemblies >= 80%)
+        shell: pwsh
+        run: |
+          dotnet tool install --global dotnet-reportgenerator-globaltool
+          reportgenerator -reports:"**/TestResults/**/coverage.cobertura.xml" -targetdir:coverage-report -reporttypes:JsonSummary "-assemblyfilters:+Foundry.Domain;+Foundry.Application;+Foundry.Contracts"
+          $summary = Get-Content coverage-report/Summary.json | ConvertFrom-Json
+          $line = $summary.summary.linecoverage
+          Write-Host "Core line coverage: $line%"
+          if ($line -lt 80) { throw "Line coverage $line% is below the 80% threshold." }
 
       - name: Dependency inventory (SBOM-lite)
         run: dotnet list OpenClassroomFoundry.slnx package --include-transitive > dependency-inventory.txt

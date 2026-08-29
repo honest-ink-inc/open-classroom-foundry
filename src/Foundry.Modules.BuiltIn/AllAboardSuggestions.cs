@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
 using System.Text.Json;
 using Foundry.Domain;
 
@@ -16,6 +17,28 @@ public sealed record TaskStripSuggestion(string Title, IReadOnlyList<string> Ste
 public static class TaskStripSuggestionParser
 {
     public const int MaximumStepLength = 300;
+
+    /// <summary>
+    /// The strict JSON Schema for schema.all-aboard.v1, registered so schema-binding
+    /// providers make out-of-shape output unrepresentable at generation time. The
+    /// parser enforces the same bounds after the fact for every provider.
+    /// </summary>
+    public const string SchemaJson = """
+        {
+          "type": "object",
+          "properties": {
+            "title": { "type": "string", "minLength": 1 },
+            "steps": {
+              "type": "array",
+              "items": { "type": "string", "minLength": 1, "maxLength": 300 },
+              "minItems": 3,
+              "maxItems": 8
+            }
+          },
+          "required": ["title", "steps"],
+          "additionalProperties": false
+        }
+        """;
 
     private static readonly JsonSerializerOptions Strict = new(JsonSerializerDefaults.Web)
     {

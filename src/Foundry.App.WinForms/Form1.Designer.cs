@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
 ﻿namespace Foundry.App.WinForms;
 
 partial class Form1

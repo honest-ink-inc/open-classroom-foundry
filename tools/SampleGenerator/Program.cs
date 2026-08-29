@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
 // Generates the canonical accessible sample outputs for the 0.1-alpha evidence
 // bundle (universal Definition of Done: "canonical accessible sample outputs").
 // Deterministic: fixed approval instant, fixed content, the shipped libre pack.

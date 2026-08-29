@@ -152,6 +152,53 @@ public class OcfprojStoreTests : IDisposable
     }
 
     [Fact]
+    public async Task Hostile_entry_names_are_inert_because_nothing_is_ever_extracted()
+    {
+        // A package with a zip-slip entry beside valid content: loading reads the
+        // known entries by exact name and extracts nothing to disk.
+        var artifact = ApprovedStrip();
+        await _store.SaveGreenProjectAsync(artifact, Request("host"), CancellationToken.None);
+
+        var hostilePath = _store.PathFor("hostile");
+        File.Copy(_store.PathFor("host"), hostilePath);
+        using (var stream = new FileStream(hostilePath, FileMode.Open, FileAccess.ReadWrite))
+        using (var archive = new ZipArchive(stream, ZipArchiveMode.Update))
+        {
+            var evil = archive.CreateEntry("../../evil.txt");
+            await using var entryStream = evil.Open();
+            entryStream.Write("escaped"u8);
+        }
+
+        var escapeTarget = Path.GetFullPath(Path.Combine(_root, "..", "evil.txt"));
+        var loaded = await _store.LoadProjectAsync("hostile", CancellationToken.None);
+
+        Assert.Equal(DataLane.Green, loaded.Manifest.DataLane);
+        Assert.False(File.Exists(escapeTarget));
+    }
+
+    [Fact]
+    public async Task Corrupt_and_malformed_packages_fail_loudly_not_quietly()
+    {
+        Directory.CreateDirectory(_root);
+
+        // Truncated garbage is not a package.
+        await File.WriteAllBytesAsync(_store.PathFor("garbage"), [0x50, 0x4B, 0x03, 0x04, 0xFF]);
+        await Assert.ThrowsAnyAsync<Exception>(() => _store.LoadProjectAsync("garbage", CancellationToken.None));
+
+        // A valid zip with malformed manifest JSON fails with a clear error.
+        var malformedPath = _store.PathFor("malformed");
+        using (var stream = new FileStream(malformedPath, FileMode.Create, FileAccess.Write))
+        using (var archive = new ZipArchive(stream, ZipArchiveMode.Create))
+        {
+            var entry = archive.CreateEntry("manifest.json");
+            await using var entryStream = entry.Open();
+            entryStream.Write("{ not json"u8);
+        }
+
+        await Assert.ThrowsAnyAsync<Exception>(() => _store.LoadProjectAsync("malformed", CancellationToken.None));
+    }
+
+    [Fact]
     public void Destination_hints_cannot_smuggle_paths()
     {
         Assert.EndsWith("watering-plants.ocfproj", _store.PathFor("..\\..\\watering-plants"), StringComparison.Ordinal);

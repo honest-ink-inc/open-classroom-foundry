@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
 using System.Net;
 using System.Net.Http.Headers;
 using System.Text;
@@ -24,6 +25,7 @@ public sealed class AzureOpenAIProvider : IInferenceProvider
     private readonly string _deploymentId;
     private readonly string _apiVersion;
     private readonly Func<CancellationToken, Task<string>> _bearerTokenFactory;
+    private readonly IOutputSchemaRegistry? _schemaRegistry;
 
     public AzureOpenAIProvider(
         HttpClient http,
@@ -31,7 +33,8 @@ public sealed class AzureOpenAIProvider : IInferenceProvider
         string deploymentId,
         IReadOnlyCollection<string> allowedEndpoints,
         Func<CancellationToken, Task<string>> bearerTokenFactory,
-        string apiVersion = "2024-10-21")
+        string apiVersion = "2024-10-21",
+        IOutputSchemaRegistry? schemaRegistry = null)
     {
         ArgumentNullException.ThrowIfNull(http);
         ArgumentNullException.ThrowIfNull(endpoint);
@@ -55,6 +58,7 @@ public sealed class AzureOpenAIProvider : IInferenceProvider
         _deploymentId = deploymentId;
         _apiVersion = apiVersion;
         _bearerTokenFactory = bearerTokenFactory;
+        _schemaRegistry = schemaRegistry;
     }
 
     public Task<ProviderCapabilities> GetCapabilitiesAsync(CancellationToken cancellationToken)
@@ -150,15 +154,38 @@ public sealed class AzureOpenAIProvider : IInferenceProvider
         }
     }
 
-    private static string BuildBody(InferenceRequest request)
+    private string BuildBody(InferenceRequest request)
     {
         using var stream = new MemoryStream();
         using (var writer = new Utf8JsonWriter(stream))
         {
             writer.WriteStartObject();
             writer.WriteNumber("temperature", 0);
+
+            // Strict schema binding when the registry knows this schema: malformed
+            // output becomes unrepresentable at generation time. Otherwise JSON-object
+            // mode — the engine's strict parsers still hold the line.
+            var schemaJson = _schemaRegistry?.FindSchemaJson(request.OutputSchemaId);
             writer.WriteStartObject("response_format");
-            writer.WriteString("type", "json_object");
+            if (schemaJson is not null)
+            {
+                writer.WriteString("type", "json_schema");
+                writer.WriteStartObject("json_schema");
+                writer.WriteString("name", request.OutputSchemaId.Replace('.', '_'));
+                writer.WriteBoolean("strict", true);
+                writer.WritePropertyName("schema");
+                using (var schema = JsonDocument.Parse(schemaJson))
+                {
+                    schema.RootElement.WriteTo(writer);
+                }
+
+                writer.WriteEndObject();
+            }
+            else
+            {
+                writer.WriteString("type", "json_object");
+            }
+
             writer.WriteEndObject();
 
             writer.WriteStartArray("messages");
