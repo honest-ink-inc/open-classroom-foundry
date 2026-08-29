@@ -13,6 +13,9 @@
 #       info-level suggestions into the gate; revisit with a curated .editorconfig pass.
 #   [ ] Full SBOM (CycloneDX) and license audit tooling — CycloneDX blocked on .slnx support
 #   [x] Deterministic rendering comparisons (byte-identical render tests in the Rendering suite)
+#   [x] UIA accessibility harness (tests/UiAutomation): in-process contract tests always run;
+#       headed UIA tests run where the runner offers an interactive desktop and are VISIBLY
+#       skipped otherwise (or with OCF_SKIP_HEADED=1) — a skip is an honest gap, never a pass
 
 name: CI
 

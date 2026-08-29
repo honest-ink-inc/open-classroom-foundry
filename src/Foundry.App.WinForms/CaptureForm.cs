@@ -35,18 +35,19 @@ public sealed class CaptureForm : Form
 
         _import = MakeButton("&Import image…", async (_, _) => await ImportAsync());
         _rotate = MakeButton("&Rotate 90°", async (_, _) => await RotateAsync());
+        // No AccessibleName overrides: the full visible text IS the accessible
+        // name, so the lane's meaning is announced, not just its color
+        // (walkthrough step 14 — meaning in the name, not adjacent text).
         _stagedGreen = new RadioButton
         {
             Text = "Staged materials or empty space — &Green (my attestation)",
             AutoSize = true,
-            AccessibleName = "Confirm Green lane",
         };
         _keepAmber = new RadioButton
         {
             Text = "May include learners or their work — keep &Amber",
             AutoSize = true,
             Checked = true,
-            AccessibleName = "Keep Amber lane",
         };
         _confirm = MakeButton("&Confirm lane and continue", (_, _) => ConfirmLane());
         _safetyPause = MakeButton("I saw something concerning — &pause here", (_, _) => SafetyPause());

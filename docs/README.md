@@ -11,6 +11,7 @@ The copies in this directory are canonical for the repository from the initial c
 | [adr/](adr/) | Architecture decision records, ADR-001 onward |
 | [pilots/](pilots/) | The human-gates coordination plan and the staff-pilot instruments: think-aloud protocol, seeded-error study, print inspection checklist |
 | [accessibility/nvda-walkthrough-script.md](accessibility/nvda-walkthrough-script.md) | The keyboard and NVDA/Narrator walkthrough script (ADR-002's early-AT commitment) |
+| [accessibility/uia-harness-traceability.md](accessibility/uia-harness-traceability.md) | The UI Automation harness: which walkthrough steps are machine-guarded, which remain the human ear's, and the findings the harness produced |
 | [district/gate-3-readiness-packet.md](district/gate-3-readiness-packet.md) | The Gate 3 packet for district IT/privacy/safeguarding, including the written-approval instrument |
 | [evidence/pilot-kit/](evidence/pilot-kit/) | Eight seeded-error review packets (facilitator key sealed alongside) |
 | [handover/2026-08-29-waiting-window.md](handover/2026-08-29-waiting-window.md) | The waiting-window handover: the typist's watch, the ranked zero-gate engineering menu, and what must not be built until the gates open |

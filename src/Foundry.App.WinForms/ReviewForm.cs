@@ -27,7 +27,9 @@ public sealed class ReviewForm : Form
     {
         _session = session ?? throw new ArgumentNullException(nameof(session));
 
-        Text = $"{ProductIdentity.PublicName} — review before anything prints";
+        // The title is the first thing a screen reader announces: the draft
+        // state must be audible there, not only visual (walkthrough step 8).
+        Text = $"{ProductIdentity.PublicName} — reviewing a draft — nothing prints before approval";
         MinimumSize = new Size(720, 480);
 
         _nodeList = new ListBox { Dock = DockStyle.Fill, AccessibleName = "Draft elements" };
@@ -48,15 +50,30 @@ public sealed class ReviewForm : Form
         _moveUp = MakeButton("Move &up", (_, _) => MoveSelection(-1));
         _moveDown = MakeButton("Move &down", (_, _) => MoveSelection(+1));
         _approve = MakeButton("A&pprove", (_, _) => ApproveAndClose());
+        // Approval must state what it means, not just "OK" (walkthrough step 11).
+        _approve.AccessibleDescription = "Records your named approval of this exact revision; only approved artifacts can print, save, or export.";
         _reject = MakeButton("Re&ject", (_, _) => RejectAndClose());
 
         var buttons = new FlowLayoutPanel { Dock = DockStyle.Bottom, AutoSize = true, FlowDirection = FlowDirection.LeftToRight };
         buttons.Controls.AddRange([_applyEdit, _remove, _moveUp, _moveDown, _approve, _reject]);
 
-        var split = new SplitContainer { Dock = DockStyle.Fill, Orientation = Orientation.Vertical };
+        // WinForms keeps SplitContainers keyboard-focusable by design (arrow keys
+        // resize the split) and ignores TabStop=false — so the walkthrough's "no
+        // unnamed pane" rule (step 2) is met by NAMING them, not by hiding them.
+        var split = new SplitContainer
+        {
+            Dock = DockStyle.Fill,
+            Orientation = Orientation.Vertical,
+            AccessibleName = "Splitter between the draft list and the editor",
+        };
         split.Panel1.Controls.Add(_nodeList);
 
-        var rightSplit = new SplitContainer { Dock = DockStyle.Fill, Orientation = Orientation.Horizontal };
+        var rightSplit = new SplitContainer
+        {
+            Dock = DockStyle.Fill,
+            Orientation = Orientation.Horizontal,
+            AccessibleName = "Splitter between the editor and the validation issues",
+        };
         rightSplit.Panel1.Controls.Add(_editor);
         rightSplit.Panel2.Controls.Add(_issueList);
         split.Panel2.Controls.Add(rightSplit);

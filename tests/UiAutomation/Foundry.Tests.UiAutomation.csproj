@@ -5,6 +5,11 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <IsPackable>false</IsPackable>
+    <UseWindowsForms>true</UseWindowsForms>
+    <!-- UseWPF brings the UIAutomationClient assemblies from the WindowsDesktop
+         framework: the headed harness drives real windows through the same UIA
+         tree NVDA and Narrator read. No third-party automation dependency. -->
+    <UseWPF>true</UseWPF>
   </PropertyGroup>
 
   <ItemGroup>
