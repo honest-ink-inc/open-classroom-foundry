@@ -10,7 +10,7 @@ The whole family lives on one reusable grammar:
 
 The machine never appears to be the master teacher. The teacher remains the accountable author, editor, witness, and final decision-maker; the software is the extraordinarily fast press, compositor, translator, accessibility bench, and apprentice.
 
-*"Open Classroom Foundry" is a working title pending trademark screening (implementation plan §20, decision 1), as are all module names.*
+*The public name is decided: **Honest Ink — the classroom foundry** (ADR-006, pending final counsel clearance pre-release). "Open Classroom Foundry" remains the working and repository title; the ship name lives in a single code resource. Module names are still working titles.*
 
 ## Status
 

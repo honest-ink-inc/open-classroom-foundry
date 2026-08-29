@@ -9,3 +9,4 @@ Numbered, immutable once ratified, superseded only by a later ADR. Format: [temp
 | [ADR-003](ADR-003-open-ocfproj-package.md) | Open `.ocfproj` project package as the portable source of truth | Accepted |
 | [ADR-004](ADR-004-structural-approvedartifact-gate.md) | Structural ApprovedArtifact gate on render, export, save-as-final, and print | Accepted |
 | [ADR-005](ADR-005-taskdock-absorption.md) | TaskDock absorbed into Scaffold Smith as its task-entry preset | Accepted — ratified 29 Aug 2026 |
+| [ADR-006](ADR-006-public-name-honest-ink.md) | The public name is Honest Ink ("— the classroom foundry"); repository and internal identifiers unchanged; counsel confirmation pre-release | Accepted — decided 29 Aug 2026 |

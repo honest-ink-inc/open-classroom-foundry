@@ -1527,7 +1527,7 @@ Do not release if:
 
 # 20. Decisions to make before coding beyond the skeleton
 
-1. Public project and executable name after trademark screening
+1. Public project and executable name after trademark screening — **decided 29 August 2026: the public name is Honest Ink (ADR-006); "Open Classroom Foundry" remains the working/repository title; counsel confirmation is a pre-release checkpoint**
 2. Whether Writer’s Kiosk and Foundry remain separate repositories or later share an extracted library repository
 3. Exact Green project save locations permitted by district policy
 4. Local OCR implementation after a Windows/API feasibility spike

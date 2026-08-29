@@ -44,7 +44,7 @@ The three most adroit finalists, each screened first-pass and each anchored in t
 
 Eliminated by this pass: **The Classroom Press** (Classroom Complete Press, K-12 curriculum publisher, sits too close in class), **Chalk Foundry** (Chalk.com, K-12 software), **Chalkline Press** (the Chalkline root is claimed twice, including a UK education company), **The Apprentice Press** (Apprentice House Press, book publisher). The pattern across every test: in education naming, *descriptive names are all taken* — distinctiveness is not a luxury but the only clear ground remaining, which is itself an argument for finalist 1.
 
-The decision remains the typist's, at pre-release leisure (plan §20, decision 1). Whichever survives counsel, the subtitle policy holds: the name names, the subtitle explains.
+**Decided 29 August 2026: Honest Ink** (ADR-006). Counsel confirmation remains a pre-release checkpoint; Schoolhouse Foundry and Inkwright stand as ordered fallbacks. The subtitle policy holds: the name names, the subtitle explains.
 
 ## Method for the professional screen (pre-release checklist)
 
