@@ -13,5 +13,6 @@ The copies in this directory are canonical for the repository from the initial c
 | [accessibility/nvda-walkthrough-script.md](accessibility/nvda-walkthrough-script.md) | The keyboard and NVDA/Narrator walkthrough script (ADR-002's early-AT commitment) |
 | [district/gate-3-readiness-packet.md](district/gate-3-readiness-packet.md) | The Gate 3 packet for district IT/privacy/safeguarding, including the written-approval instrument |
 | [evidence/pilot-kit/](evidence/pilot-kit/) | Eight seeded-error review packets (facilitator key sealed alongside) |
+| [handover/2026-08-29-waiting-window.md](handover/2026-08-29-waiting-window.md) | The waiting-window handover: the typist's watch, the ranked zero-gate engineering menu, and what must not be built until the gates open |
 
 Precedence when documents disagree: a later ratified ADR > implementation plan > atlas > review. Disagreements themselves are defects — file an issue.

@@ -1,0 +1,61 @@
+# Handover — the waiting window
+
+**Date:** 29 August 2026 · **State:** v0.7.0-alpha tagged and pushed; 361 tests green; CI green with whitespace and coverage gates; compensation policy ratified; letters cleared to send; pilot scheduled 8 Sep – 16 Oct. This document assumes nothing about who reads it next; it is the map of what waits, what moves, and what must not move.
+
+## I. The standing laws (read before building anything)
+
+1. **Presses take parameters, never prose** (Deterministic Press governing invariant).
+2. Nothing renders, prints, exports, or persists without a typed `ApprovedArtifact` — the gate is structural, not procedural (ADR-004).
+3. Lanes escalate only; unknown provenance is Amber; Amber never persists.
+4. **Model self-ratings are not release evidence** — the generator's work is machine-verifiable engineering or it is a draft for humans.
+5. All Aboard **co-design** waits for the AAC/SLP seat; the district's **written instrument** precedes any real Amber artifact; both by governance, neither waivable from the keyboard.
+
+## II. The typist's watch (calendar-bound, reply-dependent)
+
+| When | Action | Notes |
+|---|---|---|
+| Sep 1–4 | SPF/DKIM/DMARC check, then **send the three letters** individually from contact@honest-ink.org | Drafts: [council/correspondence/2026-09-invitation-updates.md](../council/correspondence/2026-09-invitation-updates.md) — ready verbatim |
+| Sep 1–4 | Print the pilot kit; deliver the [Gate 3 packet](../district/gate-3-readiness-packet.md); self-run the [NVDA script](../accessibility/nvda-walkthrough-script.md) once | Kit: `docs/evidence/pilot-kit/` — key stays sealed |
+| As replies arrive | Acceptances → schedule against the [coordination plan](../pilots/human-gates-coordination-plan.md) grid; open the Phase 1 session ledger (private, not in repo). Declines → thank, ask for a name, re-invite the seat | AAC/SLP acceptance unlocks week 2's All Aboard sessions |
+| SDAT watch | On acceptance of the articles: retry the **online** EIN assistant first; else fax the **corrected** SS-4 | Corrections from the 29 Aug review: line 1 = "Honest Ink, Inc." exactly; line 6 = "Baltimore County, MD"; line 10 specify = nonprofit educational organization; line 17 filled; signature carries a **title** |
+| Meanwhile | Counsel: 501(c)(3) purpose + dissolution clauses present in the articles (1023-EZ attests to them); name confirmation (gate 8) | Amend-while-pending is cheap |
+| Ongoing | Second-maintainer conversations (coordination plan §Second maintainer) | The pitch: a well-lit house, not a rescue |
+
+## III. Da Vinci's forge — engineering that no gate blocks, ranked
+
+Each item is startable with a single "Proceed with …". Ordered by value-per-risk in this window; none touches a human gate's territory.
+
+### 1. Calibration & Proof Press *(newly divined — not in the atlas)*
+One deterministic page that turns the print-inspection checklist's worst trap into an instrument: a 100 mm horizontal and vertical ruler pair, margin probes at the declared print boundary, duplex registration marks (print twice, flip, hold to light), and a grayscale step ramp. Week 3's inspectors print it first; if the driver scaled the page, the ruler confesses before any artifact is blamed. **DoD:** ruler spans measure true at 100% scale; mm-true SVG asserted like the existing presses; joins `DeterministicPressRecipes`. *Small.*
+
+### 2. Deterministic Press, second wave *(the atlas's densest zero-gate value)*
+The best remaining printable engines, all parameters-never-prose: ten-frames and hundred charts; fraction strips and circles; coordinate grids (quadrant-configurable) and dot/isometric paper; music staff paper; spinner faces and dice/box nets; bingo boards and deterministic word searches **from a teacher-supplied word list** (placement seeded by a teacher-chosen seed — reproducible, never random-at-print). **DoD per press:** parameterized, validated, mm-asserted, rendered into the samples run. *Medium; naturally splits into sub-proceeds.*
+
+### 3. Accessibility test harness (UI Automation)
+ADR-002's standing debt: the harness that must exist before any custom control ever ships, and that multiplies the AT reviewer's hour by catching regressions between sessions. Automated UIA pass over the main surface and ReviewForm: every control named, roled, keyboard-reachable; tab-order asserted; the walkthrough script's parts 1–3 encoded as tests where automation honestly can. **DoD:** UiAutomation test project runs headed on the pilot machine and in CI where feasible; findings-to-script traceability. *Medium.*
+
+### 4. Localization scaffolding *(the council's multilingual-stewardship directive)*
+Extract UI strings to resources; add a pseudo-locale ("ẋẋ") build that lengthens strings 40% and forces RTL, so truncation and mirroring defects surface **before** the multilingual seat's week-3 review; wire the existing `TargetLanguageFirst`/RTL rendering knowledge into the app chrome. **DoD:** zero hard-coded user-facing strings (architecture test), pseudo-locale smoke render. *Medium.*
+
+### 5. Curated style pass → full format gate
+The `.editorconfig` blanket severity currently drags IDE0008/IDE0058 into `dotnet format` verification; curate rule-by-rule to intended severities, fix the fallout, then widen the CI gate from whitespace-only to full `dotnet format --verify-no-changes`. **DoD:** gate green locally and in CI. *Small-medium, tedious, worthwhile.*
+
+### 6. Hostile-package depth + coverage breadth
+Fuzz the `.ocfproj` reader harder (truncated central directories, hash-collision names, manifest/artifact disagreement); add `Foundry.Storage` and `Foundry.Rendering` to the CI coverage-threshold assemblies once their numbers are known honest. *Small.*
+
+### 7. honest-ink.org static site generator
+The repository's documents are the content; a small deterministic generator (same spirit as SampleGenerator) renders README + governance + module pages to static HTML for the purchased domain. **Publishing is the typist's act** — hosting choice, DNS — the forge only makes the artifact. *Medium.*
+
+### 8. Grouping Deck engine (atlas #137, lane-corrected)
+Seeded-deterministic grouping cards from a teacher-typed roster of **synthetic or first-name-free labels** (the lane correction that v2 applied): teacher seed in, same groups out every time, printable deck. Green by construction. *Small.*
+
+## IV. What must NOT be built while waiting
+
+- All Aboard co-design features (new visual-support interaction patterns, symbol-set expansion strategy) — **AAC/SLP seat first.**
+- Anything touching real classroom-derived data — **written instrument first.**
+- `Foundry.Inference.Local` implementation — weights are provisioned by humans; the spike and capability kit remain its contract.
+- Evidence rows: no generator output may close a HUMAN row of the [hardening checklist](../release/hardening-checklist.md), ever.
+
+## V. Resuming
+
+The convention that has carried the whole project: the typist says **"Proceed with …"** and names an item (e.g., "Proceed with the Calibration Press and the second Press wave"). Repository documents are canonical; this handover supersedes nothing, it only points. When items here complete, they are struck through with a dated note rather than deleted — the map should show where the road has been.
