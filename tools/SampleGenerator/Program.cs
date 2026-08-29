@@ -206,6 +206,16 @@ var pressSamples = new (string Name, ArtifactDocument Document)[]
     ("bar-chart", ChartPress.Sheet(
         "Bean plants after three weeks (cm)",
         ChartPress.Parse([("Sun", "18"), ("Shade", "9"), ("Window", "12")]))),
+    ("concept-sort", ConceptSortStudio.Cards("Mammals",
+        ["Dolphin", "Bat", "Elephant", "Whale"], ["Shark", "Penguin", "Crocodile", "Salmon"], ["Platypus", "Fossil skeleton"])),
+    ("role-cards", DiscussionRoleWheel.Cards(
+        [("Facilitator", "Ask each person for their view before deciding."), ("Skeptic", "Ask for the evidence behind each claim."), ("Summarizer", "Restate the group's thinking in your own words."), ("Recorder", "Write what the group agrees and where it splits.")],
+        "Rotate one role clockwise each round - every voice gets every job.")),
+    ("peer-feedback", PeerFeedbackBuilder.Sheet(
+        "Peer feedback protocol",
+        "Every comment points at the work - name the line, the step, or the spot.",
+        ["One strength I noticed is...", "A question I have is...", "One specific suggestion is..."],
+        "The author decides: what I will use, what I will set aside.")),
     ("bug-zoo", BugZoo.Sheet(
         "This program should print 6 - but it does not.",
         ["total = 0", "for n in [1, 2, 3]:", "    total = n", "print(total)"],

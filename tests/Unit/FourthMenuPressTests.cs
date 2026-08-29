@@ -293,3 +293,88 @@ public class FluencyRehearsalTests
             [.. Enumerable.Range(1, 15).Select(i => $"line {i}")], 3, "R"));
     }
 }
+
+// The card and protocol trio (menu 4, item 5): card kinds distinguished by
+// SHAPE — single border, double border, dashed frame — never color alone.
+
+public class ConceptSortTests
+{
+    [Fact]
+    public void Card_kinds_are_shape_distinguished_and_the_concept_stays_on_the_teacher_key()
+    {
+        var definition = PressRoomCatalog.ById("concept-sort");
+        var document = definition.Build(new PressInputs(PressRoomCatalog.Defaults(definition)));
+
+        // 4 + 4 + 2 = 10 cards across two pages of eight, then the key.
+        var pages = document.Nodes.OfType<VectorGraphic>().ToList();
+        Assert.Equal(2, pages.Count);
+
+        var primitives = pages.SelectMany(p => p.Primitives).ToList();
+        Assert.Equal(10, primitives.OfType<RectShape>().Count(r => r.StrokeWidthMm == 0.5)); // every card's outer border
+        Assert.Equal(4, primitives.OfType<RectShape>().Count(r => r.StrokeWidthMm == 0.35)); // nonexamples' inner border
+        Assert.Equal(8, primitives.OfType<LineSeg>().Count(l => l.Dashed)); // two ambiguous cards, four dashed sides each
+
+        // The concept never prints on a card — only on the teacher key.
+        Assert.DoesNotContain(primitives.OfType<TextLabel>(), l => l.Text.Contains("Mammals", StringComparison.Ordinal));
+        var key = Assert.IsType<TeacherOnlyNotice>(document.Nodes[^1]);
+        Assert.Contains("Mammals", key.Text, StringComparison.Ordinal);
+        Assert.Contains("dashed frame = deliberately ambiguous", key.Text, StringComparison.Ordinal);
+
+        Assert.Contains(primitives.OfType<TextLabel>(), l => l.Text == "Platypus");
+    }
+
+    [Fact]
+    public void Concept_sort_refuses_loudly_when_wrong()
+    {
+        Assert.Throws<ArgumentException>(() => ConceptSortStudio.Cards(" ", ["a", "b"], ["c", "d"], []));
+        Assert.Throws<ArgumentException>(() => ConceptSortStudio.Cards("C", ["only"], ["c", "d"], []));
+        Assert.Throws<ArgumentException>(() => ConceptSortStudio.Cards("C", ["a", "b"], ["c", "d"],
+            [.. Enumerable.Range(1, 9).Select(i => $"m{i}")]));
+    }
+}
+
+public class RoleWheelTests
+{
+    [Fact]
+    public void Roles_carry_their_accountable_actions_and_the_rotation_note_rides_every_page()
+    {
+        var nine = Enumerable.Range(1, 9).Select(i => ($"Role {i}", (string?)$"Action {i}")).ToList();
+        var document = DiscussionRoleWheel.Cards(nine, "Rotate clockwise.");
+
+        var pages = document.Nodes.OfType<VectorGraphic>().ToList();
+        Assert.Equal(2, pages.Count);
+        Assert.All(pages, p => Assert.Single(p.Primitives.OfType<TextLabel>(), l => l.Text == "Rotate clockwise."));
+
+        var labels = pages.SelectMany(p => p.Primitives.OfType<TextLabel>()).ToList();
+        Assert.Contains(labels, l => l.Text == "Role 9");
+        Assert.Contains(labels, l => l.Text == "Action 9");
+
+        Assert.Contains("accountable action",
+            Assert.Throws<ArgumentException>(() => DiscussionRoleWheel.Cards([("Skeptic", null), ("Recorder", "Write.")], "Rotate.")).Message,
+            StringComparison.Ordinal);
+    }
+}
+
+public class PeerFeedbackTests
+{
+    [Fact]
+    public void The_sheet_carries_the_rule_the_stems_and_the_author_decision_box()
+    {
+        var definition = PressRoomCatalog.ById("peer-feedback");
+        var graphic = (VectorGraphic)definition.Build(new PressInputs(PressRoomCatalog.Defaults(definition))).Nodes[0];
+
+        var labels = graphic.Primitives.OfType<TextLabel>().ToList();
+        Assert.Contains(labels, l => l.Text.StartsWith("Every comment points at the work", StringComparison.Ordinal));
+        Assert.Contains(labels, l => l.Text == "One strength I noticed is...");
+        Assert.Contains(labels, l => l.Text.StartsWith("The author decides", StringComparison.Ordinal));
+
+        // Three stem lines plus three author-box lines, all ruled at 0.3.
+        Assert.Equal(6, graphic.Primitives.OfType<LineSeg>().Count(l => l.StrokeWidthMm == 0.3));
+        // The rule box and the author box both stand as rectangles.
+        Assert.Single(graphic.Primitives.OfType<RectShape>(), r => r.StrokeWidthMm == 0.6);
+        Assert.Single(graphic.Primitives.OfType<RectShape>(), r => r.StrokeWidthMm == 0.7);
+
+        Assert.Throws<ArgumentException>(() => PeerFeedbackBuilder.Sheet("T", "Rule", ["one stem"], "Author"));
+        Assert.Throws<ArgumentException>(() => PeerFeedbackBuilder.Sheet("T", " ", ["a...", "b..."], "Author"));
+    }
+}

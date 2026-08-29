@@ -198,8 +198,13 @@ public static class DeterministicPressRecipes
         "Repeated-reading rehearsal sheets from the teacher's own passage: text verbatim in large print, the teacher's phrase marks as visible breath-breaks, tally boxes, and a reflection line.",
         "altering, leveling, simplifying, or re-phrasing the passage — the text and its phrase marks are the teacher's, preserved exactly");
 
+    public static RecipeManifest Protocols { get; } = Manifest(
+        "press.protocols",
+        "Concept-sort card decks, discussion role cards, and peer-feedback protocol sheets from the teacher's own examples, roles, and sentence stems — card kinds distinguished by shape, never color alone.",
+        "inventing examples, roles, stems, or feedback content — the sorting judgment, the discussion, and the feedback remain the learners' and the teacher's");
+
     public static IReadOnlyList<RecipeManifest> All { get; } =
-        [Blankforms, Flashcards, BookletGuide, Manipulatives, Foldables, BigPrint, Handwriting, Labels, Calibration, Puzzles, Grouping, Computational, Retrieval, FieldJournal, MathScaffolds, History, LearnerHeld, Rubrics, Charts, Schedules, Fluency];
+        [Blankforms, Flashcards, BookletGuide, Manipulatives, Foldables, BigPrint, Handwriting, Labels, Calibration, Puzzles, Grouping, Computational, Retrieval, FieldJournal, MathScaffolds, History, LearnerHeld, Rubrics, Charts, Schedules, Fluency, Protocols];
 
     private static RecipeManifest Manifest(string id, string purpose, params string[] alsoProhibited) => new(
         Id: id,

@@ -347,6 +347,31 @@ public static class PressRoomCatalog
 
         // Bell-to-Bell (menu 4, item 3): the defaults meet the bell exactly —
         // 48 activity + 4 transition + 3 closure = 55 of 55.
+        // The card and protocol trio (menu 4, item 5), on the deck machinery.
+        new("concept-sort", "Concept sort cards", DeterministicPressRecipes.Protocols,
+            [new TextParameter("concept", "Concept (prints only on the teacher key)", "Mammals"),
+             new LinesParameter("examples", "Examples, one per line", "Dolphin\nBat\nElephant\nWhale"),
+             new LinesParameter("nonexamples", "Nonexamples, one per line", "Shark\nPenguin\nCrocodile\nSalmon"),
+             new LinesParameter("ambiguous", "Deliberately ambiguous cards (blank for none)", "Platypus\nFossil skeleton", Optional: true),
+             Page()],
+            inputs => ConceptSortStudio.Cards(inputs.Text("concept"),
+                inputs.Lines("examples"), inputs.Lines("nonexamples"), inputs.Lines("ambiguous"), inputs.Page())),
+
+        new("role-cards", "Discussion role cards", DeterministicPressRecipes.Protocols,
+            [new LinesParameter("roles", "Roles, one per line as role | accountable action", "Facilitator | Ask each person for their view before deciding.\nSkeptic | Ask for the evidence behind each claim.\nSummarizer | Restate the group's thinking in your own words.\nRecorder | Write what the group agrees and where it splits."),
+             new TextParameter("rotation", "Rotation note printed on every page", "Rotate one role clockwise each round - every voice gets every job."),
+             Page()],
+            inputs => DiscussionRoleWheel.Cards(inputs.SplitLines("roles"), inputs.Text("rotation"), inputs.Page())),
+
+        new("peer-feedback", "Peer feedback protocol", DeterministicPressRecipes.Protocols,
+            [new TextParameter("title", "Sheet title", "Peer feedback protocol"),
+             new TextParameter("evidence", "Evidence rule (printed in the rule box)", "Every comment points at the work - name the line, the step, or the spot."),
+             new LinesParameter("stems", "Sentence stems, one per line", "One strength I noticed is...\nA question I have is...\nOne specific suggestion is..."),
+             new TextParameter("author", "Author-decision heading", "The author decides: what I will use, what I will set aside."),
+             Page()],
+            inputs => PeerFeedbackBuilder.Sheet(inputs.Text("title"), inputs.Text("evidence"),
+                inputs.Lines("stems"), inputs.Text("author"), inputs.Page())),
+
         // Fluency Rehearsal (menu 4, item 4): the passage is the teacher's,
         // exactly; the | marks become breath-break slashes in ink.
         new("fluency-rehearsal", "Fluency rehearsal", DeterministicPressRecipes.Fluency,
