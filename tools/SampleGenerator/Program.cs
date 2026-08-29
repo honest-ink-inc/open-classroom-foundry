@@ -180,6 +180,8 @@ var pressSamples = new (string Name, ArtifactDocument Document)[]
     ("bingo-cards", PuzzlePress.BingoBoards(bingoEntries, cards: 2, seed: 20260829)),
     ("word-search", PuzzlePress.WordSearch(
         ["fraction", "decimal", "percent", "ratio", "graph", "sum"], seed: 20260829)),
+    ("grouping-deck", GroupingDeck.Cards(
+        [.. Enumerable.Range(1, 22).Select(i => $"Star {i}")], groupSize: 4, seed: 20260829)),
 };
 
 foreach (var (name, document) in pressSamples)

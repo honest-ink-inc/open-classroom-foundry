@@ -133,16 +133,21 @@ public static class DeterministicPressRecipes
 
     public static RecipeManifest Puzzles { get; } = Manifest("press.puzzles", "Seeded-deterministic bingo boards and word searches from a teacher's own list: same seed, same pages, never random at print time.");
 
-    public static IReadOnlyList<RecipeManifest> All { get; } =
-        [Blankforms, Flashcards, BookletGuide, Manipulatives, Foldables, BigPrint, Handwriting, Labels, Calibration, Puzzles];
+    public static RecipeManifest Grouping { get; } = Manifest(
+        "press.grouping",
+        "Seeded-deterministic grouping cards from a teacher-typed roster: same seed, same groups, reprintable and verifiable.",
+        "real learner names — the roster takes synthetic or first-name-free labels only (atlas #137 lane correction)");
 
-    private static RecipeManifest Manifest(string id, string purpose) => new(
+    public static IReadOnlyList<RecipeManifest> All { get; } =
+        [Blankforms, Flashcards, BookletGuide, Manipulatives, Foldables, BigPrint, Handwriting, Labels, Calibration, Puzzles, Grouping];
+
+    private static RecipeManifest Manifest(string id, string purpose, params string[] alsoProhibited) => new(
         Id: id,
         Version: "0.1.0",
         License: "GPL-3.0-or-later",
         MinimumEngineVersion: EngineIdentity.EngineVersion,
         InstructionalPurpose: purpose,
-        ProhibitedPurposes: Prohibited,
+        ProhibitedPurposes: [.. Prohibited, .. alsoProhibited],
         AllowedInputKinds: ["parameters", "teacher-entered-list"],
         MaximumLane: DataLane.Green,
         RequiredProviderCapabilities: [],

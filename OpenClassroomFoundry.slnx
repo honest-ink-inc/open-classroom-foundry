@@ -41,4 +41,7 @@
   <Folder Name="/tools/SampleGenerator/">
     <Project Path="tools/SampleGenerator/Foundry.Tools.SampleGenerator.csproj" />
   </Folder>
+  <Folder Name="/tools/SiteGenerator/">
+    <Project Path="tools/SiteGenerator/Foundry.Tools.SiteGenerator.csproj" />
+  </Folder>
 </Solution>

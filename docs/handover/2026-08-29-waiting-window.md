@@ -49,11 +49,15 @@ Each item is startable with a single "Proceed with …". Ordered by value-per-ri
 ~~Fuzz the `.ocfproj` reader harder (truncated central directories, hash-collision names, manifest/artifact disagreement); add `Foundry.Storage` and `Foundry.Rendering` to the CI coverage-threshold assemblies once their numbers are known honest. *Small.*~~
 > **Done 29 Aug 2026:** the depth pass found the reader trusting where it should not, so the reader was hardened first: colliding entry names (exact or case-only — the two-manifests smuggling vector) refused; a manifest claiming a lane above Green, an unknown schema version, or assets the package does not carry refused; a tampered artifact failing structural validation refused. Nine new tests attack all of it — a six-point truncation sweep through the central directory, both collision forms, every disagreement class — and the untouched package still loads. Coverage measured honest first: `Foundry.Storage` 93.0%, `Foundry.Rendering` 92.5%; both joined the CI threshold assemblies.
 
-### 7. honest-ink.org static site generator
-The repository's documents are the content; a small deterministic generator (same spirit as SampleGenerator) renders README + governance + module pages to static HTML for the purchased domain. **Publishing is the typist's act** — hosting choice, DNS — the forge only makes the artifact. *Medium.*
+### 7. ~~honest-ink.org static site generator~~ — **done 29 Aug 2026**
+~~The repository's documents are the content; a small deterministic generator (same spirit as SampleGenerator) renders README + governance + module pages to static HTML for the purchased domain. **Publishing is the typist's act** — hosting choice, DNS — the forge only makes the artifact. *Medium.*~~
+> **Done 29 Aug 2026:** `tools/SiteGenerator` — a deterministic renderer with its own tested MarkdownLite (no third-party dependency; escape-first, so document text can never smuggle markup) building six pages: README as index, governance, contributing, security, notices, and the Deterministic Press spec. Links between rendered pages become page links; every other repository link resolves to an honest repository pointer. No timestamps anywhere; byte-identical across runs, asserted by hash in tests. The six-page artifact was generated and handed to the typist; hosting, DNS, and upload remain the typist's act.
 
-### 8. Grouping Deck engine (atlas #137, lane-corrected)
-Seeded-deterministic grouping cards from a teacher-typed roster of **synthetic or first-name-free labels** (the lane correction that v2 applied): teacher seed in, same groups out every time, printable deck. Green by construction. *Small.*
+### 8. ~~Grouping Deck engine (atlas #137, lane-corrected)~~ — **done 29 Aug 2026**
+~~Seeded-deterministic grouping cards from a teacher-typed roster of **synthetic or first-name-free labels** (the lane correction that v2 applied): teacher seed in, same groups out every time, printable deck. Green by construction. *Small.*~~
+> **Done 29 Aug 2026:** `GroupingDeck.Cards` — one seeded shuffle then a round-robin deal, so group sizes differ by at most one and a contested draw is reprinted and verified, never re-rolled in secret. Cards paginate six to a page with the seed printed in the footer. Recipe `press.grouping` (eleven now stand) carries the lane correction in its prohibited purposes: real learner names refused by policy; the roster takes synthetic or first-name-free labels only. Tested (determinism, exactly-once membership, size fairness, pagination, refusals) and rendered into the samples run.
+
+*With item 8, every item on this menu is struck — the forge menu of 29 Aug 2026 is exhausted. New zero-gate work needs a new ranked menu, drawn from the atlas against whatever the waiting window has become.*
 
 ## IV. What must NOT be built while waiting
 

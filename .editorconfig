@@ -36,9 +36,11 @@ dotnet_diagnostic.IDE0008.severity = silent
 dotnet_diagnostic.IDE0058.severity = silent
 
 # Arithmetic parentheses, expression vs block bodies, conditional-expression
-# conversions, and primary constructors are author judgment, not idiom.
+# conversions (both the assignment and return forms), and primary constructors
+# are author judgment, not idiom.
 dotnet_diagnostic.IDE0048.severity = silent
 dotnet_diagnostic.IDE0022.severity = silent
+dotnet_diagnostic.IDE0045.severity = silent
 dotnet_diagnostic.IDE0046.severity = silent
 dotnet_diagnostic.IDE0290.severity = silent
 
