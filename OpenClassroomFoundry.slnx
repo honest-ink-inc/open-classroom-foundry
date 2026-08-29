@@ -7,6 +7,7 @@
     <Project Path="src/Foundry.Inference.Abstractions/Foundry.Inference.Abstractions.csproj" />
     <Project Path="src/Foundry.Inference.AzureOpenAI/Foundry.Inference.AzureOpenAI.csproj" />
     <Project Path="src/Foundry.Inference.Local/Foundry.Inference.Local.csproj" />
+    <Project Path="src/Foundry.Inference.Synthetic/Foundry.Inference.Synthetic.csproj" />
     <Project Path="src/Foundry.Infrastructure.Windows/Foundry.Infrastructure.Windows.csproj" />
     <Project Path="src/Foundry.Modules.BuiltIn/Foundry.Modules.BuiltIn.csproj" />
     <Project Path="src/Foundry.Modules.DeterministicPress/Foundry.Modules.DeterministicPress.csproj" />

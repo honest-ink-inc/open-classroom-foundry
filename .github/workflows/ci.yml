@@ -1,0 +1,61 @@
+# Pull-request CI per implementation plan §12. This workflow activates when the
+# repository gains a GitHub remote; until then it is reviewed as configuration.
+#
+# Coverage of the plan's CI list, honestly stated:
+#   [x] Build on pinned .NET 10 with warnings as errors (global.json + Directory.Build.props)
+#   [x] Unit, contract, schema, and migration tests (dotnet test — suites grow with the code)
+#   [x] Secret scan (gitleaks)
+#   [x] Dependency inventory artifact (SBOM-lite via `dotnet list package`)
+#   [ ] Formatting/analyzer gate beyond build analyzers — add `dotnet format --verify-no-changes` once format config settles
+#   [ ] Full SBOM (CycloneDX) and license audit tooling — replaces the inventory artifact before Release 0.0 closes
+#   [ ] Deterministic rendering comparisons — arrive with Foundry.Rendering
+#   [ ] Coverage threshold for Domain/Application/Contracts — enable once measurable code lands
+
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  build-and-test:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+
+      - name: Restore
+        run: dotnet restore OpenClassroomFoundry.slnx
+
+      - name: Build (warnings are errors)
+        run: dotnet build OpenClassroomFoundry.slnx --no-restore --configuration Release
+
+      - name: Test
+        run: dotnet test OpenClassroomFoundry.slnx --no-build --configuration Release --logger "trx;LogFileName=test-results.trx"
+
+      - name: Dependency inventory (SBOM-lite)
+        run: dotnet list OpenClassroomFoundry.slnx package --include-transitive > dependency-inventory.txt
+        shell: bash
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: build-evidence
+          path: |
+            dependency-inventory.txt
+            **/TestResults/*.trx
+
+  secret-scan:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

@@ -73,6 +73,7 @@ public class ArchitectureRulesTests
     [Theory]
     [InlineData(@"src\Foundry.Inference.AzureOpenAI\Foundry.Inference.AzureOpenAI.csproj")]
     [InlineData(@"src\Foundry.Inference.Local\Foundry.Inference.Local.csproj")]
+    [InlineData(@"src\Foundry.Inference.Synthetic\Foundry.Inference.Synthetic.csproj")]
     public void Inference_adapters_reference_only_the_abstractions(string csproj)
     {
         var reference = Assert.Single(ProjectReferences(csproj));

@@ -21,6 +21,7 @@
   <ItemGroup>
     <ProjectReference Include="..\..\src\Foundry.Contracts\Foundry.Contracts.csproj" />
     <ProjectReference Include="..\..\src\Foundry.Inference.Abstractions\Foundry.Inference.Abstractions.csproj" />
+    <ProjectReference Include="..\..\src\Foundry.Inference.Synthetic\Foundry.Inference.Synthetic.csproj" />
   </ItemGroup>
 
 </Project>
