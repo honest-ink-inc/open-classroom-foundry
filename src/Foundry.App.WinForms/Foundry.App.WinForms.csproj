@@ -1,0 +1,21 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <ItemGroup>
+    <ProjectReference Include="..\Foundry.Application\Foundry.Application.csproj" />
+    <ProjectReference Include="..\Foundry.Infrastructure.Windows\Foundry.Infrastructure.Windows.csproj" />
+    <ProjectReference Include="..\Foundry.Rendering\Foundry.Rendering.csproj" />
+    <ProjectReference Include="..\Foundry.Storage\Foundry.Storage.csproj" />
+    <ProjectReference Include="..\Foundry.Inference.AzureOpenAI\Foundry.Inference.AzureOpenAI.csproj" />
+    <ProjectReference Include="..\Foundry.Modules.DeterministicPress\Foundry.Modules.DeterministicPress.csproj" />
+    <ProjectReference Include="..\Foundry.Modules.BuiltIn\Foundry.Modules.BuiltIn.csproj" />
+  </ItemGroup>
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net10.0-windows</TargetFramework>
+    <Nullable>enable</Nullable>
+    <UseWindowsForms>true</UseWindowsForms>
+    <ImplicitUsings>enable</ImplicitUsings>
+  </PropertyGroup>
+
+</Project>

@@ -1,0 +1,38 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/Foundry.App.WinForms/Foundry.App.WinForms.csproj" />
+    <Project Path="src/Foundry.Application/Foundry.Application.csproj" />
+    <Project Path="src/Foundry.Contracts/Foundry.Contracts.csproj" />
+    <Project Path="src/Foundry.Domain/Foundry.Domain.csproj" />
+    <Project Path="src/Foundry.Inference.Abstractions/Foundry.Inference.Abstractions.csproj" />
+    <Project Path="src/Foundry.Inference.AzureOpenAI/Foundry.Inference.AzureOpenAI.csproj" />
+    <Project Path="src/Foundry.Inference.Local/Foundry.Inference.Local.csproj" />
+    <Project Path="src/Foundry.Infrastructure.Windows/Foundry.Infrastructure.Windows.csproj" />
+    <Project Path="src/Foundry.Modules.BuiltIn/Foundry.Modules.BuiltIn.csproj" />
+    <Project Path="src/Foundry.Modules.DeterministicPress/Foundry.Modules.DeterministicPress.csproj" />
+    <Project Path="src/Foundry.Rendering/Foundry.Rendering.csproj" />
+    <Project Path="src/Foundry.Storage/Foundry.Storage.csproj" />
+  </Folder>
+  <Folder Name="/tests/" />
+  <Folder Name="/tests/Accessibility/">
+    <Project Path="tests/Accessibility/Foundry.Tests.Accessibility.csproj" />
+  </Folder>
+  <Folder Name="/tests/Contract/">
+    <Project Path="tests/Contract/Foundry.Tests.Contract.csproj" />
+  </Folder>
+  <Folder Name="/tests/InstructionalEvals/">
+    <Project Path="tests/InstructionalEvals/Foundry.Tests.InstructionalEvals.csproj" />
+  </Folder>
+  <Folder Name="/tests/Integration/">
+    <Project Path="tests/Integration/Foundry.Tests.Integration.csproj" />
+  </Folder>
+  <Folder Name="/tests/Rendering/">
+    <Project Path="tests/Rendering/Foundry.Tests.Rendering.csproj" />
+  </Folder>
+  <Folder Name="/tests/UiAutomation/">
+    <Project Path="tests/UiAutomation/Foundry.Tests.UiAutomation.csproj" />
+  </Folder>
+  <Folder Name="/tests/Unit/">
+    <Project Path="tests/Unit/Foundry.Tests.Unit.csproj" />
+  </Folder>
+</Solution>
