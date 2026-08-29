@@ -203,8 +203,13 @@ public static class DeterministicPressRecipes
         "Concept-sort card decks, discussion role cards, and peer-feedback protocol sheets from the teacher's own examples, roles, and sentence stems — card kinds distinguished by shape, never color alone.",
         "inventing examples, roles, stems, or feedback content — the sorting judgment, the discussion, and the feedback remain the learners' and the teacher's");
 
+    public static RecipeManifest Glossary { get; } = Manifest(
+        "press.glossary",
+        "Bilingual unit glossaries from the teacher's own terms, meanings, and translations — consistent terminology as aligned pairs with correct language tags.",
+        "translating, correcting, or leveling the teacher's entries — the translations are the teacher's own, placed verbatim");
+
     public static IReadOnlyList<RecipeManifest> All { get; } =
-        [Blankforms, Flashcards, BookletGuide, Manipulatives, Foldables, BigPrint, Handwriting, Labels, Calibration, Puzzles, Grouping, Computational, Retrieval, FieldJournal, MathScaffolds, History, LearnerHeld, Rubrics, Charts, Schedules, Fluency, Protocols];
+        [Blankforms, Flashcards, BookletGuide, Manipulatives, Foldables, BigPrint, Handwriting, Labels, Calibration, Puzzles, Grouping, Computational, Retrieval, FieldJournal, MathScaffolds, History, LearnerHeld, Rubrics, Charts, Schedules, Fluency, Protocols, Glossary];
 
     private static RecipeManifest Manifest(string id, string purpose, params string[] alsoProhibited) => new(
         Id: id,

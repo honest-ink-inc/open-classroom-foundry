@@ -347,6 +347,18 @@ public static class PressRoomCatalog
 
         // Bell-to-Bell (menu 4, item 3): the defaults meet the bell exactly —
         // 48 activity + 4 transition + 3 closure = 55 of 55.
+        // Glossary Garden (menu 4, item 6): a semantic document — bilingual
+        // pairs ride the engine's BilingualPair node so lang semantics come
+        // from the tested renderer, never from this press.
+        new("glossary-garden", "Glossary garden", DeterministicPressRecipes.Glossary,
+            [new TextParameter("title", "Glossary title", "Unit 3: The water cycle"),
+             new LinesParameter("entries", "Entries, one per line as term | meaning (add | translation for bilingual)", "evaporation | Liquid water becomes vapor. | evaporación\ncondensation | Vapor becomes liquid drops. | condensación\nprecipitation | Water falls as rain or snow. | precipitación"),
+             new TextParameter("source", "Language of the terms and meanings (like en)", "en"),
+             new TextParameter("target", "Language of the translations (like es)", "es")],
+            inputs => GlossaryGarden.Sheet(inputs.Text("title"),
+                GlossaryGarden.Parse(inputs.Lines("entries")),
+                inputs.Text("source").Trim(), inputs.Text("target").Trim())),
+
         // The card and protocol trio (menu 4, item 5), on the deck machinery.
         new("concept-sort", "Concept sort cards", DeterministicPressRecipes.Protocols,
             [new TextParameter("concept", "Concept (prints only on the teacher key)", "Mammals"),

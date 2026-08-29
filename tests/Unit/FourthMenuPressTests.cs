@@ -378,3 +378,60 @@ public class PeerFeedbackTests
         Assert.Throws<ArgumentException>(() => PeerFeedbackBuilder.Sheet("T", " ", ["a...", "b..."], "Author"));
     }
 }
+
+// Glossary Garden (menu 4, item 6): bilingual pairs verbatim, with the lang
+// semantics owned by the tested renderer via BilingualPair.
+
+public class GlossaryGardenTests
+{
+    [Fact]
+    public void Bilingual_entries_ride_BilingualPair_verbatim_with_correct_language_tags()
+    {
+        var definition = PressRoomCatalog.ById("glossary-garden");
+        var document = definition.Build(new PressInputs(PressRoomCatalog.Defaults(definition)));
+
+        Assert.Equal("en", document.Language);
+
+        var pairs = document.Nodes.OfType<BilingualPair>().ToList();
+        Assert.Equal(3, pairs.Count);
+        Assert.All(pairs, p =>
+        {
+            Assert.Equal("en", p.SourceLocale);
+            Assert.Equal("es", p.TargetLocale);
+        });
+
+        // Verbatim, diacritics and all — the translations are the teacher's.
+        Assert.Equal(("evaporation", "evaporación"), (pairs[0].SourceText, pairs[0].TargetText));
+        Assert.Equal(("precipitation", "precipitación"), (pairs[2].SourceText, pairs[2].TargetText));
+
+        // Every entry is a term heading plus its meaning; pairs sit beside
+        // their own term.
+        Assert.Contains(document.Nodes.OfType<Heading>(), h => h.Level == 2 && h.Text == "condensation");
+        Assert.Contains(document.Nodes.OfType<Paragraph>(), p => p.Text == "Vapor becomes liquid drops.");
+    }
+
+    [Fact]
+    public void Monolingual_entries_carry_no_pair_and_mixed_lists_are_honest()
+    {
+        var entries = GlossaryGarden.Parse(["axis | The line a graph measures along.", "origin | Where the axes cross. | origen"]);
+        var document = GlossaryGarden.Sheet("Graphs", entries, "en", "es");
+
+        var pair = Assert.Single(document.Nodes.OfType<BilingualPair>());
+        Assert.Equal("origin", pair.SourceText);
+        Assert.Null(entries[0].Translation);
+    }
+
+    [Fact]
+    public void Glossary_refuses_loudly_when_wrong()
+    {
+        Assert.Throws<ArgumentException>(() => GlossaryGarden.Parse(["term only"]));
+        Assert.Throws<ArgumentException>(() => GlossaryGarden.Parse(["term | meaning | "]));
+        Assert.Throws<ArgumentException>(() => GlossaryGarden.Parse(["a | b | c | d"]));
+
+        var two = GlossaryGarden.Parse(["a | one", "b | two"]);
+        Assert.Throws<ArgumentException>(() => GlossaryGarden.Sheet(" ", two, "en", "es"));
+        Assert.Throws<ArgumentException>(() => GlossaryGarden.Sheet("T", [new GlossaryEntry("a", "one", null)], "en", "es"));
+        Assert.Contains("language tag",
+            Assert.Throws<ArgumentException>(() => GlossaryGarden.Sheet("T", two, "e n", "es")).Message, StringComparison.Ordinal);
+    }
+}
