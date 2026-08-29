@@ -11,8 +11,10 @@ $out = Join-Path $PSScriptRoot "..\out\publish"
 dotnet publish (Join-Path $PSScriptRoot "..\src\Foundry.App.WinForms") -c $Configuration -o $out --nologo
 if ($LASTEXITCODE -ne 0) { throw "Publish failed." }
 
+# Windows PowerShell 5.1 lacks [IO.Path]::GetRelativePath; substring the resolved root instead.
+$outFull = (Resolve-Path $out).Path
 $sums = Get-ChildItem $out -Recurse -File | Get-FileHash -Algorithm SHA256 | ForEach-Object {
-    "$($_.Hash)  $([System.IO.Path]::GetRelativePath($out, $_.Path))"
+    "$($_.Hash)  $($_.Path.Substring($outFull.Length + 1))"
 }
 $sums | Out-File (Join-Path $out "..\SHA256SUMS.txt") -Encoding utf8
 
