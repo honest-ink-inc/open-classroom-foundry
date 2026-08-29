@@ -49,8 +49,8 @@ As of 29 August 2026: **Honest Ink, Inc. has applied for incorporation in Maryla
 
 Sequence, in dependency order (items marked *counsel/accountant* are their calls, not this document's — this is coordination, not legal advice):
 
-1. Maryland acceptance of the articles — awaiting the state.
-2. **EIN** (IRS Form SS-4) — unlocks nearly everything below; not yet filed.
+1. Maryland acceptance of the articles — awaiting the state. *While waiting:* verify the articles carry the 501(c)(3) purpose and dissolution clauses Form 1023-EZ attests to — amending before approval is cheap, after is not (*counsel confirms*).
+2. **EIN** (IRS Form SS-4, drafted 29 Aug 2026; typist's decision to file by mail or fax) — file **after** SDAT accepts, so line 1 matches the approved legal name exactly; honoraria remain at zero until then by the compensation policy's own phase structure. Then 1023-EZ, which cannot precede the EIN.
 3. Bank account in the entity's name (needs EIN).
 4. *Counsel/accountant:* the tax-exemption path (whether and which 501(c)(3) filing) and whether Honest Ink, Inc. becomes the **copyright steward** for contributions — the license stays GPL-3.0-or-later regardless; stewardship is a governance decision the typist owns and should not decide alone or in a hurry.
 5. **OV code-signing certificate in the entity's name** (needs completed incorporation, EIN, and verifiable presence — the domain helps). This gives gate 7 a second path that does not wait on the district's certificate.
