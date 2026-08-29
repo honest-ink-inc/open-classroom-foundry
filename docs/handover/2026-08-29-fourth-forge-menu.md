@@ -1,0 +1,55 @@
+# The fourth forge menu — the vein thins, and the product widens it
+
+**Date:** 29 August 2026 · **Status:** PROPOSED — drafted by the generator from atlas 2.0 against the repository at `42de318` (menus one through three fully struck); **ratification is the typist's act.** Adopting, striking, or reordering is done by reply; the first "Proceed with …" against an item adopts that item. Until then this document binds nothing.
+
+The standing laws carry forward unchanged from the [first menu](2026-08-29-waiting-window.md): presses take parameters, never prose; nothing renders, prints, exports, or persists without a typed `ApprovedArtifact`; lanes escalate only and Amber never persists; model self-ratings are not release evidence; the AAC/SLP seat and the district's written instrument gate what they gate, and neither is waivable from the keyboard.
+
+## I. What the window looks like now — an honest accounting
+
+Eighteen recipes, forty-eight engines, 597 green tests, the full teacher loop working end to end. And a fact that outranks everything else on this menu: **the release artifact in `out/` was built at 10:48 this morning — before any menu existed.** A pilot machine provisioned from `honest-ink-win-x64.zip` opens an app whose main window is the empty placeholder that was retired eleven commits ago. Item 1 exists because of that zip.
+
+Beyond it, this menu is honest about its own character: the ATLAS's zero-gate vein has thinned — three menus took its dense seams, and what remains there is smaller-grained: pilot-week readiness, worthy stragglers, machine-evidence hardening. But the typist named the deeper truth as this menu was being drawn: **the atlas is not the only source of possibilities — the art of the possible is widened by the enriched product itself.** The atlas was written before the vector PDF writer, before the seeded PRNG, before the press catalog became data, before the imposition transform existed. Those capabilities now COMPOSE into artifacts no atlas entry could have named, and section II carries two of them (items 9 and 10) alongside the atlas work. Every item below is real; none is the size of a Press Room; and the letters may still preempt this menu entirely.
+
+## II. The menu, ranked by value-per-risk in this window
+
+### 1. The pilot build — a fresh distributable and a dress rehearsal
+Two halves of one readiness claim. First, a **repeatable publish script** (a tool beside the SampleGenerator) that produces `out/publish`, `honest-ink-win-x64.zip`, and `SHA256SUMS.txt` from the current tree with one command — then RUN it, so the artifact on disk contains the app that actually exists tonight; installing it on the pilot machine, tagging, and distributing remain the typist's acts, stated in the script's own output. Second, a **dress-rehearsal scenario test**: one headed run of the complete pilot-day loop — cold start, forge a press, Gate B, approve, save to library, reopen, export the booklet PDF, low-ink variant — as a single test that fails if any seam of the whole grammar slips before September 8. **DoD:** fresh zip and sums on disk, script committed; the rehearsal green headed. *Medium.*
+
+### 2. The Chart Press (the deterministic heart of atlas #88)
+Bar charts from a teacher's own data — "label | value" lines, values printed verbatim, bars **proportionally true** with the same exactness discipline as the timeline (a value twice as large is a bar exactly twice as long, asserted as arithmetic), gridlines at clean intervals, horizontal or vertical, landscape-friendly. Data Story Maker's inquiry prompts stay with the teacher; the press draws the picture. Serves math, science (#99's graph-to-claim needs a graph), and the whole data-literacy seam with one engine. **DoD:** the usual press bar; bar proportionality asserted exactly. *Small-medium.*
+
+### 3. Bell-to-Bell (atlas #44) — the schedule that does its own arithmetic
+Teacher-typed rows of "minutes | activity" plus a start time; the press computes each activity's clock time cumulatively, prints the minute-by-minute plan, and **refuses loudly when the minutes overrun the declared period** — the schedule arithmetic teachers do in the margin, done exactly. A transitions column and a protected-closure row honor the atlas's intent. **DoD:** the usual press bar; cumulative clock arithmetic asserted; overrun refused. *Small.*
+
+### 4. The verbatim-text kin — Bug Zoo and Fluency Rehearsal (atlas #214, #77)
+**Bug Zoo**, teacher-authored bugs ONLY: a buggy program the teacher wrote, printed verbatim with the trace-table discipline (indentation as geometry, code never interpreted), above diagnose → repair → explain sections; the teacher's note on the intended misconception rides as a teacher-only notice. **Fluency Rehearsal Builder**: teacher text with phrase marks, printed large with the marks become visible breath-breaks, repeated-reading tally boxes, and a reflection line — the text preserved exactly, the marks the teacher's own. **DoD:** the usual press bar; verbatim invariants asserted. *Small; splits.*
+
+### 5. The card and protocol trio (atlas #58, #136, #68)
+On deck machinery that already exists: **Concept Sort Studio** — examples, nonexamples, and ambiguous cards from three teacher lists, each kind border-distinguished by shape, with a teacher-only key; **Discussion Role Wheel** — role cards of "role | accountable action" pairs, plus a rotation note so no learner is permanently passive; **Peer Feedback Builder** — a bounded protocol sheet: teacher sentence stems, evidence rules, and the author-decision box that keeps the author in charge. **DoD:** the usual press bar. *Small.*
+
+### 6. Glossary Garden (atlas #147)
+An illustrated-by-structure bilingual unit glossary: teacher entries of "term | meaning" or "term | meaning | translation," rendered through the engine's existing bilingual nodes with correct `lang` semantics — consistent terminology in print, the translations the teacher's own and verbatim. Honest note attached: like every bilingual output, its rendering falls under the multilingual seat's week-3 review; building the press is zero-gate, blessing its typography is not ours. **DoD:** the usual press bar; bilingual pairs verbatim with correct language tags. *Small-medium.*
+
+### 7. Machine evidence, extended — determinism as a CI gate, coverage breadth
+The byte-identical claim is currently proven on this machine and taken on faith in CI: add a **CI step that runs the SampleGenerator twice and diffs the hashes**, so every push re-proves determinism on a machine nobody tuned. And the coverage breadth clause once more: measure honest, then add `Foundry.Modules.DeterministicPress` (last measured 96.6%) and `Foundry.Modules.BuiltIn` (88.7%) to the threshold assemblies. **DoD:** both CI steps green; numbers recorded in the workflow checklist. *Small.*
+
+### 8. The samples gallery for honest-ink.org
+A deterministic gallery page joining the site generator's six: a curated set of press samples embedded as inline SVG — the gift made visible to a district or teacher before they ever install anything. Same rules as the site itself: no timestamps, byte-identical, self-contained; **publishing remains the typist's act.** **DoD:** gallery page in the deterministic build; byte-identical across runs. *Small-medium.*
+
+### 9. The Studio Sampler — the forge prints its own catalog *(not in the atlas; born of the enriched product)*
+Possible only now, because the press catalog is DATA and the booklet imposer is real: one deterministic booklet, one representative page per engine at its defaults, imposed saddle-stitch, cover page listing all forty-eight with their recipe lanes — the entire studio as a printed, foldable object a pilot teacher holds in their hands on day one. The catalog builds it, the imposer binds it, the PDF press inks it; no single atlas entry describes it because no single capability could have made it. **DoD:** `press-studio-sampler.pdf` in the samples run, byte-identical; every catalog engine represented exactly once, asserted against the catalog itself so a new engine can never be silently missing. *Small-medium.*
+
+### 10. Class Sets — the seeded engines, multiplied *(not in the atlas; born of the enriched product)*
+The seeded presses (word search, bingo, retrieval grids, grouping, Parsons) already promise "same seed, same page." Compose that with a roster-free count: **one document, N variants of the same seeded artifact** — thirty word searches of the same teacher words, each grid different, each footer naming its variant seed, so neighboring desks can't copy and any lost sheet is reprintable by its number. A generic composer over any seeded catalog engine, not a new press. **DoD:** variant seeds derived deterministically from the teacher's base seed; every variant carries its number and seed in ink; determinism asserted across the whole set. *Small-medium.*
+
+## III. What must NOT be built, carried forward and extended
+
+- Everything the three prior menus refused, verbatim: the seat's territory, the instrument's territory, Inference.Local, human checklist rows, PNG raster export, faded glyphs before font provenance, Notation Bench before its reviewer, inference modules before their roadmap stage, printing without approval, presets before the council shapes the format surface.
+- **Tagging, versioning, installing, and distributing are the typist's acts.** Item 1 produces the artifact and its checksums; it does not bump `EngineVersion`, cut a tag, touch the pilot machine, or upload anything anywhere.
+- **No auto-approving CLI runner.** A headless command that approves its own output would make the machine the signer of Gate B; the SampleGenerator's evidence fixtures are the only sanctioned non-teacher approvals, and they stay clearly labeled as such.
+
+Bench stock (worthy, unranked): Focus Beacon (#25), Plan B Press (#26), Morning Launch and Closing Loop (#134–135), Help Protocol Builder (#138), Vocabulary Ladder (#73), Print Queue Planner (#175), a Print-and-Play game-board press (#166), and lifting `Foundry.App.WinForms` coverage (72.9%) toward the threshold.
+
+## IV. Resuming
+
+Unchanged: **"Proceed with …"** adopts and starts an item; completed items are struck with a dated note, never deleted. And the typist's principle is now part of the divination rite itself: future menus draw from TWO sources — the atlas, and the compositions the enriched product newly affords — and must say which each item came from. If this menu exhausts before the letters answer, the honest next act may not be a fifth menu at all — it may be rest, until the world writes back.

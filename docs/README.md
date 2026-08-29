@@ -16,6 +16,7 @@ The copies in this directory are canonical for the repository from the initial c
 | [evidence/pilot-kit/](evidence/pilot-kit/) | Eight seeded-error review packets (facilitator key sealed alongside) |
 | [handover/2026-08-29-waiting-window.md](handover/2026-08-29-waiting-window.md) | The waiting-window handover: the typist's watch, the first zero-gate forge menu (fully struck 29 Aug 2026), and what must not be built until the gates open |
 | [handover/2026-08-29-second-forge-menu.md](handover/2026-08-29-second-forge-menu.md) | The second forge menu (fully struck 29 Aug 2026): the Press Room, All Aboard wiring, the vector-first PDF, the machine rows, and four studios of new presses |
-| [handover/2026-08-29-third-forge-menu.md](handover/2026-08-29-third-forge-menu.md) | The third forge menu, PROPOSED: eight ranked zero-gate items — connective tissue first (print, the library door, the ratified All Aboard modes), then the atlas's remaining teacher-text presses — awaiting ratification |
+| [handover/2026-08-29-third-forge-menu.md](handover/2026-08-29-third-forge-menu.md) | The third forge menu (fully struck 29 Aug 2026): one-keystroke paper, the library door, the completed All Aboard modes, four press studios, and landscape/low-ink across the book |
+| [handover/2026-08-29-fourth-forge-menu.md](handover/2026-08-29-fourth-forge-menu.md) | The fourth forge menu, PROPOSED: the pilot build first, the atlas's last stragglers — and the first items born not of the atlas but of what the enriched product now makes possible — awaiting ratification |
 
 Precedence when documents disagree: a later ratified ADR > implementation plan > atlas > review. Disagreements themselves are defects — file an issue.
