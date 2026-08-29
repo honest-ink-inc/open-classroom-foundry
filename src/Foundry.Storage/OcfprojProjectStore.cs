@@ -102,15 +102,59 @@ public sealed class OcfprojProjectStore(string rootDirectory, IRenderer renderer
         }
     }
 
-    /// <summary>Reversibility (constitution 11): a saved project reopens without the model, the network, or this session.</summary>
+    /// <summary>
+    /// Reversibility (constitution 11): a saved project reopens without the
+    /// model, the network, or this session. The reader distrusts the package
+    /// (R2-3 hostile-package depth): duplicate entry names are a smuggling
+    /// vector (a scanner reads one, the app reads the other), and a manifest
+    /// that disagrees with the engine's schema, the Green-only lane, or the
+    /// package's own contents is tampering or corruption — refused loudly.
+    /// </summary>
     public Task<LoadedProject> LoadProjectAsync(string destinationHint, CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
 
         using var archive = ZipFile.OpenRead(PathFor(destinationHint));
 
+        var collision = archive.Entries
+            .GroupBy(e => e.FullName, StringComparer.OrdinalIgnoreCase)
+            .FirstOrDefault(g => g.Count() > 1);
+        if (collision is not null)
+        {
+            throw new InvalidOperationException(
+                $"The package holds {collision.Count()} entries named '{collision.Key}'; colliding names are refused outright.");
+        }
+
         var manifest = ReadEntry<ProjectManifest>(archive, "manifest.json");
         var document = ReadEntry<ArtifactDocument>(archive, "artifact.json");
+
+        if (manifest.SchemaVersion != EngineIdentity.ProjectSchemaVersion)
+        {
+            throw new InvalidOperationException(
+                $"The manifest declares schema version '{manifest.SchemaVersion}'; this engine reads version '{EngineIdentity.ProjectSchemaVersion}' and refuses what it does not understand.");
+        }
+
+        if (manifest.DataLane != DataLane.Green)
+        {
+            throw new InvalidOperationException(
+                $"This is the Green project library and the manifest claims {manifest.DataLane}; a lane above Green never persists, so the package is tampered or misplaced.");
+        }
+
+        foreach (var assetId in manifest.AssetIds)
+        {
+            if (archive.GetEntry($"provenance/{assetId}.json") is null)
+            {
+                throw new InvalidOperationException(
+                    $"The manifest declares asset '{assetId}' but the package carries no provenance record for it; manifest and contents disagree.");
+            }
+        }
+
+        var issues = DocumentValidator.Validate(document);
+        if (DocumentValidator.HasBlockingIssues(issues))
+        {
+            throw new InvalidOperationException(
+                "The artifact entry fails structural validation; an approved artifact never does, so the package is tampered or corrupt.");
+        }
 
         return Task.FromResult(new LoadedProject(manifest, document));
     }

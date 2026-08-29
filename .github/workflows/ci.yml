@@ -7,7 +7,9 @@
 #   [x] Secret scan (gitleaks)
 #   [x] Dependency inventory artifact (SBOM-lite via `dotnet list package`)
 #   [x] Coverage collected (Cobertura via coverlet collector) and published as an artifact
-#   [x] Coverage THRESHOLD: Domain+Application+Contracts line coverage >= 80% (measured 88.6% at enablement)
+#   [x] Coverage THRESHOLD: Domain+Application+Contracts line coverage >= 80% (measured 88.6% at
+#       enablement); Storage and Rendering joined 29 Aug 2026 with honest numbers known first
+#       (Storage 93.0%, Rendering 92.5% measured locally at enablement — forge item 6)
 #   [x] Formatting gate: FULL `dotnet format --verify-no-changes` (whitespace + curated style
 #       + analyzers). The curated .editorconfig pass (handover 2026-08-29, forge item 5)
 #       silences only the rules the house deliberately varies on; everything else gates.
@@ -50,7 +52,7 @@ jobs:
         shell: pwsh
         run: |
           dotnet tool install --global dotnet-reportgenerator-globaltool
-          reportgenerator -reports:"**/TestResults/**/coverage.cobertura.xml" -targetdir:coverage-report -reporttypes:JsonSummary "-assemblyfilters:+Foundry.Domain;+Foundry.Application;+Foundry.Contracts"
+          reportgenerator -reports:"**/TestResults/**/coverage.cobertura.xml" -targetdir:coverage-report -reporttypes:JsonSummary "-assemblyfilters:+Foundry.Domain;+Foundry.Application;+Foundry.Contracts;+Foundry.Storage;+Foundry.Rendering"
           $summary = Get-Content coverage-report/Summary.json | ConvertFrom-Json
           $line = $summary.summary.linecoverage
           Write-Host "Core line coverage: $line%"
