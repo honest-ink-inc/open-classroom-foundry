@@ -13,7 +13,8 @@ public sealed record DistrictPolicy(
     string? ProviderId,
     string? DeploymentId,
     DataLane MaximumLane,
-    bool CloudInferenceEnabled)
+    bool CloudInferenceEnabled,
+    string? SafeguardingProcedureText = null)
 {
     public static DistrictPolicy Offline { get; } = new([], null, null, DataLane.Green, false);
 }

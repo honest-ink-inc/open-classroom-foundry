@@ -61,6 +61,10 @@ The Owner heard all five seats and set the order of march:
 3. Then 0.5: Source Lens, Green-only Family Bridge with the readability lint, the provenance/citation editor — every multilingual element passing the council's new stewardship check.
 4. The human gates remain the human gates. Push the repository (R2-7), seat the second maintainer (R2-13), and let the two accepted educators put their hands on the samples.
 
+## Ratification by the educator council (29 August 2026)
+
+The educator council, through the product owner, **agrees with all findings of sessions 7–12**. The dispositions in the register below stand as accepted; the binding items (R2-8, R2-12) bind, and R2-7 was satisfied the same day — the repository now lives at github.com/Spacejunk-io/open-classroom-foundry and CI runs in earnest.
+
 ## Findings register
 
 | ID | Finding | Disposition |

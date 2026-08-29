@@ -75,14 +75,26 @@ public class BlankformsPressTests
     }
 
     [Fact]
-    public void The_clock_face_has_twelve_marks_and_optional_numerals()
+    public void The_clock_face_has_hour_marks_minute_ticks_and_optional_numerals()
     {
-        var withNumerals = (VectorGraphic)BlankformsPress.ClockFace().Nodes[0];
-        var without = (VectorGraphic)BlankformsPress.ClockFace(numerals: false).Nodes[0];
+        var full = (VectorGraphic)BlankformsPress.ClockFace().Nodes[0];
+        var plain = (VectorGraphic)BlankformsPress.ClockFace(numerals: false, minuteTicks: false).Nodes[0];
 
-        Assert.Equal(12, withNumerals.Primitives.OfType<TextLabel>().Count());
-        Assert.Equal(12, withNumerals.Primitives.OfType<LineSeg>().Count());
-        Assert.Empty(without.Primitives.OfType<TextLabel>());
+        Assert.Equal(12, full.Primitives.OfType<TextLabel>().Count());
+        Assert.Equal(60, full.Primitives.OfType<LineSeg>().Count()); // 12 hour + 48 minute (RC-15)
+        Assert.Equal(12, plain.Primitives.OfType<LineSeg>().Count());
+        Assert.Empty(plain.Primitives.OfType<TextLabel>());
+    }
+
+    [Fact]
+    public void Number_line_subdivisions_place_minor_ticks_exactly_between_integers()
+    {
+        var graphic = (VectorGraphic)BlankformsPress.NumberLine(0, 4, subdivisions: 4).Nodes[0];
+
+        var ticks = graphic.Primitives.OfType<LineSeg>().Where(l => l.X1 == l.X2).ToList();
+        Assert.Equal(5, ticks.Count(t => Math.Abs(t.Y2 - t.Y1 - 8) < 1e-9));   // major, 8mm tall
+        Assert.Equal(12, ticks.Count(t => Math.Abs(t.Y2 - t.Y1 - 5) < 1e-9));  // 3 minors × 4 units, 5mm tall
+        Assert.Equal(5, graphic.Primitives.OfType<TextLabel>().Count());        // integers only labeled
     }
 
     [Fact]

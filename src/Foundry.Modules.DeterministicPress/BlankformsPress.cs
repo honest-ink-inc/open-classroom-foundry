@@ -72,11 +72,17 @@ public static partial class BlankformsPress
         });
     }
 
-    public static ArtifactDocument NumberLine(int from = 0, int to = 20, PageSize size = PageSize.Letter, double marginMm = DefaultMarginMm)
+    /// <summary>RC-15: subdivisions place shorter minor ticks between integers — halves, quarters, tenths — with only the integers labeled.</summary>
+    public static ArtifactDocument NumberLine(int from = 0, int to = 20, PageSize size = PageSize.Letter, double marginMm = DefaultMarginMm, int subdivisions = 1)
     {
         if (to <= from)
         {
             throw new ArgumentException("A number line runs left to right; 'to' must exceed 'from'.", nameof(to));
+        }
+
+        if (subdivisions is < 1 or > 10)
+        {
+            throw new ArgumentException("Between one and ten subdivisions per unit.", nameof(subdivisions));
         }
 
         var (width, height) = Dimensions(size);
@@ -92,9 +98,21 @@ public static partial class BlankformsPress
             var x = marginMm + span * i / count;
             primitives.Add(new LineSeg(x, y - 4, x, y + 4, 0.5));
             primitives.Add(new TextLabel(x, y + 12, (from + i).ToString(System.Globalization.CultureInfo.InvariantCulture), 5));
+
+            if (i < count)
+            {
+                for (var s = 1; s < subdivisions; s++)
+                {
+                    var minorX = x + span / count * s / subdivisions;
+                    primitives.Add(new LineSeg(minorX, y - 2.5, minorX, y + 2.5, 0.35));
+                }
+            }
         }
 
-        return Wrap(new VectorGraphic(width, height, primitives, $"Number line from {from} to {to}"));
+        return Wrap(new VectorGraphic(width, height, primitives,
+            subdivisions == 1
+                ? $"Number line from {from} to {to}"
+                : $"Number line from {from} to {to} with {subdivisions} subdivisions per unit"));
     }
 
     public static ArtifactDocument TenFrames(int frames = 2, double cellMm = 22, PageSize size = PageSize.Letter, double marginMm = DefaultMarginMm)
@@ -127,7 +145,7 @@ public static partial class BlankformsPress
             $"{frames} empty ten-frames, {Fmt(cellMm)} millimeter cells"));
     }
 
-    public static ArtifactDocument ClockFace(double radiusMm = 70, bool numerals = true, PageSize size = PageSize.Letter)
+    public static ArtifactDocument ClockFace(double radiusMm = 70, bool numerals = true, bool minuteTicks = true, PageSize size = PageSize.Letter)
     {
         var (width, height) = Dimensions(size);
         var cx = width / 2;
@@ -138,6 +156,26 @@ public static partial class BlankformsPress
             new CircleShape(cx, cy, radiusMm, 1.0),
             new CircleShape(cx, cy, 1.5, 1.0, Filled: true),
         };
+
+        if (minuteTicks)
+        {
+            // RC-15: the 48 non-hour minute marks, shorter and lighter than the hour marks.
+            for (var minute = 0; minute < 60; minute++)
+            {
+                if (minute % 5 == 0)
+                {
+                    continue;
+                }
+
+                var minuteAngle = (minute * 6 - 90) * Math.PI / 180;
+                primitives.Add(new LineSeg(
+                    cx + (radiusMm - 3) * Math.Cos(minuteAngle),
+                    cy + (radiusMm - 3) * Math.Sin(minuteAngle),
+                    cx + radiusMm * Math.Cos(minuteAngle),
+                    cy + radiusMm * Math.Sin(minuteAngle),
+                    0.4));
+            }
+        }
 
         for (var hour = 1; hour <= 12; hour++)
         {

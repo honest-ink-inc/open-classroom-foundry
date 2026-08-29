@@ -48,10 +48,18 @@ public sealed class JobStateMachine
             return false;
         }
 
-        // Cancellation is reachable from anywhere still in flight, but never rewrites history.
+        // Cancellation is reachable from anywhere still in flight, but never rewrites
+        // history — and never undoes a safety pause: a blocked job only purges.
         if (to == JobState.Cancelled)
         {
-            return from is not (JobState.Completed or JobState.Cancelled);
+            return from is not (JobState.Completed or JobState.Cancelled or JobState.Blocked);
+        }
+
+        // Gate C (safeguarding design): the supervising adult may pause any job in
+        // flight; a blocked job can reach only the purge states.
+        if (to == JobState.Blocked)
+        {
+            return from is not (JobState.Completed or JobState.Cancelled or JobState.Blocked);
         }
 
         return (from, to) switch
@@ -60,7 +68,6 @@ public sealed class JobStateMachine
             (JobState.Imported, JobState.Normalized) => true,
             (JobState.Normalized, JobState.DataLaneConfirmed) => true,
 
-            (JobState.DataLaneConfirmed, JobState.Blocked) => true,
             (JobState.DataLaneConfirmed, JobState.OutboundPayloadPreviewed) => true,
             // Deterministic authoring path: the teacher authors manually, no egress state exists.
             (JobState.DataLaneConfirmed, JobState.DraftGenerated) => true,
@@ -97,6 +104,7 @@ public sealed class JobStateMachine
             (JobState.Declined, JobState.TransientSourcesPurged) => true,
             (JobState.Declined, JobState.PurgeIncomplete) => true,
             (JobState.Blocked, JobState.TransientSourcesPurged) => true,
+            (JobState.Blocked, JobState.PurgeIncomplete) => true,
             (JobState.PurgeIncomplete, JobState.TransientSourcesPurged) => true,
 
             _ => false,
