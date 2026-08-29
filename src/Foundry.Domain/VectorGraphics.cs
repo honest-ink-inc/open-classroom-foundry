@@ -15,7 +15,8 @@ namespace Foundry.Domain;
 [JsonDerivedType(typeof(TextLabel), "label")]
 public abstract record VectorPrimitive;
 
-public sealed record LineSeg(double X1, double Y1, double X2, double Y2, double StrokeWidthMm = 0.35) : VectorPrimitive;
+/// <summary>Dashed carries the foldables' line language: solid means cut, dashed means fold.</summary>
+public sealed record LineSeg(double X1, double Y1, double X2, double Y2, double StrokeWidthMm = 0.35, bool Dashed = false) : VectorPrimitive;
 
 public sealed record CircleShape(double CenterX, double CenterY, double RadiusMm, double StrokeWidthMm = 0.35, bool Filled = false) : VectorPrimitive;
 

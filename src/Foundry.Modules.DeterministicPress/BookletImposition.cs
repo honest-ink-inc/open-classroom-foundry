@@ -118,7 +118,18 @@ public static class DeterministicPressRecipes
 
     public static RecipeManifest BookletGuide { get; } = Manifest("press.booklet-guide", "Saddle-stitch imposition guide: correct signature arithmetic for any page count.");
 
-    public static IReadOnlyList<RecipeManifest> All { get; } = [Blankforms, Flashcards, BookletGuide];
+    public static RecipeManifest Manipulatives { get; } = Manifest("press.manipulatives", "Cardstock math manipulatives with exact proportions: fraction strips, dice nets.");
+
+    public static RecipeManifest Foldables { get; } = Manifest("press.foldables", "Interactive-notebook foldables with the solid-cut, dashed-fold line language and a printed legend.");
+
+    public static RecipeManifest BigPrint { get; } = Manifest("press.big-print", "Tile any vector sheet into a wall display at 100 percent scale with overlap strips and alignment marks.");
+
+    public static RecipeManifest Handwriting { get; } = Manifest("press.handwriting", "Three-line handwriting practice rows with dashed midlines and optional model words (Latin script first).");
+
+    public static RecipeManifest Labels { get; } = Manifest("press.labels", "Consistent classroom label series, optionally bilingual, on dimensionally described sheets.");
+
+    public static IReadOnlyList<RecipeManifest> All { get; } =
+        [Blankforms, Flashcards, BookletGuide, Manipulatives, Foldables, BigPrint, Handwriting, Labels];
 
     private static RecipeManifest Manifest(string id, string purpose) => new(
         Id: id,

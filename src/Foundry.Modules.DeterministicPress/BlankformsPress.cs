@@ -13,7 +13,7 @@ public enum PageSize
 /// are parameters, never prose; geometry is exact in millimeters; identical
 /// parameters produce identical documents.
 /// </summary>
-public static class BlankformsPress
+public static partial class BlankformsPress
 {
     public const double DefaultMarginMm = 12;
 

@@ -239,7 +239,13 @@ public sealed class AccessibleHtmlRenderer : IRenderer
                     builder.Append("<line x1=\"").Append(Mm(line.X1)).Append("\" y1=\"").Append(Mm(line.Y1))
                         .Append("\" x2=\"").Append(Mm(line.X2)).Append("\" y2=\"").Append(Mm(line.Y2))
                         .Append("\" stroke=\"#000\" stroke-width=\"").Append(Mm(line.StrokeWidthMm))
-                        .Append("\" stroke-linecap=\"round\"/>\n");
+                        .Append("\" stroke-linecap=\"round\"");
+                    if (line.Dashed)
+                    {
+                        builder.Append(" stroke-dasharray=\"3 2\"");
+                    }
+
+                    builder.Append("/>\n");
                     break;
                 case CircleShape circle:
                     builder.Append("<circle cx=\"").Append(Mm(circle.CenterX)).Append("\" cy=\"").Append(Mm(circle.CenterY))
