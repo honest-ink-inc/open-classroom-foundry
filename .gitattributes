@@ -1,6 +1,6 @@
 # Normalize text in-repo to LF (the blobs already are); platform checkouts vary
 # by the rules below. Last matching rule wins per attribute.
-* text=auto
+* text=auto eol=crlf
 
 # Hashed asset bytes must be identical on every checkout, every OS, every CI
 # runner: no end-of-line conversion, ever. CI run #1 caught exactly this —
