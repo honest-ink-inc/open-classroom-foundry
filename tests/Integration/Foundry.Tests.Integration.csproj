@@ -25,6 +25,7 @@
     <ProjectReference Include="..\..\src\Foundry.Rendering\Foundry.Rendering.csproj" />
     <ProjectReference Include="..\..\src\Foundry.Infrastructure.Windows\Foundry.Infrastructure.Windows.csproj" />
     <ProjectReference Include="..\..\src\Foundry.Infrastructure.Simulated\Foundry.Infrastructure.Simulated.csproj" />
+    <ProjectReference Include="..\..\src\Foundry.Modules.BuiltIn\Foundry.Modules.BuiltIn.csproj" />
   </ItemGroup>
 
 </Project>

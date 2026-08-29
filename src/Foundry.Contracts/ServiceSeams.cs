@@ -78,7 +78,11 @@ public interface IProjectStore
 
 public interface IAssetCatalog
 {
-    AssetRecord? Find(AssetId id);
+    IReadOnlyList<AssetProvenance> All { get; }
+
+    AssetProvenance? Find(AssetId id);
+
+    bool TryGetContent(AssetId id, out ReadOnlyMemory<byte> content, out string mimeType);
 }
 
 public interface IRecipeRegistry

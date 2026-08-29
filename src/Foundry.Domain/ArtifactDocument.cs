@@ -11,6 +11,19 @@ public sealed record ArtifactDocument(IReadOnlyList<DocumentNode> Nodes, string?
     public static ArtifactDocument Empty { get; } = new([]);
 }
 
+[System.Text.Json.Serialization.JsonPolymorphic(TypeDiscriminatorPropertyName = "$type")]
+[System.Text.Json.Serialization.JsonDerivedType(typeof(Heading), "heading")]
+[System.Text.Json.Serialization.JsonDerivedType(typeof(Paragraph), "paragraph")]
+[System.Text.Json.Serialization.JsonDerivedType(typeof(OrderedSteps), "orderedSteps")]
+[System.Text.Json.Serialization.JsonDerivedType(typeof(UnorderedList), "unorderedList")]
+[System.Text.Json.Serialization.JsonDerivedType(typeof(TableNode), "table")]
+[System.Text.Json.Serialization.JsonDerivedType(typeof(Card), "card")]
+[System.Text.Json.Serialization.JsonDerivedType(typeof(ImageReference), "image")]
+[System.Text.Json.Serialization.JsonDerivedType(typeof(BilingualPair), "bilingualPair")]
+[System.Text.Json.Serialization.JsonDerivedType(typeof(ChoiceSet), "choiceSet")]
+[System.Text.Json.Serialization.JsonDerivedType(typeof(EvidenceLink), "evidenceLink")]
+[System.Text.Json.Serialization.JsonDerivedType(typeof(Citation), "citation")]
+[System.Text.Json.Serialization.JsonDerivedType(typeof(TeacherOnlyNotice), "teacherOnlyNotice")]
 public abstract record DocumentNode;
 
 public sealed record Heading(int Level, string Text) : DocumentNode;

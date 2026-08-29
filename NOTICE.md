@@ -13,7 +13,9 @@ None yet. When dependencies are added, the SBOM and dependency-license report ar
 
 ## Bundled assets
 
-None yet. The libre symbol core (Symbol Commons) will prefer original, CC0, CC BY, or CC BY-SA artwork; fonts will prefer OFL with notices, naming obligations, and embedding permissions preserved.
+- **Agency symbol test pack** (`assets/symbols/`, 7 SVGs: stop, help, wait, break, different, not-now, finished) — original geometric artwork by the Open Classroom Foundry contributors, dedicated to the public domain under **CC0-1.0**. Full per-asset provenance, SHA-256 integrity hashes, intended meanings, and ambiguity notes live in `assets/symbols/manifest.json`; integrity is verified in CI by the asset-catalog tests. No words are baked into any graphic — language stays metadata, per the Symbol Commons invariant. *The license for the full symbol design system (implementation plan §20, decision 6) remains an open decision; this test pack's CC0 dedication stands regardless.*
+
+The wider libre symbol core (Symbol Commons) will prefer original, CC0, CC BY, or CC BY-SA artwork; fonts will prefer OFL with notices, naming obligations, and embedding permissions preserved.
 
 ## Trademarks
 

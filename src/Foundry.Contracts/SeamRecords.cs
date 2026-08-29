@@ -72,8 +72,16 @@ public sealed record PrintRequest(string PrinterName, bool Duplex, int Copies);
 
 public sealed record ExportRequest(RenderTarget Target, string DestinationHint);
 
-public sealed record ProjectSaveRequest(string DestinationHint);
-
-public sealed record AssetRecord(AssetId Id, string Source, string Creator, string License, bool Redistributable);
+/// <summary>
+/// DestinationHint is a file-name stem inside the store's teacher-selected root —
+/// never a path; the store sanitizes it. SavedAtUtc is supplied by the caller so
+/// saving stays deterministic and clock-free in the engine.
+/// </summary>
+public sealed record ProjectSaveRequest(
+    string DestinationHint,
+    string ModuleId = "",
+    string RecipeId = "",
+    string RecipeVersion = "",
+    DateTimeOffset SavedAtUtc = default);
 
 public sealed record RecipeRunInputs(IReadOnlyList<SourceEnvelope> Sources, IReadOnlyDictionary<string, string> Parameters);

@@ -7,4 +7,9 @@ namespace Foundry.Domain;
 public static class EngineIdentity
 {
     public const string InternalId = "OpenClassroomFoundry";
+
+    public const string EngineVersion = "0.1.0-dev";
+
+    /// <summary>The .ocfproj schema version this engine writes (ADR-003).</summary>
+    public const string ProjectSchemaVersion = "1";
 }
