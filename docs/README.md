@@ -15,6 +15,7 @@ The copies in this directory are canonical for the repository from the initial c
 | [district/gate-3-readiness-packet.md](district/gate-3-readiness-packet.md) | The Gate 3 packet for district IT/privacy/safeguarding, including the written-approval instrument |
 | [evidence/pilot-kit/](evidence/pilot-kit/) | Eight seeded-error review packets (facilitator key sealed alongside) |
 | [handover/2026-08-29-waiting-window.md](handover/2026-08-29-waiting-window.md) | The waiting-window handover: the typist's watch, the first zero-gate forge menu (fully struck 29 Aug 2026), and what must not be built until the gates open |
-| [handover/2026-08-29-second-forge-menu.md](handover/2026-08-29-second-forge-menu.md) | The second forge menu, PROPOSED: eight ranked zero-gate items drawn from atlas 2.0 against the built repository — awaiting the typist's ratification |
+| [handover/2026-08-29-second-forge-menu.md](handover/2026-08-29-second-forge-menu.md) | The second forge menu (fully struck 29 Aug 2026): the Press Room, All Aboard wiring, the vector-first PDF, the machine rows, and four studios of new presses |
+| [handover/2026-08-29-third-forge-menu.md](handover/2026-08-29-third-forge-menu.md) | The third forge menu, PROPOSED: eight ranked zero-gate items — connective tissue first (print, the library door, the ratified All Aboard modes), then the atlas's remaining teacher-text presses — awaiting ratification |
 
 Precedence when documents disagree: a later ratified ADR > implementation plan > atlas > review. Disagreements themselves are defects — file an issue.
