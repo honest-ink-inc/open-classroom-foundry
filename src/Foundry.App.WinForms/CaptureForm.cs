@@ -30,33 +30,35 @@ public sealed class CaptureForm : Form
         _session = session ?? throw new ArgumentNullException(nameof(session));
         _policy = policy ?? throw new ArgumentNullException(nameof(policy));
 
-        Text = $"{ProductIdentity.PublicName} — capture";
+        Text = UiStrings.CaptureWindowTitle;
         MinimumSize = new Size(640, 420);
 
-        _import = MakeButton("&Import image…", async (_, _) => await ImportAsync());
-        _rotate = MakeButton("&Rotate 90°", async (_, _) => await RotateAsync());
+        _import = MakeButton(UiStrings.ImportImage, async (_, _) => await ImportAsync());
+        _rotate = MakeButton(UiStrings.Rotate90, async (_, _) => await RotateAsync());
         // No AccessibleName overrides: the full visible text IS the accessible
         // name, so the lane's meaning is announced, not just its color
         // (walkthrough step 14 — meaning in the name, not adjacent text).
         _stagedGreen = new RadioButton
         {
-            Text = "Staged materials or empty space — &Green (my attestation)",
+            Text = UiStrings.LaneGreen,
             AutoSize = true,
         };
         _keepAmber = new RadioButton
         {
-            Text = "May include learners or their work — keep &Amber",
+            Text = UiStrings.LaneAmber,
             AutoSize = true,
             Checked = true,
         };
-        _confirm = MakeButton("&Confirm lane and continue", (_, _) => ConfirmLane());
-        _safetyPause = MakeButton("I saw something concerning — &pause here", (_, _) => SafetyPause());
-        _status = new Label { Dock = DockStyle.Bottom, AutoSize = false, Height = 28, AccessibleName = "Status" };
+        _confirm = MakeButton(UiStrings.ConfirmLane, (_, _) => ConfirmLane());
+        _safetyPause = MakeButton(UiStrings.SafetyPause, (_, _) => SafetyPause());
+        _status = new Label { Dock = DockStyle.Bottom, AutoSize = false, Height = 28, AccessibleName = UiStrings.StatusLabel };
 
         var layout = new FlowLayoutPanel { Dock = DockStyle.Fill, FlowDirection = FlowDirection.TopDown, Padding = new Padding(12) };
         layout.Controls.AddRange([_import, _rotate, _stagedGreen, _keepAmber, _confirm, _safetyPause]);
         Controls.Add(layout);
         Controls.Add(_status);
+
+        UiLocale.ApplyChrome(this);
     }
 
     private static Button MakeButton(string text, EventHandler onClick)
@@ -68,7 +70,7 @@ public sealed class CaptureForm : Form
 
     private async Task ImportAsync()
     {
-        using var dialog = new OpenFileDialog { Filter = "Images|*.png;*.jpg;*.jpeg;*.bmp" };
+        using var dialog = new OpenFileDialog { Filter = $"{UiStrings.ImagesFilterLabel}|*.png;*.jpg;*.jpeg;*.bmp" };
         if (dialog.ShowDialog(this) == DialogResult.OK)
         {
             // The path dies here: only bytes and a type travel onward (plan §6.5).
@@ -81,21 +83,21 @@ public sealed class CaptureForm : Form
             };
             await _session.CaptureAsync(new CaptureRequest(ByteImportCaptureSource.Kind, mime, bytes), CancellationToken.None);
             await _session.NormalizeAsync(new NormalizationRequest(), CancellationToken.None);
-            _status.Text = "Imported and normalized: metadata stripped.";
+            _status.Text = UiStrings.StatusImported;
         }
     }
 
     private async Task RotateAsync()
     {
         await _session.NormalizeAsync(new NormalizationRequest(RotationDegrees.Rotate90), CancellationToken.None);
-        _status.Text = "Rotated.";
+        _status.Text = UiStrings.StatusRotated;
     }
 
     private void ConfirmLane()
     {
         var lane = _stagedGreen.Checked ? DataLane.Green : DataLane.Amber;
         _session.ConfirmLane(lane);
-        _status.Text = $"Lane confirmed: {lane}.";
+        _status.Text = UiStrings.Format(UiStrings.StatusLaneConfirmed, lane);
         DialogResult = DialogResult.OK;
         Close();
     }
@@ -103,7 +105,7 @@ public sealed class CaptureForm : Form
     private void SafetyPause()
     {
         var result = _session.InvokeSafetyPause(_policy);
-        MessageBox.Show(this, result.ProcedureText, "Paused — for the supervising adult",
+        MessageBox.Show(this, result.ProcedureText, UiStrings.PauseCaption,
             MessageBoxButtons.OK, MessageBoxIcon.Information);
         DialogResult = DialogResult.Abort;
         Close();

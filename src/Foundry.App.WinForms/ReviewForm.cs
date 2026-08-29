@@ -29,10 +29,10 @@ public sealed class ReviewForm : Form
 
         // The title is the first thing a screen reader announces: the draft
         // state must be audible there, not only visual (walkthrough step 8).
-        Text = $"{ProductIdentity.PublicName} — reviewing a draft — nothing prints before approval";
+        Text = UiStrings.ReviewWindowTitle;
         MinimumSize = new Size(720, 480);
 
-        _nodeList = new ListBox { Dock = DockStyle.Fill, AccessibleName = "Draft elements" };
+        _nodeList = new ListBox { Dock = DockStyle.Fill, AccessibleName = UiStrings.DraftElements };
         _nodeList.SelectedIndexChanged += (_, _) => LoadSelection();
 
         _editor = new TextBox
@@ -40,19 +40,19 @@ public sealed class ReviewForm : Form
             Dock = DockStyle.Fill,
             Multiline = true,
             ScrollBars = ScrollBars.Vertical,
-            AccessibleName = "Selected element text",
+            AccessibleName = UiStrings.SelectedElementText,
         };
 
-        _issueList = new ListBox { Dock = DockStyle.Fill, AccessibleName = "Validation issues" };
+        _issueList = new ListBox { Dock = DockStyle.Fill, AccessibleName = UiStrings.ValidationIssues };
 
-        _applyEdit = MakeButton("&Apply edit", (_, _) => ApplyEdit());
-        _remove = MakeButton("&Remove element", (_, _) => WithSelection(_session.RemoveNode));
-        _moveUp = MakeButton("Move &up", (_, _) => MoveSelection(-1));
-        _moveDown = MakeButton("Move &down", (_, _) => MoveSelection(+1));
-        _approve = MakeButton("A&pprove", (_, _) => ApproveAndClose());
+        _applyEdit = MakeButton(UiStrings.ApplyEdit, (_, _) => ApplyEdit());
+        _remove = MakeButton(UiStrings.RemoveElement, (_, _) => WithSelection(_session.RemoveNode));
+        _moveUp = MakeButton(UiStrings.MoveUp, (_, _) => MoveSelection(-1));
+        _moveDown = MakeButton(UiStrings.MoveDown, (_, _) => MoveSelection(+1));
+        _approve = MakeButton(UiStrings.Approve, (_, _) => ApproveAndClose());
         // Approval must state what it means, not just "OK" (walkthrough step 11).
-        _approve.AccessibleDescription = "Records your named approval of this exact revision; only approved artifacts can print, save, or export.";
-        _reject = MakeButton("Re&ject", (_, _) => RejectAndClose());
+        _approve.AccessibleDescription = UiStrings.ApproveDescription;
+        _reject = MakeButton(UiStrings.Reject, (_, _) => RejectAndClose());
 
         var buttons = new FlowLayoutPanel { Dock = DockStyle.Bottom, AutoSize = true, FlowDirection = FlowDirection.LeftToRight };
         buttons.Controls.AddRange([_applyEdit, _remove, _moveUp, _moveDown, _approve, _reject]);
@@ -64,7 +64,7 @@ public sealed class ReviewForm : Form
         {
             Dock = DockStyle.Fill,
             Orientation = Orientation.Vertical,
-            AccessibleName = "Splitter between the draft list and the editor",
+            AccessibleName = UiStrings.SplitterDraftEditor,
         };
         split.Panel1.Controls.Add(_nodeList);
 
@@ -72,7 +72,7 @@ public sealed class ReviewForm : Form
         {
             Dock = DockStyle.Fill,
             Orientation = Orientation.Horizontal,
-            AccessibleName = "Splitter between the editor and the validation issues",
+            AccessibleName = UiStrings.SplitterEditorIssues,
         };
         rightSplit.Panel1.Controls.Add(_editor);
         rightSplit.Panel2.Controls.Add(_issueList);
@@ -81,6 +81,7 @@ public sealed class ReviewForm : Form
         Controls.Add(split);
         Controls.Add(buttons);
 
+        UiLocale.ApplyChrome(this);
         Refresh(selectIndex: 0);
     }
 
@@ -167,7 +168,7 @@ public sealed class ReviewForm : Form
         _issueList.Items.Clear();
         foreach (var issue in _session.Issues)
         {
-            _issueList.Items.Add($"{issue.Severity}: {issue.Message}");
+            _issueList.Items.Add(UiStrings.Format(UiStrings.IssueLine, issue.Severity, issue.Message));
         }
 
         _issueList.EndUpdate();
@@ -177,18 +178,18 @@ public sealed class ReviewForm : Form
 
     private static string Describe(DocumentNode node) => node switch
     {
-        Heading heading => $"Heading {heading.Level}: {heading.Text}",
-        Paragraph paragraph => $"Paragraph: {paragraph.Text}",
-        OrderedSteps steps => $"Steps ({steps.Steps.Count})",
-        UnorderedList list => $"List ({list.Items.Count})",
-        TableNode table => $"Table ({table.Rows.Count} rows)",
-        Card card => $"Card: {card.Title}",
-        ImageReference image => $"Image: {image.AltText}",
-        BilingualPair pair => $"Bilingual: {pair.SourceText}",
-        ChoiceSet choices => $"Choices ({choices.Options.Count})",
-        EvidenceLink evidence => $"Evidence: {evidence.Claim}",
-        Citation citation => $"Citation: {citation.Text}",
-        TeacherOnlyNotice notice => $"Teacher-only: {notice.Text}",
+        Heading heading => UiStrings.Format(UiStrings.NodeHeading, heading.Level, heading.Text),
+        Paragraph paragraph => UiStrings.Format(UiStrings.NodeParagraph, paragraph.Text),
+        OrderedSteps steps => UiStrings.Format(UiStrings.NodeSteps, steps.Steps.Count),
+        UnorderedList list => UiStrings.Format(UiStrings.NodeList, list.Items.Count),
+        TableNode table => UiStrings.Format(UiStrings.NodeTable, table.Rows.Count),
+        Card card => UiStrings.Format(UiStrings.NodeCard, card.Title),
+        ImageReference image => UiStrings.Format(UiStrings.NodeImage, image.AltText),
+        BilingualPair pair => UiStrings.Format(UiStrings.NodeBilingual, pair.SourceText),
+        ChoiceSet choices => UiStrings.Format(UiStrings.NodeChoices, choices.Options.Count),
+        EvidenceLink evidence => UiStrings.Format(UiStrings.NodeEvidence, evidence.Claim),
+        Citation citation => UiStrings.Format(UiStrings.NodeCitation, citation.Text),
+        TeacherOnlyNotice notice => UiStrings.Format(UiStrings.NodeTeacherOnly, notice.Text),
         _ => node.GetType().Name,
     };
 }
