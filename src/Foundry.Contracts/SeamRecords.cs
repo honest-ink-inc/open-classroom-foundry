@@ -45,10 +45,26 @@ public sealed record RedactionSuggestions(IReadOnlyList<RedactionRegion> Regions
 public enum RenderTarget
 {
     AccessibleHtml,
+
+    /// <summary>Print-ready HTML with a paper stylesheet; the Windows print pipeline turns it into paper or PDF.</summary>
+    PrintHtml,
+
     PrintPdf,
     Svg,
     Png,
 }
+
+/// <summary>
+/// Teacher-only content (notices, evidence pointers, the approval footer) appears
+/// only for <see cref="Teacher"/>; a learner rendering never contains it.
+/// </summary>
+public enum RenderAudience
+{
+    Learner,
+    Teacher,
+}
+
+public sealed record RenderRequest(RenderTarget Target, RenderAudience Audience = RenderAudience.Learner);
 
 public sealed record RenderedOutput(RenderTarget Target, ReadOnlyMemory<byte> Content, string MimeType);
 

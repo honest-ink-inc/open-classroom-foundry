@@ -1,0 +1,217 @@
+using System.Net;
+using System.Text;
+using Foundry.Contracts;
+using Foundry.Domain;
+
+namespace Foundry.Rendering;
+
+/// <summary>
+/// Renders the semantic ArtifactDocument as self-contained accessible HTML —
+/// the first digital accessibility target (plan §8) — and as print-ready HTML
+/// for the paper pipeline. Every string is escaped; bilingual pairs carry lang
+/// and dir attributes so reading order and bidirectional text survive; teacher
+/// -only content never reaches a learner rendering. Output is deterministic:
+/// identical artifact and request produce identical bytes.
+/// </summary>
+public sealed class AccessibleHtmlRenderer : IRenderer
+{
+    public Task<RenderedOutput> RenderAsync(ApprovedArtifact artifact, RenderRequest request, CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(artifact);
+        ArgumentNullException.ThrowIfNull(request);
+        cancellationToken.ThrowIfCancellationRequested();
+
+        if (request.Target is not (RenderTarget.AccessibleHtml or RenderTarget.PrintHtml))
+        {
+            throw new NotSupportedException(
+                $"{request.Target} rendering arrives with the print pipeline and the Deterministic Press vector engine; this renderer produces HTML.");
+        }
+
+        var html = Render(artifact, request);
+        return Task.FromResult(new RenderedOutput(request.Target, Encoding.UTF8.GetBytes(html), "text/html"));
+    }
+
+    private static string Render(ApprovedArtifact artifact, RenderRequest request)
+    {
+        var document = artifact.Revision.Document;
+        var builder = new StringBuilder();
+
+        var language = Attribute(document.Language ?? "en");
+        var title = document.Nodes.OfType<Heading>().FirstOrDefault()?.Text ?? "Approved artifact";
+
+        builder.Append("<!DOCTYPE html>\n");
+        builder.Append("<html lang=\"").Append(language).Append("\">\n<head>\n<meta charset=\"utf-8\">\n");
+        builder.Append("<title>").Append(Text(title)).Append("</title>\n");
+        builder.Append("<style>\n").Append(BaseStyle);
+        if (request.Target == RenderTarget.PrintHtml)
+        {
+            builder.Append(PrintStyle);
+        }
+
+        builder.Append("</style>\n</head>\n<body>\n");
+
+        foreach (var node in document.Nodes)
+        {
+            AppendNode(builder, node, request.Audience);
+        }
+
+        if (request.Audience == RenderAudience.Teacher)
+        {
+            builder.Append("<footer class=\"approval\"><p>Approved by ")
+                .Append(Text(artifact.Receipt.ApprovedBy))
+                .Append(" · revision ")
+                .Append(artifact.Receipt.RevisionNumber)
+                .Append(" · ")
+                .Append(Text(artifact.Receipt.ApprovedAtUtc.ToString("u", System.Globalization.CultureInfo.InvariantCulture)))
+                .Append("</p></footer>\n");
+        }
+
+        builder.Append("</body>\n</html>\n");
+        return builder.ToString();
+    }
+
+    private static void AppendNode(StringBuilder builder, DocumentNode node, RenderAudience audience)
+    {
+        switch (node)
+        {
+            case Heading heading:
+                builder.Append("<h").Append(heading.Level).Append('>')
+                    .Append(Text(heading.Text))
+                    .Append("</h").Append(heading.Level).Append(">\n");
+                break;
+
+            case Paragraph paragraph:
+                builder.Append("<p>").Append(Text(paragraph.Text)).Append("</p>\n");
+                break;
+
+            case OrderedSteps steps:
+                builder.Append("<ol class=\"steps\">\n");
+                foreach (var step in steps.Steps)
+                {
+                    builder.Append("<li>").Append(Text(step)).Append("</li>\n");
+                }
+
+                builder.Append("</ol>\n");
+                break;
+
+            case UnorderedList list:
+                builder.Append("<ul>\n");
+                foreach (var item in list.Items)
+                {
+                    builder.Append("<li>").Append(Text(item)).Append("</li>\n");
+                }
+
+                builder.Append("</ul>\n");
+                break;
+
+            case TableNode table:
+                builder.Append("<table>\n");
+                if (table.HeaderRow is not null)
+                {
+                    builder.Append("<thead><tr>");
+                    foreach (var cell in table.HeaderRow)
+                    {
+                        builder.Append("<th scope=\"col\">").Append(Text(cell)).Append("</th>");
+                    }
+
+                    builder.Append("</tr></thead>\n");
+                }
+
+                builder.Append("<tbody>\n");
+                foreach (var row in table.Rows)
+                {
+                    builder.Append("<tr>");
+                    foreach (var cell in row)
+                    {
+                        builder.Append("<td>").Append(Text(cell)).Append("</td>");
+                    }
+
+                    builder.Append("</tr>\n");
+                }
+
+                builder.Append("</tbody>\n</table>\n");
+                break;
+
+            case Card card:
+                builder.Append("<section class=\"card\">\n<h3>").Append(Text(card.Title)).Append("</h3>\n<p>")
+                    .Append(Text(card.Body)).Append("</p>\n</section>\n");
+                break;
+
+            case ImageReference image:
+                // Asset bytes resolve when the asset kernel lands; until then the
+                // placeholder is explicit, never a silent gap.
+                builder.Append("<figure class=\"asset-placeholder\" data-asset-id=\"")
+                    .Append(Attribute(image.Asset.Value))
+                    .Append("\"><figcaption>").Append(Text(image.AltText)).Append("</figcaption></figure>\n");
+                break;
+
+            case BilingualPair pair:
+                builder.Append("<div class=\"bilingual-pair\">\n<p lang=\"")
+                    .Append(Attribute(pair.SourceLocale)).Append("\" dir=\"auto\">").Append(Text(pair.SourceText))
+                    .Append("</p>\n<p lang=\"")
+                    .Append(Attribute(pair.TargetLocale)).Append("\" dir=\"auto\">").Append(Text(pair.TargetText))
+                    .Append("</p>\n</div>\n");
+                break;
+
+            case ChoiceSet choices:
+                builder.Append("<ul class=\"choices\">\n");
+                foreach (var option in choices.Options)
+                {
+                    builder.Append("<li>").Append(Text(option)).Append("</li>\n");
+                }
+
+                builder.Append("</ul>\n");
+                break;
+
+            case EvidenceLink evidence:
+                builder.Append("<p>").Append(Text(evidence.Claim));
+                if (audience == RenderAudience.Teacher)
+                {
+                    builder.Append(" <span class=\"evidence-source\">[").Append(Text(evidence.SourcePointer)).Append("]</span>");
+                }
+
+                builder.Append("</p>\n");
+                break;
+
+            case Citation citation:
+                builder.Append("<p class=\"citation\"><cite>").Append(Text(citation.Text)).Append("</cite></p>\n");
+                break;
+
+            case TeacherOnlyNotice notice:
+                if (audience == RenderAudience.Teacher)
+                {
+                    builder.Append("<aside class=\"teacher-only\"><p>").Append(Text(notice.Text)).Append("</p></aside>\n");
+                }
+
+                break;
+
+            default:
+                throw new NotSupportedException($"Unknown node type {node.GetType().Name}.");
+        }
+    }
+
+    private static string Text(string value) => WebUtility.HtmlEncode(value);
+
+    private static string Attribute(string value) => WebUtility.HtmlEncode(value);
+
+    private const string BaseStyle =
+        """
+        body { font-family: "Segoe UI", system-ui, sans-serif; line-height: 1.5; margin: 2rem; }
+        .card { border: 1px solid #888; padding: 0.75rem 1rem; margin: 0.75rem 0; }
+        .bilingual-pair { margin: 0.5rem 0; }
+        .bilingual-pair p { margin: 0.15rem 0; }
+        .teacher-only { border-left: 4px solid #8a6d24; padding-left: 0.75rem; }
+        .asset-placeholder { border: 1px dashed #888; padding: 0.5rem; }
+        table { border-collapse: collapse; }
+        th, td { border: 1px solid #666; padding: 0.3rem 0.6rem; text-align: left; }
+        """;
+
+    private const string PrintStyle =
+        """
+
+        @page { margin: 12mm; }
+        body { margin: 0; }
+        h1, h2, h3 { break-after: avoid; }
+        li, .card, .bilingual-pair, tr { break-inside: avoid; }
+        """;
+}

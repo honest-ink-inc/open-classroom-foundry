@@ -57,7 +57,7 @@ public interface IRedactionAssistant
 
 public interface IRenderer
 {
-    Task<RenderedOutput> RenderAsync(ApprovedArtifact artifact, RenderTarget target, CancellationToken cancellationToken);
+    Task<RenderedOutput> RenderAsync(ApprovedArtifact artifact, RenderRequest request, CancellationToken cancellationToken);
 }
 
 public interface IExporter

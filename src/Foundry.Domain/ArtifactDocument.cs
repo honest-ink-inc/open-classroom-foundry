@@ -6,7 +6,7 @@ namespace Foundry.Domain;
 /// scripts, arbitrary markup, remote resources, commands, and filesystem paths are
 /// unrepresentable by construction (there is no node that could carry them).
 /// </summary>
-public sealed record ArtifactDocument(IReadOnlyList<DocumentNode> Nodes)
+public sealed record ArtifactDocument(IReadOnlyList<DocumentNode> Nodes, string? Language = null)
 {
     public static ArtifactDocument Empty { get; } = new([]);
 }
