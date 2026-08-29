@@ -5,17 +5,6 @@ using Foundry.Domain;
 
 namespace Foundry.Storage;
 
-/// <summary>What a teacher submits when adding their own symbol (council directive, 29 Aug 2026).</summary>
-public sealed record SymbolSubmission(
-    AssetId Id,
-    string IntendedMeaning,
-    string AltText,
-    ReadOnlyMemory<byte> Content,
-    string MimeType,
-    string TeacherStatedRights,
-    string? AmbiguityNotes = null,
-    string? License = null);
-
 /// <summary>
 /// The teacher's own symbol shelf: teachers add symbols to meet the individual
 /// needs of those they work with, with full provenance recorded at submission.

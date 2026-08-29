@@ -1,4 +1,5 @@
 using System.Text;
+using Foundry.Contracts;
 using Foundry.Domain;
 using Foundry.Storage;
 using Xunit;

@@ -9,6 +9,17 @@ namespace Foundry.Contracts;
 /// distribution — a document referencing an asset absent from the catalog cannot
 /// be saved or exported.
 /// </summary>
+/// <summary>What a teacher submits when adding their own symbol (council directive, 29 Aug 2026).</summary>
+public sealed record SymbolSubmission(
+    AssetId Id,
+    string IntendedMeaning,
+    string AltText,
+    ReadOnlyMemory<byte> Content,
+    string MimeType,
+    string TeacherStatedRights,
+    string? AmbiguityNotes = null,
+    string? License = null);
+
 public sealed record AssetProvenance(
     AssetId Id,
     string ConceptId,
