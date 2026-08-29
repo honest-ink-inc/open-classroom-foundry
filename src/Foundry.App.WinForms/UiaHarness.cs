@@ -58,11 +58,25 @@ public static class UiaHarness
             return null;
         }
 
+        // In harness mode a swallowed exception is invisible evidence; write
+        // it where the test can read it instead.
+        System.Windows.Forms.Application.ThreadException += (_, e) =>
+            File.WriteAllText(HarnessErrorPath, e.Exception.ToString());
+        AppDomain.CurrentDomain.FirstChanceException += (_, e) =>
+            File.AppendAllText(HarnessFirstChancePath, e.Exception.GetType().Name + ": " + e.Exception.Message + Environment.NewLine);
+
         return args[index + 1] switch
         {
             "review" => CreateReviewForm(),
             "capture" => CreateCaptureForm(),
+            "pressroom" => new PressRoomForm(),
             _ => null,
         };
     }
+
+    public static string HarnessErrorPath
+        => Path.Combine(Path.GetTempPath(), "ocf-harness-error.txt");
+
+    public static string HarnessFirstChancePath
+        => Path.Combine(Path.GetTempPath(), "ocf-harness-firstchance.txt");
 }

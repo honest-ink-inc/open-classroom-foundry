@@ -16,6 +16,6 @@ internal static class Program
         UiLocale.Configure(args);
         // Fully qualified: the Foundry.Application engine namespace shadows
         // System.Windows.Forms.Application inside the Foundry.* namespace tree.
-        System.Windows.Forms.Application.Run(UiaHarness.FromArgs(args) ?? new Form1());
+        System.Windows.Forms.Application.Run(UiaHarness.FromArgs(args) ?? new PressRoomForm());
     }
 }

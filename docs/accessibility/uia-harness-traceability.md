@@ -12,8 +12,10 @@
 | 1 | Title announces product; focus lands announced | `Part1_Step1` (in-proc), `Part1_Steps1and2` (headed) | What NVDA actually says at launch |
 | 2 | Every control announces role + name; no unnamed pane; order matches visual logic | `Part1_Step2_every_focusable…`, `Part1_Step2_the_action_buttons…` (in-proc); `Part1_Steps1and2` (headed, full document-order assertion) | Speech phrasing; visible focus indication |
 | 3 | `Shift+Tab` reverses without traps | — | Human only: focus traps are a runtime interaction property the harness does not simulate |
-| 4–6 | Module choice, authoring fields, symbol picker | — | The authoring surface does not exist yet; harness extends when it ships |
-| 7 | Validation announced, offending field reachable | `Part2_Step7` (in-proc): blank step surfaces a named issue in the "Validation issues" list; approval disables | Whether NVDA announces the issue unprompted |
+| 4 | Reach the module/recipe choice by keyboard; state change discoverable | `Part2_Step4` (in-proc, PressRoom): choosing a press regenerates its labeled parameter controls; headed: press selection over SelectionItemPattern | Whether the regeneration is announced |
+| 5 | Enter fields by keyboard; each announces its label | PressRoom parameter analog: every generated control carries its label as its accessible name (`Part1_Step2` PressRoom tests); All Aboard's typed-steps entry awaits menu-2 item 2 | Typing echo; the All Aboard form itself |
+| 6 | Symbol picker announces names, never "image" | — | Awaits the All Aboard wiring (menu-2 item 2) |
+| 7 | Validation announced, offending field reachable | `Part2_Step7` (in-proc, ReviewForm): blank step surfaces a named issue, approval disables; `Part2_Step7` (PressRoom): a press refusal lands in the status line, which now speaks its message | Whether NVDA announces the change unprompted |
 | 8 | Review announced as a review of a **draft** | `Part1_Step1` (title carries "draft") | Audibility in practice |
 | 9 | Position announced; new position after move | `Part3_Step9` (in-proc), `Part3_Steps9to12` (headed): selection follows the moved element, so the announced position is the new one | The actual "step 3 of 5" utterance |
 | 10 | Edit field reachable, labeled, reads back | `Part3_Step10` (in-proc), `Part3_Steps9to12` (headed, via ValuePattern) | Typing echo behavior |
@@ -32,5 +34,10 @@ Cross-cutting, script-independent: `Mnemonics_are_unique…` (one unambiguous ac
 2. **Lane radios overrode their meaning away.** `AccessibleName` was set to "Confirm Green lane"/"Keep Amber lane", *replacing* the full visible sentence for AT users — step 14's failure. The overrides are removed; the full text is the accessible name.
 3. **Approval said only "Approve".** Step 11's failure. It now carries an `AccessibleDescription` stating that approval is the named approval of this exact revision — with the HelpText caveat recorded above for the human walkthrough.
 4. **The draft state was invisible to the ear.** The review window title now says "reviewing a draft — nothing prints before approval" (step 8).
+
+## Findings from the Press Room build (29 Aug 2026, second forge menu item 1)
+
+5. **Status labels masked their own messages.** Both status lines carried `AccessibleName = "Status"`, which *replaces* the text for AT — a screen reader would hear the word "Status" forever, never the message. The overrides are removed on both surfaces; the message is the name.
+6. **A modal opened re-entrantly from its click wedges automation.** Opening the Gate B review dialog synchronously inside the click handler left any UI Automation client's call pending until the dialog closed — the whole provider became unqueryable. The surface now defers the modal to the next message-loop beat (`BeginInvoke`), which AT experiences identically and automation survives. Related, recorded for future harness authors: the legacy managed UIA client does not enumerate top-level windows created after it attaches — the headed tests locate new dialogs by Win32 title walk and bridge with `AutomationElement.FromHandle`.
 
 The typist's self-run of the script (prep week) and the AT reviewer's moderated session (week 2) remain the evidence that closes the gate; this harness only keeps what they find fixed from regressing.

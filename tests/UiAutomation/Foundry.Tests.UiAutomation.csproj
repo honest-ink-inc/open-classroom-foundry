@@ -6,6 +6,8 @@
     <Nullable>enable</Nullable>
     <IsPackable>false</IsPackable>
     <UseWindowsForms>true</UseWindowsForms>
+    <!-- LibraryImport's generated marshalling (the harness's posted clicks) needs it. -->
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     <!-- UseWPF brings the UIAutomationClient assemblies from the WindowsDesktop
          framework: the headed harness drives real windows through the same UIA
          tree NVDA and Narrator read. No third-party automation dependency. -->

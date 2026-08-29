@@ -51,7 +51,8 @@ public sealed class CaptureForm : Form
         };
         _confirm = MakeButton(UiStrings.ConfirmLane, (_, _) => ConfirmLane());
         _safetyPause = MakeButton(UiStrings.SafetyPause, (_, _) => SafetyPause());
-        _status = new Label { Dock = DockStyle.Bottom, AutoSize = false, Height = 28, AccessibleName = UiStrings.StatusLabel };
+        // No AccessibleName override: the message itself is what AT hears.
+        _status = new Label { Dock = DockStyle.Bottom, AutoSize = false, Height = 28 };
 
         var layout = new FlowLayoutPanel { Dock = DockStyle.Fill, FlowDirection = FlowDirection.TopDown, Padding = new Padding(12) };
         layout.Controls.AddRange([_import, _rotate, _stagedGreen, _keepAmber, _confirm, _safetyPause]);

@@ -65,9 +65,48 @@ public static class UiLocale
 /// </summary>
 public static class UiStrings
 {
-    // Main surface. The subtitle's neutral source lives in ProductIdentity
-    // (ADR-006's single name record); its localization routes through here.
+    // Main surface — the Press Room. The subtitle's neutral source lives in
+    // ProductIdentity (ADR-006's single name record); localization routes here.
     public static string MainWindowTitle => Compose(T(ProductIdentity.Subtitle));
+
+    public static string PressList => T("Presses");
+
+    public static string BudgetLine => T("Declared time-to-artifact budget: {0} minutes.");
+
+    public static string ReviewAndApprove => T("&Review and approve…");
+
+    public static string OpenPrintView => T("&Open print view");
+
+    public static string ExportEllipsis => T("&Export…");
+
+    public static string SaveToLibrary => T("&Save to library");
+
+    public static string StatusReady => T("Choose a press, set its parameters, then review and approve.");
+
+    public static string StatusRefused => T("The press refused: {0}");
+
+    public static string StatusApproved => T("Approved — print view, export, and save to library are unlocked.");
+
+    public static string StatusNotApproved => T("Review ended without approval; nothing is unlocked.");
+
+    public static string StatusSaved => T("Saved to the library as {0}.");
+
+    public static string StatusExported => T("Exported to {0}.");
+
+    public static string StatusPrintView => T("Print view opened in your browser — print at 100 percent scale.");
+
+    public static string ExportFilterPrint => T("Print HTML");
+
+    public static string ExportFilterAccessible => T("Accessible HTML");
+
+    public static string ExportFilterSvg => T("SVG (single sheet only)");
+
+    /// <summary>Module-supplied neutral text (press titles, parameter labels) rendered through the active locale.</summary>
+    public static string Localize(string neutral)
+    {
+        ArgumentNullException.ThrowIfNull(neutral);
+        return T(neutral);
+    }
 
     // Review surface.
     public static string ReviewWindowTitle => Compose(T("reviewing a draft — nothing prints before approval"));
@@ -136,8 +175,6 @@ public static class UiStrings
     public static string ConfirmLane => T("&Confirm lane and continue");
 
     public static string SafetyPause => T("I saw something concerning — &pause here");
-
-    public static string StatusLabel => T("Status");
 
     public static string StatusImported => T("Imported and normalized: metadata stripped.");
 
