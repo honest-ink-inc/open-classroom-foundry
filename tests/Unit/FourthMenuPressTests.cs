@@ -498,3 +498,99 @@ public class StudioSamplerTests
             System.Text.Json.JsonSerializer.Serialize(StudioSampler.Catalog()),
             System.Text.Json.JsonSerializer.Serialize(StudioSampler.Catalog()));
 }
+
+// Class Sets (menu 4, item 10): the seeded presses multiplied. The
+// load-bearing invariant is reprintability by printed number: variant v of a
+// set IS the single press at seed base + v − 1.
+
+public class ClassSetsTests
+{
+    private static ArtifactDocument WordSearchSet(int baseSeed, int variants)
+    {
+        var definition = PressRoomCatalog.ById("word-search");
+        return ClassSets.Compose(definition, PressRoomCatalog.Defaults(definition), baseSeed, variants);
+    }
+
+    [Fact]
+    public void Every_page_carries_its_variant_number_and_seed_in_ink_and_no_two_grids_match()
+    {
+        var set = WordSearchSet(baseSeed: 100, variants: 3);
+        var pages = set.Nodes.OfType<VectorGraphic>().ToList();
+
+        // The word search builds two sheets (puzzle and key) per variant.
+        Assert.Equal(6, pages.Count);
+        for (var variant = 1; variant <= 3; variant++)
+        {
+            var stamp = $"Variant {variant} of 3 · seed {99 + variant}";
+            foreach (var page in pages.Skip((variant - 1) * 2).Take(2))
+            {
+                Assert.Single(page.Primitives.OfType<TextLabel>(), l => l.Text == stamp);
+                Assert.Contains($"(variant {variant} of 3, seed {99 + variant})", page.Description, StringComparison.Ordinal);
+            }
+        }
+
+        // Neighboring desks cannot copy: the three puzzles are three grids.
+        var grids = Enumerable.Range(0, 3)
+            .Select(v => string.Join("", pages[v * 2].Primitives.OfType<TextLabel>().Select(l => l.Text)))
+            .ToList();
+        Assert.Equal(3, grids.Distinct(StringComparer.Ordinal).Count());
+    }
+
+    [Fact]
+    public void A_lost_sheet_is_reprintable_by_its_printed_number()
+    {
+        // Variant 2 of a base-100 set, with its stamp set aside, is byte for
+        // byte the single press at seed 101 — THE reprint claim.
+        var definition = PressRoomCatalog.ById("word-search");
+        var set = WordSearchSet(baseSeed: 100, variants: 3);
+
+        var single = PressRoomCatalog.Defaults(definition);
+        single["seed"] = "101";
+        var reprint = definition.Build(new PressInputs(single)).Nodes.OfType<VectorGraphic>().ToList();
+
+        var variantPages = set.Nodes.OfType<VectorGraphic>().Skip(2).Take(2).ToList();
+        for (var i = 0; i < 2; i++)
+        {
+            var unstamped = variantPages[i] with
+            {
+                Primitives = [.. variantPages[i].Primitives.Take(variantPages[i].Primitives.Count - 1)],
+                Description = reprint[i].Description,
+            };
+            Assert.Equal(
+                System.Text.Json.JsonSerializer.Serialize(reprint[i]),
+                System.Text.Json.JsonSerializer.Serialize(unstamped));
+        }
+    }
+
+    [Fact]
+    public void Teacher_only_notices_ride_along_named_by_their_variant()
+    {
+        var definition = PressRoomCatalog.ById("parsons-puzzle");
+        var set = ClassSets.Compose(definition, PressRoomCatalog.Defaults(definition), baseSeed: 7, variants: 2);
+
+        var notices = set.Nodes.OfType<TeacherOnlyNotice>().ToList();
+        Assert.Equal(2, notices.Count);
+        Assert.StartsWith("Variant 1: Answer key (seed 7)", notices[0].Text, StringComparison.Ordinal);
+        Assert.StartsWith("Variant 2: Answer key (seed 8)", notices[1].Text, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Class_sets_refuse_loudly_when_wrong_and_stay_deterministic()
+    {
+        var unseeded = PressRoomCatalog.ById("graph-paper");
+        Assert.Contains("seeded presses only",
+            Assert.Throws<ArgumentException>(() =>
+                ClassSets.Compose(unseeded, PressRoomCatalog.Defaults(unseeded), 1, 3)).Message, StringComparison.Ordinal);
+
+        var seeded = PressRoomCatalog.ById("word-search");
+        var defaults = PressRoomCatalog.Defaults(seeded);
+        Assert.Throws<ArgumentException>(() => ClassSets.Compose(seeded, defaults, 1, 1));
+        Assert.Throws<ArgumentException>(() => ClassSets.Compose(seeded, defaults, 1, 41));
+        Assert.Throws<ArgumentException>(() => ClassSets.Compose(seeded, defaults, 99999998, 3));
+        Assert.Throws<ArgumentException>(() => ClassSets.Compose(seeded, defaults, 0, 3));
+
+        Assert.Equal(
+            System.Text.Json.JsonSerializer.Serialize(WordSearchSet(20260908, 4)),
+            System.Text.Json.JsonSerializer.Serialize(WordSearchSet(20260908, 4)));
+    }
+}

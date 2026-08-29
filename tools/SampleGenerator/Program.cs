@@ -206,6 +206,10 @@ var pressSamples = new (string Name, ArtifactDocument Document)[]
     ("bar-chart", ChartPress.Sheet(
         "Bean plants after three weeks (cm)",
         ChartPress.Parse([("Sun", "18"), ("Shade", "9"), ("Window", "12")]))),
+    ("class-set-word-search", ClassSets.Compose(
+        PressRoomCatalog.ById("word-search"),
+        PressRoomCatalog.Defaults(PressRoomCatalog.ById("word-search")),
+        baseSeed: 20260908, variants: 3)),
     ("glossary-garden", GlossaryGarden.Sheet(
         "Unit 3: The water cycle",
         GlossaryGarden.Parse(["evaporation | Liquid water becomes vapor. | evaporación", "condensation | Vapor becomes liquid drops. | condensación", "precipitation | Water falls as rain or snow. | precipitación"]),
