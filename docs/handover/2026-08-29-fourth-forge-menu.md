@@ -53,3 +53,5 @@ Bench stock (worthy, unranked): Focus Beacon (#25), Plan B Press (#26), Morning 
 ## IV. Resuming
 
 Unchanged: **"Proceed with …"** adopts and starts an item; completed items are struck with a dated note, never deleted. And the typist's principle is now part of the divination rite itself: future menus draw from TWO sources — the atlas, and the compositions the enriched product newly affords — and must say which each item came from. If this menu exhausts before the letters answer, the honest next act may not be a fifth menu at all — it may be rest, until the world writes back.
+
+**Any hand enacting this menu — a future session included — reads the [enactment handover](2026-08-29-forge-enactment-handover.md) first:** it carries the repository state, the craft idioms and sprung traps of the three exhausted menus, per-item build guidance, and the closing rites that every item must pass through.
