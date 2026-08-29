@@ -1,6 +1,6 @@
 # Educator council — charter and recruitment kit
 
-**Status:** Formation **underway** (29 August 2026): seven invitations sent covering every seat below; two acceptances so far. Next steps as acceptances arrive — state the recognition/compensation policy, set the first cohort's procedural terms (GOVERNANCE.md), and schedule the first think-aloud sessions against the 0.1-alpha samples in docs/evidence. All Aboard co-design begins when the AAC/SLP seat accepts.
+**Status:** Formation **underway** (29 August 2026): seven invitations sent covering every seat below; two acceptances so far. **The pilot is now scheduled and materialized**: six-week staff pilot 8 September – 16 October 2026, coordinated by [docs/pilots/human-gates-coordination-plan.md](pilots/human-gates-coordination-plan.md), with the think-aloud protocol, seeded-error kit, print checklist, and NVDA script ready. Remaining before week 1: state the recognition/compensation policy in writing and confirm schedules. All Aboard co-design begins when the AAC/SLP seat accepts. Invitations and correspondence now flow from **contact@honest-ink.org** (Honest Ink, Inc.).
 
 ## What the council is
 

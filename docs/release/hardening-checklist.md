@@ -4,7 +4,7 @@
 
 | Item | Status | Notes |
 |---|---|---|
-| Signed package and checksum | **Partial** | `tools/publish.ps1` produces the publish, SHA256SUMS, and zip; **Authenticode signing needs the district's certificate — typist/IT**. An unsigned zip is a build, not a release |
+| Signed package and checksum | **Partial** | `tools/publish.ps1` produces the publish, SHA256SUMS, and zip; **Authenticode signing needs the district's certificate or Honest Ink, Inc.'s own OV certificate** (entity track: `docs/pilots/human-gates-coordination-plan.md`). An unsigned zip is a build, not a release |
 | Installer / Intune package | **Pending** | `.intunewin` wrapping via Microsoft Win32 Content Prep over the publish output; documented here, executed with district IT |
 | Staged rollout / rollback | **Partial** | Git tags + immutable releases give rollback-by-version; the runtime kill switch exists (`DistrictPolicy.CloudInferenceEnabled=false` disables all egress; removing the policy file fails closed to Offline). Rollout staging is a deployment-time procedure with IT |
 | Migration and compatibility tests | **Partial** | One project schema version exists (`ProjectSchemaVersion=1`); the migration harness becomes real at schema version 2, and the reversibility tests (save → reopen) already guard v1 |
@@ -13,9 +13,9 @@
 | SPDX per-file notices (R2-10) | **Done** | 74 source files headed; enforced by an architecture test from this commit forward |
 | CI gates (R2-11) | **Done** | Warnings-as-errors, whitespace format gate, 80% core-coverage threshold (88.6% at enablement), secret scan, dependency inventory |
 | Hostile-package suite | **Done (first pass)** | Entry-size ceiling, zip-slip inertness (nothing is ever extracted), corrupt/malformed loud failures; deeper fuzzing welcome |
-| Six-week staff pilot and defect burn-down | **HUMAN — release gate** | Requires the educator council's think-alouds, the NVDA/Narrator walkthrough, physical print inspection, and the seeded-error study |
-| District readiness (Gate 3) | **HUMAN — release gate** | Real IT, privacy, and safeguarding seats; provider contract attestation; written approval before any Amber artifact |
-| Second maintainer | **HUMAN** | The sustainability DoD item; still the bus factor's only cure |
+| Six-week staff pilot and defect burn-down | **HUMAN — scheduled 8 Sep–16 Oct 2026** | Coordination plan, protocols, walkthrough script, print checklist, and the seeded-error pilot kit all stand ready in `docs/pilots/` and `docs/evidence/pilot-kit/` |
+| District readiness (Gate 3) | **HUMAN — packet ready** | `docs/district/gate-3-readiness-packet.md` incl. the written-approval instrument; delivery target 4 Sep 2026 |
+| Second maintainer | **HUMAN** | The sustainability DoD item; recruitment plan in the coordination plan; still the bus factor's only cure |
 
 ## Rollback drill (documented procedure)
 

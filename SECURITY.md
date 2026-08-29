@@ -2,7 +2,7 @@
 
 ## Reporting a vulnerability or privacy issue
 
-Report security vulnerabilities and privacy concerns **privately** by email to **spacejunk572@gmail.com** with the subject line `[FOUNDRY SECURITY]`. Do not open a public issue for security or privacy reports.
+Report security vulnerabilities and privacy concerns **privately** by email to **contact@honest-ink.org** (Honest Ink, Inc.) with the subject line `[FOUNDRY SECURITY]`, with **spacejunk572@gmail.com** as the fallback address. Do not open a public issue for security or privacy reports.
 
 Include what you can: affected component or document, reproduction steps, impact assessment, and any suggested remediation. You should receive an acknowledgment within seven days. Coordinated disclosure is appreciated; you will be credited in the release notes unless you prefer otherwise.
 

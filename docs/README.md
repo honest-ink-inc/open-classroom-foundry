@@ -9,5 +9,9 @@ The copies in this directory are canonical for the repository from the initial c
 | [reviews/masters-review-1.0.md](reviews/masters-review-1.0.md) | The Master's Review 1.0: findings F1–F13 and the amendments the version-2.0 documents apply |
 | [modules/deterministic-press-spec.md](modules/deterministic-press-spec.md) | Full specification of Module Zero, the Deterministic Press |
 | [adr/](adr/) | Architecture decision records, ADR-001 onward |
+| [pilots/](pilots/) | The human-gates coordination plan and the staff-pilot instruments: think-aloud protocol, seeded-error study, print inspection checklist |
+| [accessibility/nvda-walkthrough-script.md](accessibility/nvda-walkthrough-script.md) | The keyboard and NVDA/Narrator walkthrough script (ADR-002's early-AT commitment) |
+| [district/gate-3-readiness-packet.md](district/gate-3-readiness-packet.md) | The Gate 3 packet for district IT/privacy/safeguarding, including the written-approval instrument |
+| [evidence/pilot-kit/](evidence/pilot-kit/) | Eight seeded-error review packets (facilitator key sealed alongside) |
 
 Precedence when documents disagree: a later ratified ADR > implementation plan > atlas > review. Disagreements themselves are defects — file an issue.

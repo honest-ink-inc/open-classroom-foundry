@@ -2,7 +2,12 @@
 // Generates the canonical accessible sample outputs for the 0.1-alpha evidence
 // bundle (universal Definition of Done: "canonical accessible sample outputs").
 // Deterministic: fixed approval instant, fixed content, the shipped libre pack.
-// Usage: SampleGenerator <repoRoot> <outputDirectory>
+// With --seeded it instead produces the seeded-error review packets for the
+// pilot kit (plan §14: "Teachers must detect defined seeded errors before
+// pilot"): eight print-ready task strips, six carrying one planted defect each
+// that passes every machine gate and only a practicing teacher can catch. The
+// facilitator key lives beside the kit, hand-authored, never generated here.
+// Usage: SampleGenerator <repoRoot> <outputDirectory> [--seeded]
 
 using Foundry.Contracts;
 using Foundry.Domain;
@@ -10,9 +15,9 @@ using Foundry.Modules.BuiltIn.AllAboard;
 using Foundry.Rendering;
 using Foundry.Storage;
 
-if (args.Length != 2)
+if (args.Length is < 2 or > 3 || (args.Length == 3 && args[2] != "--seeded"))
 {
-    Console.Error.WriteLine("Usage: SampleGenerator <repoRoot> <outputDirectory>");
+    Console.Error.WriteLine("Usage: SampleGenerator <repoRoot> <outputDirectory> [--seeded]");
     return 1;
 }
 
@@ -24,6 +29,91 @@ var approvedAt = new DateTimeOffset(2026, 8, 29, 12, 0, 0, TimeSpan.Zero);
 var catalog = new JsonAssetCatalog(Path.Combine(repoRoot, "assets", "symbols"));
 var renderer = new AccessibleHtmlRenderer();
 var store = new OcfprojProjectStore(outputDirectory, renderer, catalog);
+
+if (args.Length == 3)
+{
+    // Packet letters carry no information about which are seeded; the mapping
+    // lives only in the facilitator key. Defects here are semantic — wrong
+    // order, wrong translation, wrong symbol, missing step, self-contradiction —
+    // precisely the class no validator can catch, which is why the study gates
+    // the pilot.
+    var packets = new (char Letter, string Title, StepSpec[] Steps, string? TargetLocale)[]
+    {
+        ('a', "Mixing green paint",
+        [
+            new StepSpec("Squeeze blue paint onto the tray."),
+            new StepSpec("Mix the colors together with your brush."),
+            new StepSpec("Squeeze yellow paint onto the tray."),
+            new StepSpec("Paint the green swatch on your paper."),
+        ], null),
+        ('b', "Library checkout",
+        [
+            new StepSpec("Choose one book from the shelf."),
+            new StepSpec("Bring it to the checkout desk."),
+            new StepSpec("Scan your library card."),
+            new StepSpec("Put the book in your bag."),
+        ], null),
+        ('c', "Feeding the class fish",
+        [
+            new StepSpec("Take one pinch of fish food.", TargetText: "Toma una pizca de comida para peces."),
+            new StepSpec("Sprinkle it into the tank once.", TargetText: "Espolvoréala en la pecera dos veces."),
+            new StepSpec("Close the food container.", TargetText: "Cierra el bote de comida."),
+            new StepSpec("Wash your hands.", TargetText: "Lávate las manos."),
+        ], "es"),
+        ('d', "Silent reading slip",
+        [
+            new StepSpec("Read pages 10 to 14 of your book."),
+            new StepSpec("Choose your favorite sentence."),
+            new StepSpec("Answer the question about page 20 on your slip."),
+            new StepSpec("Put your slip in the basket."),
+        ], null),
+        ('e', "Morning arrival",
+        [
+            new StepSpec("Hang up your backpack."),
+            new StepSpec("Move your name magnet to \"here\"."),
+            new StepSpec("Sharpen two pencils."),
+            new StepSpec("Start the warm-up on the board."),
+        ], null),
+        ('f', "Clay pinch pots",
+        [
+            new StepSpec("Get your clay and your mat.", new AssetId("agency.finished.v1")),
+            new StepSpec("Pinch the clay into a pot shape."),
+            new StepSpec("Raise your hand if you want help.", new AssetId("agency.help.v1")),
+            new StepSpec("Put your pot on the drying shelf."),
+        ], null),
+        ('g', "Washing your hands",
+        [
+            new StepSpec("Wet your hands with warm water."),
+            new StepSpec("Rub soap on your hands and count to twenty."),
+            new StepSpec("Dry your hands with a paper towel."),
+            new StepSpec("Throw the towel in the bin."),
+        ], null),
+        ('h', "Paper airplane",
+        [
+            new StepSpec("Fold the paper in half the long way."),
+            new StepSpec("Unfold it so it lies flat."),
+            new StepSpec("Fold the top corners in to the center line."),
+            new StepSpec("Test-fly your plane toward the target."),
+        ], null),
+    };
+
+    foreach (var (letter, title, steps, targetLocale) in packets)
+    {
+        var document = AllAboardBuilders.TaskStrip(title, steps, catalog, targetLocale: targetLocale);
+        var approved = ApprovalGate.Approve(
+            DraftArtifact.New(document, DataLane.Green),
+            "sample-teacher@example.org",
+            DocumentValidator.Validate(document),
+            approvedAt);
+        var print = await renderer.RenderAsync(
+            approved, new RenderRequest(RenderTarget.PrintHtml, RenderAudience.Learner), CancellationToken.None);
+        await File.WriteAllBytesAsync(
+            Path.Combine(outputDirectory, $"packet-{letter}.print.html"), print.Content.ToArray());
+    }
+
+    Console.WriteLine($"Seeded review packets written to {outputDirectory}");
+    return 0;
+}
 
 // Sample 1: a bilingual task strip with symbols.
 var strip = AllAboardBuilders.TaskStrip(
