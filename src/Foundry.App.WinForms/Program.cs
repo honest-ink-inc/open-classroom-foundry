@@ -15,5 +15,5 @@ static class Program
         // Fully qualified: the Foundry.Application engine namespace shadows
         // System.Windows.Forms.Application inside the Foundry.* namespace tree.
         System.Windows.Forms.Application.Run(new Form1());
-    }    
+    }
 }
