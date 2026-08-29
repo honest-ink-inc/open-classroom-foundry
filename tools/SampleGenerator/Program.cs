@@ -206,6 +206,10 @@ var pressSamples = new (string Name, ArtifactDocument Document)[]
     ("bar-chart", ChartPress.Sheet(
         "Bean plants after three weeks (cm)",
         ChartPress.Parse([("Sun", "18"), ("Shade", "9"), ("Window", "12")]))),
+    ("bell-to-bell", BellToBell.Plan(
+        "Tuesday, period 2", "8:30",
+        BellToBell.Parse([("5", "Warm-up"), ("15", "Mini-lesson"), ("20", "Guided practice"), ("8", "Share out")]),
+        periodMinutes: 55, transitionMinutes: 1, "Pack up, reflect, and reset", closureMinutes: 3)),
     ("portfolio-passport", LearnerHeldKit.PortfolioPassport(
         ["What is it?", "Why I chose it"], ["Before, I...", "Now, I..."], contentsRows: 8,
         "This record belongs to the learner and lives on paper - never in a data system.")),

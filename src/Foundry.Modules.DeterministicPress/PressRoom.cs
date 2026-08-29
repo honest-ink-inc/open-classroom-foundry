@@ -331,6 +331,21 @@ public static class PressRoomCatalog
                 ChartPress.Parse(inputs.SplitLines("data")),
                 inputs.Text("orientation") == "Across", inputs.Page())),
 
+        // Bell-to-Bell (menu 4, item 3): the defaults meet the bell exactly —
+        // 48 activity + 4 transition + 3 closure = 55 of 55.
+        new("bell-to-bell", "Bell-to-bell plan", DeterministicPressRecipes.Schedules,
+            [new TextParameter("title", "Plan title", "Tuesday, period 2"),
+             new TextParameter("start", "Start time (like 8:30)", "8:30"),
+             new NumberParameter("period", "Period length (minutes)", 10, 240, 55),
+             new NumberParameter("transition", "Transition after each activity (minutes)", 0, 15, 1),
+             new LinesParameter("activities", "Activities, one per line as minutes | activity", "5 | Warm-up\n15 | Mini-lesson\n20 | Guided practice\n8 | Share out"),
+             new TextParameter("closureLabel", "Protected closure", "Pack up, reflect, and reset"),
+             new NumberParameter("closure", "Closure minutes (protected at the end)", 1, 20, 3)],
+            inputs => BellToBell.Plan(inputs.Text("title"), inputs.Text("start"),
+                BellToBell.Parse(inputs.SplitLines("activities")),
+                inputs.Whole("period"), inputs.Whole("transition"),
+                inputs.Text("closureLabel"), inputs.Whole("closure"))),
+
         new("synthesis-table", "Source synthesis table", DeterministicPressRecipes.History,
             [new LinesParameter("claims", "Claims, one per line", "The canal changed local trade\nWorkers came from nearby towns\nThe flood of 1889 ended the era"),
              new LinesParameter("sources", "Sources, one per line", "Newspaper\nDiary\nLedger"),

@@ -267,7 +267,7 @@ public class PuzzlePressTests
     }
 
     [Fact]
-    public void All_new_press_documents_validate_and_the_recipe_book_holds_nineteen()
+    public void All_new_press_documents_validate_and_the_recipe_book_holds_twenty()
     {
         foreach (var document in new[]
         {
@@ -286,7 +286,7 @@ public class PuzzlePressTests
             Assert.False(DocumentValidator.HasBlockingIssues(DocumentValidator.Validate(document)));
         }
 
-        Assert.Equal(19, DeterministicPressRecipes.All.Count);
+        Assert.Equal(20, DeterministicPressRecipes.All.Count);
         Assert.Contains(DeterministicPressRecipes.Puzzles, DeterministicPressRecipes.All);
         Assert.Contains(DeterministicPressRecipes.Grouping, DeterministicPressRecipes.All);
     }

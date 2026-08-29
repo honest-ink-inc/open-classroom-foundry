@@ -103,3 +103,81 @@ public class ChartPressTests
             [new ChartDatum("A", 0), new ChartDatum("B", 0)]));
     }
 }
+
+// Bell-to-Bell's load-bearing invariant is cumulative clock arithmetic with
+// a loud overrun refusal, asserted cell by cell against the catalog entry's
+// own defaults — which meet the bell exactly.
+
+public class BellToBellTests
+{
+    private static TableNode DefaultPlanTable(out ArtifactDocument document)
+    {
+        var definition = PressRoomCatalog.ById("bell-to-bell");
+        document = definition.Build(new PressInputs(PressRoomCatalog.Defaults(definition)));
+        return document.Nodes.OfType<TableNode>().Single();
+    }
+
+    [Fact]
+    public void Clock_times_accumulate_activity_by_activity_with_transitions_counted()
+    {
+        var table = DefaultPlanTable(out var document);
+
+        // 8:30 + 5 + 1 = 8:36; + 15 + 1 = 8:52; + 20 + 1 = 9:13; + 8 + 1 = 9:22.
+        Assert.Equal(["8:30", "5", "Warm-up", "1"], table.Rows[0]);
+        Assert.Equal(["8:36", "15", "Mini-lesson", "1"], table.Rows[1]);
+        Assert.Equal(["8:52", "20", "Guided practice", "1"], table.Rows[2]);
+        Assert.Equal(["9:13", "8", "Share out", "1"], table.Rows[3]);
+
+        // The closure holds the last three minutes before the 9:25 bell.
+        Assert.Equal(["9:22", "3", "Pack up, reflect, and reset", ""], table.Rows[4]);
+
+        Assert.Contains(document.Nodes.OfType<Paragraph>(),
+            p => p.Text == "55 of 55 minutes planned; the bell at 9:25 is met exactly.");
+    }
+
+    [Fact]
+    public void Open_minutes_are_named_and_the_closure_stays_protected_at_the_bell()
+    {
+        var definition = PressRoomCatalog.ById("bell-to-bell");
+        var values = PressRoomCatalog.Defaults(definition);
+        values["period"] = "60";
+        var document = definition.Build(new PressInputs(values));
+
+        // Five open minutes appear between the last transition and a closure
+        // still anchored to the end of the period: 8:30 + 60 - 3 = 9:27.
+        var table = document.Nodes.OfType<TableNode>().Single();
+        Assert.Equal("9:27", table.Rows[4][0]);
+        Assert.Contains(document.Nodes.OfType<Paragraph>(),
+            p => p.Text == "55 of 60 minutes planned; 5 minute(s) open before the closure at 9:27.");
+    }
+
+    [Fact]
+    public void An_overrunning_plan_is_refused_with_the_arithmetic_in_the_message()
+    {
+        var definition = PressRoomCatalog.ById("bell-to-bell");
+        var values = PressRoomCatalog.Defaults(definition);
+        values["period"] = "50";
+
+        var refusal = Assert.Throws<ArgumentException>(() => definition.Build(new PressInputs(values)));
+        Assert.Contains("needs 55 minutes but the period holds 50; trim 5 minute(s)", refusal.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Start_times_and_rows_are_refused_loudly_when_wrong()
+    {
+        Assert.Throws<ArgumentException>(() => BellToBell.ParseStartMinutes("8h30"));
+        Assert.Throws<ArgumentException>(() => BellToBell.ParseStartMinutes("25:00"));
+        Assert.Throws<ArgumentException>(() => BellToBell.ParseStartMinutes("8:75"));
+        Assert.Equal(8 * 60 + 30, BellToBell.ParseStartMinutes("8:30"));
+        Assert.Equal(13 * 60 + 5, BellToBell.ParseStartMinutes("13:05"));
+
+        Assert.Throws<ArgumentException>(() => BellToBell.Parse([("5", null)]));
+        Assert.Throws<ArgumentException>(() => BellToBell.Parse([("five", "Warm-up")]));
+        Assert.Throws<ArgumentException>(() => BellToBell.Parse([("0", "Warm-up")]));
+
+        var one = BellToBell.Parse([("5", "Warm-up")]);
+        Assert.Throws<ArgumentException>(() => BellToBell.Plan("", "8:30", one, 55, 1, "Closure", 3));
+        Assert.Throws<ArgumentException>(() => BellToBell.Plan("T", "8:30", one, 55, 1, "", 3));
+        Assert.Throws<ArgumentException>(() => BellToBell.Plan("T", "8:30", [], 55, 1, "Closure", 3));
+    }
+}

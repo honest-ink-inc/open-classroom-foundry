@@ -188,8 +188,13 @@ public static class DeterministicPressRecipes
         "Proportionally true bar charts from a teacher's own labeled values: a value twice as large is a bar exactly twice as long, gridlines at clean intervals.",
         "computing, aggregating, correcting, or interpreting the teacher's data — the numbers are the teacher's claim, drawn exactly as typed");
 
+    public static RecipeManifest Schedules { get; } = Manifest(
+        "press.schedules",
+        "Bell-to-bell lesson plans whose clock arithmetic is done exactly: cumulative times, transitions counted, the closure protected at the end, overruns refused before they reach a classroom.",
+        "planning, suggesting, reordering, or trimming activities — the plan is the teacher's; the press does only the clock arithmetic");
+
     public static IReadOnlyList<RecipeManifest> All { get; } =
-        [Blankforms, Flashcards, BookletGuide, Manipulatives, Foldables, BigPrint, Handwriting, Labels, Calibration, Puzzles, Grouping, Computational, Retrieval, FieldJournal, MathScaffolds, History, LearnerHeld, Rubrics, Charts];
+        [Blankforms, Flashcards, BookletGuide, Manipulatives, Foldables, BigPrint, Handwriting, Labels, Calibration, Puzzles, Grouping, Computational, Retrieval, FieldJournal, MathScaffolds, History, LearnerHeld, Rubrics, Charts, Schedules];
 
     private static RecipeManifest Manifest(string id, string purpose, params string[] alsoProhibited) => new(
         Id: id,
