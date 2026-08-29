@@ -49,6 +49,12 @@ public sealed class PressInputs(IReadOnlyDictionary<string, string> values)
             .Select(l => l.Trim())
             .Where(l => l.Length > 0)];
 
+    /// <summary>Code-bearing lines, verbatim: leading whitespace preserved (indentation IS content), tabs widened to four spaces, blank lines dropped.</summary>
+    public IReadOnlyList<string> RawLines(string key) =>
+        [.. Text(key).Replace("\r\n", "\n", StringComparison.Ordinal).Split('\n')
+            .Select(l => l.Replace("\t", "    ", StringComparison.Ordinal).TrimEnd())
+            .Where(l => l.Length > 0)];
+
     public IReadOnlyList<int> IntList(string key) =>
         [.. Text(key).Split(',').Select(part => int.TryParse(part.Trim(), System.Globalization.NumberStyles.Integer, System.Globalization.CultureInfo.InvariantCulture, out var parsed)
             ? parsed
@@ -193,6 +199,89 @@ public static class PressRoomCatalog
         new("grouping-cards", "Grouping cards", DeterministicPressRecipes.Grouping,
             [new LinesParameter("roster", "Roster labels, one per line - synthetic or first-name-free only", "Star 1\nStar 2\nStar 3\nStar 4\nStar 5\nStar 6\nStar 7\nStar 8"), new NumberParameter("size", "Group size", 2, 10, 4), Seed(), Page()],
             inputs => GroupingDeck.Cards(inputs.Lines("roster"), inputs.Whole("size"), inputs.Whole("seed"), inputs.Page())),
+
+        // The computational-thinking studio (menu 2, item 4).
+        new("parsons-puzzle", "Parsons line-ordering puzzle", DeterministicPressRecipes.Computational,
+            [new TextParameter("prompt", "Prompt printed at the top", "Number the lines in the correct order."),
+             new LinesParameter("solution", "Working solution, one line each, in the CORRECT order (indentation is kept)", "total = 0\nfor n in [1, 2, 3]:\n    total = total + n\nprint(total)"),
+             new LinesParameter("distractors", "Distractor lines (teacher-authored; blank for none)", "", Optional: true),
+             Seed(), Page()],
+            inputs => ParsonsPress.Puzzle(inputs.Text("prompt"), inputs.RawLines("solution"), inputs.RawLines("distractors"), inputs.Whole("seed"), inputs.Page())),
+
+        new("trace-table", "Trace-table sheet", DeterministicPressRecipes.Computational,
+            [new TextParameter("prompt", "Prompt printed at the top", "Trace each variable line by line, then predict the output."),
+             new LinesParameter("code", "Code, one line each (kept exactly as typed)", "x = 2\ny = 5\nwhile x < y:\n    x = x + 2\nprint(x)"),
+             new TextParameter("variables", "Variables (comma-separated)", "x, y"),
+             new NumberParameter("rows", "Trace rows", 3, 14, 6), Page()],
+            inputs => TraceTableTutor.Sheet(inputs.Text("prompt"), inputs.RawLines("code"),
+                [.. inputs.Text("variables").Split(',').Select(v => v.Trim()).Where(v => v.Length > 0)],
+                inputs.Whole("rows"), inputs.Page())),
+
+        new("algorithm-cards", "Unplugged algorithm cards", DeterministicPressRecipes.Computational,
+            [new LinesParameter("actions", "Action cards, one per line", "Stand up\nPush your chair in\nWalk to the door\nLine up quietly"),
+             new LinesParameter("controls", "Control cards, one per line (any language; blank for none)", "Start\nStop\nRepeat ×2\nIf yes\nIf no", Optional: true),
+             Page()],
+            inputs => AlgorithmAtelier.ActionCards(inputs.Lines("actions"), inputs.Lines("controls"), inputs.Page())),
+
+        new("rubber-duck-deck", "Rubber-duck debugging cards", DeterministicPressRecipes.Computational,
+            [new LinesParameter("prompts", "Prompt cards, one per line (edit freely)",
+                "Say what the program should do.\nRead your code aloud, one line at a time.\nSay what each line actually does.\nFind the first line where the two stories differ.\nSay what you expected there, and what happened.\nChange ONE thing, then read aloud again.\nStill stuck? Now you know exactly what to ask."),
+             Page()],
+            inputs => AlgorithmAtelier.PromptCards(inputs.Lines("prompts"), inputs.Page())),
+
+        // Retrieval Grid Generator (menu 2, item 5).
+        new("retrieval-grids", "Retrieval grids", DeterministicPressRecipes.Retrieval,
+            [new LinesParameter("questions", "Question bank, one per line (used verbatim)",
+                "Name the three data lanes\nWhat does Gate B decide?\n7 × 8\nDefine perimeter\nWhat is a variable?\nSpell necessary\nName one primary source\nWhat is the water cycle's first step?\n12 ÷ 4\nWhat does an author's claim need?\nName the largest planet\nWhat is a habitat?"),
+             new NumberParameter("grids", "Grids", 1, 6, 3),
+             new NumberParameter("rows", "Rows", 2, 4, 3),
+             new NumberParameter("columns", "Columns", 2, 4, 3),
+             Seed(), Page()],
+            inputs => RetrievalGrid.Grids(inputs.Lines("questions"), inputs.Whole("grids"),
+                inputs.Whole("rows"), inputs.Whole("columns"), inputs.Whole("seed"), inputs.Page())),
+
+        // Field Journal Forge (menu 2, item 6).
+        new("observation-frame", "Field observation frame", DeterministicPressRecipes.FieldJournal,
+            [new LinesParameter("prompts", "Prompts, one per line", "What I see\nWhat I hear\nWhat I wonder"),
+             new NumberParameter("sketch", "Sketch box height (mm)", 40, 160, 110), Page()],
+            inputs => FieldJournalForge.ObservationFrame(inputs.Lines("prompts"), inputs.Mm("sketch"), inputs.Page())),
+
+        new("specimen-labels", "Specimen labels", DeterministicPressRecipes.FieldJournal,
+            [new LinesParameter("fields", "Write-in fields, one per line", "Name\nDate\nLocation\nNotes"), Page()],
+            inputs => FieldJournalForge.SpecimenLabels(inputs.Lines("fields"), inputs.Page())),
+
+        new("field-log", "Weather and phenology log", DeterministicPressRecipes.FieldJournal,
+            [new LinesParameter("columns", "Column headers (one per line)", "Date\nWeather\nTemperature\nWhat changed"),
+             new NumberParameter("rows", "Data rows", 2, 20, 12), Page()],
+            inputs => BlankformsPress.LabTable(inputs.Lines("columns"), inputs.Whole("rows"), inputs.Page())),
+
+        new("site-map", "Site-map page", DeterministicPressRecipes.FieldJournal,
+            [new NumberParameter("pitch", "Grid square (mm)", 5, 25, 10, 1),
+             new NumberParameter("meters", "Meters per square", 1, 1000, 1), Page()],
+            inputs => FieldJournalForge.SiteMapPage(inputs.Mm("pitch"), inputs.Mm("meters"), inputs.Page())),
+
+        // The Manipulative Mint's third strike (menu 2, item 7).
+        new("algebra-tiles", "Algebra tiles", DeterministicPressRecipes.Manipulatives,
+            [new NumberParameter("unit", "Unit (mm)", 8, 25, 12, 1),
+             new NumberParameter("x", "x length (mm — never a whole number of units)", 20, 80, 45, 1),
+             new NumberParameter("xsq", "x-squared tiles", 0, 4, 2),
+             new NumberParameter("xs", "x tiles", 0, 12, 6),
+             new NumberParameter("units", "Unit tiles", 0, 30, 10),
+             new ToggleParameter("labeled", "Labels printed", true), Page()],
+            inputs => ManipulativeMint.AlgebraTiles(inputs.Mm("unit"), inputs.Mm("x"),
+                inputs.Whole("xsq"), inputs.Whole("xs"), inputs.Whole("units"), inputs.Bool("labeled"), inputs.Page())),
+
+        new("base-ten-blocks", "Base-ten blocks", DeterministicPressRecipes.Manipulatives,
+            [new NumberParameter("unit", "Unit (mm)", 6, 15, 10, 1),
+             new NumberParameter("flats", "Flats", 0, 2, 1),
+             new NumberParameter("rods", "Rods", 0, 10, 4),
+             new NumberParameter("units", "Units", 0, 30, 12), Page()],
+            inputs => ManipulativeMint.BaseTenBlocks(inputs.Mm("unit"),
+                inputs.Whole("flats"), inputs.Whole("rods"), inputs.Whole("units"), inputs.Page())),
+
+        new("tangram", "Tangram square", DeterministicPressRecipes.Manipulatives,
+            [new NumberParameter("side", "Side (mm)", 80, 165, 160, 1), Page()],
+            inputs => ManipulativeMint.Tangram(inputs.Mm("side"), inputs.Page())),
 
         // Big Print Shop stays out: its input is an existing approved artifact,
         // not parameters — it joins the room when the project library picker does.

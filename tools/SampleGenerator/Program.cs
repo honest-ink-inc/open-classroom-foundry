@@ -182,6 +182,20 @@ var pressSamples = new (string Name, ArtifactDocument Document)[]
         ["fraction", "decimal", "percent", "ratio", "graph", "sum"], seed: 20260829)),
     ("grouping-deck", GroupingDeck.Cards(
         [.. Enumerable.Range(1, 22).Select(i => $"Star {i}")], groupSize: 4, seed: 20260829)),
+    ("parsons-puzzle", ParsonsPress.Puzzle(
+        "Number the lines in the correct order.",
+        ["total = 0", "for n in [1, 2, 3]:", "    total = total + n", "print(total)"],
+        ["    total = 0"], seed: 20260829)),
+    ("trace-table", TraceTableTutor.Sheet(
+        "Trace each variable line by line, then predict the output.",
+        ["x = 2", "y = 5", "while x < y:", "    x = x + 2", "print(x)"], ["x", "y"], traceRows: 6)),
+    ("retrieval-grids", RetrievalGrid.Grids(
+        [.. Enumerable.Range(1, 12).Select(i => $"Question {i}")], gridCount: 2, rows: 3, columns: 3, seed: 20260829)),
+    ("observation-frame", FieldJournalForge.ObservationFrame(["What I see", "What I hear", "What I wonder"])),
+    ("site-map", FieldJournalForge.SiteMapPage(pitchMm: 10, metersPerSquare: 2)),
+    ("algebra-tiles", ManipulativeMint.AlgebraTiles()),
+    ("base-ten-blocks", ManipulativeMint.BaseTenBlocks()),
+    ("tangram", ManipulativeMint.Tangram()),
 };
 
 foreach (var (name, document) in pressSamples)

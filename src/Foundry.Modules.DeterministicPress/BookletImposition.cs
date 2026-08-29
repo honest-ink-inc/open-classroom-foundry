@@ -119,7 +119,7 @@ public static class DeterministicPressRecipes
 
     public static RecipeManifest BookletGuide { get; } = Manifest("press.booklet-guide", "Saddle-stitch imposition guide: correct signature arithmetic for any page count.");
 
-    public static RecipeManifest Manipulatives { get; } = Manifest("press.manipulatives", "Cardstock math manipulatives with exact proportions: fraction strips and circles, dice and box nets, spinner faces.");
+    public static RecipeManifest Manipulatives { get; } = Manifest("press.manipulatives", "Cardstock math manipulatives with exact proportions: fraction strips and circles, dice and box nets, spinner faces, algebra tiles, base-ten blocks, tangrams.");
 
     public static RecipeManifest Foldables { get; } = Manifest("press.foldables", "Interactive-notebook foldables with the solid-cut, dashed-fold line language and a printed legend.");
 
@@ -138,8 +138,22 @@ public static class DeterministicPressRecipes
         "Seeded-deterministic grouping cards from a teacher-typed roster: same seed, same groups, reprintable and verifiable.",
         "real learner names — the roster takes synthetic or first-name-free labels only (atlas #137 lane correction)");
 
+    public static RecipeManifest Computational { get; } = Manifest(
+        "press.computational",
+        "Parsons puzzles, trace tables, unplugged algorithm cards, and rubber-duck decks from a teacher's own code and routines.",
+        "interpreting, executing, correcting, or completing the teacher's code — code is cargo, preserved exactly");
+
+    public static RecipeManifest Retrieval { get; } = Manifest(
+        "press.retrieval",
+        "Seeded spaced-retrieval grids from the teacher's own question bank: questions verbatim, same seed same grids.",
+        "grading, scoring, or tracking retrieval outcomes — the grids are practice paper, not measurement records");
+
+    public static RecipeManifest FieldJournal { get; } = Manifest(
+        "press.field-journal",
+        "Field and nature study kits: observation frames, specimen labels, field logs, and site-map pages with true scale bars.");
+
     public static IReadOnlyList<RecipeManifest> All { get; } =
-        [Blankforms, Flashcards, BookletGuide, Manipulatives, Foldables, BigPrint, Handwriting, Labels, Calibration, Puzzles, Grouping];
+        [Blankforms, Flashcards, BookletGuide, Manipulatives, Foldables, BigPrint, Handwriting, Labels, Calibration, Puzzles, Grouping, Computational, Retrieval, FieldJournal];
 
     private static RecipeManifest Manifest(string id, string purpose, params string[] alsoProhibited) => new(
         Id: id,
