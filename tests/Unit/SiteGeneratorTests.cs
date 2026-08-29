@@ -68,7 +68,8 @@ public class SiteBuilderTests
         var first = SiteBuilder.Build(RepoRoot());
         var second = SiteBuilder.Build(RepoRoot());
 
-        Assert.Equal(SiteBuilder.Pages.Count, first.Count);
+        // Every markdown-backed page plus the engine-rendered samples gallery.
+        Assert.Equal(SiteBuilder.Pages.Count + 1, first.Count);
         Assert.Equal(
             first.Select(f => Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(f.Content))),
             second.Select(f => Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(f.Content))));
@@ -86,6 +87,30 @@ public class SiteBuilderTests
         {
             Assert.Contains($"href=\"{page.Slug}.html\"", index, StringComparison.Ordinal);
         }
+
+        Assert.Contains($"href=\"{SampleGallery.Slug}.html\"", index, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void The_gallery_carries_every_curated_press_as_inline_svg_with_its_own_caption()
+    {
+        var gallery = Page("samples.html");
+
+        Assert.Equal(SampleGallery.CuratedPressIds.Count,
+            gallery.Split("<figure class=\"sample\">").Length - 1);
+        Assert.Equal(SampleGallery.CuratedPressIds.Count,
+            gallery.Split("<svg xmlns=").Length - 1);
+
+        // The captions are the presses' own accessible descriptions — the
+        // same words a screen reader hears in the app.
+        Assert.Contains("proportionally true bar chart", gallery, StringComparison.Ordinal);
+        Assert.Contains("<strong>Bar chart</strong>", gallery, StringComparison.Ordinal);
+        Assert.Contains("<strong>Timeline</strong>", gallery, StringComparison.Ordinal);
+
+        // Self-contained: no external images, scripts, or fetches.
+        Assert.DoesNotContain("<img", gallery, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("<script", gallery, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("http-equiv", gallery, StringComparison.OrdinalIgnoreCase);
     }
 
     [Fact]

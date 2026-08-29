@@ -45,6 +45,11 @@ public static class SiteBuilder
             files.Add(($"{page.Slug}.html", Encoding.UTF8.GetBytes(Shell(title, page.Slug, body))));
         }
 
+        // The samples gallery (menu 4, item 8): engine-rendered, not
+        // markdown-backed — the presses drawing their own portraits.
+        files.Add(($"{SampleGallery.Slug}.html",
+            Encoding.UTF8.GetBytes(Shell("Press samples", SampleGallery.Slug, SampleGallery.BodyHtml()))));
+
         return files;
     }
 
@@ -107,7 +112,9 @@ public static class SiteBuilder
 
     private static string Shell(string title, string activeSlug, string body)
     {
-        var nav = string.Join("\n", Pages.Select(p => p.Slug == activeSlug
+        var entries = Pages.Select(p => (p.Slug, p.NavLabel))
+            .Append((SampleGallery.Slug, SampleGallery.NavLabel));
+        var nav = string.Join("\n", entries.Select(p => p.Slug == activeSlug
             ? $"<a href=\"{p.Slug}.html\" aria-current=\"page\">{p.NavLabel}</a>"
             : $"<a href=\"{p.Slug}.html\">{p.NavLabel}</a>"));
 
@@ -134,6 +141,9 @@ code { font-family: Consolas, 'Courier New', monospace; background: #efede8; pad
 pre { background: #efede8; padding: 0.75rem; overflow-x: auto; }
 a { color: #14507a; }
 footer { max-width: 46rem; margin: 0 auto; padding: 1rem; border-top: 1px solid #999; font-size: 0.85rem; }
+figure.sample { margin: 2rem 0; }
+figure.sample svg { width: 100%; height: auto; border: 1px solid #999; background: #fff; }
+figure.sample figcaption { margin-top: 0.5rem; font-size: 0.9rem; }
 @media print { header, footer { display: none; } body { background: #fff; } }
 </style>
 </head>
