@@ -31,8 +31,20 @@ public sealed class WindowsPdfPrinter(IRenderer renderer) : IPrinter
 
         try
         {
-            await new EdgePdfExporter(renderer).ExportAsync(
-                artifact, new ExportRequest(RenderTarget.PrintPdf, tempPdf), cancellationToken).ConfigureAwait(false);
+            // Native first: the renderer serves vector-first PDF for vector
+            // documents — no browser on the machine required. Documents it
+            // refuses (HTML-shaped, non-WinAnsi text) fall back to Edge.
+            try
+            {
+                var native = await renderer.RenderAsync(
+                    artifact, new RenderRequest(RenderTarget.PrintPdf, RenderAudience.Learner), cancellationToken).ConfigureAwait(false);
+                await File.WriteAllBytesAsync(tempPdf, native.Content.ToArray(), cancellationToken).ConfigureAwait(false);
+            }
+            catch (NotSupportedException)
+            {
+                await new EdgePdfExporter(renderer).ExportAsync(
+                    artifact, new ExportRequest(RenderTarget.PrintPdf, tempPdf), cancellationToken).ConfigureAwait(false);
+            }
 
             var settings = new PrinterSettings();
             if (!string.IsNullOrWhiteSpace(request.PrinterName))

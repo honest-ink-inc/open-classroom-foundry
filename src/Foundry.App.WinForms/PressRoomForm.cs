@@ -25,14 +25,21 @@ public sealed class PressRoomForm : Form
     private readonly Button _export;
     private readonly Button _save;
     private readonly Label _status;
+    private readonly Button _print;
+    private readonly Button _tile;
     private readonly Dictionary<string, Func<string>> _valueReaders = new(StringComparer.Ordinal);
-    private PressDefinition? _approvedDefinition;
+    private readonly Func<string?> _libraryPicker;
+    private ApprovedContext? _context;
 
-    /// <summary>The runner seam exists so tests can drive the flow without a modal dialog; production uses the real ReviewForm.</summary>
-    public PressRoomForm(Func<ReviewSession, ApprovedArtifact?>? reviewRunner = null)
+    /// <summary>What an approval belongs to, whether it was pressed here or reopened from the library.</summary>
+    private sealed record ApprovedContext(string Name, string ModuleId, string RecipeId, string RecipeVersion);
+
+    /// <summary>The runner and picker seams exist so tests can drive the flows without modal dialogs; production uses the real ReviewForm and file dialog.</summary>
+    public PressRoomForm(Func<ReviewSession, ApprovedArtifact?>? reviewRunner = null, Func<string?>? libraryPicker = null)
     {
         _modalReview = reviewRunner is null;
         _reviewRunner = reviewRunner ?? RunModalReview;
+        _libraryPicker = libraryPicker ?? PickFromLibraryDialog;
 
         Text = UiStrings.MainWindowTitle;
         MinimumSize = new Size(860, 560);
@@ -56,10 +63,13 @@ public sealed class PressRoomForm : Form
         _parameterPanel.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
 
         _review = MakeButton(UiStrings.ReviewAndApprove, (_, _) => ReviewAndApprove());
+        _print = MakeButton(UiStrings.PrintButton, (_, _) => PrintApproved());
         _printView = MakeButton(UiStrings.OpenPrintView, (_, _) => OpenPrintView());
         _export = MakeButton(UiStrings.ExportEllipsis, (_, _) => Export());
         _save = MakeButton(UiStrings.SaveToLibrary, (_, _) => SaveToLibrary());
         // Deferred one beat like every modal-opener (harness finding, 29 Aug 2026).
+        _tile = MakeButton(UiStrings.TileForWall, (_, _) => BeginInvoke(ShowTileDialog));
+        var openLibrary = MakeButton(UiStrings.OpenFromLibrary, (_, _) => BeginInvoke(OpenFromLibrary));
         var allAboard = MakeButton(UiStrings.AllAboardOpen, (_, _) => BeginInvoke(OpenAllAboard));
 
         // No AccessibleName override: the message itself must be what a screen
@@ -68,7 +78,7 @@ public sealed class PressRoomForm : Form
         SetStatus(UiStrings.StatusReady);
 
         var buttons = new FlowLayoutPanel { Dock = DockStyle.Bottom, AutoSize = true, FlowDirection = FlowDirection.LeftToRight };
-        buttons.Controls.AddRange([_review, _printView, _export, _save, allAboard]);
+        buttons.Controls.AddRange([_review, _print, _printView, _export, _save, _tile, openLibrary, allAboard]);
 
         var right = new TableLayoutPanel { Dock = DockStyle.Fill, ColumnCount = 1, RowCount = 2 };
         right.RowStyles.Add(new RowStyle(SizeType.AutoSize));
@@ -111,7 +121,7 @@ public sealed class PressRoomForm : Form
     private void LoadPress()
     {
         ApprovedResult = null;
-        _approvedDefinition = null;
+        _context = null;
         UpdateGatedButtons();
 
         _parameterPanel.SuspendLayout();
@@ -220,7 +230,7 @@ public sealed class PressRoomForm : Form
         }
 
         ApprovedResult = null;
-        _approvedDefinition = null;
+        _context = null;
 
         ArtifactDocument document;
         try
@@ -236,21 +246,22 @@ public sealed class PressRoomForm : Form
         }
 
         var session = AppServices.SessionOver(document);
+        var context = new ApprovedContext(definition.Id, "deterministic-press", definition.Recipe.Id, definition.Recipe.Version);
 
         if (_modalReview)
         {
             // The modal opens on the next message-loop beat, not re-entrantly
             // from the click: assistive technology and UI Automation see the
             // click complete, then the dialog arrive — no call left pending.
-            BeginInvoke(() => CompleteReview(definition, session));
+            BeginInvoke(() => CompleteReview(context, session));
         }
         else
         {
-            CompleteReview(definition, session);
+            CompleteReview(context, session);
         }
     }
 
-    private void CompleteReview(PressDefinition definition, ReviewSession session)
+    private void CompleteReview(ApprovedContext context, ReviewSession session)
     {
         var approved = _reviewRunner(session);
         if (approved is null)
@@ -260,7 +271,7 @@ public sealed class PressRoomForm : Form
         }
 
         ApprovedResult = approved;
-        _approvedDefinition = definition;
+        _context = context;
         UpdateGatedButtons();
         SetStatus(UiStrings.StatusApproved);
     }
@@ -278,8 +289,27 @@ public sealed class PressRoomForm : Form
             return;
         }
 
-        AppServices.OpenPrintView(ApprovedResult, _approvedDefinition!.Id);
+        AppServices.OpenPrintView(ApprovedResult, _context!.Name);
         SetStatus(UiStrings.StatusPrintView);
+    }
+
+    private void PrintApproved()
+    {
+        if (ApprovedResult is null)
+        {
+            return;
+        }
+
+        try
+        {
+            AppServices.Print(ApprovedResult);
+            SetStatus(UiStrings.StatusPrinted);
+        }
+        catch (Exception failure) when (failure is InvalidOperationException or IOException or NotSupportedException)
+        {
+            // Print failures land in the speaking status, never a dialog trap.
+            SetStatus(UiStrings.Format(UiStrings.StatusRefused, failure.Message));
+        }
     }
 
     private void Export()
@@ -291,34 +321,49 @@ public sealed class PressRoomForm : Form
 
         using var dialog = new SaveFileDialog
         {
-            FileName = _approvedDefinition!.Id,
-            Filter = $"{UiStrings.ExportFilterPdf}|*.pdf|{UiStrings.ExportFilterPrint}|*.html|{UiStrings.ExportFilterAccessible}|*.html|{UiStrings.ExportFilterSvg}|*.svg",
+            FileName = _context!.Name,
+            Filter = $"{UiStrings.ExportFilterPdf}|*.pdf|{UiStrings.ExportFilterBooklet}|*.pdf|{UiStrings.ExportFilterPrint}|*.html|{UiStrings.ExportFilterAccessible}|*.html|{UiStrings.ExportFilterSvg}|*.svg",
         };
         if (dialog.ShowDialog(this) != DialogResult.OK)
         {
             return;
         }
 
-        var target = dialog.FilterIndex switch
-        {
-            1 => RenderTarget.PrintPdf,
-            3 => RenderTarget.AccessibleHtml,
-            4 => RenderTarget.Svg,
-            _ => RenderTarget.PrintHtml,
-        };
-
         try
         {
-            File.WriteAllBytes(dialog.FileName, AppServices.Render(ApprovedResult, target));
+            var bytes = dialog.FilterIndex switch
+            {
+                1 => AppServices.Render(ApprovedResult, RenderTarget.PrintPdf),
+                2 => ImposeBooklet(ApprovedResult),
+                4 => AppServices.Render(ApprovedResult, RenderTarget.AccessibleHtml),
+                5 => AppServices.Render(ApprovedResult, RenderTarget.Svg),
+                _ => AppServices.Render(ApprovedResult, RenderTarget.PrintHtml),
+            };
+            File.WriteAllBytes(dialog.FileName, bytes);
         }
         catch (NotSupportedException refusal)
         {
-            // Single-sheet-only SVG and vector-only PDF refuse loudly; say so.
+            // Single-sheet-only SVG, vector-only PDF, and uniform-page booklets
+            // refuse loudly; say so.
             SetStatus(UiStrings.Format(UiStrings.StatusRefused, refusal.Message));
             return;
         }
 
         SetStatus(UiStrings.Format(UiStrings.StatusExported, Path.GetFileName(dialog.FileName)));
+    }
+
+    private static byte[] ImposeBooklet(ApprovedArtifact approved)
+    {
+        var contentPages = approved.Revision.Document.Nodes.OfType<VectorGraphic>().Count();
+        if (contentPages < 2)
+        {
+            throw new NotSupportedException(UiStrings.BookletNeedsPages);
+        }
+
+        return Rendering.VectorPdfWriter.WriteImposed(
+            approved,
+            BookletImposition.PdfSides(BookletImposition.Compute(contentPages)),
+            RenderAudience.Teacher);
     }
 
     private void SaveToLibrary()
@@ -329,17 +374,116 @@ public sealed class PressRoomForm : Form
         }
 
         var hint = AppServices.SaveToLibrary(
-            ApprovedResult, _approvedDefinition!.Id, "deterministic-press",
-            _approvedDefinition.Recipe.Id, _approvedDefinition.Recipe.Version, new AppServices.NoAssetsCatalog());
+            ApprovedResult, _context!.Name, _context.ModuleId,
+            _context.RecipeId, _context.RecipeVersion, AppServices.SymbolCatalog());
         SetStatus(UiStrings.Format(UiStrings.StatusSaved, hint));
+    }
+
+    /// <summary>Reversibility, visible: a saved project reopens into a fresh Gate B review — reopen, re-review, re-approve, reprint.</summary>
+    public void OpenFromLibrary()
+    {
+        var path = _libraryPicker();
+        if (path is null)
+        {
+            return;
+        }
+
+        ApprovedResult = null;
+        _context = null;
+        UpdateGatedButtons();
+
+        Storage.LoadedProject loaded;
+        try
+        {
+            loaded = AppServices.OpenFromLibrary(path);
+        }
+        catch (Exception refusal) when (refusal is InvalidOperationException or IOException or InvalidDataException)
+        {
+            // The hardened reader's refusals — tampered lane, colliding names,
+            // schema drift — arrive here and speak.
+            SetStatus(UiStrings.Format(UiStrings.StatusRefused, refusal.Message));
+            return;
+        }
+
+        CompleteReview(
+            new ApprovedContext(
+                Path.GetFileNameWithoutExtension(path),
+                loaded.Manifest.ModuleId,
+                loaded.Manifest.RecipeId,
+                loaded.Manifest.RecipeVersion),
+            AppServices.SessionOver(loaded.Document));
+    }
+
+    private void ShowTileDialog()
+    {
+        if (ApprovedResult is null)
+        {
+            return;
+        }
+
+        using var dialog = new TileForm();
+        if (dialog.ShowDialog(this) == DialogResult.OK)
+        {
+            TileApproved(dialog.Columns, dialog.Rows);
+        }
+    }
+
+    /// <summary>
+    /// Big Print Shop over the approved artifact in hand: the tiled wall
+    /// display is a NEW document, so it passes Gate B itself before anything
+    /// renders — the gate is structural, not hereditary.
+    /// </summary>
+    public void TileApproved(int columns, int rows)
+    {
+        if (ApprovedResult is null || _context is null)
+        {
+            return;
+        }
+
+        var sheets = ApprovedResult.Revision.Document.Nodes.OfType<VectorGraphic>().ToList();
+        if (sheets.Count != 1)
+        {
+            SetStatus(UiStrings.Format(UiStrings.StatusRefused, UiStrings.TileNeedsSingleSheet));
+            return;
+        }
+
+        ArtifactDocument tiled;
+        try
+        {
+            tiled = BigPrintShop.Tile(sheets[0], columns, rows);
+        }
+        catch (ArgumentException refusal)
+        {
+            SetStatus(UiStrings.Format(UiStrings.StatusRefused, refusal.Message));
+            return;
+        }
+
+        CompleteReview(
+            new ApprovedContext(
+                _context.Name + "-tiles", "deterministic-press",
+                DeterministicPressRecipes.BigPrint.Id, DeterministicPressRecipes.BigPrint.Version),
+            AppServices.SessionOver(tiled));
+    }
+
+    private static string? PickFromLibraryDialog()
+    {
+        Directory.CreateDirectory(AppServices.LibraryRoot);
+        using var dialog = new OpenFileDialog
+        {
+            InitialDirectory = AppServices.LibraryRoot,
+            Filter = $"*{Storage.OcfprojProjectStore.Extension}|*{Storage.OcfprojProjectStore.Extension}",
+        };
+        return dialog.ShowDialog() == DialogResult.OK ? dialog.FileName : null;
     }
 
     private void UpdateGatedButtons()
     {
         // The structural gate, visible: these do nothing until a typed approval exists.
+        _print.Enabled = ApprovedResult is not null;
         _printView.Enabled = ApprovedResult is not null;
         _export.Enabled = ApprovedResult is not null;
         _save.Enabled = ApprovedResult is not null;
+        _tile.Enabled = ApprovedResult is not null;
     }
 
     private void SetStatus(string text) => _status.Text = text;

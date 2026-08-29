@@ -95,6 +95,26 @@ public static class UiStrings
 
     public static string StatusPrintView => T("Print view opened in your browser — print at 100 percent scale.");
 
+    public static string PrintButton => T("&Print");
+
+    public static string StatusPrinted => T("Sent to the printer at 100 percent scale.");
+
+    public static string OpenFromLibrary => T("Open from &library…");
+
+    public static string TileForWall => T("Tile for &wall…");
+
+    public static string TileColumns => T("Columns");
+
+    public static string TileRows => T("Rows");
+
+    public static string TileMake => T("&Make tiles");
+
+    public static string TileNeedsSingleSheet => T("wall tiling takes a single-sheet artifact");
+
+    public static string BookletNeedsPages => T("a booklet needs at least two content pages");
+
+    public static string ExportFilterBooklet => T("Booklet PDF (2-up saddle-stitch)");
+
     public static string ExportFilterPdf => T("PDF (vector sheets)");
 
     public static string ExportFilterPrint => T("Print HTML");

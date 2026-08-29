@@ -63,6 +63,17 @@ public static class BookletImposition
         return order;
     }
 
+    /// <summary>
+    /// The plan flattened to printable side order — front, back, front, back —
+    /// for a two-up imposer (the vector PDF press): the signature arithmetic
+    /// stays here where its proofs live; placement stays with the renderer.
+    /// </summary>
+    public static IReadOnlyList<(int Left, int Right)> PdfSides(ImpositionPlan plan)
+    {
+        ArgumentNullException.ThrowIfNull(plan);
+        return [.. plan.Sheets.SelectMany(s => new[] { (s.FrontLeft, s.FrontRight), (s.BackLeft, s.BackRight) })];
+    }
+
     /// <summary>The teacher-facing imposition guide: which page goes where, sheet by sheet.</summary>
     public static ArtifactDocument Guide(ImpositionPlan plan)
     {

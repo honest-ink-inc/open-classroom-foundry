@@ -23,6 +23,7 @@ public sealed class AllAboardForm : Form
     private readonly TextBox _title;
     private readonly List<(TextBox Text, ComboBox Symbol)> _steps = [];
     private readonly Button _review;
+    private readonly Button _print;
     private readonly Button _printView;
     private readonly Button _export;
     private readonly Button _save;
@@ -70,6 +71,18 @@ public sealed class AllAboardForm : Form
         }
 
         _review = MakeButton(UiStrings.ReviewAndApprove, (_, _) => ReviewAndApprove());
+        _print = MakeButton(UiStrings.PrintButton, (_, _) => WithApproved(a =>
+        {
+            try
+            {
+                AppServices.Print(a);
+                SetStatus(UiStrings.StatusPrinted);
+            }
+            catch (Exception failure) when (failure is InvalidOperationException or IOException or NotSupportedException)
+            {
+                SetStatus(UiStrings.Format(UiStrings.StatusRefused, failure.Message));
+            }
+        }));
         _printView = MakeButton(UiStrings.OpenPrintView, (_, _) => WithApproved(a =>
         {
             AppServices.OpenPrintView(a, "all-aboard-task-strip");
@@ -88,7 +101,7 @@ public sealed class AllAboardForm : Form
         SetStatus(UiStrings.StatusReady);
 
         var buttons = new FlowLayoutPanel { Dock = DockStyle.Bottom, AutoSize = true, FlowDirection = FlowDirection.LeftToRight };
-        buttons.Controls.AddRange([_review, _printView, _export, _save]);
+        buttons.Controls.AddRange([_review, _print, _printView, _export, _save]);
 
         Controls.Add(grid);
         Controls.Add(buttons);
@@ -207,6 +220,7 @@ public sealed class AllAboardForm : Form
     private void UpdateGatedButtons()
     {
         // The structural gate, visible: nothing unlocks before typed approval.
+        _print.Enabled = ApprovedResult is not null;
         _printView.Enabled = ApprovedResult is not null;
         _export.Enabled = ApprovedResult is not null;
         _save.Enabled = ApprovedResult is not null;

@@ -57,12 +57,14 @@ public static class AppServices
         System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(path) { UseShellExecute = true });
     }
 
-    /// <summary>Saves to the teacher's Documents-folder project library; returns the project name used.</summary>
+    /// <summary>The teacher's project library root. Settable so tests exercise the real save/reopen round trip in a temp directory.</summary>
+    public static string LibraryRoot { get; set; } = Path.Combine(
+        Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments), EngineIdentity.InternalId, "projects");
+
+    /// <summary>Saves to the teacher's project library; returns the project name used.</summary>
     public static string SaveToLibrary(ApprovedArtifact artifact, string hintPrefix, string moduleId, string recipeId, string recipeVersion, IAssetCatalog catalog)
     {
-        var library = Path.Combine(
-            Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments), EngineIdentity.InternalId, "projects");
-        var store = new OcfprojProjectStore(library, new AccessibleHtmlRenderer(), catalog);
+        var store = new OcfprojProjectStore(LibraryRoot, new AccessibleHtmlRenderer(), catalog);
 
         var hint = UiStrings.Format("{0}-{1}", hintPrefix,
             DateTimeOffset.Now.ToString("yyyyMMdd-HHmmss", System.Globalization.CultureInfo.InvariantCulture));
@@ -72,6 +74,21 @@ public static class AppServices
             CancellationToken.None).GetAwaiter().GetResult();
         return hint;
     }
+
+    /// <summary>Reopens a saved Green project through the hardened reader; reversibility (constitution 11) as one call.</summary>
+    public static LoadedProject OpenFromLibrary(string path)
+    {
+        var store = new OcfprojProjectStore(
+            Path.GetDirectoryName(Path.GetFullPath(path))!, new AccessibleHtmlRenderer(), SymbolCatalog());
+        return store.LoadProjectAsync(Path.GetFileNameWithoutExtension(path), CancellationToken.None)
+            .GetAwaiter().GetResult();
+    }
+
+    /// <summary>Silent print through the same structural gate as every output; native vector PDF first, Edge fallback.</summary>
+    public static void Print(ApprovedArtifact artifact)
+        => new Infrastructure.Windows.WindowsPdfPrinter(new AccessibleHtmlRenderer())
+            .PrintAsync(artifact, new PrintRequest(PrinterName: "", Duplex: false, Copies: 1), CancellationToken.None)
+            .GetAwaiter().GetResult();
 
     /// <summary>For artifacts that reference no assets; the store never consults it.</summary>
     public sealed class NoAssetsCatalog : IAssetCatalog

@@ -221,6 +221,19 @@ var proofPdf = await renderer.RenderAsync(
 await File.WriteAllBytesAsync(
     Path.Combine(outputDirectory, "press-calibration-proof.pdf"), proofPdf.Content.ToArray());
 
+// The imposed booklet (third forge menu, item 1): the signature arithmetic and
+// the PDF transforms composed — three retrieval grids as a saddle-stitch file.
+var approvedGrids = ApprovalGate.Approve(
+    DraftArtifact.New(RetrievalGrid.Grids(
+        [.. Enumerable.Range(1, 12).Select(i => $"Question {i}")], gridCount: 3, rows: 3, columns: 3, seed: 20260829), DataLane.Green),
+    "sample-teacher@example.org", [], approvedAt);
+await File.WriteAllBytesAsync(
+    Path.Combine(outputDirectory, "press-booklet-retrieval.pdf"),
+    VectorPdfWriter.WriteImposed(
+        approvedGrids,
+        BookletImposition.PdfSides(BookletImposition.Compute(3)),
+        RenderAudience.Teacher));
+
 Console.WriteLine($"Samples written to {outputDirectory}");
 return 0;
 

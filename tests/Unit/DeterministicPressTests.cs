@@ -216,6 +216,14 @@ public class BookletImpositionTests
     }
 
     [Fact]
+    public void Pdf_sides_flatten_the_classic_signature_front_back_front_back()
+    {
+        Assert.Equal(
+            [(8, 1), (2, 7), (6, 3), (4, 5)],
+            BookletImposition.PdfSides(BookletImposition.Compute(8)));
+    }
+
+    [Fact]
     public void The_press_recipes_are_green_parameter_only_and_provider_free()
     {
         Assert.All(DeterministicPressRecipes.All, recipe =>

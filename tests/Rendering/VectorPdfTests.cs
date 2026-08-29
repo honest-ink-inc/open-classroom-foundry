@@ -115,6 +115,76 @@ public class VectorPdfTests
             Approve(guide), new RenderRequest(RenderTarget.PrintPdf), CancellationToken.None));
     }
 
+    private static ArtifactDocument LabeledPages(int count, double widthMm = 100, double heightMm = 200)
+        => new([.. Enumerable.Range(1, count).Select(i => new VectorGraphic(
+            widthMm, heightMm, [new TextLabel(widthMm / 2, heightMm / 2, $"P{i}")], $"Page {i}"))]);
+
+    [Fact]
+    public void The_imposed_booklet_places_every_page_in_saddle_stitch_order_at_the_pdf_layer()
+    {
+        // Six content pages pad to eight: sides (8,1) (2,7) (6,3) (4,5).
+        var sides = BookletImposition.PdfSides(BookletImposition.Compute(6));
+        var pdf = Encoding.Latin1.GetString(VectorPdfWriter.WriteImposed(
+            Approve(LabeledPages(6)), sides, RenderAudience.Learner));
+
+        Assert.Contains("/Count 4", pdf, StringComparison.Ordinal);
+
+        var streams = pdf.Split(">>\nstream\n", StringSplitOptions.None).Skip(1)
+            .Select(s => s.Split("endstream")[0]).ToList();
+        Assert.Equal(4, streams.Count);
+
+        // Pages 100x200 on a 200x100 sheet: scale 0.5, slots at 25 and 125 mm.
+        var k = VectorPdfWriter.PointsPerMm;
+        var left = $"q 0.5 0 0 0.5 {Fmt(25 * k)} 0 cm";
+        var right = $"q 0.5 0 0 0.5 {Fmt(125 * k)} 0 cm";
+
+        // Side 1: page 8 is a padding blank, so only P1 prints — in the RIGHT slot.
+        Assert.Contains("(P1) Tj", streams[0], StringComparison.Ordinal);
+        Assert.DoesNotContain("(P8", streams[0], StringComparison.Ordinal);
+        Assert.Contains(right, streams[0], StringComparison.Ordinal);
+        Assert.DoesNotContain(left, streams[0], StringComparison.Ordinal);
+
+        // Side 2: P2 left, blank right. Sides 3 and 4: (6,3) and (4,5).
+        Assert.Contains("(P2) Tj", streams[1], StringComparison.Ordinal);
+        Assert.Contains(left, streams[1], StringComparison.Ordinal);
+        Assert.Contains("(P6) Tj", streams[2], StringComparison.Ordinal);
+        Assert.Contains("(P3) Tj", streams[2], StringComparison.Ordinal);
+        Assert.Contains("(P4) Tj", streams[3], StringComparison.Ordinal);
+        Assert.Contains("(P5) Tj", streams[3], StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Imposition_is_byte_deterministic_and_demands_one_uniform_page_size()
+    {
+        var artifact = Approve(LabeledPages(4));
+        var sides = BookletImposition.PdfSides(BookletImposition.Compute(4));
+
+        Assert.Equal(
+            VectorPdfWriter.WriteImposed(artifact, sides, RenderAudience.Learner),
+            VectorPdfWriter.WriteImposed(artifact, sides, RenderAudience.Learner));
+
+        var mixed = new ArtifactDocument(
+        [
+            new VectorGraphic(100, 200, [new TextLabel(50, 100, "A")], "One"),
+            new VectorGraphic(210, 297, [new TextLabel(50, 100, "B")], "Two"),
+        ]);
+        Assert.Throws<NotSupportedException>(
+            () => VectorPdfWriter.WriteImposed(Approve(mixed), sides, RenderAudience.Learner));
+    }
+
+    [Fact]
+    public void The_teacher_booklet_carries_the_short_edge_instruction_page_first()
+    {
+        var sides = BookletImposition.PdfSides(BookletImposition.Compute(4));
+        var pdf = Encoding.Latin1.GetString(VectorPdfWriter.WriteImposed(
+            Approve(LabeledPages(4)), sides, RenderAudience.Teacher));
+
+        Assert.Contains("/Count 3", pdf, StringComparison.Ordinal); // instructions + two sides
+        var first = pdf.Split(">>\nstream\n", StringSplitOptions.None)[1].Split("endstream")[0];
+        Assert.Contains("SHORT edge", first, StringComparison.Ordinal);
+        Assert.Contains("Fold the whole stack", first, StringComparison.Ordinal);
+    }
+
     [Fact]
     public void Anchored_text_is_positioned_by_exact_courier_arithmetic()
     {

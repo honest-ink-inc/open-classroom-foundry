@@ -61,6 +61,89 @@ public static class VectorPdfWriter
         return Assemble(pages);
     }
 
+    /// <summary>
+    /// Two-up imposition: each entry in <paramref name="sides"/> becomes one
+    /// landscape sheet side carrying two content pages (1-based; numbers past
+    /// the content count are the padding blanks). The caller supplies the
+    /// side order — the signature arithmetic lives with the Booklet Binder,
+    /// the placement transform lives here, and neither duplicates the other.
+    /// Sheets are the same paper turned sideways; pages scale uniformly and
+    /// center in their half. Teacher audience gets an instruction page first,
+    /// and it says SHORT-edge duplex, because that is what keeps these
+    /// landscape sheets upright through the fold.
+    /// </summary>
+    public static byte[] WriteImposed(ApprovedArtifact artifact, IReadOnlyList<(int Left, int Right)> sides, RenderAudience audience)
+    {
+        ArgumentNullException.ThrowIfNull(artifact);
+        ArgumentNullException.ThrowIfNull(sides);
+
+        var content = artifact.Revision.Document.Nodes.OfType<VectorGraphic>().ToList();
+        if (content.Count == 0 || sides.Count == 0)
+        {
+            throw new NotSupportedException("Imposition takes a document of vector sheets and at least one side.");
+        }
+
+        if (content.Any(g => g.WidthMm != content[0].WidthMm || g.HeightMm != content[0].HeightMm))
+        {
+            throw new NotSupportedException("Imposition requires every content page to share one page size.");
+        }
+
+        var sourceWidth = content[0].WidthMm;
+        var sourceHeight = content[0].HeightMm;
+        var sheetWidth = sourceHeight;   // the same paper, turned sideways
+        var sheetHeight = sourceWidth;
+        var slotWidth = sheetWidth / 2;
+        var scale = Math.Min(slotWidth / sourceWidth, sheetHeight / sourceHeight);
+        var offsetY = (sheetHeight - scale * sourceHeight) / 2 * PointsPerMm;
+        var slack = (slotWidth - scale * sourceWidth) / 2 * PointsPerMm;
+
+        var pages = new List<(double WidthMm, double HeightMm, string Content)>();
+        if (audience == RenderAudience.Teacher)
+        {
+            var instructions = new StringBuilder();
+            var y = sheetHeight - 20;
+            foreach (var line in new[]
+            {
+                $"Saddle-stitch booklet: {content.Count} content pages on {sides.Count / 2} sheets.",
+                "1. Print double-sided, flipping on the SHORT edge.",
+                "2. Keep the sheets in printed order.",
+                "3. Fold the whole stack in half.",
+                "4. Staple twice on the fold.",
+            })
+            {
+                instructions.Append("BT /F1 ").Append(Fmt(11.0)).Append(" Tf ")
+                    .Append(Fmt(20 * PointsPerMm)).Append(' ').Append(Fmt(y * PointsPerMm)).Append(" Td (")
+                    .Append(EscapeString(EncodeWinAnsi(line))).Append(") Tj ET\n");
+                y -= 8;
+            }
+
+            pages.Add((sheetWidth, sheetHeight, instructions.ToString()));
+        }
+
+        foreach (var (left, right) in sides)
+        {
+            var side = new StringBuilder();
+            AppendSlot(side, left, slack);
+            AppendSlot(side, right, slotWidth * PointsPerMm + slack);
+            pages.Add((sheetWidth, sheetHeight, side.ToString()));
+        }
+
+        return Assemble(pages);
+
+        void AppendSlot(StringBuilder side, int pageNumber, double offsetX)
+        {
+            if (pageNumber < 1 || pageNumber > content.Count)
+            {
+                return; // a padding blank, explicit in the plan, empty in ink
+            }
+
+            side.Append("q ").Append(Fmt(scale)).Append(" 0 0 ").Append(Fmt(scale)).Append(' ')
+                .Append(Fmt(offsetX)).Append(' ').Append(Fmt(offsetY)).Append(" cm\n")
+                .Append(SheetContent(content[pageNumber - 1]))
+                .Append("Q\n");
+        }
+    }
+
     private static string SheetContent(VectorGraphic graphic)
     {
         var content = new StringBuilder();
