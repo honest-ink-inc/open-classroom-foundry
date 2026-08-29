@@ -13,7 +13,7 @@
 
 - **597 tests green** across six suites; full `dotnet format --verify-no-changes` gate green; CI runs the whole solution on windows-latest.
 - **18 recipes, 48 Press Room catalog engines**, two authoring surfaces (Press Room, All Aboard — mode-complete), library door, native print, vector-first PDF, booklet imposition, landscape + low-ink, pseudo-locale, UIA harness.
-- **The stale zip:** `out/honest-ink-win-x64.zip` was built 10:48 AM, BEFORE any menu — it contains the retired empty `Form1`. Menu-4 item 1 exists because of it. Do not let anyone provision the pilot machine from it.
+- **The stale zip:** `out/honest-ink-win-x64.zip` was built 10:48 AM, BEFORE any menu — it contained the retired empty `Form1`, and menu-4 item 1 existed because of it. *Resolved 29 Aug 2026, item 1: `tools/publish.ps1` re-run against the current tree; the zip now carries the real app (verified by launching the published exe). Re-run the script after any change meant for the pilot machine — the artifact is only ever as fresh as its last run.*
 - **Open in parallel:** the `.ocfproj` WRITER nondeterminism task (zip-entry timestamps; found when `task-strip-bilingual.ocfproj` differed across identical runs). A worktree branch `claude/wizardly-grothendieck-017c73` sits at `af29ace` with no commits yet. Whoever lands it must rebase across everything since — including the READER hardening in the same file (`OcfprojProjectStore.cs`, menu-2 item 6) — then re-run the Integration suite. The reader and writer changes are in disjoint methods; the merge should be clean, but prove it, don't assume it.
 - Version is `EngineIdentity.EngineVersion = "0.7.0-alpha"`. Bumping it, tagging, installing, distributing are the TYPIST's acts — never yours.
 

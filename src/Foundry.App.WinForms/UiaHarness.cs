@@ -11,11 +11,33 @@ namespace Foundry.App.WinForms;
 /// harness that must exist before any custom control ever ships). Launched via
 /// <c>--uia-harness review|capture</c> so the headed tests drive the real forms
 /// over real UIA — the same tree NVDA and Narrator read. Fixture content only;
-/// nothing here touches storage, network, or a camera.
+/// nothing here touches network or a camera, and storage only where
+/// <see cref="LibraryRootSwitch"/> explicitly points the library at a
+/// disposable directory.
 /// </summary>
 public static class UiaHarness
 {
     public const string Switch = "--uia-harness";
+
+    /// <summary>
+    /// Optional companion to <see cref="Switch"/>: redirects the project
+    /// library to a disposable directory so the headed dress rehearsal can
+    /// save and reopen real projects without ever touching the teacher's
+    /// Documents. Honored only in harness mode.
+    /// </summary>
+    public const string LibraryRootSwitch = "--library-root";
+
+    /// <summary>
+    /// Optional companion to <see cref="Switch"/>: injects the Press Room's
+    /// export seam with a fixed booklet-PDF destination. The shell Save As
+    /// dialog's name field cannot be committed by cross-process automation
+    /// (async pre-fill, programmatic text never reaching the dialog's model,
+    /// and the foreground lock blocking synthetic keyboard input — all found
+    /// 29 Aug 2026 building the pilot dress rehearsal), so the headed test
+    /// exercises everything OURS — the gate, the render switch, the
+    /// imposition, the bytes, the speaking status — through this seam.
+    /// </summary>
+    public const string ExportToSwitch = "--export-to";
 
     public static ReviewForm CreateReviewForm()
     {
@@ -58,6 +80,12 @@ public static class UiaHarness
             return null;
         }
 
+        var libraryIndex = Array.IndexOf(args, LibraryRootSwitch);
+        if (libraryIndex >= 0 && libraryIndex + 1 < args.Length)
+        {
+            AppServices.LibraryRoot = args[libraryIndex + 1];
+        }
+
         // In harness mode a swallowed exception is invisible evidence; write
         // it where the test can read it instead.
         System.Windows.Forms.Application.ThreadException += (_, e) =>
@@ -65,11 +93,18 @@ public static class UiaHarness
         AppDomain.CurrentDomain.FirstChanceException += (_, e) =>
             File.AppendAllText(HarnessFirstChancePath, e.Exception.GetType().Name + ": " + e.Exception.Message + Environment.NewLine);
 
+        var exportIndex = Array.IndexOf(args, ExportToSwitch);
+        var exportTo = exportIndex >= 0 && exportIndex + 1 < args.Length ? args[exportIndex + 1] : null;
+
         return args[index + 1] switch
         {
             "review" => CreateReviewForm(),
             "capture" => CreateCaptureForm(),
-            "pressroom" => new PressRoomForm(),
+            // Filter index 2 is the booklet PDF: the imposition leg is the
+            // seam-richest export, so it is the one the rehearsal exercises.
+            "pressroom" => exportTo is null
+                ? new PressRoomForm()
+                : new PressRoomForm(exportPicker: () => new PressRoomForm.ExportChoice(exportTo, 2)),
             "allaboard" => new AllAboardForm(AppServices.SymbolCatalog()),
             _ => null,
         };

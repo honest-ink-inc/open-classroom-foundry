@@ -30,17 +30,22 @@ public sealed class PressRoomForm : Form
     private readonly CheckBox _lowInk;
     private readonly Dictionary<string, Func<string>> _valueReaders = new(StringComparer.Ordinal);
     private readonly Func<string?> _libraryPicker;
+    private readonly Func<ExportChoice?> _exportPicker;
     private ApprovedContext? _context;
 
     /// <summary>What an approval belongs to, whether it was pressed here or reopened from the library.</summary>
     private sealed record ApprovedContext(string Name, string ModuleId, string RecipeId, string RecipeVersion);
 
-    /// <summary>The runner and picker seams exist so tests can drive the flows without modal dialogs; production uses the real ReviewForm and file dialog.</summary>
-    public PressRoomForm(Func<ReviewSession, ApprovedArtifact?>? reviewRunner = null, Func<string?>? libraryPicker = null)
+    /// <summary>Where an export goes and as what (the 1-based filter index of the export dialog).</summary>
+    public sealed record ExportChoice(string Path, int FilterIndex);
+
+    /// <summary>The runner and picker seams exist so tests can drive the flows without modal dialogs; production uses the real ReviewForm and file dialogs. The export seam earns its place the hard way: the shell Save As dialog's name field cannot be committed by any cross-process automation (harness finding, 29 Aug 2026).</summary>
+    public PressRoomForm(Func<ReviewSession, ApprovedArtifact?>? reviewRunner = null, Func<string?>? libraryPicker = null, Func<ExportChoice?>? exportPicker = null)
     {
         _modalReview = reviewRunner is null;
         _reviewRunner = reviewRunner ?? RunModalReview;
         _libraryPicker = libraryPicker ?? PickFromLibraryDialog;
+        _exportPicker = exportPicker ?? PickExportDialog;
 
         Text = UiStrings.MainWindowTitle;
         MinimumSize = new Size(860, 560);
@@ -67,9 +72,10 @@ public sealed class PressRoomForm : Form
         _review = MakeButton(UiStrings.ReviewAndApprove, (_, _) => ReviewAndApprove());
         _print = MakeButton(UiStrings.PrintButton, (_, _) => PrintApproved());
         _printView = MakeButton(UiStrings.OpenPrintView, (_, _) => OpenPrintView());
-        _export = MakeButton(UiStrings.ExportEllipsis, (_, _) => Export());
+        // Modal-openers defer one beat (harness finding, 29 Aug 2026) — Export
+        // included, since the pilot dress rehearsal drives its save dialog.
+        _export = MakeButton(UiStrings.ExportEllipsis, (_, _) => BeginInvoke(Export));
         _save = MakeButton(UiStrings.SaveToLibrary, (_, _) => SaveToLibrary());
-        // Deferred one beat like every modal-opener (harness finding, 29 Aug 2026).
         _tile = MakeButton(UiStrings.TileForWall, (_, _) => BeginInvoke(ShowTileDialog));
         var openLibrary = MakeButton(UiStrings.OpenFromLibrary, (_, _) => BeginInvoke(OpenFromLibrary));
         var allAboard = MakeButton(UiStrings.AllAboardOpen, (_, _) => BeginInvoke(OpenAllAboard));
@@ -329,19 +335,15 @@ public sealed class PressRoomForm : Form
             return;
         }
 
-        using var dialog = new SaveFileDialog
-        {
-            FileName = _context!.Name,
-            Filter = $"{UiStrings.ExportFilterPdf}|*.pdf|{UiStrings.ExportFilterBooklet}|*.pdf|{UiStrings.ExportFilterPrint}|*.html|{UiStrings.ExportFilterAccessible}|*.html|{UiStrings.ExportFilterSvg}|*.svg",
-        };
-        if (dialog.ShowDialog(this) != DialogResult.OK)
+        var choice = _exportPicker();
+        if (choice is null)
         {
             return;
         }
 
         try
         {
-            var bytes = dialog.FilterIndex switch
+            var bytes = choice.FilterIndex switch
             {
                 1 => AppServices.Render(ApprovedResult, RenderTarget.PrintPdf),
                 2 => ImposeBooklet(ApprovedResult),
@@ -349,7 +351,7 @@ public sealed class PressRoomForm : Form
                 5 => AppServices.Render(ApprovedResult, RenderTarget.Svg),
                 _ => AppServices.Render(ApprovedResult, RenderTarget.PrintHtml),
             };
-            File.WriteAllBytes(dialog.FileName, bytes);
+            File.WriteAllBytes(choice.Path, bytes);
         }
         catch (NotSupportedException refusal)
         {
@@ -359,7 +361,19 @@ public sealed class PressRoomForm : Form
             return;
         }
 
-        SetStatus(UiStrings.Format(UiStrings.StatusExported, Path.GetFileName(dialog.FileName)));
+        SetStatus(UiStrings.Format(UiStrings.StatusExported, Path.GetFileName(choice.Path)));
+    }
+
+    private ExportChoice? PickExportDialog()
+    {
+        using var dialog = new SaveFileDialog
+        {
+            FileName = _context!.Name,
+            Filter = $"{UiStrings.ExportFilterPdf}|*.pdf|{UiStrings.ExportFilterBooklet}|*.pdf|{UiStrings.ExportFilterPrint}|*.html|{UiStrings.ExportFilterAccessible}|*.html|{UiStrings.ExportFilterSvg}|*.svg",
+        };
+        return dialog.ShowDialog(this) == DialogResult.OK
+            ? new ExportChoice(dialog.FileName, dialog.FilterIndex)
+            : null;
     }
 
     private static byte[] ImposeBooklet(ApprovedArtifact approved)

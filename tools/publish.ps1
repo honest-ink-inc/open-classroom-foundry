@@ -19,4 +19,5 @@ $sums = Get-ChildItem $out -Recurse -File | Get-FileHash -Algorithm SHA256 | For
 $sums | Out-File (Join-Path $out "..\SHA256SUMS.txt") -Encoding utf8
 
 Compress-Archive -Path "$out\*" -DestinationPath (Join-Path $out "..\honest-ink-win-x64.zip") -Force
-Write-Host "Published to out\ with SHA256SUMS.txt. Sign before any distribution."
+Write-Host "Published to out\ from the current tree: publish\, SHA256SUMS.txt, honest-ink-win-x64.zip."
+Write-Host "This script only builds. Signing, installing on the pilot machine, tagging, versioning, and distributing remain the typist's acts (fourth forge menu, section III)."
