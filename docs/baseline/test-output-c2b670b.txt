@@ -1,0 +1,14 @@
+Writer's Kiosk baseline test run
+Commit: c2b670b4b6ef7ba9ba07160949efb0f4940778f0
+Date: 2026-08-27T19:52:39-04:00
+Run recorded: 2026-08-29, .NET SDK 10.0.302, pristine clone
+
+  Determining projects to restore...
+  Restored C:\Users\gbaco\AppData\Local\Temp\claude\C--Users-gbaco-Desktop-Open-Classroom-Foundry\82ec939c-517f-4733-bb10-745740ebe957\scratchpad\kiosk-baseline\WritersKiosk.csproj (in 209 ms).
+  Restored C:\Users\gbaco\AppData\Local\Temp\claude\C--Users-gbaco-Desktop-Open-Classroom-Foundry\82ec939c-517f-4733-bb10-745740ebe957\scratchpad\kiosk-baseline\tests\WritersKiosk.Tests\WritersKiosk.Tests.csproj (in 209 ms).
+  WritersKiosk -> C:\Users\gbaco\AppData\Local\Temp\claude\C--Users-gbaco-Desktop-Open-Classroom-Foundry\82ec939c-517f-4733-bb10-745740ebe957\scratchpad\kiosk-baseline\bin\Debug\net10.0-windows10.0.19041.0\writers-kiosk.dll
+  WritersKiosk.Tests -> C:\Users\gbaco\AppData\Local\Temp\claude\C--Users-gbaco-Desktop-Open-Classroom-Foundry\82ec939c-517f-4733-bb10-745740ebe957\scratchpad\kiosk-baseline\tests\WritersKiosk.Tests\bin\Debug\net10.0-windows10.0.19041.0\WritersKiosk.Tests.dll
+Test run for C:\Users\gbaco\AppData\Local\Temp\claude\C--Users-gbaco-Desktop-Open-Classroom-Foundry\82ec939c-517f-4733-bb10-745740ebe957\scratchpad\kiosk-baseline\tests\WritersKiosk.Tests\bin\Debug\net10.0-windows10.0.19041.0\WritersKiosk.Tests.dll (.NETCoreApp,Version=v10.0)
+A total of 1 test files matched the specified pattern.
+
+Passed!  - Failed:     0, Passed:    75, Skipped:     0, Total:    75, Duration: 402 ms - WritersKiosk.Tests.dll (net10.0)
