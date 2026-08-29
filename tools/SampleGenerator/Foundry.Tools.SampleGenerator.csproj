@@ -2,6 +2,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\src\Foundry.Modules.BuiltIn\Foundry.Modules.BuiltIn.csproj" />
+    <ProjectReference Include="..\..\src\Foundry.Modules.DeterministicPress\Foundry.Modules.DeterministicPress.csproj" />
     <ProjectReference Include="..\..\src\Foundry.Storage\Foundry.Storage.csproj" />
     <ProjectReference Include="..\..\src\Foundry.Rendering\Foundry.Rendering.csproj" />
   </ItemGroup>

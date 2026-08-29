@@ -148,7 +148,7 @@ Output claims stay honest: printed geometry is paper; the module claims high-con
 - Non-Latin handwriting scripts pending a qualified reviewer per script
 - Label Lathe until the asset/provenance kernel exists
 - Any generated decorative art (engine-wide policy)
-- Isometric/polar graph variants and music-notation content beyond blank staves (Notation Bench, entry 217, is a separate future module)
+- ~~Isometric~~/polar graph variants and music-notation content beyond blank staves (Notation Bench, entry 217, is a separate future module) — *isometric dot paper joined the Press's second wave by handover directive, 29 Aug 2026; polar variants and notation content remain deferred*
 - Any press whose input is prose rather than parameters — by definition, forever
 
 ## 11. Release placement

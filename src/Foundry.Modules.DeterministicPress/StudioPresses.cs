@@ -7,7 +7,7 @@ namespace Foundry.Modules.DeterministicPress;
 /// Manipulative Mint (spec §5.4): mathematical proportions are exact above all —
 /// a strip labeled one-third IS one-third, asserted in tests as arithmetic.
 /// </summary>
-public static class ManipulativeMint
+public static partial class ManipulativeMint
 {
     /// <summary>Unlabeled strips are where the reasoning lives (RC-14): learners name the parts.</summary>
     public static ArtifactDocument FractionStrips(IReadOnlyList<int> denominators, PageSize size = PageSize.Letter, double marginMm = BlankformsPress.DefaultMarginMm, bool labeled = true)

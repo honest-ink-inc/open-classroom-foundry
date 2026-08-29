@@ -113,13 +113,13 @@ public static class DeterministicPressRecipes
         "model involvement of any kind",
     ];
 
-    public static RecipeManifest Blankforms { get; } = Manifest("press.blankforms", "Print-perfect classroom classics from exact parameters: graph paper, grids, number lines, ten-frames, clock faces, staves.");
+    public static RecipeManifest Blankforms { get; } = Manifest("press.blankforms", "Print-perfect classroom classics from exact parameters: graph paper, grids, number lines, ten-frames, hundred charts, dot and isometric dot paper, clock faces, staves.");
 
     public static RecipeManifest Flashcards { get; } = Manifest("press.flashcards", "Registration-safe double-sided flashcards from a teacher's term/answer list.");
 
     public static RecipeManifest BookletGuide { get; } = Manifest("press.booklet-guide", "Saddle-stitch imposition guide: correct signature arithmetic for any page count.");
 
-    public static RecipeManifest Manipulatives { get; } = Manifest("press.manipulatives", "Cardstock math manipulatives with exact proportions: fraction strips, dice nets.");
+    public static RecipeManifest Manipulatives { get; } = Manifest("press.manipulatives", "Cardstock math manipulatives with exact proportions: fraction strips and circles, dice and box nets, spinner faces.");
 
     public static RecipeManifest Foldables { get; } = Manifest("press.foldables", "Interactive-notebook foldables with the solid-cut, dashed-fold line language and a printed legend.");
 
@@ -129,8 +129,12 @@ public static class DeterministicPressRecipes
 
     public static RecipeManifest Labels { get; } = Manifest("press.labels", "Consistent classroom label series, optionally bilingual, on dimensionally described sheets.");
 
+    public static RecipeManifest Calibration { get; } = Manifest("press.calibration", "Printer calibration and proof sheet: 100 mm rulers, a margin frame, duplex ring targets, and an ink-density ramp — the instrument that clears or convicts the printer before any artifact is blamed.");
+
+    public static RecipeManifest Puzzles { get; } = Manifest("press.puzzles", "Seeded-deterministic bingo boards and word searches from a teacher's own list: same seed, same pages, never random at print time.");
+
     public static IReadOnlyList<RecipeManifest> All { get; } =
-        [Blankforms, Flashcards, BookletGuide, Manipulatives, Foldables, BigPrint, Handwriting, Labels];
+        [Blankforms, Flashcards, BookletGuide, Manipulatives, Foldables, BigPrint, Handwriting, Labels, Calibration, Puzzles];
 
     private static RecipeManifest Manifest(string id, string purpose) => new(
         Id: id,

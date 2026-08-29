@@ -12,6 +12,7 @@
 using Foundry.Contracts;
 using Foundry.Domain;
 using Foundry.Modules.BuiltIn.AllAboard;
+using Foundry.Modules.DeterministicPress;
 using Foundry.Rendering;
 using Foundry.Storage;
 
@@ -154,6 +155,45 @@ var approvedFirstThen = ApprovalGate.Approve(
 var printReady = await renderer.RenderAsync(
     approvedFirstThen, new RenderRequest(RenderTarget.PrintHtml, RenderAudience.Learner), CancellationToken.None);
 await File.WriteAllBytesAsync(Path.Combine(outputDirectory, "first-then.print.html"), printReady.Content.ToArray());
+
+// Samples 4+: the Deterministic Press — calibration instrument and second wave
+// (handover 2026-08-29). All parameters, no prose; seeds fixed so the run is
+// byte-identical every time.
+string[] bingoEntries =
+[
+    "sum", "difference", "product", "quotient", "factor", "multiple",
+    "numerator", "denominator", "fraction", "decimal", "percent", "ratio",
+    "area", "perimeter", "volume", "angle", "vertex", "edge",
+    "prime", "even", "odd", "square", "cube", "half", "quarter",
+];
+
+var pressSamples = new (string Name, ArtifactDocument Document)[]
+{
+    ("calibration-proof", CalibrationPress.ProofPage()),
+    ("hundred-chart", BlankformsPress.HundredChart()),
+    ("first-quadrant-grid", BlankformsPress.CoordinateGrid(quadrants: GridQuadrants.First)),
+    ("dot-paper", BlankformsPress.DotPaper()),
+    ("isometric-dot-paper", BlankformsPress.IsometricDotPaper()),
+    ("fraction-circles", ManipulativeMint.FractionCircles([2, 3, 4, 6, 8])),
+    ("spinner-face", ManipulativeMint.SpinnerFace(4, ["1", "2", "3", "4"])),
+    ("box-net", ManipulativeMint.BoxNet()),
+    ("bingo-cards", PuzzlePress.BingoBoards(bingoEntries, cards: 2, seed: 20260829)),
+    ("word-search", PuzzlePress.WordSearch(
+        ["fraction", "decimal", "percent", "ratio", "graph", "sum"], seed: 20260829)),
+};
+
+foreach (var (name, document) in pressSamples)
+{
+    var approvedPress = ApprovalGate.Approve(
+        DraftArtifact.New(document, DataLane.Green),
+        "sample-teacher@example.org",
+        DocumentValidator.Validate(document),
+        approvedAt);
+    var pressPrint = await renderer.RenderAsync(
+        approvedPress, new RenderRequest(RenderTarget.PrintHtml, RenderAudience.Learner), CancellationToken.None);
+    await File.WriteAllBytesAsync(
+        Path.Combine(outputDirectory, $"press-{name}.print.html"), pressPrint.Content.ToArray());
+}
 
 Console.WriteLine($"Samples written to {outputDirectory}");
 return 0;

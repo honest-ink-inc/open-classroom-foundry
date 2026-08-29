@@ -9,6 +9,12 @@ public enum PageSize
     A4,
 }
 
+public enum GridQuadrants
+{
+    Four,
+    First,
+}
+
 /// <summary>
 /// The Blankforms Press (spec §5.1): parameterized print-perfect classics. Inputs
 /// are parameters, never prose; geometry is exact in millimeters; identical
@@ -53,23 +59,35 @@ public static partial class BlankformsPress
             $"Graph paper, {Fmt(pitchMm)} millimeter squares"));
     }
 
-    public static ArtifactDocument CoordinateGrid(PageSize size = PageSize.Letter, double pitchMm = 10, double marginMm = DefaultMarginMm)
+    /// <summary>Spec §5.1 "one or four quadrants": the first-quadrant variant puts the origin at the lower left, axes on the grid's own edges.</summary>
+    public static ArtifactDocument CoordinateGrid(PageSize size = PageSize.Letter, double pitchMm = 10, double marginMm = DefaultMarginMm, GridQuadrants quadrants = GridQuadrants.Four)
     {
         var document = GraphPaper(size, pitchMm, marginMm, majorEvery: 0);
         var graphic = (VectorGraphic)document.Nodes[0];
 
-        var centerX = graphic.WidthMm / 2;
-        var centerY = graphic.HeightMm / 2;
-        var primitives = new List<VectorPrimitive>(graphic.Primitives)
+        var right = graphic.WidthMm - marginMm;
+        var bottom = graphic.HeightMm - marginMm;
+        var primitives = new List<VectorPrimitive>(graphic.Primitives);
+
+        if (quadrants == GridQuadrants.First)
         {
-            new LineSeg(marginMm, centerY, graphic.WidthMm - marginMm, centerY, 0.7),
-            new LineSeg(centerX, marginMm, centerX, graphic.HeightMm - marginMm, 0.7),
-        };
+            primitives.Add(new LineSeg(marginMm, bottom, right, bottom, 0.7));
+            primitives.Add(new LineSeg(marginMm, marginMm, marginMm, bottom, 0.7));
+        }
+        else
+        {
+            var centerX = graphic.WidthMm / 2;
+            var centerY = graphic.HeightMm / 2;
+            primitives.Add(new LineSeg(marginMm, centerY, right, centerY, 0.7));
+            primitives.Add(new LineSeg(centerX, marginMm, centerX, bottom, 0.7));
+        }
 
         return Wrap(graphic with
         {
             Primitives = primitives,
-            Description = $"Four-quadrant coordinate grid, {Fmt(pitchMm)} millimeter squares",
+            Description = quadrants == GridQuadrants.First
+                ? $"First-quadrant coordinate grid, {Fmt(pitchMm)} millimeter squares, origin at the lower left"
+                : $"Four-quadrant coordinate grid, {Fmt(pitchMm)} millimeter squares",
         });
     }
 
