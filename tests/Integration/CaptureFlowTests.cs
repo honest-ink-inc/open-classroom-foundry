@@ -1,4 +1,3 @@
-using System.Drawing;
 using System.Drawing.Imaging;
 using System.Text;
 using Foundry.Application;
@@ -8,7 +7,6 @@ using Foundry.Infrastructure.Simulated;
 using Foundry.Infrastructure.Windows;
 using Foundry.Modules.BuiltIn.BoardToBrief;
 using Foundry.Storage;
-using Xunit;
 
 namespace Foundry.Tests.Integration;
 

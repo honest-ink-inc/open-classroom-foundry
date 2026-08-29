@@ -41,8 +41,8 @@ public sealed class OcfprojProjectStore(string rootDirectory, IRenderer renderer
             .SelectMany(node => node switch
             {
                 ImageReference image => new[] { image.Asset },
-                StepRow { Symbol: { } symbol } => new[] { symbol.Asset },
-                _ => Array.Empty<AssetId>(),
+                StepRow { Symbol: { } symbol } => [symbol.Asset],
+                _ => [],
             })
             .Distinct()
             .ToList();

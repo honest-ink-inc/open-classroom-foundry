@@ -1,5 +1,4 @@
 using System.Xml.Linq;
-using Xunit;
 
 namespace Foundry.Tests.Unit;
 
@@ -26,9 +25,7 @@ public class ArchitectureRulesTests
     {
         var path = Path.Combine(RepoRoot(), relativeCsprojPath);
         var document = XDocument.Load(path);
-        return document.Descendants("ProjectReference")
-            .Select(r => (string?)r.Attribute("Include") ?? string.Empty)
-            .ToList();
+        return [.. document.Descendants("ProjectReference").Select(r => (string?)r.Attribute("Include") ?? string.Empty)];
     }
 
     [Theory]

@@ -3,7 +3,6 @@ using System.Diagnostics;
 using System.IO;
 using System.Windows.Automation;
 using Foundry.App.WinForms;
-using Xunit;
 
 namespace Foundry.Tests.UiAutomation;
 

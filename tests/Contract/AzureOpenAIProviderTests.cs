@@ -4,7 +4,6 @@ using Foundry.Domain;
 using Foundry.Inference;
 using Foundry.Inference.AzureOpenAI;
 using Foundry.Inference.Synthetic;
-using Xunit;
 
 namespace Foundry.Tests.Contract;
 

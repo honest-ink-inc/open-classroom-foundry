@@ -1,6 +1,4 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
-using Foundry.Inference;
-
 namespace Foundry.Inference.Synthetic;
 
 /// <summary>One scripted provider response: an optional delay, then a result.</summary>

@@ -3,7 +3,6 @@ using Foundry.Contracts;
 using Foundry.Domain;
 using Foundry.Infrastructure.Simulated;
 using Foundry.Infrastructure.Windows;
-using Xunit;
 
 namespace Foundry.Tests.Integration;
 

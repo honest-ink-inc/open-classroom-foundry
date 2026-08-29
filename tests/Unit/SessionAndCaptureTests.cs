@@ -2,7 +2,6 @@ using Foundry.Application;
 using Foundry.Contracts;
 using Foundry.Domain;
 using Foundry.Infrastructure.Simulated;
-using Xunit;
 
 namespace Foundry.Tests.Unit;
 
@@ -60,7 +59,7 @@ public class CaptureSourceTests
         var source = new ByteImportCaptureSource(store);
 
         var envelope = await source.CaptureAsync(
-            new CaptureRequest(ByteImportCaptureSource.Kind, "image/png", new byte[] { 9, 9, 9 }),
+            new CaptureRequest(ByteImportCaptureSource.Kind, "image/png", "\t\t\t"u8.ToArray()),
             CancellationToken.None);
 
         Assert.Equal(DataLane.Amber, envelope.Lane);

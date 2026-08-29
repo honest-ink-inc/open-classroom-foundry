@@ -4,7 +4,6 @@ using Foundry.Domain;
 using Foundry.Modules.BuiltIn.AllAboard;
 using Foundry.Rendering;
 using Foundry.Storage;
-using Xunit;
 
 namespace Foundry.Tests.InstructionalEvals;
 

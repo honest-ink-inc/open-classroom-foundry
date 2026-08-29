@@ -1,6 +1,5 @@
 using Foundry.Domain;
 using Foundry.Modules.BuiltIn.BoardToBrief;
-using Xunit;
 
 namespace Foundry.Tests.Unit;
 

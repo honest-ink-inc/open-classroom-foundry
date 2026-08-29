@@ -4,7 +4,6 @@ using Foundry.Domain;
 using Foundry.Inference;
 using Foundry.Inference.Synthetic;
 using Foundry.Modules.BuiltIn.AllAboard;
-using Xunit;
 
 namespace Foundry.Tests.Contract;
 

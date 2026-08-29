@@ -1,6 +1,5 @@
 using Foundry.Application;
 using Foundry.Domain;
-using Xunit;
 
 namespace Foundry.Tests.Unit;
 

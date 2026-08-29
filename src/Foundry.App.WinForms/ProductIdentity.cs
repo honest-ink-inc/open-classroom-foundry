@@ -13,5 +13,5 @@ public static class ProductIdentity
     public const string Subtitle = "the classroom foundry";
 
     /// <summary>Internal identifier used for storage paths, diagnostics, and policy — never the public name.</summary>
-    public const string InternalId = Foundry.Domain.EngineIdentity.InternalId;
+    public const string InternalId = Domain.EngineIdentity.InternalId;
 }

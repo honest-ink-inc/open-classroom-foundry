@@ -4,7 +4,6 @@ using Foundry.Application;
 using Foundry.Contracts;
 using Foundry.Domain;
 using Foundry.Infrastructure.Simulated;
-using Xunit;
 
 namespace Foundry.Tests.Integration;
 

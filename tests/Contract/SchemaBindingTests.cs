@@ -6,7 +6,6 @@ using Foundry.Inference;
 using Foundry.Inference.AzureOpenAI;
 using Foundry.Inference.Synthetic;
 using Foundry.Modules.BuiltIn.AllAboard;
-using Xunit;
 
 namespace Foundry.Tests.Contract;
 
@@ -54,7 +53,7 @@ public class SchemaBindingTests
 
         await Provider(handler, registry).CompleteAsync(Previewed("schema.all-aboard.v1"), CancellationToken.None);
 
-        Assert.Contains("\"type\":\"json_schema\"", handler.LastBody!, StringComparison.Ordinal);
+        Assert.Contains("\"type\":\"json_schema\"", handler.LastBody, StringComparison.Ordinal);
         Assert.Contains("\"strict\":true", handler.LastBody, StringComparison.Ordinal);
         Assert.Contains("\"additionalProperties\":false", handler.LastBody, StringComparison.Ordinal);
         Assert.Contains("schema_all-aboard_v1".Replace("-", "-"), handler.LastBody, StringComparison.Ordinal);
@@ -67,7 +66,7 @@ public class SchemaBindingTests
 
         await Provider(handler, null).CompleteAsync(Previewed("schema.unregistered.v1"), CancellationToken.None);
 
-        Assert.Contains("\"type\":\"json_object\"", handler.LastBody!, StringComparison.Ordinal);
+        Assert.Contains("\"type\":\"json_object\"", handler.LastBody, StringComparison.Ordinal);
         Assert.DoesNotContain("json_schema", handler.LastBody, StringComparison.Ordinal);
     }
 

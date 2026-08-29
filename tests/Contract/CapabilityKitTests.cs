@@ -1,6 +1,5 @@
 using Foundry.Inference;
 using Foundry.Inference.Synthetic;
-using Xunit;
 
 namespace Foundry.Tests.Contract;
 

@@ -155,7 +155,10 @@ public static class SourceLensBuilder
 
         return string.Join(". ", parts) + ".";
 
-        static string Field(string value) => string.IsNullOrWhiteSpace(value) ? Unknown : value.Trim().TrimEnd('.');
+        static string Field(string value)
+        {
+            return string.IsNullOrWhiteSpace(value) ? Unknown : value.Trim().TrimEnd('.');
+        }
     }
 
     private static bool IsUnknown(string value)

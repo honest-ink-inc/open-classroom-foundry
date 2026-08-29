@@ -6,7 +6,6 @@ using Foundry.Domain;
 using Foundry.Modules.BuiltIn.AllAboard;
 using Foundry.Rendering;
 using Foundry.Storage;
-using Xunit;
 
 namespace Foundry.Tests.Integration;
 
@@ -135,7 +134,7 @@ public class OcfprojStoreTests : IDisposable
         Directory.CreateDirectory(_root);
         var path = _store.PathFor("bomb");
         using (var stream = new FileStream(path, FileMode.Create, FileAccess.Write))
-        using (var archive = new System.IO.Compression.ZipArchive(stream, System.IO.Compression.ZipArchiveMode.Create))
+        using (var archive = new ZipArchive(stream, ZipArchiveMode.Create))
         {
             var entry = archive.CreateEntry("manifest.json");
             await using var entryStream = entry.Open();

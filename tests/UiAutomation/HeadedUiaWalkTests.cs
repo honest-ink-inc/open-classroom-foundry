@@ -2,7 +2,6 @@
 using System.Diagnostics;
 using System.IO;
 using System.Windows.Automation;
-using Xunit;
 
 namespace Foundry.Tests.UiAutomation;
 
@@ -70,7 +69,7 @@ public sealed class HeadedUiaWalkTests
         using var app = new HeadedApp("review");
 
         // Step 1: the title announces the product and the draft state.
-        Assert.Contains(Foundry.App.WinForms.ProductIdentity.PublicName, app.Window.Current.Name, StringComparison.Ordinal);
+        Assert.Contains(App.WinForms.ProductIdentity.PublicName, app.Window.Current.Name, StringComparison.Ordinal);
         Assert.Contains("draft", app.Window.Current.Name, StringComparison.OrdinalIgnoreCase);
 
         // Step 2: every keyboard-reachable element carries a name — over the

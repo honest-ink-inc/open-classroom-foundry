@@ -1,7 +1,6 @@
 using Foundry.Domain;
 using Foundry.Modules.BuiltIn.ExitLens;
 using Foundry.Modules.BuiltIn.RubricRelay;
-using Xunit;
 
 namespace Foundry.Tests.Unit;
 

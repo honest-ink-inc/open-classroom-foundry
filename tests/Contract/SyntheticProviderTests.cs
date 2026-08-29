@@ -1,7 +1,6 @@
 using Foundry.Domain;
 using Foundry.Inference;
 using Foundry.Inference.Synthetic;
-using Xunit;
 
 namespace Foundry.Tests.Contract;
 
@@ -96,10 +95,13 @@ public class SyntheticProviderTests
     [Fact]
     public async Task Identical_scripts_produce_identical_sequences()
     {
-        static SyntheticInferenceProvider Build() => new(
+        static SyntheticInferenceProvider Build()
+        {
+            return new(
             capabilities: null,
             SyntheticStep.Outcome(InferenceOutcome.ProviderError),
             SyntheticStep.Structured("""{"ok":true}"""));
+        }
 
         var first = Build();
         var second = Build();

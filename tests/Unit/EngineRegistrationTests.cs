@@ -1,7 +1,6 @@
 using Foundry.Application;
 using Foundry.Contracts;
 using Microsoft.Extensions.DependencyInjection;
-using Xunit;
 
 namespace Foundry.Tests.Unit;
 

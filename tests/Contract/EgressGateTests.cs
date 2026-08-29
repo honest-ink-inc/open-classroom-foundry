@@ -2,7 +2,6 @@ using System.Reflection;
 using Foundry.Domain;
 using Foundry.Inference;
 using Foundry.Inference.Synthetic;
-using Xunit;
 
 namespace Foundry.Tests.Contract;
 

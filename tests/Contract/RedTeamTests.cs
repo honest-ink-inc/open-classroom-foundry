@@ -9,7 +9,6 @@ using Foundry.Inference;
 using Foundry.Inference.Synthetic;
 using Foundry.Modules.BuiltIn.AllAboard;
 using Foundry.Rendering;
-using Xunit;
 
 namespace Foundry.Tests.Contract;
 

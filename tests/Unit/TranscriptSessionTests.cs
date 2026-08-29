@@ -1,6 +1,5 @@
 using Foundry.Application;
 using Foundry.Contracts;
-using Xunit;
 
 namespace Foundry.Tests.Unit;
 
@@ -22,7 +21,7 @@ public class TranscriptSessionTests
 
         Assert.Equal(2, session.UnresolvedCount);
         Assert.False(session.IsComplete);
-        Assert.Throws<InvalidOperationException>(() => session.VerifiedText());
+        Assert.Throws<InvalidOperationException>(session.VerifiedText);
     }
 
     [Fact]

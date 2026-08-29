@@ -2,7 +2,6 @@ using System.Drawing.Printing;
 using Foundry.Domain;
 using Foundry.Infrastructure.Windows;
 using Foundry.Rendering;
-using Xunit;
 
 namespace Foundry.Tests.Integration;
 

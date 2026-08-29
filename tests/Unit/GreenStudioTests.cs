@@ -3,7 +3,6 @@ using Foundry.Domain;
 using Foundry.Modules.BuiltIn.LessonLoom;
 using Foundry.Modules.BuiltIn.ScaffoldSmith;
 using Foundry.Modules.BuiltIn.TalkMoves;
-using Xunit;
 
 namespace Foundry.Tests.Unit;
 

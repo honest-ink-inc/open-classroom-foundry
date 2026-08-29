@@ -1,6 +1,5 @@
 using Foundry.Domain;
 using Foundry.Modules.DeterministicPress;
-using Xunit;
 
 namespace Foundry.Tests.Unit;
 
@@ -202,7 +201,7 @@ public class PuzzlePressTests
         // Two cards from one run are (deterministically) different draws.
         Assert.NotEqual(
             cards[0].Primitives.OfType<TextLabel>().Select(l => l.Text).ToList(),
-            cards[1].Primitives.OfType<TextLabel>().Select(l => l.Text).ToList());
+            [.. cards[1].Primitives.OfType<TextLabel>().Select(l => l.Text)]);
     }
 
     [Fact]

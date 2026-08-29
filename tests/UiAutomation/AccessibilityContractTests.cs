@@ -2,7 +2,6 @@
 using Foundry.App.WinForms;
 using Foundry.Application;
 using Foundry.Domain;
-using Xunit;
 
 namespace Foundry.Tests.UiAutomation;
 
@@ -79,7 +78,7 @@ public class ReviewSurfaceContractTests
         {
             var list = (ListBox)ByName(form, "Draft elements");
             list.SelectedIndex = 1;
-            var moved = (string)list.Items[1]!;
+            var moved = (string)list.Items[1];
 
             ((Button)ByName(form, "Move down")).PerformClick();
 

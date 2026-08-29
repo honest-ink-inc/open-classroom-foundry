@@ -8,9 +8,9 @@
 #   [x] Dependency inventory artifact (SBOM-lite via `dotnet list package`)
 #   [x] Coverage collected (Cobertura via coverlet collector) and published as an artifact
 #   [x] Coverage THRESHOLD: Domain+Application+Contracts line coverage >= 80% (measured 88.6% at enablement)
-#   [x] Formatting gate: whitespace verification (EOL/indentation/final-newline). Style-rule
-#       enforcement stays out deliberately — the blanket analyzer severity would drag
-#       info-level suggestions into the gate; revisit with a curated .editorconfig pass.
+#   [x] Formatting gate: FULL `dotnet format --verify-no-changes` (whitespace + curated style
+#       + analyzers). The curated .editorconfig pass (handover 2026-08-29, forge item 5)
+#       silences only the rules the house deliberately varies on; everything else gates.
 #   [ ] Full SBOM (CycloneDX) and license audit tooling — CycloneDX blocked on .slnx support
 #   [x] Deterministic rendering comparisons (byte-identical render tests in the Rendering suite)
 #   [x] UIA accessibility harness (tests/UiAutomation): in-process contract tests always run;
@@ -40,8 +40,8 @@ jobs:
       - name: Build (warnings are errors)
         run: dotnet build OpenClassroomFoundry.slnx --no-restore --configuration Release
 
-      - name: Whitespace format gate
-        run: dotnet format whitespace OpenClassroomFoundry.slnx --verify-no-changes
+      - name: Format gate (whitespace + curated style + analyzers)
+        run: dotnet format OpenClassroomFoundry.slnx --verify-no-changes
 
       - name: Test with coverage
         run: dotnet test OpenClassroomFoundry.slnx --no-build --configuration Release --logger "trx;LogFileName=test-results.trx" --collect:"XPlat Code Coverage"

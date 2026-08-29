@@ -1,6 +1,4 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
-using Xunit;
-
 // Headed windows and STA form fixtures must not race each other: one at a time.
 [assembly: CollectionBehavior(DisableTestParallelization = true)]
 

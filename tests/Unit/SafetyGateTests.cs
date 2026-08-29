@@ -1,7 +1,6 @@
 using Foundry.Application;
 using Foundry.Contracts;
 using Foundry.Domain;
-using Xunit;
 
 namespace Foundry.Tests.Unit;
 

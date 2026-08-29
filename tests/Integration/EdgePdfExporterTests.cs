@@ -2,7 +2,6 @@ using Foundry.Contracts;
 using Foundry.Domain;
 using Foundry.Infrastructure.Windows;
 using Foundry.Rendering;
-using Xunit;
 
 namespace Foundry.Tests.Integration;
 
@@ -37,7 +36,7 @@ public class EdgePdfExporterTests
         }
         finally
         {
-            var directory = Path.GetDirectoryName(destination)!;
+            var directory = Path.GetDirectoryName(destination);
             if (Directory.Exists(directory))
             {
                 Directory.Delete(directory, recursive: true);

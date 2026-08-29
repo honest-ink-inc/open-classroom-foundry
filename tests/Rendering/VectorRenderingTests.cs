@@ -3,7 +3,6 @@ using System.Text.Json;
 using Foundry.Contracts;
 using Foundry.Domain;
 using Foundry.Rendering;
-using Xunit;
 
 namespace Foundry.Tests.Rendering;
 

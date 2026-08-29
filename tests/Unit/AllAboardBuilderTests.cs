@@ -1,7 +1,6 @@
 using Foundry.Contracts;
 using Foundry.Domain;
 using Foundry.Modules.BuiltIn.AllAboard;
-using Xunit;
 
 namespace Foundry.Tests.Unit;
 

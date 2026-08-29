@@ -5,7 +5,6 @@ using Foundry.Modules.BuiltIn.LessonLoom;
 using Foundry.Modules.BuiltIn.ScaffoldSmith;
 using Foundry.Modules.BuiltIn.TalkMoves;
 using Foundry.Rendering;
-using Xunit;
 
 namespace Foundry.Tests.InstructionalEvals;
 
