@@ -3,7 +3,7 @@
 **Frozen:** 29 August 2026
 **Repository:** https://github.com/Spacejunk-io/writers-kiosk-csharp
 **Commit:** `c2b670b4b6ef7ba9ba07160949efb0f4940778f0` — `v1.6.1: install-free silent printing; virtual-printer guard; frame-drop`
-**Tag:** `foundry-baseline-0` created in the local clone at `Desktop\writers-kiosk-csharp` (working tree verified clean at exactly this commit; the tag should be pushed to GitHub — see open actions)
+**Tag:** `foundry-baseline-0` — created in the local clone at `Desktop\writers-kiosk-csharp` (working tree verified clean at exactly this commit) and **pushed to GitHub 29 August 2026**, confirmed by remote read-back
 **Test evidence:** all **75 tests pass** — run 29 August 2026 from a pristine clone at the frozen commit, .NET SDK 10.0.302 → [test-output-c2b670b.txt](test-output-c2b670b.txt)
 
 The remote HEAD and the local clone were both at the audited commit at freeze time, so no divergence exists to reconcile.
@@ -39,4 +39,4 @@ Target framework `net10.0-windows10.0.19041.0`; 2,950 lines of C# across 14 file
 
 ## Open actions
 
-- Push the `foundry-baseline-0` tag to GitHub (`git push origin foundry-baseline-0` from `Desktop\writers-kiosk-csharp`) — left to the typist because it publishes to the remote.
+None. The freeze is complete: commit audited, tag published (`git ls-remote --tags origin foundry-baseline-0` returns `c2b670b4b6ef7ba9ba07160949efb0f4940778f0`), and test evidence preserved. Any future work on the kiosk happens on new commits; the baseline is immutable by convention and citable by tag.
