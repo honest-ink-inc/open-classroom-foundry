@@ -1,5 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
+using System.Globalization;
 using System.IO.Compression;
+using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
 using Foundry.Contracts;
@@ -23,6 +25,14 @@ public sealed class OcfprojProjectStore(string rootDirectory, IRenderer renderer
 
     /// <summary>R2-3: a generous ceiling for classroom artifacts, a wall for decompression bombs. The full hostile-package suite remains scheduled (plan §7).</summary>
     public const long MaxEntryBytes = 64L * 1024 * 1024;
+
+    /// <summary>Zip records DOS timestamps, which begin in 1980 and end in 2107; the save instant is clamped into that window.</summary>
+    private static readonly DateTimeOffset ZipEpoch = new(1980, 1, 1, 0, 0, 0, TimeSpan.Zero);
+
+    private static readonly DateTimeOffset ZipLastInstant = new(2107, 12, 31, 23, 59, 58, TimeSpan.Zero);
+
+    /// <summary>ASCII unit separator: it joins the id's fields without any of them being able to forge a boundary.</summary>
+    private const char UnitSeparator = (char)0x1F;
 
     public async Task SaveGreenProjectAsync(ApprovedArtifact artifact, ProjectSaveRequest request, CancellationToken cancellationToken)
     {
@@ -63,7 +73,7 @@ public sealed class OcfprojProjectStore(string rootDirectory, IRenderer renderer
 
         var manifest = new ProjectManifest(
             SchemaVersion: EngineIdentity.ProjectSchemaVersion,
-            ProjectId: Guid.NewGuid(),
+            ProjectId: DeterministicProjectId(request),
             ModuleId: request.ModuleId,
             ModuleVersion: request.RecipeVersion,
             RecipeId: request.RecipeId,
@@ -86,18 +96,20 @@ public sealed class OcfprojProjectStore(string rootDirectory, IRenderer renderer
 
         using var stream = new FileStream(path, FileMode.Create, FileAccess.Write);
         using var archive = new ZipArchive(stream, ZipArchiveMode.Create);
+        var stamp = ZipStamp(request.SavedAtUtc);
 
-        await WriteEntryAsync(archive, "manifest.json", JsonSerializer.SerializeToUtf8Bytes(manifest, StorageJson.Options), cancellationToken).ConfigureAwait(false);
-        await WriteEntryAsync(archive, "artifact.json", JsonSerializer.SerializeToUtf8Bytes(document, StorageJson.Options), cancellationToken).ConfigureAwait(false);
-        await WriteEntryAsync(archive, "snapshot.html", snapshot.Content.ToArray(), cancellationToken).ConfigureAwait(false);
+        await WriteEntryAsync(archive, "manifest.json", JsonSerializer.SerializeToUtf8Bytes(manifest, StorageJson.Options), stamp, cancellationToken).ConfigureAwait(false);
+        await WriteEntryAsync(archive, "artifact.json", JsonSerializer.SerializeToUtf8Bytes(document, StorageJson.Options), stamp, cancellationToken).ConfigureAwait(false);
+        await WriteEntryAsync(archive, "snapshot.html", snapshot.Content.ToArray(), stamp, cancellationToken).ConfigureAwait(false);
 
         foreach (var (provenance, content) in resolved)
         {
-            await WriteEntryAsync(archive, $"assets/{provenance.FileName}", content.ToArray(), cancellationToken).ConfigureAwait(false);
+            await WriteEntryAsync(archive, $"assets/{provenance.FileName}", content.ToArray(), stamp, cancellationToken).ConfigureAwait(false);
             await WriteEntryAsync(
                 archive,
                 $"provenance/{provenance.Id.Value}.json",
                 JsonSerializer.SerializeToUtf8Bytes(provenance, StorageJson.Options),
+                stamp,
                 cancellationToken).ConfigureAwait(false);
         }
     }
@@ -171,9 +183,51 @@ public sealed class OcfprojProjectStore(string rootDirectory, IRenderer renderer
             : cleaned;
     }
 
-    private static async Task WriteEntryAsync(ZipArchive archive, string name, byte[] content, CancellationToken cancellationToken)
+    /// <summary>
+    /// The project id is a function of the project, never of the clock: the same
+    /// module, recipe, destination, and save instant reproduce the same id, so an
+    /// identical save is an identical package. Nothing reads this field, which is
+    /// precisely why a random value bought nothing and cost determinism. Name-based
+    /// over SHA-256, stamped version 8 (RFC 9562 §5.8, custom).
+    /// </summary>
+    private static Guid DeterministicProjectId(ProjectSaveRequest request)
+    {
+        var name = string.Join(
+            UnitSeparator,
+            EngineIdentity.ProjectSchemaVersion,
+            request.ModuleId,
+            request.RecipeId,
+            request.RecipeVersion,
+            Sanitize(request.DestinationHint),
+            request.SavedAtUtc.ToUniversalTime().ToString("O", CultureInfo.InvariantCulture));
+
+        var bytes = SHA256.HashData(Encoding.UTF8.GetBytes(name))[..16];
+        bytes[6] = (byte)((bytes[6] & 0x0F) | 0x80);
+        bytes[8] = (byte)((bytes[8] & 0x3F) | 0x80);
+        return new Guid(bytes, bigEndian: true);
+    }
+
+    /// <summary>
+    /// A request carrying no instant (the record's default) writes the zip epoch
+    /// rather than throwing, and no instant reaches the archive from the clock.
+    /// DOS stamps hold two-second granularity; the truncation is deterministic.
+    /// </summary>
+    private static DateTimeOffset ZipStamp(DateTimeOffset savedAt)
+    {
+        var utc = savedAt.ToUniversalTime();
+        if (utc < ZipEpoch)
+        {
+            return ZipEpoch;
+        }
+
+        return utc > ZipLastInstant ? ZipLastInstant : utc;
+    }
+
+    private static async Task WriteEntryAsync(
+        ZipArchive archive, string name, byte[] content, DateTimeOffset stamp, CancellationToken cancellationToken)
     {
         var entry = archive.CreateEntry(name, CompressionLevel.Optimal);
+        entry.LastWriteTime = stamp;
         await using var entryStream = entry.Open();
         await entryStream.WriteAsync(content, cancellationToken).ConfigureAwait(false);
     }

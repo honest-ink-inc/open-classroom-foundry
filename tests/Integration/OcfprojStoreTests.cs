@@ -198,6 +198,75 @@ public class OcfprojStoreTests : IDisposable
     }
 
     [Fact]
+    public async Task Entry_stamps_come_from_the_save_instant_not_the_clock()
+    {
+        // The cause that hid: two fast runs share a DOS two-second window and
+        // look identical, so this pins the stamp itself rather than comparing
+        // runs. Asserted on .DateTime, which is timezone-independent here
+        // because the writer stamps from UTC.
+        await _store.SaveGreenProjectAsync(ApprovedStrip(), Request("stamped"), CancellationToken.None);
+
+        using var archive = ZipFile.OpenRead(_store.PathFor("stamped"));
+        Assert.NotEmpty(archive.Entries);
+        foreach (var entry in archive.Entries)
+        {
+            Assert.Equal(SomeInstant.UtcDateTime, entry.LastWriteTime.DateTime);
+        }
+    }
+
+    [Fact]
+    public async Task The_project_id_is_derived_from_the_save_not_from_chance()
+    {
+        // The cause that actually differed across sample runs: Guid.NewGuid().
+        await _store.SaveGreenProjectAsync(ApprovedStrip(), Request("derived"), CancellationToken.None);
+        var first = (await _store.LoadProjectAsync("derived", CancellationToken.None)).Manifest.ProjectId;
+
+        await _store.SaveGreenProjectAsync(ApprovedStrip(), Request("derived"), CancellationToken.None);
+        var second = (await _store.LoadProjectAsync("derived", CancellationToken.None)).Manifest.ProjectId;
+
+        Assert.Equal(first, second);
+        Assert.NotEqual(Guid.Empty, first);
+
+        // Different projects still get different ids: the id identifies the
+        // project, it does not merely repeat.
+        await _store.SaveGreenProjectAsync(ApprovedStrip(), Request("derived-elsewhere"), CancellationToken.None);
+        var other = (await _store.LoadProjectAsync("derived-elsewhere", CancellationToken.None)).Manifest.ProjectId;
+        Assert.NotEqual(first, other);
+    }
+
+    [Fact]
+    public async Task Two_identical_saves_are_byte_identical()
+    {
+        // The whole claim the CI determinism gate makes, stated here as
+        // arithmetic: the writer is a pure function of its inputs. This test
+        // standing green is what permits the gate's exclusion to be deleted.
+        var artifact = ApprovedStrip();
+
+        await _store.SaveGreenProjectAsync(artifact, Request("twice"), CancellationToken.None);
+        var first = await File.ReadAllBytesAsync(_store.PathFor("twice"));
+
+        await _store.SaveGreenProjectAsync(artifact, Request("twice"), CancellationToken.None);
+        var second = await File.ReadAllBytesAsync(_store.PathFor("twice"));
+
+        Assert.Equal(first, second);
+    }
+
+    [Fact]
+    public async Task A_request_with_no_save_instant_writes_the_zip_epoch_rather_than_throwing()
+    {
+        // ProjectSaveRequest.SavedAtUtc defaults to DateTimeOffset.MinValue,
+        // which no DOS timestamp can hold; the clamp keeps the save quiet.
+        var artifact = ApprovalGate.Approve(
+            DraftArtifact.New(new ArtifactDocument([new Heading(1, "Undated")]), DataLane.Green),
+            "teacher@example.org", [], SomeInstant);
+
+        await _store.SaveGreenProjectAsync(artifact, new ProjectSaveRequest("undated"), CancellationToken.None);
+
+        using var archive = ZipFile.OpenRead(_store.PathFor("undated"));
+        Assert.Equal(new DateTime(1980, 1, 1, 0, 0, 0, DateTimeKind.Unspecified), archive.Entries[0].LastWriteTime.DateTime);
+    }
+
+    [Fact]
     public void Destination_hints_cannot_smuggle_paths()
     {
         Assert.EndsWith("watering-plants.ocfproj", _store.PathFor("..\\..\\watering-plants"), StringComparison.Ordinal);
