@@ -13,6 +13,7 @@ Projects are created during Days 16–30 (implementation plan §14). The directo
 | `Foundry.Inference.AzureOpenAI` | District Azure OpenAI adapter (stateless, allowlisted) | Hold secrets, tools, or cross-job state (§6.7) |
 | `Foundry.Inference.Local` | Post-0.3 local-model adapter, same capability-test kit | Be required by any module |
 | `Foundry.Inference.Synthetic` | Deterministic scripted provider for CI and offline development (plan §6.7) | Ship as a district inference path or use randomness |
+| `Foundry.Infrastructure.Simulated` | Virtual bench: camera simulator, virtual print sink, recording exporter/project store (plan §12) | Reference anything beyond Domain and Contracts |
 | `Foundry.Rendering` | Escaped HTML and print renderers over the semantic ArtifactDocument | Accept a DraftArtifact at a sink (ADR-004) |
 | `Foundry.Storage` | `.ocfproj` packages, safe path handling, rebuildable index | Treat the index as the source of truth (ADR-003) |
 | `Foundry.Modules.DeterministicPress` | Module Zero: the eight presses | Reference inference, OCR, capture, or redaction seams — enforced by a build-failing architecture test |

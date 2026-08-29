@@ -20,6 +20,7 @@ public static class FoundryEngineServiceCollectionExtensions
         services.TryAddSingleton<IDataPolicyEvaluator, DefaultDataPolicyEvaluator>();
         services.TryAddSingleton<IArtifactValidator, DefaultArtifactValidator>();
         services.TryAddSingleton<IDiagnosticsSink, InMemoryDiagnosticsSink>();
+        services.TryAddSingleton<ISessionByteStore, InMemorySessionByteStore>();
 
         return services;
     }

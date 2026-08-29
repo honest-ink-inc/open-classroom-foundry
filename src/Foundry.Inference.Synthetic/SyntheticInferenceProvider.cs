@@ -48,7 +48,7 @@ public sealed class SyntheticInferenceProvider : IInferenceProvider
         return Task.FromResult(_capabilities);
     }
 
-    public async Task<InferenceResult> CompleteAsync(InferenceRequest request, CancellationToken cancellationToken)
+    public async Task<InferenceResult> CompleteAsync(PreviewedRequest request, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(request);
         cancellationToken.ThrowIfCancellationRequested();

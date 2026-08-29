@@ -70,6 +70,16 @@ public class ArchitectureRulesTests
         Assert.DoesNotContain(references, r => r.Contains("Infrastructure.Windows", StringComparison.OrdinalIgnoreCase));
     }
 
+    [Fact]
+    public void Simulated_infrastructure_references_only_domain_and_contracts()
+    {
+        var references = ProjectReferences(@"src\Foundry.Infrastructure.Simulated\Foundry.Infrastructure.Simulated.csproj");
+
+        Assert.Equal(2, references.Count);
+        Assert.Contains(references, r => r.Contains("Foundry.Domain", StringComparison.OrdinalIgnoreCase));
+        Assert.Contains(references, r => r.Contains("Foundry.Contracts", StringComparison.OrdinalIgnoreCase));
+    }
+
     [Theory]
     [InlineData(@"src\Foundry.Inference.AzureOpenAI\Foundry.Inference.AzureOpenAI.csproj")]
     [InlineData(@"src\Foundry.Inference.Local\Foundry.Inference.Local.csproj")]

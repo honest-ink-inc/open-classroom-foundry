@@ -68,5 +68,10 @@ public interface IInferenceProvider
 {
     Task<ProviderCapabilities> GetCapabilitiesAsync(CancellationToken cancellationToken);
 
-    Task<InferenceResult> CompleteAsync(InferenceRequest request, CancellationToken cancellationToken);
+    /// <summary>
+    /// Accepts only a <see cref="PreviewedRequest"/>: Gate A is structural. A raw
+    /// <see cref="InferenceRequest"/> cannot reach any provider without the teacher
+    /// confirming the exact outbound payload through <see cref="EgressGate"/>.
+    /// </summary>
+    Task<InferenceResult> CompleteAsync(PreviewedRequest request, CancellationToken cancellationToken);
 }

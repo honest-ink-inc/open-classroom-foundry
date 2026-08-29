@@ -14,12 +14,18 @@ public class SyntheticProviderTests
         Parts: [new TextPart("grid: 5mm")],
         PayloadLane: DataLane.Green);
 
+    private static PreviewedRequest Previewed()
+        => EgressGate.Confirm(
+            EgressGate.Preview(SomeRequest(), SyntheticInferenceProvider.DefaultCapabilities),
+            "teacher@example.org",
+            new DateTimeOffset(2026, 8, 29, 12, 0, 0, TimeSpan.Zero));
+
     [Fact]
     public async Task An_unscripted_provider_answers_with_a_benign_structured_object()
     {
         var provider = new SyntheticInferenceProvider();
 
-        var result = await provider.CompleteAsync(SomeRequest(), CancellationToken.None);
+        var result = await provider.CompleteAsync(Previewed(), CancellationToken.None);
 
         Assert.True(result.IsSuccess);
         Assert.Equal(SyntheticInferenceProvider.EmptyStructuredOutput, result.StructuredJson);
@@ -34,10 +40,10 @@ public class SyntheticProviderTests
             SyntheticStep.Structured("""{"steps":3}"""),
             SyntheticStep.Outcome(InferenceOutcome.Refusal));
 
-        Assert.Equal(InferenceOutcome.RateLimited, (await provider.CompleteAsync(SomeRequest(), CancellationToken.None)).Outcome);
-        Assert.Equal("""{"steps":3}""", (await provider.CompleteAsync(SomeRequest(), CancellationToken.None)).StructuredJson);
-        Assert.Equal(InferenceOutcome.Refusal, (await provider.CompleteAsync(SomeRequest(), CancellationToken.None)).Outcome);
-        Assert.True((await provider.CompleteAsync(SomeRequest(), CancellationToken.None)).IsSuccess);
+        Assert.Equal(InferenceOutcome.RateLimited, (await provider.CompleteAsync(Previewed(), CancellationToken.None)).Outcome);
+        Assert.Equal("""{"steps":3}""", (await provider.CompleteAsync(Previewed(), CancellationToken.None)).StructuredJson);
+        Assert.Equal(InferenceOutcome.Refusal, (await provider.CompleteAsync(Previewed(), CancellationToken.None)).Outcome);
+        Assert.True((await provider.CompleteAsync(Previewed(), CancellationToken.None)).IsSuccess);
     }
 
     [Theory]
@@ -55,7 +61,7 @@ public class SyntheticProviderTests
     {
         var provider = new SyntheticInferenceProvider(capabilities: null, SyntheticStep.Outcome(outcome));
 
-        var result = await provider.CompleteAsync(SomeRequest(), CancellationToken.None);
+        var result = await provider.CompleteAsync(Previewed(), CancellationToken.None);
 
         Assert.Equal(outcome, result.Outcome);
         Assert.False(result.IsSuccess);
@@ -72,7 +78,7 @@ public class SyntheticProviderTests
         using var cancellation = new CancellationTokenSource(TimeSpan.FromMilliseconds(50));
 
         await Assert.ThrowsAnyAsync<OperationCanceledException>(
-            () => provider.CompleteAsync(SomeRequest(), cancellation.Token));
+            () => provider.CompleteAsync(Previewed(), cancellation.Token));
     }
 
     [Fact]
@@ -100,8 +106,8 @@ public class SyntheticProviderTests
 
         for (var call = 0; call < 3; call++)
         {
-            var a = await first.CompleteAsync(SomeRequest(), CancellationToken.None);
-            var b = await second.CompleteAsync(SomeRequest(), CancellationToken.None);
+            var a = await first.CompleteAsync(Previewed(), CancellationToken.None);
+            var b = await second.CompleteAsync(Previewed(), CancellationToken.None);
             Assert.Equal(a, b);
         }
     }

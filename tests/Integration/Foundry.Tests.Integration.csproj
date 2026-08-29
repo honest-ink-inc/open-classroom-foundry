@@ -1,7 +1,8 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <TargetFramework>net10.0</TargetFramework>
+    <TargetFramework>net10.0-windows</TargetFramework>
+    <UseWindowsForms>true</UseWindowsForms>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <IsPackable>false</IsPackable>
@@ -22,6 +23,8 @@
     <ProjectReference Include="..\..\src\Foundry.Application\Foundry.Application.csproj" />
     <ProjectReference Include="..\..\src\Foundry.Storage\Foundry.Storage.csproj" />
     <ProjectReference Include="..\..\src\Foundry.Rendering\Foundry.Rendering.csproj" />
+    <ProjectReference Include="..\..\src\Foundry.Infrastructure.Windows\Foundry.Infrastructure.Windows.csproj" />
+    <ProjectReference Include="..\..\src\Foundry.Infrastructure.Simulated\Foundry.Infrastructure.Simulated.csproj" />
   </ItemGroup>
 
 </Project>

@@ -25,6 +25,7 @@
     <ProjectReference Include="..\..\src\Foundry.Application\Foundry.Application.csproj" />
     <ProjectReference Include="..\..\src\Foundry.Modules.DeterministicPress\Foundry.Modules.DeterministicPress.csproj" />
     <ProjectReference Include="..\..\src\Foundry.Modules.BuiltIn\Foundry.Modules.BuiltIn.csproj" />
+    <ProjectReference Include="..\..\src\Foundry.Infrastructure.Simulated\Foundry.Infrastructure.Simulated.csproj" />
   </ItemGroup>
 
 </Project>
