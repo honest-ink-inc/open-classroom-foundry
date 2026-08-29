@@ -74,11 +74,16 @@ public static class AllAboardBuilders
         => Sequence(assetCatalog, language, (nowLabel, now), (nextLabel, next), (doneLabel, done));
 
     /// <summary>
-    /// Agency cards from the libre pack: stop, help, wait, break, different, not now,
-    /// finished. Agency is content, not chrome — these ship as first-class cards with
-    /// the catalog's intended meaning as the card body.
+    /// Agency cards from the libre pack. Agency is content, not chrome. Labels are
+    /// overridable per card so a classroom prints "Alto," not the catalog's English
+    /// (RC-2); ambiguity notes are curator-to-teacher craft and land as teacher-only
+    /// notices, never on the learner card (RC-1).
     /// </summary>
-    public static ArtifactDocument AgencyCards(IReadOnlyList<AssetId> symbols, IAssetCatalog assetCatalog, string language = "en")
+    public static ArtifactDocument AgencyCards(
+        IReadOnlyList<AssetId> symbols,
+        IAssetCatalog assetCatalog,
+        string language = "en",
+        IReadOnlyList<string>? labels = null)
     {
         ArgumentNullException.ThrowIfNull(symbols);
         ArgumentNullException.ThrowIfNull(assetCatalog);
@@ -88,14 +93,27 @@ public static class AllAboardBuilders
             throw new ArgumentException("An agency deck needs at least one card.", nameof(symbols));
         }
 
-        var nodes = new List<DocumentNode>();
-        foreach (var id in symbols)
+        if (labels is not null && labels.Count != symbols.Count)
         {
-            var provenance = Resolve(id, assetCatalog);
-            nodes.Add(new ImageReference(id, provenance.AltText));
-            nodes.Add(new Card(provenance.IntendedMeaning, provenance.AmbiguityNotes ?? string.Empty));
+            throw new ArgumentException("One label per card, or none.", nameof(labels));
         }
 
+        var nodes = new List<DocumentNode>();
+        var teacherNotes = new List<TeacherOnlyNotice>();
+
+        for (var i = 0; i < symbols.Count; i++)
+        {
+            var provenance = Resolve(symbols[i], assetCatalog);
+            nodes.Add(new ImageReference(symbols[i], provenance.AltText));
+            nodes.Add(new Card(labels?[i] ?? provenance.IntendedMeaning, string.Empty));
+
+            if (!string.IsNullOrWhiteSpace(provenance.AmbiguityNotes))
+            {
+                teacherNotes.Add(new TeacherOnlyNotice($"{provenance.IntendedMeaning}: {provenance.AmbiguityNotes}"));
+            }
+        }
+
+        nodes.AddRange(teacherNotes);
         return new ArtifactDocument(nodes, language);
     }
 

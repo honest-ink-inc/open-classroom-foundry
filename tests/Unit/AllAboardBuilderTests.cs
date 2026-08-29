@@ -9,13 +9,13 @@ public class AllAboardBuilderTests
 {
     private sealed class FakeCatalog : IAssetCatalog
     {
-        private static AssetProvenance Provenance(string id, string meaning, string alt) => new(
+        private static AssetProvenance Provenance(string id, string meaning, string alt, string? notes = null) => new(
             new AssetId(id), $"concept.{meaning.ToLowerInvariant()}", "1.0.0", $"{meaning.ToLowerInvariant()}.svg",
-            "image/svg+xml", "original", "test", "CC0-1.0", "AB", meaning, alt, Redistributable: true);
+            "image/svg+xml", "original", "test", "CC0-1.0", "AB", meaning, alt, Redistributable: true, AmbiguityNotes: notes);
 
         private readonly Dictionary<string, AssetProvenance> _assets = new()
         {
-            ["agency.stop.v1"] = Provenance("agency.stop.v1", "Stop", "An octagon outline"),
+            ["agency.stop.v1"] = Provenance("agency.stop.v1", "Stop", "An octagon outline", "May read as a generic polygon."),
             ["agency.help.v1"] = Provenance("agency.help.v1", "Help", "A life ring"),
         };
 
@@ -114,7 +114,7 @@ public class AllAboardBuilderTests
     }
 
     [Fact]
-    public void Agency_cards_carry_the_catalog_meaning_and_ambiguity_notes()
+    public void Agency_cards_keep_ambiguity_notes_off_the_learner_card()
     {
         var deck = AllAboardBuilders.AgencyCards(
             [new AssetId("agency.stop.v1"), new AssetId("agency.help.v1")], Catalog);
@@ -122,6 +122,25 @@ public class AllAboardBuilderTests
         Assert.Equal(2, deck.Nodes.OfType<ImageReference>().Count());
         Assert.Contains(deck.Nodes.OfType<Card>(), c => c.Title == "Stop");
         Assert.Contains(deck.Nodes.OfType<Card>(), c => c.Title == "Help");
+
+        // RC-1: the learner card body is clean; the curator's ambiguity note is teacher craft.
+        Assert.All(deck.Nodes.OfType<Card>(), c => Assert.Equal(string.Empty, c.Body));
+        var note = Assert.Single(deck.Nodes.OfType<TeacherOnlyNotice>());
+        Assert.Contains("generic polygon", note.Text, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Agency_card_labels_are_overridable_for_the_classrooms_language()
+    {
+        var deck = AllAboardBuilders.AgencyCards(
+            [new AssetId("agency.stop.v1"), new AssetId("agency.help.v1")], Catalog,
+            language: "es", labels: ["Alto", "Ayuda"]);
+
+        Assert.Contains(deck.Nodes.OfType<Card>(), c => c.Title == "Alto");
+        Assert.Contains(deck.Nodes.OfType<Card>(), c => c.Title == "Ayuda");
+
+        Assert.Throws<ArgumentException>(() => AllAboardBuilders.AgencyCards(
+            [new AssetId("agency.stop.v1")], Catalog, labels: ["Alto", "extra"]));
     }
 
     [Fact]

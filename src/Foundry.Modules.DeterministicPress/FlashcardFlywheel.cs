@@ -17,7 +17,9 @@ public static class FlashcardFlywheel
     public const int Columns = 2;
     public const int Rows = 4;
     public const int CardsPerSheet = Columns * Rows;
-    public const int OverflowCharacterCount = 60;
+    // RC-21: at 6 mm type in a ~96x63 mm cell, wrapping fails well before 60
+    // characters; the flag fires honestly early. Text is still never truncated.
+    public const int OverflowCharacterCount = 40;
 
     public static FlywheelResult Build(IReadOnlyList<FlashcardPair> pairs, PageSize size = PageSize.Letter, double marginMm = BlankformsPress.DefaultMarginMm)
     {

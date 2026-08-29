@@ -54,9 +54,11 @@ public static class DirectionsDuetBuilder
 
             foreach (var entry in glossary.Entries)
             {
-                if (steps[i].SourceText.Contains(entry.SourceTerm, StringComparison.Ordinal)
+                // Case-insensitive both sides (RC-7): "Folder" at a sentence start
+                // must not escape the folder -> carpeta rule.
+                if (steps[i].SourceText.Contains(entry.SourceTerm, StringComparison.OrdinalIgnoreCase)
                     && !string.IsNullOrWhiteSpace(steps[i].TargetText)
-                    && !steps[i].TargetText.Contains(entry.TargetTerm, StringComparison.Ordinal))
+                    && !steps[i].TargetText.Contains(entry.TargetTerm, StringComparison.OrdinalIgnoreCase))
                 {
                     issues.Add(ValidationIssue.Blocking(
                         "duet.glossary",
@@ -85,10 +87,13 @@ public static class DirectionsDuetBuilder
             nodes.Add(new Card("Show me", comprehensionCheck));
         }
 
+        // The status speaks only to review, never to origin (RC-6): a teacher-typed
+        // translation is not "machine-drafted," and a tool named Honest Ink does not
+        // guess where words came from.
         nodes.Add(new TeacherOnlyNotice(
             $"Glossary {glossary.Version}. Translation status: " +
             (string.IsNullOrWhiteSpace(reviewedBy)
-                ? "machine-drafted - NOT language-reviewed. Back-translation is a warning aid, not proof."
+                ? "drafted - NOT yet language-reviewed by a qualified reviewer."
                 : $"language-reviewed by {reviewedBy}.")));
 
         var document = new ArtifactDocument(nodes, sourceLocale);

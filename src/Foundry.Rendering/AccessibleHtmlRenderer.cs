@@ -53,7 +53,15 @@ public sealed class AccessibleHtmlRenderer : IRenderer
         var title = document.Nodes.OfType<Heading>().FirstOrDefault()?.Text ?? "Approved artifact";
 
         builder.Append("<!DOCTYPE html>\n");
-        builder.Append("<html lang=\"").Append(language).Append("\">\n<head>\n<meta charset=\"utf-8\">\n");
+        builder.Append("<html lang=\"").Append(language).Append('"');
+        if (IsRightToLeft(document.Language))
+        {
+            // RC-10: the page direction follows the document language; per-pair
+            // dir="auto" isolates segments, but the document itself must flow rtl.
+            builder.Append(" dir=\"rtl\"");
+        }
+
+        builder.Append(">\n<head>\n<meta charset=\"utf-8\">\n");
         builder.Append("<title>").Append(Text(title)).Append("</title>\n");
         builder.Append("<style>\n").Append(BaseStyle);
         if (request.Target == RenderTarget.PrintHtml)
@@ -146,8 +154,15 @@ public sealed class AccessibleHtmlRenderer : IRenderer
                 break;
 
             case Card card:
-                builder.Append("<section class=\"card\">\n<h3>").Append(Text(card.Title)).Append("</h3>\n<p>")
-                    .Append(Text(card.Body)).Append("</p>\n</section>\n");
+                // A card is a physical object, not a document section: a bold
+                // paragraph keeps the screen-reader heading outline honest (RC-11).
+                builder.Append("<section class=\"card\">\n<p class=\"card-title\">").Append(Text(card.Title)).Append("</p>\n");
+                if (!string.IsNullOrWhiteSpace(card.Body))
+                {
+                    builder.Append("<p>").Append(Text(card.Body)).Append("</p>\n");
+                }
+
+                builder.Append("</section>\n");
                 break;
 
             case ImageReference image:
@@ -278,10 +293,22 @@ public sealed class AccessibleHtmlRenderer : IRenderer
     private static string Mm(double value)
         => value.ToString("0.###", System.Globalization.CultureInfo.InvariantCulture);
 
+    private static bool IsRightToLeft(string? language)
+    {
+        if (string.IsNullOrWhiteSpace(language))
+        {
+            return false;
+        }
+
+        var primary = language.Split('-')[0].ToLowerInvariant();
+        return primary is "ar" or "he" or "fa" or "ur";
+    }
+
     private const string BaseStyle =
         """
         body { font-family: "Segoe UI", system-ui, sans-serif; line-height: 1.5; margin: 2rem; }
         .card { border: 1px solid #888; padding: 0.75rem 1rem; margin: 0.75rem 0; }
+        .card-title { font-weight: 700; margin: 0 0 0.3rem; }
         .bilingual-pair { margin: 0.5rem 0; }
         .bilingual-pair p { margin: 0.15rem 0; }
         .teacher-only { border-left: 4px solid #8a6d24; padding-left: 0.75rem; }

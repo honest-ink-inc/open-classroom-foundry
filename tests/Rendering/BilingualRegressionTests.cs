@@ -44,6 +44,20 @@ public class BilingualRegressionTests
     }
 
     [Fact]
+    public async Task A_right_to_left_document_flows_right_to_left()
+    {
+        var arabic = await RenderAsync(new ArtifactDocument(
+            [new Paragraph("قف خلف الخط.")], "ar"));
+        var english = await RenderAsync(new ArtifactDocument(
+            [new Paragraph("Stand behind the line.")], "en"));
+
+        // RC-10: page direction follows the document language.
+        Assert.Contains("<html lang=\"ar\" dir=\"rtl\">", arabic, StringComparison.Ordinal);
+        Assert.Contains("<html lang=\"en\">", english, StringComparison.Ordinal);
+        Assert.DoesNotContain("dir=\"rtl\"", english, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public async Task Many_pairs_keep_their_pairwise_order()
     {
         var html = await RenderAsync(new ArtifactDocument(

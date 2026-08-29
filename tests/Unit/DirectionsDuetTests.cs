@@ -29,7 +29,10 @@ public class DirectionsDuetTests
 
         var status = Assert.Single(result.Document.Nodes.OfType<TeacherOnlyNotice>());
         Assert.Contains("Glossary 2026-fall.2", status.Text, StringComparison.Ordinal);
-        Assert.Contains("NOT language-reviewed", status.Text, StringComparison.Ordinal);
+        Assert.Contains("NOT yet language-reviewed", status.Text, StringComparison.Ordinal);
+
+        // RC-6: the status speaks only to review, never to origin.
+        Assert.DoesNotContain("machine", status.Text, StringComparison.OrdinalIgnoreCase);
     }
 
     [Fact]
@@ -53,6 +56,20 @@ public class DirectionsDuetTests
         var result = DirectionsDuetBuilder.Build("Morning routine", steps, "en", "es", SchoolGlossary, []);
 
         Assert.Contains(result.Issues, i => i.Code == "duet.glossary" && i.Message.Contains("carpeta", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void Glossary_matching_ignores_case_so_sentence_starts_cannot_escape()
+    {
+        var steps = new List<DuetStep>
+        {
+            new("Folder goes in the bin.", "El fólder va en la caja."),
+        };
+
+        var result = DirectionsDuetBuilder.Build("Routine", steps, "en", "es", SchoolGlossary, []);
+
+        // RC-7: "Folder" still triggers the folder -> carpeta rule.
+        Assert.Contains(result.Issues, i => i.Code == "duet.glossary");
     }
 
     [Fact]

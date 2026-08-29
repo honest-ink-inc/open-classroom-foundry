@@ -24,6 +24,11 @@ public class StudioPressTests
         }
 
         Assert.Contains(graphic.Primitives.OfType<TextLabel>(), l => l.Text == "1/3");
+
+        // RC-14: the unlabeled variant is where the reasoning lives.
+        var unlabeled = (VectorGraphic)ManipulativeMint.FractionStrips([2, 3, 4], labeled: false).Nodes[0];
+        Assert.Empty(unlabeled.Primitives.OfType<TextLabel>());
+        Assert.Contains("unlabeled", unlabeled.Description, StringComparison.Ordinal);
     }
 
     [Fact]

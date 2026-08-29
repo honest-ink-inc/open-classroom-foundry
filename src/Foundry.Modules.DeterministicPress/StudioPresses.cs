@@ -8,7 +8,8 @@ namespace Foundry.Modules.DeterministicPress;
 /// </summary>
 public static class ManipulativeMint
 {
-    public static ArtifactDocument FractionStrips(IReadOnlyList<int> denominators, PageSize size = PageSize.Letter, double marginMm = BlankformsPress.DefaultMarginMm)
+    /// <summary>Unlabeled strips are where the reasoning lives (RC-14): learners name the parts.</summary>
+    public static ArtifactDocument FractionStrips(IReadOnlyList<int> denominators, PageSize size = PageSize.Letter, double marginMm = BlankformsPress.DefaultMarginMm, bool labeled = true)
     {
         ArgumentNullException.ThrowIfNull(denominators);
         if (denominators.Count == 0 || denominators.Any(d => d is < 2 or > 16))
@@ -34,16 +35,19 @@ public static class ManipulativeMint
             for (var cell = 0; cell < denominator; cell++)
             {
                 primitives.Add(new RectShape(marginMm + cell * cellWidth, top, cellWidth, stripHeight, 0.5));
-                primitives.Add(new TextLabel(
-                    marginMm + cell * cellWidth + cellWidth / 2,
-                    top + stripHeight / 2 + 2,
-                    denominator == 1 ? "1" : $"1/{denominator}",
-                    5));
+                if (labeled)
+                {
+                    primitives.Add(new TextLabel(
+                        marginMm + cell * cellWidth + cellWidth / 2,
+                        top + stripHeight / 2 + 2,
+                        denominator == 1 ? "1" : $"1/{denominator}",
+                        5));
+                }
             }
         }
 
         return new ArtifactDocument([new VectorGraphic(width, height, primitives,
-            $"Fraction strips: one whole and {string.Join(", ", denominators.Select(d => $"1/{d}"))}")]);
+            $"Fraction strips{(labeled ? "" : " (unlabeled)")}: one whole and {string.Join(", ", denominators.Select(d => $"1/{d}"))}")]);
     }
 
     public static ArtifactDocument DiceNet(double edgeMm = 30, PageSize size = PageSize.Letter)
