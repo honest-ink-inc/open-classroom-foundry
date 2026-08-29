@@ -34,6 +34,9 @@ public enum InferenceOutcome
     RateLimited,
     ProviderError,
     UnsupportedCapability,
+
+    /// <summary>District policy refused the call before any egress (R2-1): cloud inference disabled, or the payload lane exceeds the district maximum.</summary>
+    PolicyRefused,
 }
 
 public sealed record InferenceResult(InferenceOutcome Outcome, string? StructuredJson)

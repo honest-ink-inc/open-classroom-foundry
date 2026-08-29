@@ -17,6 +17,10 @@ None yet. When dependencies are added, the SBOM and dependency-license report ar
 
 The wider libre symbol core (Symbol Commons) will prefer original, CC0, CC BY, or CC BY-SA artwork; fonts will prefer OFL with notices, naming obligations, and embedding permissions preserved.
 
+## Takedown
+
+Rights concerns about any asset or file in this repository follow the same private channel as security reports (see [SECURITY.md](SECURITY.md)); good-faith reports are acted on with priority and credited unless the reporter prefers otherwise.
+
 ## Trademarks
 
 All product and module names are working titles, not trademark clearances. PECS® is a registered trademark of Pyramid Educational Consultants; this project makes no PECS alignment, equivalence, certification, or protocol claim (implementation plan, binding corrections).

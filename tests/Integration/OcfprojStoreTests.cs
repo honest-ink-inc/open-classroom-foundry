@@ -129,6 +129,29 @@ public class OcfprojStoreTests : IDisposable
     }
 
     [Fact]
+    public async Task An_oversized_entry_is_refused_before_it_is_read()
+    {
+        // R2-3: a manifest claiming 65 MB is not a classroom artifact.
+        Directory.CreateDirectory(_root);
+        var path = _store.PathFor("bomb");
+        using (var stream = new FileStream(path, FileMode.Create, FileAccess.Write))
+        using (var archive = new System.IO.Compression.ZipArchive(stream, System.IO.Compression.ZipArchiveMode.Create))
+        {
+            var entry = archive.CreateEntry("manifest.json");
+            await using var entryStream = entry.Open();
+            var zeros = new byte[1024 * 1024];
+            for (var written = 0L; written <= OcfprojProjectStore.MaxEntryBytes; written += zeros.Length)
+            {
+                await entryStream.WriteAsync(zeros);
+            }
+        }
+
+        var exception = await Assert.ThrowsAsync<InvalidOperationException>(
+            () => _store.LoadProjectAsync("bomb", CancellationToken.None));
+        Assert.Contains("ceiling", exception.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void Destination_hints_cannot_smuggle_paths()
     {
         Assert.EndsWith("watering-plants.ocfproj", _store.PathFor("..\\..\\watering-plants"), StringComparison.Ordinal);

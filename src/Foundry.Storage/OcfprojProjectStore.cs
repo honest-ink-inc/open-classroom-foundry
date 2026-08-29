@@ -20,6 +20,9 @@ public sealed class OcfprojProjectStore(string rootDirectory, IRenderer renderer
 {
     public const string Extension = ".ocfproj";
 
+    /// <summary>R2-3: a generous ceiling for classroom artifacts, a wall for decompression bombs. The full hostile-package suite remains scheduled (plan §7).</summary>
+    public const long MaxEntryBytes = 64L * 1024 * 1024;
+
     public async Task SaveGreenProjectAsync(ApprovedArtifact artifact, ProjectSaveRequest request, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(artifact);
@@ -134,6 +137,12 @@ public sealed class OcfprojProjectStore(string rootDirectory, IRenderer renderer
     {
         var entry = archive.GetEntry(name)
             ?? throw new InvalidOperationException($"The package has no '{name}' entry.");
+
+        if (entry.Length > MaxEntryBytes)
+        {
+            throw new InvalidOperationException(
+                $"Entry '{name}' declares {entry.Length} bytes, over the {MaxEntryBytes}-byte ceiling; refusing to read it.");
+        }
 
         using var reader = new StreamReader(entry.Open(), Encoding.UTF8);
         return JsonSerializer.Deserialize<T>(reader.ReadToEnd(), StorageJson.Options)

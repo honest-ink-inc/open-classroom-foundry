@@ -1,0 +1,16 @@
+# Data inventory and lifecycle (Gate 0 artifact)
+
+**Date:** 29 August 2026 · Maintained with every change to where bytes can live (Gate 5 change control). One row per store; "content" means instructional or personal content, as opposed to configuration and identifiers.
+
+| Store | Location | Holds | Lane ceiling | Lifecycle | Purge |
+|---|---|---|---|---|---|
+| Session byte store | Process memory only | Captured/normalized source bytes behind opaque references | Amber (Restricted is blocked upstream) | Active session only; no autosave, no recovery journal, no thumbnails | `Release`/`PurgeAll` zero managed buffers; verified after completion **and** cancellation; OS residue (pagefile, crash dumps, spooler) is the documented forensic boundary, tested not denied |
+| District policy | `%ProgramData%/OpenClassroomFoundry/policy/policy.json` | IT-controlled configuration: endpoints, provider ids, lane ceiling, cloud toggle | No content | Read once per process; IT-managed; missing/corrupt ⇒ fail closed to Offline | IT-managed |
+| Teacher preferences | `%LocalAppData%/OpenClassroomFoundry/preferences.json` | Locale/print conveniences | No content | Teacher-managed; corrupt ⇒ harmless reset | Delete file |
+| Teacher symbol shelf | Teacher-chosen directory (`LocalSymbolStore`) | Teacher-added symbol files + provenance (meaning, alt text, teacher-stated rights) | Green by intent — **binding R2-8:** submissions route through the privacy preflight once capture lands, because a photograph can contain a learner | Durable, teacher-managed; local-only by default (`LicenseRef-teacher-local`, not redistributable) | Teacher deletes; integrity verified (`VerifyIntegrity`) |
+| Libre symbol pack | Repository `assets/symbols/` | Original CC0 artwork + provenance manifest | Public | Versioned in git; CI-verified hashes | n/a (public commons) |
+| Green project library | Teacher-selected/district-approved directory (`.ocfproj`) | Approved Green artifacts, referenced assets with provenance, learner-audience snapshot | **Green only** — the store refuses Amber and Restricted structurally | Durable, teacher-managed ("teacher-managed" retention in manifest); reopenable forever without the application | Teacher deletes; **no approval/egress receipts inside** (R2-9) — teacher identity does not travel with a shared project |
+| Diagnostics | In-memory sink (production sink not yet built) | Identifiers, states, durations, counts — content-free by policy, enforced loudly | No content, ever | Session; future remote telemetry off by default, allowlisted by district policy | n/a |
+| Inference egress | District-allowlisted endpoint only, after Gate A confirmation and the policy gate (R2-1) | The exact previewed payload, nothing else | ≤ district `MaximumLane` | Stateless request; no thread/history features | Provider retention is a Gate 3 attestation matter, never an application claim |
+
+**What does not exist anywhere:** student profiles, rosters, longitudinal records, recipient lists, credentials in files, content in logs, or any Restricted-lane material — excluded structurally through 1.x (plan §2 non-goals).

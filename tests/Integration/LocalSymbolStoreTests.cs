@@ -94,6 +94,19 @@ public class LocalSymbolStoreTests : IDisposable
     }
 
     [Fact]
+    public void The_shelf_has_the_same_tamper_check_as_the_pack()
+    {
+        var store = new LocalSymbolStore(_directory);
+        var provenance = store.Add(Submission("teacher.my-cup.v1"));
+
+        Assert.Empty(store.VerifyIntegrity());
+
+        File.AppendAllText(Path.Combine(_directory, provenance.FileName), "<!-- drift -->");
+
+        Assert.Contains(store.VerifyIntegrity(), i => i.Code == "asset.hash-mismatch");
+    }
+
+    [Fact]
     public void The_composite_catalog_resolves_pack_and_shelf_together()
     {
         var repo = new DirectoryInfo(AppContext.BaseDirectory);

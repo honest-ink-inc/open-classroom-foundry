@@ -123,6 +123,30 @@ public sealed class LocalSymbolStore : IAssetCatalog
         return provenance;
     }
 
+    /// <summary>R2-2: the teacher's shelf deserves the same tamper check as the libre pack.</summary>
+    public IReadOnlyList<ValidationIssue> VerifyIntegrity()
+    {
+        var issues = new List<ValidationIssue>();
+
+        foreach (var provenance in _assets.Values)
+        {
+            var path = Path.Combine(_directory, provenance.FileName);
+            if (!File.Exists(path))
+            {
+                issues.Add(ValidationIssue.Blocking("asset.missing-file", $"Symbol {provenance.Id.Value} has provenance but no file '{provenance.FileName}'."));
+                continue;
+            }
+
+            var actual = Convert.ToHexString(SHA256.HashData(File.ReadAllBytes(path)));
+            if (!actual.Equals(provenance.Sha256, StringComparison.OrdinalIgnoreCase))
+            {
+                issues.Add(ValidationIssue.Blocking("asset.hash-mismatch", $"Symbol {provenance.Id.Value} does not match its recorded SHA-256."));
+            }
+        }
+
+        return issues;
+    }
+
     private static string Sanitize(string value)
         => new([.. value.Where(c => char.IsLetterOrDigit(c) || c is '-' or '.' or '_')]);
 }
