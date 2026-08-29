@@ -64,6 +64,11 @@ public sealed class AccessibleHtmlRenderer : IRenderer
         builder.Append(">\n<head>\n<meta charset=\"utf-8\">\n");
         builder.Append("<title>").Append(Text(title)).Append("</title>\n");
         builder.Append("<style>\n").Append(BaseStyle);
+        if (request.TextScalePercent != 100)
+        {
+            builder.Append("\nbody { font-size: ").Append(Mm(request.TextScalePercent)).Append("%; }");
+        }
+
         if (request.Target == RenderTarget.PrintHtml)
         {
             builder.Append(PrintStyle);
@@ -71,9 +76,35 @@ public sealed class AccessibleHtmlRenderer : IRenderer
 
         builder.Append("</style>\n</head>\n<body>\n");
 
-        foreach (var node in document.Nodes)
+        // Step rows group into ordered lists whose numbering derives from document
+        // order and continues across page breaks (chunking preserves numbering).
+        var stepNumber = 1;
+        var index = 0;
+        while (index < document.Nodes.Count)
         {
-            AppendNode(builder, node, request.Audience);
+            switch (document.Nodes[index])
+            {
+                case StepRow:
+                    var run = new List<StepRow>();
+                    while (index < document.Nodes.Count && document.Nodes[index] is StepRow row)
+                    {
+                        run.Add(row);
+                        index++;
+                    }
+
+                    AppendStepRun(builder, run, request, ref stepNumber);
+                    continue;
+
+                case PageBreak:
+                    builder.Append("<div class=\"page-break\" aria-hidden=\"true\"></div>\n");
+                    index++;
+                    continue;
+
+                default:
+                    AppendNode(builder, document.Nodes[index], request);
+                    index++;
+                    continue;
+            }
         }
 
         if (request.Audience == RenderAudience.Teacher)
@@ -91,8 +122,71 @@ public sealed class AccessibleHtmlRenderer : IRenderer
         return builder.ToString();
     }
 
-    private static void AppendNode(StringBuilder builder, DocumentNode node, RenderAudience audience)
+    private static void AppendStepRun(StringBuilder builder, List<StepRow> run, RenderRequest request, ref int stepNumber)
     {
+        builder.Append("<ol class=\"steps\"");
+        if (stepNumber > 1)
+        {
+            builder.Append(" start=\"").Append(stepNumber).Append('"');
+        }
+
+        builder.Append(">\n");
+
+        foreach (var row in run)
+        {
+            builder.Append("<li>");
+            if (row.Symbol is { } symbol)
+            {
+                builder.Append("<figure class=\"asset-placeholder step-symbol\" data-asset-id=\"")
+                    .Append(Attribute(symbol.Asset.Value))
+                    .Append("\"><figcaption>").Append(Text(symbol.AltText)).Append("</figcaption></figure>");
+            }
+
+            AppendRowTexts(builder, row, request);
+            builder.Append("</li>\n");
+            stepNumber++;
+        }
+
+        builder.Append("</ol>\n");
+    }
+
+    private static void AppendRowTexts(StringBuilder builder, StepRow row, RenderRequest request)
+    {
+        void Source()
+        {
+            if (row.SourceLocale is { } locale)
+            {
+                builder.Append("<p lang=\"").Append(Attribute(locale)).Append("\" dir=\"auto\">").Append(Text(row.Text)).Append("</p>");
+            }
+            else
+            {
+                builder.Append("<p>").Append(Text(row.Text)).Append("</p>");
+            }
+        }
+
+        void Target()
+        {
+            if (row.TargetText is { } target && row.TargetLocale is { } locale)
+            {
+                builder.Append("<p lang=\"").Append(Attribute(locale)).Append("\" dir=\"auto\">").Append(Text(target)).Append("</p>");
+            }
+        }
+
+        if (request.TargetLanguageFirst)
+        {
+            Target();
+            Source();
+        }
+        else
+        {
+            Source();
+            Target();
+        }
+    }
+
+    private static void AppendNode(StringBuilder builder, DocumentNode node, RenderRequest request)
+    {
+        var audience = request.Audience;
         switch (node)
         {
             case Heading heading:
@@ -174,10 +268,14 @@ public sealed class AccessibleHtmlRenderer : IRenderer
                 break;
 
             case BilingualPair pair:
+                var (firstText, firstLocale, secondText, secondLocale) = request.TargetLanguageFirst
+                    ? (pair.TargetText, pair.TargetLocale, pair.SourceText, pair.SourceLocale)
+                    : (pair.SourceText, pair.SourceLocale, pair.TargetText, pair.TargetLocale);
+
                 builder.Append("<div class=\"bilingual-pair\">\n<p lang=\"")
-                    .Append(Attribute(pair.SourceLocale)).Append("\" dir=\"auto\">").Append(Text(pair.SourceText))
+                    .Append(Attribute(firstLocale)).Append("\" dir=\"auto\">").Append(Text(firstText))
                     .Append("</p>\n<p lang=\"")
-                    .Append(Attribute(pair.TargetLocale)).Append("\" dir=\"auto\">").Append(Text(pair.TargetText))
+                    .Append(Attribute(secondLocale)).Append("\" dir=\"auto\">").Append(Text(secondText))
                     .Append("</p>\n</div>\n");
                 break;
 
@@ -313,6 +411,8 @@ public sealed class AccessibleHtmlRenderer : IRenderer
         .bilingual-pair p { margin: 0.15rem 0; }
         .teacher-only { border-left: 4px solid #8a6d24; padding-left: 0.75rem; }
         .asset-placeholder { border: 1px dashed #888; padding: 0.5rem; }
+        .step-symbol { display: inline-block; margin-right: 0.5rem; vertical-align: middle; }
+        .steps li p { display: inline-block; margin: 0 0.4rem 0 0; }
         table { border-collapse: collapse; }
         th, td { border: 1px solid #666; padding: 0.3rem 0.6rem; text-align: left; }
         """;
@@ -325,5 +425,6 @@ public sealed class AccessibleHtmlRenderer : IRenderer
         h1, h2, h3 { break-after: avoid; }
         li, .card, .bilingual-pair, tr { break-inside: avoid; }
         figure.vector-sheet { break-after: page; break-inside: avoid; margin: 0; }
+        .page-break { break-after: page; }
         """;
 }

@@ -64,7 +64,16 @@ public enum RenderAudience
     Teacher,
 }
 
-public sealed record RenderRequest(RenderTarget Target, RenderAudience Audience = RenderAudience.Learner);
+/// <summary>
+/// TextScalePercent is Access Remix's large-print dial (100 = ordinary). Council
+/// finding RC-8: TargetLanguageFirst lets a classroom whose room language is the
+/// target read its own language first in every bilingual pair and step row.
+/// </summary>
+public sealed record RenderRequest(
+    RenderTarget Target,
+    RenderAudience Audience = RenderAudience.Learner,
+    double TextScalePercent = 100,
+    bool TargetLanguageFirst = false);
 
 public sealed record RenderedOutput(RenderTarget Target, ReadOnlyMemory<byte> Content, string MimeType);
 

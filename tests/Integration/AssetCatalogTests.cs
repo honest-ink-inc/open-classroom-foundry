@@ -23,7 +23,7 @@ public class AssetCatalogTests
     {
         var catalog = new JsonAssetCatalog(SymbolPackDirectory());
 
-        Assert.Equal(7, catalog.All.Count);
+        Assert.Equal(13, catalog.All.Count);
         Assert.Empty(catalog.VerifyIntegrity());
         Assert.All(catalog.All, asset =>
         {

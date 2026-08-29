@@ -98,6 +98,30 @@ public static class DocumentValidator
                     RequireText(issues, notice.Text, "doc.teacher-notice.empty", "A teacher-only notice has no text.");
                     break;
 
+                case StepRow step:
+                    RequireText(issues, step.Text, "doc.step-row.text", "A step has no text.");
+                    if (step.Symbol is { } stepSymbol)
+                    {
+                        if (string.IsNullOrWhiteSpace(stepSymbol.Asset.Value))
+                        {
+                            issues.Add(ValidationIssue.Blocking("doc.image.asset", "A step symbol has no asset identity."));
+                        }
+
+                        RequireText(issues, stepSymbol.AltText, "doc.image.alt-text", "A step symbol has no alternative text.");
+                    }
+
+                    if (step.TargetText is not null)
+                    {
+                        RequireText(issues, step.TargetText, "doc.step-row.target", "A bilingual step has a blank translation.");
+                        RequireText(issues, step.SourceLocale ?? string.Empty, "doc.step-row.locale", "A bilingual step has no source locale.");
+                        RequireText(issues, step.TargetLocale ?? string.Empty, "doc.step-row.locale", "A bilingual step has no target locale.");
+                    }
+
+                    break;
+
+                case PageBreak:
+                    break;
+
                 case VectorGraphic graphic:
                     if (graphic.WidthMm <= 0 || graphic.HeightMm <= 0)
                     {

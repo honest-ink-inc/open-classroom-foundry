@@ -93,6 +93,13 @@ V. opened with the samples printed and scissors on the table, which is where vis
 | RC-9, RC-20 | Family Bridge readability lint; symbol-license posture | Advisory | Carried into 0.5 and decision 6 |
 | RC-12, RC-22, RC-23 | NVDA walkthrough; think-alouds on samples; human council overturns rehearsal | **Human** | Standing — the release gates |
 
+## Ratification by the educator council (29 August 2026)
+
+The forming educator council, through the product owner, **agrees with all rehearsal findings** and adds two directives, both accepted as binding:
+
+1. **Symbol growth and teacher authorship.** Many more symbols must be encoded for All Aboard over time — and, more fundamentally, teachers must be empowered to create and add their own symbols to meet the individual needs of those they work with. *Enacted in Release 0.4:* the `LocalSymbolStore` gives every teacher a provenance-first symbol shelf (meaning, alt text, and teacher-stated rights required at submission; local-only by default, redistributable solely under an explicitly declared open license), resolved alongside the libre pack through one composite catalog. Pack v2 ships the council's requested concepts: yes, no, more, do-not-know, consent, and the open-hand help variant.
+2. **Multilingual stewardship.** The council will ensure future coordination, audits, and checks for all multilingual elements of the Honest Ink suite. Recorded as a standing council responsibility: glossary governance, language-pair reviewer assignments (plan §20 decision 5), translation-status auditing, and RTL/script verification belong to this coordination, and every multilingual feature lands with a council check.
+
 ## Closing word
 
 The rehearsal found eight things worth fixing today, one binding law for the next release, and nothing rotten in the foundations — the gates, lanes, and invariants held under six adversarial readings. What it cannot find is what only real hands can: whether a four-year-old reaches for the life-ring, whether a teacher trusts the review screen at 3:40 p.m., whether the strips survive lamination. That evidence belongs to the seven who were invited. This council was built to be dismantled by them.

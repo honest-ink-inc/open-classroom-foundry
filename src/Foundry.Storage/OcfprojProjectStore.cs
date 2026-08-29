@@ -33,7 +33,15 @@ public sealed class OcfprojProjectStore(string rootDirectory, IRenderer renderer
         }
 
         var document = artifact.Revision.Document;
-        var assetIds = document.Nodes.OfType<ImageReference>().Select(i => i.Asset).Distinct().ToList();
+        var assetIds = document.Nodes
+            .SelectMany(node => node switch
+            {
+                ImageReference image => new[] { image.Asset },
+                StepRow { Symbol: { } symbol } => new[] { symbol.Asset },
+                _ => Array.Empty<AssetId>(),
+            })
+            .Distinct()
+            .ToList();
 
         var resolved = new List<(AssetProvenance Provenance, ReadOnlyMemory<byte> Content)>();
         foreach (var id in assetIds)

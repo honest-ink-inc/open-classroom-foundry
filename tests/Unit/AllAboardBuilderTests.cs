@@ -42,8 +42,7 @@ public class AllAboardBuilderTests
             Catalog);
 
         Assert.False(DocumentValidator.HasBlockingIssues(DocumentValidator.Validate(document)));
-        var steps = Assert.Single(document.Nodes.OfType<OrderedSteps>());
-        Assert.Equal(3, steps.Steps.Count);
+        Assert.Equal(3, document.Nodes.OfType<StepRow>().Count());
 
         Assert.Throws<ArgumentException>(() => AllAboardBuilders.TaskStrip(
             "Too short", [new StepSpec("One"), new StepSpec("Two")], Catalog));
@@ -65,8 +64,10 @@ public class AllAboardBuilderTests
             sourceLocale: "en",
             targetLocale: "es");
 
-        Assert.Equal(3, document.Nodes.OfType<BilingualPair>().Count());
-        Assert.All(document.Nodes.OfType<BilingualPair>(), p => Assert.Equal("es", p.TargetLocale));
+        var rows = document.Nodes.OfType<StepRow>().ToList();
+        Assert.Equal(3, rows.Count);
+        Assert.All(rows, r => Assert.Equal("es", r.TargetLocale));
+        Assert.All(rows, r => Assert.False(string.IsNullOrWhiteSpace(r.TargetText)));
 
         Assert.Throws<ArgumentException>(() => AllAboardBuilders.TaskStrip(
             "Missing translation",
@@ -75,7 +76,7 @@ public class AllAboardBuilderTests
     }
 
     [Fact]
-    public void Symbols_resolve_their_alt_text_from_the_catalog_and_unknown_symbols_block()
+    public void Symbols_sit_in_the_same_row_as_their_step_and_unknown_symbols_block()
     {
         var document = AllAboardBuilders.TaskStrip(
             "With symbols",
@@ -86,8 +87,10 @@ public class AllAboardBuilderTests
             ],
             Catalog);
 
-        var image = Assert.Single(document.Nodes.OfType<ImageReference>());
-        Assert.Equal("An octagon outline", image.AltText);
+        // RC-3: adjacency is structural — the symbol lives inside its step's row.
+        var symbolRow = Assert.Single(document.Nodes.OfType<StepRow>(), r => r.Symbol is not null);
+        Assert.Equal("Stop at the door.", symbolRow.Text);
+        Assert.Equal("An octagon outline", symbolRow.Symbol!.AltText);
 
         Assert.Throws<InvalidOperationException>(() => AllAboardBuilders.TaskStrip(
             "Unknown symbol",

@@ -121,6 +121,19 @@ public static class DocumentText
                     strings.Add(graphic.Description);
                     strings.AddRange(graphic.Primitives.OfType<TextLabel>().Select(l => l.Text));
                     break;
+                case StepRow step:
+                    strings.Add(step.Text);
+                    if (step.TargetText is not null)
+                    {
+                        strings.Add(step.TargetText);
+                    }
+
+                    if (step.Symbol is { } stepSymbol)
+                    {
+                        strings.Add(stepSymbol.AltText);
+                    }
+
+                    break;
                 default:
                     break;
             }

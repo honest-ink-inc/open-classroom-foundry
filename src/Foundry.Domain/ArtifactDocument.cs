@@ -25,6 +25,8 @@ public sealed record ArtifactDocument(IReadOnlyList<DocumentNode> Nodes, string?
 [System.Text.Json.Serialization.JsonDerivedType(typeof(Citation), "citation")]
 [System.Text.Json.Serialization.JsonDerivedType(typeof(TeacherOnlyNotice), "teacherOnlyNotice")]
 [System.Text.Json.Serialization.JsonDerivedType(typeof(VectorGraphic), "vectorGraphic")]
+[System.Text.Json.Serialization.JsonDerivedType(typeof(StepRow), "stepRow")]
+[System.Text.Json.Serialization.JsonDerivedType(typeof(PageBreak), "pageBreak")]
 public abstract record DocumentNode;
 
 public sealed record Heading(int Level, string Text) : DocumentNode;
@@ -33,6 +35,22 @@ public sealed record Paragraph(string Text) : DocumentNode;
 
 /// <summary>A sequence of one-action steps; numbering is derived, never stored.</summary>
 public sealed record OrderedSteps(IReadOnlyList<string> Steps) : DocumentNode;
+
+/// <summary>
+/// One step with everything that belongs beside it (council finding RC-3): its
+/// symbol and its aligned translation live in the same row, so adjacency — the
+/// entire point of a visual task strip — survives rendering. Numbering derives
+/// from document order and continues across page breaks.
+/// </summary>
+public sealed record StepRow(
+    string Text,
+    ImageReference? Symbol = null,
+    string? TargetText = null,
+    string? SourceLocale = null,
+    string? TargetLocale = null) : DocumentNode;
+
+/// <summary>An explicit page boundary for paper output (Access Remix's one-item-per-panel and chunking).</summary>
+public sealed record PageBreak : DocumentNode;
 
 public sealed record UnorderedList(IReadOnlyList<string> Items) : DocumentNode;
 

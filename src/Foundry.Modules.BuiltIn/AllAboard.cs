@@ -38,21 +38,17 @@ public static class AllAboardBuilders
 
         var nodes = new List<DocumentNode> { new Heading(1, title) };
 
+        // RC-3: each step is one row — its symbol and its translation live beside it,
+        // and adjacency survives rendering. Numbering derives from document order.
         foreach (var step in steps)
         {
-            if (step.Symbol is AssetId symbol)
-            {
-                nodes.Add(ImageFor(symbol, assetCatalog));
-            }
-        }
+            var symbol = step.Symbol is AssetId id ? ImageFor(id, assetCatalog) : null;
 
-        if (targetLocale is null)
-        {
-            nodes.Add(new OrderedSteps([.. steps.Select(s => s.Text)]));
-        }
-        else
-        {
-            foreach (var step in steps)
+            if (targetLocale is null)
+            {
+                nodes.Add(new StepRow(step.Text, symbol));
+            }
+            else
             {
                 if (string.IsNullOrWhiteSpace(step.TargetText))
                 {
@@ -60,7 +56,7 @@ public static class AllAboardBuilders
                         $"A bilingual strip requires a translation for every step; '{step.Text}' has none.", nameof(steps));
                 }
 
-                nodes.Add(new BilingualPair(step.Text, step.TargetText, sourceLocale, targetLocale));
+                nodes.Add(new StepRow(step.Text, symbol, step.TargetText, sourceLocale, targetLocale));
             }
         }
 
