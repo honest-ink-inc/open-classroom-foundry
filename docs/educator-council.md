@@ -30,7 +30,7 @@ Council members are advisors, not test subjects: no student data is ever solicit
 
 ## Decision the typist owns
 
-**Recognition and compensation policy** — whether council seats are volunteer (credited), honoraria-supported, or district-time (if the district partnership formalizes). **A full draft now awaits ratification at [compensation-policy.md](council/compensation-policy.md)** — phased around the entity's real ability to pay, with specialist seats holding first claim and bracketed amounts left to the typist. The September update letters (drafted at [council/correspondence/2026-09-invitation-updates.md](council/correspondence/2026-09-invitation-updates.md)) must not be sent until it is ratified.
+**Recognition and compensation policy — DECIDED.** Ratified 29 August 2026: [compensation-policy.md](council/compensation-policy.md) ($50/session educator, $85 specialist, $300/quarter cap; credit by preference; Phase 1 ledger now, honoraria retroactive once the entity can lawfully disburse; compensation never buys a finding). The September update letters ([council/correspondence/2026-09-invitation-updates.md](council/correspondence/2026-09-invitation-updates.md)) quote it and are cleared to send.
 
 ## Invitation draft (adapt and send)
 

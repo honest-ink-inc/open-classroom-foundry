@@ -26,7 +26,7 @@ The pilot occupies Gate 4's first two rungs only: **synthetic/teacher-authored v
 
 | Week | Dates | Work | Needs |
 |---|---|---|---|
-| Prep | Sep 1–4 | State the compensation policy in writing; confirm schedule with accepted seats; print the pilot kit; deliver the district packet; typist self-runs the NVDA script once | Council doc's open decision closed |
+| Prep | Sep 1–4 | ~~State the compensation policy in writing~~ **ratified 29 Aug**; send the update letters; confirm schedule with accepted seats; print the pilot kit; deliver the district packet; typist self-runs the NVDA script once | SPF/DKIM check before the first send |
 | 1 | Sep 8–11 | Deterministic Press time-to-artifact think-alouds (2 sessions) — the recipes' stated budgets are on trial (constitution item 14) | 2 educator seats |
 | 2 | Sep 14–18 | All Aboard think-alouds **if the AAC/SLP seat has accepted** (governance requires it before co-design); otherwise continue Press + Board-to-Brief; AT reviewer walkthrough | AAC seat status known |
 | 3 | Sep 21–25 | Physical print inspection incl. booklet imposition; bilingual fixture review with the multilingual seat (EN–ES, EN–AR right-to-left) | Printer, ruler, multilingual seat |

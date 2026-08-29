@@ -1,6 +1,6 @@
 # Educator council — recognition and compensation policy
 
-**Status: DRAFT — awaiting the typist's ratification.** This is the open decision the council charter reserves to the typist (educator-council.md). Bracketed amounts are recommendations, not commitments; ratify with real numbers or strike the honoraria section entirely — the policy is written to remain honest either way. Once ratified, this document is the policy, stated in every invitation and every session's terms.
+**Status: RATIFIED 29 August 2026 by the typist (director, Honest Ink, Inc.), amounts as stated.** This closes the open decision the council charter reserved to the typist (educator-council.md). This document is the policy, stated in every invitation and every session's terms; Phase 1 is in effect from today. Amendment follows the same path it was made by: a written revision, ratified in writing.
 
 ## Principles
 
@@ -15,10 +15,8 @@
 Honest Ink, Inc. has applied for Maryland incorporation but **has not yet filed with the IRS**: no EIN, therefore no bank account, therefore no lawful way for the entity to disburse a dollar today. The policy does not pretend otherwise.
 
 - **Phase 1 — now (from ratification):** credit per principle 2; a written record of every completed session per member, kept de-identified in evidence but fully identified in the ledger the typist holds.
-- **Phase 2 — when the entity can pay (EIN + bank account, and counsel's nod before the first disbursement):** honoraria of **[$50]** per completed session for educator seats and **[$85]** for specialist seats (AAC/SLP, AT reviewer), **retroactive to each member's first pilot session** using the Phase 1 ledger, capped at **[$300]** per member per quarter for budget predictability.
+- **Phase 2 — when the entity can pay (EIN + bank account, and counsel's nod before the first disbursement):** honoraria of **$50** per completed session for educator seats and **$85** for specialist seats (AAC/SLP, AT reviewer), **retroactive to each member's first pilot session** using the Phase 1 ledger, capped at **$300** per member per quarter for budget predictability.
 - **District-time pathway:** if the district partnership formalizes such that council service occurs on district time, that member's honoraria pause while the pathway applies — no double payment, stated plainly.
-
-If the typist ratifies with the honoraria section struck, Phase 1 is the whole policy and the invitations say "volunteer, credited" without hedging.
 
 ## Transparency
 

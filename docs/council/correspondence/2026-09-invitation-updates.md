@@ -5,7 +5,7 @@
 Sending notes:
 - Send individually, never as a visible list — invitees have not consented to knowing each other yet; introductions happen at the first session.
 - Before the first send from the new domain, confirm SPF/DKIM/DMARC on honest-ink.org (coordination plan, organizational track item 7) so these letters don't land in quarantine.
-- Fill the compensation summary from the **ratified** policy — send nothing until it is ratified; the bracketed line below marks the spot.
+- The compensation paragraphs below quote the policy **ratified 29 August 2026** ([compensation-policy.md](../compensation-policy.md)) — the letters are ready to send as written.
 - Attach or link the one-page charter (educator-council.md) as before.
 
 ---
@@ -22,7 +22,7 @@ Sending notes:
 >
 > **What I need: your availability for the week of 8 September.** Three or four time windows that suit you, and whether you prefer your own classroom, another site, or a video call with the build installed on your machine beforehand.
 >
-> **Recognition and compensation:** [one-paragraph summary of the ratified policy — credit by your preference, and the honoraria terms as ratified, including the plain sentence that compensation attaches to sessions completed, never to conclusions reached].
+> **Recognition and compensation:** you are credited by name and seat in release notes — or not at all, entirely your preference, changeable at any time. Each completed session earns an honorarium of $50 ($85 for the specialist seats), capped at $300 a quarter. One honest wrinkle: payment waits until the new nonprofit can lawfully write a check (incorporation is in progress), so a written ledger of your sessions accrues from the first one and pays retroactively the moment it can. And a sentence I will repeat until it is boring: compensation attaches to sessions completed, never to conclusions reached — "this module fails" pays the same as "this ships."
 >
 > **A small piece of housekeeping:** the project now has a legal home — Honest Ink, Inc., incorporating in Maryland — which is why this letter comes from contact@honest-ink.org. Nothing about the work changes: the software remains free and open source (GPL), the materials in every session remain synthetic or staged, never student work, and you may withdraw at any time.
 >
@@ -44,7 +44,7 @@ Sending notes:
 > - The first build is real: 361 automated tests, a printable studio that works entirely offline, and a visual-support builder awaiting exactly the kind of eyes I invited you for.
 > - A six-week staff pilot is scheduled, 8 September to 16 October — synthetic materials only, staff only, no students and no student work, ever.
 > - The project has a legal home: Honest Ink, Inc., incorporating in Maryland (hence the new address this comes from).
-> - The recognition and compensation policy is now written and public: [one-paragraph summary of the ratified policy].
+> - The recognition and compensation policy is now ratified and public: credit by your preference; $50 per completed session ($85 for specialist seats, $300/quarter cap), accruing in a ledger from your first session and paid retroactively once the nonprofit's incorporation completes and it can lawfully disburse. Compensation attaches to sessions completed, never to conclusions reached.
 >
 > **Timing, honestly stated:** if you'd like your seat's work to start in the pilot's first weeks, a reply by **4 September** lets me schedule you. If you need longer, the council outlives the pilot and the seat stays open — a later yes is a full yes.
 >
