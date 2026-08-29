@@ -1,0 +1,13 @@
+# Governing documents
+
+The copies in this directory are canonical for the repository from the initial commit forward. Their archival originals (versions 1.0 and 2.0, 29 August 2026) remain in the typist's Codex outputs record.
+
+| Document | What it governs |
+|---|---|
+| [idea-atlas.md](idea-atlas.md) | The 227-candidate atlas (version 2.0): every idea, its data lane, the studios, the engine consolidation, the build order |
+| [implementation-plan.md](implementation-plan.md) | The audited implementation plan (version 2.0): constitution, lane contract, gates, architecture, module specifications 10.0–10.12, Definition of Done, roadmap, risks, stop-ship conditions |
+| [reviews/masters-review-1.0.md](reviews/masters-review-1.0.md) | The Master's Review 1.0: findings F1–F13 and the amendments the version-2.0 documents apply |
+| [modules/deterministic-press-spec.md](modules/deterministic-press-spec.md) | Full specification of Module Zero, the Deterministic Press |
+| [adr/](adr/) | Architecture decision records, ADR-001 onward |
+
+Precedence when documents disagree: a later ratified ADR > implementation plan > atlas > review. Disagreements themselves are defects — file an issue.

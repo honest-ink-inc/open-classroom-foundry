@@ -1,0 +1,11 @@
+# Architecture decision records
+
+Numbered, immutable once ratified, superseded only by a later ADR. Format: [template.md](template.md).
+
+| ADR | Decision | Status |
+|---|---|---|
+| [ADR-001](ADR-001-one-foundry-bounded-recipes.md) | One Foundry, bounded recipes — a single engine with versioned data-only recipes, never per-idea executables or a "generate anything" surface | Accepted |
+| [ADR-002](ADR-002-winforms-first-ui-independent-services.md) | WinForms first, UI-independent services, standard controls only | Accepted |
+| [ADR-003](ADR-003-open-ocfproj-package.md) | Open `.ocfproj` project package as the portable source of truth | Accepted |
+| [ADR-004](ADR-004-structural-approvedartifact-gate.md) | Structural ApprovedArtifact gate on render, export, save-as-final, and print | Accepted |
+| [ADR-005](ADR-005-taskdock-absorption.md) | TaskDock absorbed into Scaffold Smith as its task-entry preset | Accepted — ratified 29 Aug 2026 |
