@@ -1,0 +1,13 @@
+# Normalize text in-repo to LF (the blobs already are); platform checkouts vary
+# by the rules below. Last matching rule wins per attribute.
+* text=auto
+
+# Hashed asset bytes must be identical on every checkout, every OS, every CI
+# runner: no end-of-line conversion, ever. CI run #1 caught exactly this —
+# converted SVG line endings broke the pack's SHA-256 integrity checks.
+assets/** -text
+*.svg -text
+*.png binary
+*.jpg binary
+*.pdf binary
+*.ocfproj binary
