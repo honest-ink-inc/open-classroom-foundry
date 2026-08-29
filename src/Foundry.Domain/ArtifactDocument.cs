@@ -24,6 +24,7 @@ public sealed record ArtifactDocument(IReadOnlyList<DocumentNode> Nodes, string?
 [System.Text.Json.Serialization.JsonDerivedType(typeof(EvidenceLink), "evidenceLink")]
 [System.Text.Json.Serialization.JsonDerivedType(typeof(Citation), "citation")]
 [System.Text.Json.Serialization.JsonDerivedType(typeof(TeacherOnlyNotice), "teacherOnlyNotice")]
+[System.Text.Json.Serialization.JsonDerivedType(typeof(VectorGraphic), "vectorGraphic")]
 public abstract record DocumentNode;
 
 public sealed record Heading(int Level, string Text) : DocumentNode;

@@ -98,6 +98,25 @@ public static class DocumentValidator
                     RequireText(issues, notice.Text, "doc.teacher-notice.empty", "A teacher-only notice has no text.");
                     break;
 
+                case VectorGraphic graphic:
+                    if (graphic.WidthMm <= 0 || graphic.HeightMm <= 0)
+                    {
+                        issues.Add(ValidationIssue.Blocking("doc.vector.size", "A vector sheet has no printable size."));
+                    }
+
+                    if (graphic.Primitives.Count == 0)
+                    {
+                        issues.Add(ValidationIssue.Blocking("doc.vector.empty", "A vector sheet has no geometry."));
+                    }
+
+                    RequireText(issues, graphic.Description, "doc.vector.description", "A vector sheet has no accessible description.");
+                    foreach (var label in graphic.Primitives.OfType<TextLabel>())
+                    {
+                        RequireText(issues, label.Text, "doc.vector.label", "A vector text label is blank.");
+                    }
+
+                    break;
+
                 default:
                     issues.Add(ValidationIssue.Blocking("doc.node.unknown", $"Unknown node type {node.GetType().Name}."));
                     break;

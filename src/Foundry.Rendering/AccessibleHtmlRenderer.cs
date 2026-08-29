@@ -21,10 +21,23 @@ public sealed class AccessibleHtmlRenderer : IRenderer
         ArgumentNullException.ThrowIfNull(request);
         cancellationToken.ThrowIfCancellationRequested();
 
+        if (request.Target == RenderTarget.Svg)
+        {
+            var graphics = artifact.Revision.Document.Nodes.OfType<VectorGraphic>().ToList();
+            if (graphics.Count != 1)
+            {
+                throw new NotSupportedException(
+                    "Standalone SVG output requires a document with exactly one vector sheet; multi-sheet documents export as print HTML.");
+            }
+
+            var svg = RenderSvg(graphics[0], standalone: true);
+            return Task.FromResult(new RenderedOutput(RenderTarget.Svg, Encoding.UTF8.GetBytes(svg), "image/svg+xml"));
+        }
+
         if (request.Target is not (RenderTarget.AccessibleHtml or RenderTarget.PrintHtml))
         {
             throw new NotSupportedException(
-                $"{request.Target} rendering arrives with the print pipeline and the Deterministic Press vector engine; this renderer produces HTML.");
+                $"{request.Target} rendering arrives with the print pipeline; this renderer produces HTML and SVG.");
         }
 
         var html = Render(artifact, request);
@@ -185,6 +198,14 @@ public sealed class AccessibleHtmlRenderer : IRenderer
 
                 break;
 
+            case VectorGraphic graphic:
+                builder.Append("<figure class=\"vector-sheet\" role=\"img\" aria-label=\"")
+                    .Append(Attribute(graphic.Description))
+                    .Append("\">\n")
+                    .Append(RenderSvg(graphic, standalone: false))
+                    .Append("\n</figure>\n");
+                break;
+
             default:
                 throw new NotSupportedException($"Unknown node type {node.GetType().Name}.");
         }
@@ -193,6 +214,63 @@ public sealed class AccessibleHtmlRenderer : IRenderer
     private static string Text(string value) => WebUtility.HtmlEncode(value);
 
     private static string Attribute(string value) => WebUtility.HtmlEncode(value);
+
+    /// <summary>Millimeter-exact SVG: physical units carry the press's dimensional accuracy onto paper.</summary>
+    private static string RenderSvg(VectorGraphic graphic, bool standalone)
+    {
+        var builder = new StringBuilder();
+        builder.Append("<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 ")
+            .Append(Mm(graphic.WidthMm)).Append(' ').Append(Mm(graphic.HeightMm))
+            .Append("\" width=\"").Append(Mm(graphic.WidthMm)).Append("mm\" height=\"")
+            .Append(Mm(graphic.HeightMm)).Append("mm\"");
+
+        if (standalone)
+        {
+            builder.Append(" role=\"img\" aria-label=\"").Append(Attribute(graphic.Description)).Append('"');
+        }
+
+        builder.Append(">\n");
+
+        foreach (var primitive in graphic.Primitives)
+        {
+            switch (primitive)
+            {
+                case LineSeg line:
+                    builder.Append("<line x1=\"").Append(Mm(line.X1)).Append("\" y1=\"").Append(Mm(line.Y1))
+                        .Append("\" x2=\"").Append(Mm(line.X2)).Append("\" y2=\"").Append(Mm(line.Y2))
+                        .Append("\" stroke=\"#000\" stroke-width=\"").Append(Mm(line.StrokeWidthMm))
+                        .Append("\" stroke-linecap=\"round\"/>\n");
+                    break;
+                case CircleShape circle:
+                    builder.Append("<circle cx=\"").Append(Mm(circle.CenterX)).Append("\" cy=\"").Append(Mm(circle.CenterY))
+                        .Append("\" r=\"").Append(Mm(circle.RadiusMm))
+                        .Append("\" fill=\"").Append(circle.Filled ? "#000" : "none")
+                        .Append("\" stroke=\"#000\" stroke-width=\"").Append(Mm(circle.StrokeWidthMm)).Append("\"/>\n");
+                    break;
+                case RectShape rect:
+                    builder.Append("<rect x=\"").Append(Mm(rect.X)).Append("\" y=\"").Append(Mm(rect.Y))
+                        .Append("\" width=\"").Append(Mm(rect.WidthMm)).Append("\" height=\"").Append(Mm(rect.HeightMm))
+                        .Append("\" fill=\"").Append(rect.Filled ? "#000" : "none")
+                        .Append("\" stroke=\"#000\" stroke-width=\"").Append(Mm(rect.StrokeWidthMm)).Append("\"/>\n");
+                    break;
+                case TextLabel label:
+                    builder.Append("<text x=\"").Append(Mm(label.X)).Append("\" y=\"").Append(Mm(label.Y))
+                        .Append("\" font-size=\"").Append(Mm(label.FontSizeMm))
+                        .Append("\" font-family=\"'Segoe UI', system-ui, sans-serif\" text-anchor=\"")
+                        .Append(label.Anchor switch { TextAnchor.Start => "start", TextAnchor.End => "end", _ => "middle" })
+                        .Append("\">").Append(Text(label.Text)).Append("</text>\n");
+                    break;
+                default:
+                    throw new NotSupportedException($"Unknown vector primitive {primitive.GetType().Name}.");
+            }
+        }
+
+        builder.Append("</svg>");
+        return builder.ToString();
+    }
+
+    private static string Mm(double value)
+        => value.ToString("0.###", System.Globalization.CultureInfo.InvariantCulture);
 
     private const string BaseStyle =
         """
@@ -213,5 +291,6 @@ public sealed class AccessibleHtmlRenderer : IRenderer
         body { margin: 0; }
         h1, h2, h3 { break-after: avoid; }
         li, .card, .bilingual-pair, tr { break-inside: avoid; }
+        figure.vector-sheet { break-after: page; break-inside: avoid; margin: 0; }
         """;
 }

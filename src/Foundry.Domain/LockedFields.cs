@@ -117,6 +117,10 @@ public static class DocumentText
                 case TeacherOnlyNotice notice:
                     strings.Add(notice.Text);
                     break;
+                case VectorGraphic graphic:
+                    strings.Add(graphic.Description);
+                    strings.AddRange(graphic.Primitives.OfType<TextLabel>().Select(l => l.Text));
+                    break;
                 default:
                     break;
             }
