@@ -30,6 +30,20 @@ public class VectorPdfTests
     }
 
     [Fact]
+    public void The_studio_sampler_composes_into_one_imposed_byte_identical_booklet()
+    {
+        // Menu 4, item 9: catalog + imposer + PDF press, composed here at the
+        // consumer per the layering wall.
+        var artifact = Approve(StudioSampler.Catalog());
+        var sides = BookletImposition.PdfSides(BookletImposition.Compute(
+            artifact.Revision.Document.Nodes.OfType<VectorGraphic>().Count()));
+
+        var first = VectorPdfWriter.WriteImposed(artifact, sides, RenderAudience.Teacher);
+        Assert.Equal(first, VectorPdfWriter.WriteImposed(artifact, sides, RenderAudience.Teacher));
+        Assert.StartsWith("%PDF-1.4", Encoding.Latin1.GetString(first[..8]), StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void The_calibration_rulers_measure_exactly_one_hundred_millimeters_in_points()
     {
         var pdf = Encoding.Latin1.GetString(

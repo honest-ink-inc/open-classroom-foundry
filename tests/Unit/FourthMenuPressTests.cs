@@ -435,3 +435,66 @@ public class GlossaryGardenTests
             Assert.Throws<ArgumentException>(() => GlossaryGarden.Sheet("T", two, "e n", "es")).Message, StringComparison.Ordinal);
     }
 }
+
+// The Studio Sampler (menu 4, item 9): the forge prints its own catalog, and
+// no engine can ever go missing silently — the partition is asserted against
+// the catalog itself.
+
+public class StudioSamplerTests
+{
+    [Fact]
+    public void Every_catalog_engine_is_represented_exactly_once_bound_or_named()
+    {
+        var plan = StudioSampler.Plan();
+        var included = plan.Included.Select(e => e.Definition.Id).ToList();
+        var listed = plan.ListedOnly.Select(e => e.Definition.Id).ToList();
+
+        Assert.Empty(included.Intersect(listed, StringComparer.Ordinal));
+        Assert.Equal(
+            PressRoomCatalog.All.Select(d => d.Id).Order(StringComparer.Ordinal),
+            included.Concat(listed).Order(StringComparer.Ordinal));
+    }
+
+    [Fact]
+    public void The_cover_names_every_engine_with_its_recipe_id_and_the_pages_share_one_size()
+    {
+        var document = StudioSampler.Catalog();
+        var pages = document.Nodes.OfType<VectorGraphic>().ToList();
+
+        Assert.Equal(StudioSampler.Plan().Included.Count + 1, pages.Count);
+        Assert.All(pages, p =>
+        {
+            Assert.Equal(215.9, p.WidthMm);
+            Assert.Equal(279.4, p.HeightMm);
+        });
+
+        var cover = pages[0].Primitives.OfType<TextLabel>().Select(l => l.Text).ToList();
+        foreach (var definition in PressRoomCatalog.All)
+        {
+            Assert.Contains(cover, t =>
+                t.Contains(definition.Title, StringComparison.Ordinal)
+                && t.Contains(definition.Recipe.Id, StringComparison.Ordinal));
+        }
+
+        Assert.False(DocumentValidator.HasBlockingIssues(DocumentValidator.Validate(document)));
+    }
+
+    [Fact]
+    public void The_skips_are_the_honest_ones_and_carry_their_reasons()
+    {
+        var listed = StudioSampler.Plan().ListedOnly.ToDictionary(e => e.Definition.Id, e => e.Reason, StringComparer.Ordinal);
+
+        Assert.Equal("landscape", listed["timeline"]);
+        Assert.Equal("landscape", listed["bar-chart"]);
+        Assert.Equal("prose", listed["booklet-guide"]);
+        Assert.Equal("prose", listed["bell-to-bell"]);
+        Assert.Equal("prose", listed["glossary-garden"]);
+        Assert.Equal(5, listed.Count);
+    }
+
+    [Fact]
+    public void The_sampler_is_byte_identical_across_builds()
+        => Assert.Equal(
+            System.Text.Json.JsonSerializer.Serialize(StudioSampler.Catalog()),
+            System.Text.Json.JsonSerializer.Serialize(StudioSampler.Catalog()));
+}

@@ -315,7 +315,10 @@ public static class PressRoomCatalog
                 inputs.Whole("fades"), inputs.Text("check"), inputs.Page())),
 
         new("estimation-first", "Estimation-first problems", DeterministicPressRecipes.MathScaffolds,
-            [new LinesParameter("problems", "Problems, one per line", "487 + 316\n72 × 9\n1,205 − 388"),
+            // The default subtraction uses the ASCII hyphen: U+2212 has no
+            // WinAnsi encoding, and a default that cannot reach the native
+            // PDF press is a broken default (found by the Studio Sampler).
+            [new LinesParameter("problems", "Problems, one per line", "487 + 316\n72 × 9\n1,205 - 388"),
              new TextParameter("label1", "First section label", "My estimate"),
              new TextParameter("label2", "Second section label", "A reasonable range (low - high)"),
              new TextParameter("label3", "Third section label", "Exact answer"),

@@ -194,7 +194,9 @@ public class PuzzlePressTests
             var texts = card.Primitives.OfType<TextLabel>().Where(l => l.Text.StartsWith("entry", StringComparison.Ordinal)).ToList();
             Assert.Equal(24, texts.Count);
             Assert.Equal(24, texts.Select(t => t.Text).Distinct().Count());
-            Assert.Single(card.Primitives.OfType<TextLabel>(), l => l.Text == "★");
+            // The free center is a DRAWN five-chord star (geometry, not a
+            // glyph, so it survives the native PDF press's type case).
+            Assert.Equal(5, card.Primitives.OfType<LineSeg>().Count(l => l.StrokeWidthMm == 0.7));
             Assert.Contains(card.Primitives.OfType<TextLabel>(), l => l.Text.Contains("seed 42", StringComparison.Ordinal));
         }
 

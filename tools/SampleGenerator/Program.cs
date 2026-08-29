@@ -277,6 +277,20 @@ await File.WriteAllBytesAsync(
         BookletImposition.PdfSides(BookletImposition.Compute(3)),
         RenderAudience.Teacher));
 
+// The Studio Sampler (fourth forge menu, item 9): the whole catalog as one
+// imposed saddle-stitch booklet — the catalog builds it, the imposer binds
+// it, the PDF press inks it. Composition happens HERE, per the layering wall.
+var sampler = StudioSampler.Catalog();
+var approvedSampler = ApprovalGate.Approve(
+    DraftArtifact.New(sampler, DataLane.Green),
+    "sample-teacher@example.org", DocumentValidator.Validate(sampler), approvedAt);
+await File.WriteAllBytesAsync(
+    Path.Combine(outputDirectory, "press-studio-sampler.pdf"),
+    VectorPdfWriter.WriteImposed(
+        approvedSampler,
+        BookletImposition.PdfSides(BookletImposition.Compute(sampler.Nodes.OfType<VectorGraphic>().Count())),
+        RenderAudience.Teacher));
+
 Console.WriteLine($"Samples written to {outputDirectory}");
 return 0;
 

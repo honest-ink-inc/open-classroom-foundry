@@ -99,11 +99,19 @@ public static class PuzzlePress
                     primitives.Add(new RectShape(x, y, cellMm, cellMm, 0.5));
 
                     var isFree = freeCenter && row == center && col == center;
-                    primitives.Add(new TextLabel(
-                        x + cellMm / 2,
-                        y + cellMm / 2 + (isFree ? 3 : 1.5),
-                        isFree ? "★" : entries[order[drawn++]],
-                        isFree ? 9 : 4.5));
+                    if (isFree)
+                    {
+                        // The free-center star is GEOMETRY, not a glyph:
+                        // U+2605 has no WinAnsi encoding, and the free cell
+                        // must survive the native PDF press like every other
+                        // millimeter (found by the Studio Sampler).
+                        primitives.AddRange(FreeCenterStar(x + cellMm / 2, y + cellMm / 2, cellMm * 0.32));
+                    }
+                    else
+                    {
+                        primitives.Add(new TextLabel(
+                            x + cellMm / 2, y + cellMm / 2 + 1.5, entries[order[drawn++]], 4.5));
+                    }
                 }
             }
 
@@ -115,6 +123,25 @@ public static class PuzzlePress
         }
 
         return new ArtifactDocument(nodes);
+    }
+
+    /// <summary>A five-point star as five chords of a pentagon — exact constants, no runtime trigonometry.</summary>
+    private static IEnumerable<LineSeg> FreeCenterStar(double centerX, double centerY, double radiusMm)
+    {
+        (double X, double Y)[] vertices =
+        [
+            (0, -1), (0.951056516, -0.309016994), (0.587785252, 0.809016994),
+            (-0.587785252, 0.809016994), (-0.951056516, -0.309016994),
+        ];
+
+        for (var k = 0; k < 5; k++)
+        {
+            var (X, Y) = vertices[k];
+            var to = vertices[(k + 2) % 5];
+            yield return new LineSeg(
+                centerX + X * radiusMm, centerY + Y * radiusMm,
+                centerX + to.X * radiusMm, centerY + to.Y * radiusMm, 0.7);
+        }
     }
 
     public static ArtifactDocument WordSearch(IReadOnlyList<string> words, int seed, int gridSize = 12, bool diagonals = true, bool backwards = false, double cellMm = 12, PageSize size = PageSize.Letter, double marginMm = BlankformsPress.DefaultMarginMm, bool includeAnswerKey = true)
