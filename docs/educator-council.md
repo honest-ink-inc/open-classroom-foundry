@@ -1,6 +1,6 @@
 # Educator council — charter and recruitment kit
 
-**Status:** Charter ready; formation **tabled 29 August 2026** (GOVERNANCE.md, "Council formation status") with two automatic tripwires — the AAC/SLP seat before All Aboard co-design begins, and teacher participants before any release-evidence study. Recruitment remains a human act only the typist can perform; this document makes each invitation a five-minute task when the tabling ends.
+**Status:** Formation **underway** (29 August 2026): seven invitations sent covering every seat below; two acceptances so far. Next steps as acceptances arrive — state the recognition/compensation policy, set the first cohort's procedural terms (GOVERNANCE.md), and schedule the first think-aloud sessions against the 0.1-alpha samples in docs/evidence. All Aboard co-design begins when the AAC/SLP seat accepts.
 
 ## What the council is
 
