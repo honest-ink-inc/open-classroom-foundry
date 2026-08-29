@@ -14,6 +14,7 @@ The copies in this directory are canonical for the repository from the initial c
 | [accessibility/uia-harness-traceability.md](accessibility/uia-harness-traceability.md) | The UI Automation harness: which walkthrough steps are machine-guarded, which remain the human ear's, and the findings the harness produced |
 | [district/gate-3-readiness-packet.md](district/gate-3-readiness-packet.md) | The Gate 3 packet for district IT/privacy/safeguarding, including the written-approval instrument |
 | [evidence/pilot-kit/](evidence/pilot-kit/) | Eight seeded-error review packets (facilitator key sealed alongside) |
-| [handover/2026-08-29-waiting-window.md](handover/2026-08-29-waiting-window.md) | The waiting-window handover: the typist's watch, the ranked zero-gate engineering menu, and what must not be built until the gates open |
+| [handover/2026-08-29-waiting-window.md](handover/2026-08-29-waiting-window.md) | The waiting-window handover: the typist's watch, the first zero-gate forge menu (fully struck 29 Aug 2026), and what must not be built until the gates open |
+| [handover/2026-08-29-second-forge-menu.md](handover/2026-08-29-second-forge-menu.md) | The second forge menu, PROPOSED: eight ranked zero-gate items drawn from atlas 2.0 against the built repository — awaiting the typist's ratification |
 
 Precedence when documents disagree: a later ratified ADR > implementation plan > atlas > review. Disagreements themselves are defects — file an issue.

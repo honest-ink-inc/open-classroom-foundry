@@ -57,7 +57,7 @@ Each item is startable with a single "Proceed with …". Ordered by value-per-ri
 ~~Seeded-deterministic grouping cards from a teacher-typed roster of **synthetic or first-name-free labels** (the lane correction that v2 applied): teacher seed in, same groups out every time, printable deck. Green by construction. *Small.*~~
 > **Done 29 Aug 2026:** `GroupingDeck.Cards` — one seeded shuffle then a round-robin deal, so group sizes differ by at most one and a contested draw is reprinted and verified, never re-rolled in secret. Cards paginate six to a page with the seed printed in the footer. Recipe `press.grouping` (eleven now stand) carries the lane correction in its prohibited purposes: real learner names refused by policy; the roster takes synthetic or first-name-free labels only. Tested (determinism, exactly-once membership, size fairness, pagination, refusals) and rendered into the samples run.
 
-*With item 8, every item on this menu is struck — the forge menu of 29 Aug 2026 is exhausted. New zero-gate work needs a new ranked menu, drawn from the atlas against whatever the waiting window has become.*
+*With item 8, every item on this menu is struck — the forge menu of 29 Aug 2026 is exhausted. A [second forge menu](2026-08-29-second-forge-menu.md) has been divined from the atlas and awaits the typist's ratification.*
 
 ## IV. What must NOT be built while waiting
 
