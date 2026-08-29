@@ -6,10 +6,13 @@
 #   [x] Unit, contract, schema, and migration tests (dotnet test — suites grow with the code)
 #   [x] Secret scan (gitleaks)
 #   [x] Dependency inventory artifact (SBOM-lite via `dotnet list package`)
-#   [ ] Formatting/analyzer gate beyond build analyzers — add `dotnet format --verify-no-changes` once format config settles
-#   [ ] Full SBOM (CycloneDX) and license audit tooling — replaces the inventory artifact before Release 0.0 closes
-#   [ ] Deterministic rendering comparisons — arrive with Foundry.Rendering
-#   [ ] Coverage threshold for Domain/Application/Contracts — enable once measurable code lands
+#   [x] Coverage collected (Cobertura via coverlet collector) and published as an artifact (R2-11, part 1)
+#   [ ] Coverage THRESHOLD enforcement — needs report aggregation tooling; R2-11 part 2
+#   [ ] Formatting gate (`dotnet format --verify-no-changes`) — blocked on a one-time line-ending
+#       normalization pass (.editorconfig says crlf; much of the tree is lf); do the normalization
+#       as its own commit, then enable
+#   [ ] Full SBOM (CycloneDX) and license audit tooling — replaces the inventory artifact
+#   [x] Deterministic rendering comparisons (byte-identical render tests in the Rendering suite)
 
 name: CI
 
@@ -34,8 +37,8 @@ jobs:
       - name: Build (warnings are errors)
         run: dotnet build OpenClassroomFoundry.slnx --no-restore --configuration Release
 
-      - name: Test
-        run: dotnet test OpenClassroomFoundry.slnx --no-build --configuration Release --logger "trx;LogFileName=test-results.trx"
+      - name: Test with coverage
+        run: dotnet test OpenClassroomFoundry.slnx --no-build --configuration Release --logger "trx;LogFileName=test-results.trx" --collect:"XPlat Code Coverage"
 
       - name: Dependency inventory (SBOM-lite)
         run: dotnet list OpenClassroomFoundry.slnx package --include-transitive > dependency-inventory.txt
@@ -48,6 +51,7 @@ jobs:
           path: |
             dependency-inventory.txt
             **/TestResults/*.trx
+            **/TestResults/**/coverage.cobertura.xml
 
   secret-scan:
     runs-on: ubuntu-latest
