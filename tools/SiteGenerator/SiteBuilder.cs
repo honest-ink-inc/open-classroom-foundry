@@ -15,7 +15,7 @@ public sealed record SitePage(string Slug, string SourcePath, string NavLabel);
 public static class SiteBuilder
 {
     /// <summary>Links to repository files outside the rendered set resolve here.</summary>
-    public const string RepositoryBase = "https://github.com/Spacejunk-io/open-classroom-foundry/blob/main/";
+    public const string RepositoryBase = "https://github.com/honest-ink-inc/open-classroom-foundry/blob/main/";
 
     public static IReadOnlyList<SitePage> Pages { get; } =
     [
