@@ -1,6 +1,6 @@
 # Educator council — charter and recruitment kit
 
-**Status:** Charter ready; recruitment is a human act only the typist can perform. This document makes each invitation a five-minute task.
+**Status:** Charter ready; formation **tabled 29 August 2026** (GOVERNANCE.md, "Council formation status") with two automatic tripwires — the AAC/SLP seat before All Aboard co-design begins, and teacher participants before any release-evidence study. Recruitment remains a human act only the typist can perform; this document makes each invitation a five-minute task when the tabling ends.
 
 ## What the council is
 

@@ -20,6 +20,15 @@ This document records how decisions are made in Open Classroom Foundry. It exist
 
 **No single role may waive another role's critical gate.** The full role contract is implementation plan §15; stage gates and their required evidence are §16; stop-ship conditions are §19.
 
+## Council formation status (29 August 2026)
+
+Council formation is **tabled by the product owner** while the Days 16–30 engineering block proceeds — that work (dependency wiring, state machine, schemas, synthetic provider, CI) touches no council gate, so tabling costs nothing. Two tripwires end the tabling automatically:
+
+1. **Before All Aboard co-design begins** (the start of Release 0.1 design work), the AAC user / SLP / special-educator seat must be filled. This gate is absolute.
+2. **Before any release evidence requiring teacher studies** (Module Zero's time-to-artifact proof; All Aboard's think-alouds and seeded-error study), teacher pilot participants must exist — recruitment therefore starts no later than mid-Release-0.0.
+
+Procedural terms — meeting cadence, voting weights, term limits, recognition/compensation — are enacted with the first cohort: they govern members, and there are no members yet. Gate authority and the stop-ship conditions stand regardless of tabling; a tabled council defers formation, never safety.
+
 ## How decisions are recorded
 
 Architectural and product decisions live in [docs/adr/](docs/adr/) as numbered architecture decision records. An ADR is Proposed until the product owner ratifies it; ratified ADRs bind until superseded by a later ADR. The governing documents (atlas, implementation plan, module specifications) are versioned; the copies in [docs/](docs/) are canonical for this repository from this commit forward.
