@@ -203,6 +203,9 @@ var pressSamples = new (string Name, ArtifactDocument Document)[]
     ("timeline", TimelineWeaver.Sheet(
         TimelineWeaver.Parse([("1957", "Sputnik"), ("1969", "Moon landing"), ("1972-1975", "Final Apollo era")]),
         1950, 1980)),
+    ("bar-chart", ChartPress.Sheet(
+        "Bean plants after three weeks (cm)",
+        ChartPress.Parse([("Sun", "18"), ("Shade", "9"), ("Window", "12")]))),
     ("portfolio-passport", LearnerHeldKit.PortfolioPassport(
         ["What is it?", "Why I chose it"], ["Before, I...", "Now, I..."], contentsRows: 8,
         "This record belongs to the learner and lives on paper - never in a data system.")),

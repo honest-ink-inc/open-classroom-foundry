@@ -320,6 +320,17 @@ public static class PressRoomCatalog
             inputs => TimelineWeaver.Sheet(TimelineWeaver.Parse(inputs.SplitLines("events")),
                 inputs.Whole("from"), inputs.Whole("to"), inputs.Page())),
 
+        // The Chart Press (menu 4, item 2): atlas #88's deterministic heart.
+        // Default data keeps the invariant visible: Sun is exactly twice Shade.
+        new("bar-chart", "Bar chart", DeterministicPressRecipes.Charts,
+            [new TextParameter("title", "Chart title", "Bean plants after three weeks (cm)"),
+             new LinesParameter("data", "Bars, one per line as label | value", "Sun | 18\nShade | 9\nWindow | 12"),
+             new ChoiceParameter("orientation", "Bars run", ["Up", "Across"], "Up"),
+             Page("Letter landscape")],
+            inputs => ChartPress.Sheet(inputs.Text("title"),
+                ChartPress.Parse(inputs.SplitLines("data")),
+                inputs.Text("orientation") == "Across", inputs.Page())),
+
         new("synthesis-table", "Source synthesis table", DeterministicPressRecipes.History,
             [new LinesParameter("claims", "Claims, one per line", "The canal changed local trade\nWorkers came from nearby towns\nThe flood of 1889 ended the era"),
              new LinesParameter("sources", "Sources, one per line", "Newspaper\nDiary\nLedger"),

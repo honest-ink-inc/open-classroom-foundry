@@ -121,7 +121,7 @@ public class StudioPressTests
     }
 
     [Fact]
-    public void All_press_documents_validate_and_all_eighteen_recipes_stand()
+    public void All_press_documents_validate_and_all_nineteen_recipes_stand()
     {
         foreach (var document in new[]
         {
@@ -135,7 +135,7 @@ public class StudioPressTests
             Assert.False(DocumentValidator.HasBlockingIssues(DocumentValidator.Validate(document)));
         }
 
-        Assert.Equal(18, DeterministicPressRecipes.All.Count);
+        Assert.Equal(19, DeterministicPressRecipes.All.Count);
         Assert.All(DeterministicPressRecipes.All, r =>
         {
             Assert.Equal(DataLane.Green, r.MaximumLane);

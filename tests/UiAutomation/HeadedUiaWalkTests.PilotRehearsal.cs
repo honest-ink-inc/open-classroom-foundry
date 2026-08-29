@@ -55,7 +55,14 @@ public sealed partial class HeadedUiaWalkTests
                 return child;
             }
 
-            if (WalkFor(child, type, name, depth + 1) is { } found)
+            // Never descend into the shell's namespace tree or items view:
+            // hundreds of slow cross-process calls for controls that cannot
+            // be there — under full-suite load the un-pruned walk blew the
+            // 20-second budget before reaching the File name combo, which
+            // sits AFTER them in sibling order.
+            if (current.ControlType != ControlType.Tree
+                && current.ControlType != ControlType.List
+                && WalkFor(child, type, name, depth + 1) is { } found)
             {
                 return found;
             }

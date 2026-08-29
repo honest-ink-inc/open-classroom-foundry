@@ -183,8 +183,13 @@ public static class DeterministicPressRecipes
         "One-point rubrics, success-criteria checklists, and definitions of done from the teacher's own criteria.",
         "inventing, weighting, or scoring criteria — the press prints the teacher's judgment, never substitutes its own");
 
+    public static RecipeManifest Charts { get; } = Manifest(
+        "press.charts",
+        "Proportionally true bar charts from a teacher's own labeled values: a value twice as large is a bar exactly twice as long, gridlines at clean intervals.",
+        "computing, aggregating, correcting, or interpreting the teacher's data — the numbers are the teacher's claim, drawn exactly as typed");
+
     public static IReadOnlyList<RecipeManifest> All { get; } =
-        [Blankforms, Flashcards, BookletGuide, Manipulatives, Foldables, BigPrint, Handwriting, Labels, Calibration, Puzzles, Grouping, Computational, Retrieval, FieldJournal, MathScaffolds, History, LearnerHeld, Rubrics];
+        [Blankforms, Flashcards, BookletGuide, Manipulatives, Foldables, BigPrint, Handwriting, Labels, Calibration, Puzzles, Grouping, Computational, Retrieval, FieldJournal, MathScaffolds, History, LearnerHeld, Rubrics, Charts];
 
     private static RecipeManifest Manifest(string id, string purpose, params string[] alsoProhibited) => new(
         Id: id,

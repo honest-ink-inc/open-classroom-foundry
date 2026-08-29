@@ -229,9 +229,9 @@ public class WholeBookVariantTests
     }
 
     [Fact]
-    public void The_recipe_book_stands_at_eighteen_all_green_all_provider_free()
+    public void The_recipe_book_stands_at_nineteen_all_green_all_provider_free()
     {
-        Assert.Equal(18, DeterministicPressRecipes.All.Count);
+        Assert.Equal(19, DeterministicPressRecipes.All.Count);
         Assert.All(DeterministicPressRecipes.All, r =>
         {
             Assert.Equal(DataLane.Green, r.MaximumLane);
