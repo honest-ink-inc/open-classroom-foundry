@@ -30,7 +30,7 @@ Council members are advisors, not test subjects: no student data is ever solicit
 
 ## Decision the typist owns
 
-**Recognition and compensation policy** — whether council seats are volunteer (credited), honoraria-supported, or district-time (if the district partnership formalizes). Recommendation: decide before the first invitation is sent, and say it plainly in the invitation; specialist time (SLP, AT reviewer) most deserves compensation if any budget exists.
+**Recognition and compensation policy** — whether council seats are volunteer (credited), honoraria-supported, or district-time (if the district partnership formalizes). **A full draft now awaits ratification at [compensation-policy.md](council/compensation-policy.md)** — phased around the entity's real ability to pay, with specialist seats holding first claim and bracketed amounts left to the typist. The September update letters (drafted at [council/correspondence/2026-09-invitation-updates.md](council/correspondence/2026-09-invitation-updates.md)) must not be sent until it is ratified.
 
 ## Invitation draft (adapt and send)
 
