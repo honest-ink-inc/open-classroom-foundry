@@ -33,8 +33,9 @@ public class MeasuredGeometrySweepTests
 
         foreach (var graphic in document.Nodes.OfType<VectorGraphic>())
         {
-            // The page itself is exactly a declared physical size.
-            Assert.Contains((graphic.WidthMm, graphic.HeightMm), new[] { (215.9, 279.4), (210.0, 297.0) });
+            // The page itself is exactly a declared physical size, either orientation.
+            Assert.Contains((graphic.WidthMm, graphic.HeightMm),
+                new[] { (215.9, 279.4), (210.0, 297.0), (279.4, 215.9), (297.0, 210.0) });
 
             foreach (var primitive in graphic.Primitives)
             {

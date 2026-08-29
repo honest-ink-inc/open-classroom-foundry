@@ -7,6 +7,8 @@ public enum PageSize
 {
     Letter,
     A4,
+    LetterLandscape,
+    A4Landscape,
 }
 
 public enum GridQuadrants
@@ -27,6 +29,8 @@ public static partial class BlankformsPress
     public static (double WidthMm, double HeightMm) Dimensions(PageSize size) => size switch
     {
         PageSize.A4 => (210, 297),
+        PageSize.LetterLandscape => (279.4, 215.9),
+        PageSize.A4Landscape => (297, 210),
         _ => (215.9, 279.4),
     };
 

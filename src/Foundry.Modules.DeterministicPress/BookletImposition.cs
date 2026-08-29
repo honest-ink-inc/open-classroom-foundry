@@ -163,8 +163,28 @@ public static class DeterministicPressRecipes
         "press.field-journal",
         "Field and nature study kits: observation frames, specimen labels, field logs, and site-map pages with true scale bars.");
 
+    public static RecipeManifest MathScaffolds { get; } = Manifest(
+        "press.math-scaffolds",
+        "Worked-example fades and estimation-first scaffolds from the teacher's own problems and steps — the work verbatim, the fading exact arithmetic.",
+        "solving, checking, correcting, or completing the teacher's mathematics — the steps are cargo");
+
+    public static RecipeManifest History { get; } = Manifest(
+        "press.history",
+        "Proportionally true timelines and claim-by-source synthesis tables from teacher-typed events, claims, and sources.",
+        "verifying, correcting, or supplying dates, claims, or sources — the history is the teacher's, placed exactly as typed");
+
+    public static RecipeManifest LearnerHeld { get; } = Manifest(
+        "press.learner-held",
+        "Learner-held paper kits — portfolio passports, strategy shelves, goal sheets — the record lives in the learner's hands.",
+        "entering learner reflections, goals, or portfolio contents into any data system — the paper IS the record");
+
+    public static RecipeManifest Rubrics { get; } = Manifest(
+        "press.rubrics",
+        "One-point rubrics, success-criteria checklists, and definitions of done from the teacher's own criteria.",
+        "inventing, weighting, or scoring criteria — the press prints the teacher's judgment, never substitutes its own");
+
     public static IReadOnlyList<RecipeManifest> All { get; } =
-        [Blankforms, Flashcards, BookletGuide, Manipulatives, Foldables, BigPrint, Handwriting, Labels, Calibration, Puzzles, Grouping, Computational, Retrieval, FieldJournal];
+        [Blankforms, Flashcards, BookletGuide, Manipulatives, Foldables, BigPrint, Handwriting, Labels, Calibration, Puzzles, Grouping, Computational, Retrieval, FieldJournal, MathScaffolds, History, LearnerHeld, Rubrics];
 
     private static RecipeManifest Manifest(string id, string purpose, params string[] alsoProhibited) => new(
         Id: id,

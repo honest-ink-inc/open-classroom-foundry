@@ -27,6 +27,7 @@ public sealed class PressRoomForm : Form
     private readonly Label _status;
     private readonly Button _print;
     private readonly Button _tile;
+    private readonly CheckBox _lowInk;
     private readonly Dictionary<string, Func<string>> _valueReaders = new(StringComparer.Ordinal);
     private readonly Func<string?> _libraryPicker;
     private ApprovedContext? _context;
@@ -52,6 +53,7 @@ public sealed class PressRoomForm : Form
 
         _budget = new Label { AutoSize = true, AccessibleName = UiStrings.Format(UiStrings.BudgetLine, PressRoomCatalog.BudgetMinutes) };
         _budget.Text = _budget.AccessibleName;
+        _lowInk = new CheckBox { Text = UiStrings.LowInkToggle, AutoSize = true };
 
         _parameterPanel = new TableLayoutPanel
         {
@@ -80,11 +82,13 @@ public sealed class PressRoomForm : Form
         var buttons = new FlowLayoutPanel { Dock = DockStyle.Bottom, AutoSize = true, FlowDirection = FlowDirection.LeftToRight };
         buttons.Controls.AddRange([_review, _print, _printView, _export, _save, _tile, openLibrary, allAboard]);
 
-        var right = new TableLayoutPanel { Dock = DockStyle.Fill, ColumnCount = 1, RowCount = 2 };
+        var right = new TableLayoutPanel { Dock = DockStyle.Fill, ColumnCount = 1, RowCount = 3 };
+        right.RowStyles.Add(new RowStyle(SizeType.AutoSize));
         right.RowStyles.Add(new RowStyle(SizeType.AutoSize));
         right.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
         right.Controls.Add(_budget, 0, 0);
-        right.Controls.Add(_parameterPanel, 0, 1);
+        right.Controls.Add(_lowInk, 0, 1);
+        right.Controls.Add(_parameterPanel, 0, 2);
 
         var layout = new TableLayoutPanel { Dock = DockStyle.Fill, ColumnCount = 2, RowCount = 1 };
         layout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 34));
@@ -243,6 +247,12 @@ public sealed class PressRoomForm : Form
             SetStatus(UiStrings.Format(UiStrings.StatusRefused, refusal.Message));
             _parameterPanel.Controls.OfType<Control>().FirstOrDefault(c => c.CanSelect)?.Focus();
             return;
+        }
+
+        if (_lowInk.Checked)
+        {
+            // Applied BEFORE Gate B: the teacher reviews what will print.
+            document = LowInkPress.Apply(document);
         }
 
         var session = AppServices.SessionOver(document);

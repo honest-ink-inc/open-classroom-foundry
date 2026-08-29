@@ -51,6 +51,12 @@ public static class ParsonsPress
         const double boxHeight = 11;
         const double gap = 3;
 
+        var total = solutionLines.Count + distractorLines.Count;
+        if (marginMm + 12 + total * (boxHeight + gap) > height - marginMm)
+        {
+            throw new ArgumentException("The lines must fit one page; fewer lines or a taller page.", nameof(solutionLines));
+        }
+
         var primitives = new List<VectorPrimitive>
         {
             new TextLabel(marginMm, marginMm + 5, prompt, 5, TextAnchor.Start),

@@ -42,7 +42,13 @@ public sealed class PressInputs(IReadOnlyDictionary<string, string> values)
 
     public bool Bool(string key) => Text(key) == "true";
 
-    public PageSize Page() => Text(PressRoomCatalog.PageKey) == "A4" ? PageSize.A4 : PageSize.Letter;
+    public PageSize Page() => Text(PressRoomCatalog.PageKey) switch
+    {
+        "A4" => PageSize.A4,
+        "Letter landscape" => PageSize.LetterLandscape,
+        "A4 landscape" => PageSize.A4Landscape,
+        _ => PageSize.Letter,
+    };
 
     public IReadOnlyList<string> Lines(string key) =>
         [.. Text(key).Replace("\r\n", "\n", StringComparison.Ordinal).Split('\n')
@@ -83,7 +89,8 @@ public static class PressRoomCatalog
     /// <summary>Constitution 14: the declared time-to-artifact budget, displayed per recipe and measured in pilots.</summary>
     public const int BudgetMinutes = 3;
 
-    private static ChoiceParameter Page() => new(PageKey, "Page size", ["Letter", "A4"], "Letter");
+    private static ChoiceParameter Page(string defaultOption = "Letter")
+        => new(PageKey, "Page size", ["Letter", "A4", "Letter landscape", "A4 landscape"], defaultOption);
 
     private static NumberParameter Seed() => new("seed", "Seed (same seed, same pages)", 1, 99999999, 20260908);
 
@@ -282,6 +289,93 @@ public static class PressRoomCatalog
         new("tangram", "Tangram square", DeterministicPressRecipes.Manipulatives,
             [new NumberParameter("side", "Side (mm)", 80, 165, 160, 1), Page()],
             inputs => ManipulativeMint.Tangram(inputs.Mm("side"), inputs.Page())),
+
+        // The math scaffold presses (menu 3, item 4).
+        new("worked-example-fader", "Worked example, faded", DeterministicPressRecipes.MathScaffolds,
+            [new TextParameter("problem", "The problem, as you would write it", "Solve: 3(x + 4) = 27"),
+             new LinesParameter("steps", "Your worked steps, one per line, in order", "3x + 12 = 27\n3x = 27 - 12\n3x = 15\nx = 15 / 3\nx = 5"),
+             new NumberParameter("fades", "Faded practice sheets", 1, 4, 3),
+             new TextParameter("check", "Self-check line", "Check: substitute your answer back into the problem."),
+             Page()],
+            inputs => WorkedExampleFader.Sheets(inputs.Text("problem"), inputs.RawLines("steps"),
+                inputs.Whole("fades"), inputs.Text("check"), inputs.Page())),
+
+        new("estimation-first", "Estimation-first problems", DeterministicPressRecipes.MathScaffolds,
+            [new LinesParameter("problems", "Problems, one per line", "487 + 316\n72 × 9\n1,205 − 388"),
+             new TextParameter("label1", "First section label", "My estimate"),
+             new TextParameter("label2", "Second section label", "A reasonable range (low - high)"),
+             new TextParameter("label3", "Third section label", "Exact answer"),
+             new TextParameter("label4", "Fourth section label", "How close was my estimate?"),
+             Page()],
+            inputs => EstimationFirst.Sheets(inputs.Lines("problems"),
+                [inputs.Text("label1"), inputs.Text("label2"), inputs.Text("label3"), inputs.Text("label4")],
+                inputs.Page())),
+
+        // The history presses (menu 3, item 5).
+        new("timeline", "Timeline", DeterministicPressRecipes.History,
+            [new LinesParameter("events", "Events, one per line as year | label (or start-end | label)", "1957 | Sputnik\n1961 | First human in orbit\n1969 | Moon landing\n1972-1975 | Final Apollo era"),
+             new NumberParameter("from", "From year", -3000, 2100, 1950),
+             new NumberParameter("to", "To year", -3000, 2100, 1980),
+             Page("Letter landscape")],
+            inputs => TimelineWeaver.Sheet(TimelineWeaver.Parse(inputs.SplitLines("events")),
+                inputs.Whole("from"), inputs.Whole("to"), inputs.Page())),
+
+        new("synthesis-table", "Source synthesis table", DeterministicPressRecipes.History,
+            [new LinesParameter("claims", "Claims, one per line", "The canal changed local trade\nWorkers came from nearby towns\nThe flood of 1889 ended the era"),
+             new LinesParameter("sources", "Sources, one per line", "Newspaper\nDiary\nLedger"),
+             new TextParameter("legend", "Legend", "Mark each cell: A = agrees, D = disputes, dash = silent"),
+             new TextParameter("provenance", "Foot row label", "Who made this source, when, and why?"),
+             Page()],
+            inputs => SourceSynthesisTable.Sheet(inputs.Lines("claims"), inputs.Lines("sources"),
+                inputs.Text("legend"), inputs.Text("provenance"), inputs.Page())),
+
+        // The learner-held kit (menu 3, item 6).
+        new("portfolio-passport", "Portfolio passport", DeterministicPressRecipes.LearnerHeld,
+            [new LinesParameter("selection", "Selection-slip prompts, one per line", "What is it?\nWhy I chose it\nWhat it shows I can do"),
+             new LinesParameter("reflection", "Reflection prompts, one per line", "Before, I...\nNow, I...\nNext, I will..."),
+             new NumberParameter("contents", "Contents rows", 4, 14, 8),
+             new TextParameter("pledge", "The pledge printed on every page", "This record belongs to the learner and lives on paper - never in a data system."),
+             Page()],
+            inputs => LearnerHeldKit.PortfolioPassport(inputs.Lines("selection"), inputs.Lines("reflection"),
+                inputs.Whole("contents"), inputs.Text("pledge"), inputs.Page())),
+
+        new("strategy-shelf", "Strategy shelf cards", DeterministicPressRecipes.LearnerHeld,
+            [new LinesParameter("strategies", "Strategies offered, one per line (the learner chooses)", "Reread the sentence slowly\nBreak the problem into parts\nDraw what I know\nTake three slow breaths\nAsk: what exactly is stuck?\nCheck against an example"),
+             new TextParameter("pledge", "The pledge printed on every page", "These cards are mine; I chose them."),
+             Page()],
+            inputs => LearnerHeldKit.StrategyShelf(inputs.Lines("strategies"), inputs.Text("pledge"), inputs.Page())),
+
+        new("goal-post", "Goal sheet", DeterministicPressRecipes.LearnerHeld,
+            [new LinesParameter("prompts", "Prompts, one per line", "My goal\nHow I will know I am getting there\nReview date and what I noticed\nEvidence I choose to keep"),
+             new TextParameter("pledge", "The pledge printed on the page", "This sheet lives in my folder - never in a data system."),
+             Page()],
+            inputs => LearnerHeldKit.GoalPost(inputs.Lines("prompts"), inputs.Text("pledge"), inputs.Page())),
+
+        // The rubric and criteria presses (menu 3, item 7).
+        new("one-point-rubric", "One-point rubric", DeterministicPressRecipes.Rubrics,
+            [new LinesParameter("criteria", "Criteria, one per line", "The claim is stated in one clear sentence\nEvery reason cites its evidence\nThe counterclaim is answered, not ignored"),
+             new TextParameter("below", "Left column header", "Evidence of growing toward"),
+             new TextParameter("beyond", "Right column header", "Evidence of going beyond"),
+             Page()],
+            inputs => RubricPresses.OnePointRubric(inputs.Lines("criteria"),
+                inputs.Text("below"), inputs.Text("beyond"), inputs.Page())),
+
+        new("success-criteria", "Success criteria checklist", DeterministicPressRecipes.Rubrics,
+            [new TextParameter("objective", "The objective, in learner language", "I can explain why the seasons change."),
+             new LinesParameter("criteria", "Observable criteria, one per line", "I name the tilt of the axis\nI use a diagram in my explanation\nI say what summer looks like in each hemisphere"),
+             new LinesParameter("continuum", "Continuum stages, one per line", "Beginning\nMeeting\nBeyond"),
+             Page()],
+            inputs => RubricPresses.SuccessCriteria(inputs.Text("objective"), inputs.Lines("criteria"),
+                inputs.Lines("continuum"), inputs.Page())),
+
+        new("done-definition", "Definition of done", DeterministicPressRecipes.Rubrics,
+            [new LinesParameter("checklist", "Completion checklist, one per line", "Every question is answered\nMy name and date are at the top\nI read it aloud once"),
+             new LinesParameter("examples", "Looks like (one per line; blank for none)", "Full sentences\nUnits on every answer", Optional: true),
+             new LinesParameter("nonexamples", "Doesn't look like (one per line; blank for none)", "One-word answers\nCrossed-out guesses", Optional: true),
+             new TextParameter("final", "Final self-check line", "Final check: I compared my work to every line above."),
+             Page()],
+            inputs => RubricPresses.DoneDefinition(inputs.Lines("checklist"), inputs.Lines("examples"),
+                inputs.Lines("nonexamples"), inputs.Text("final"), inputs.Page())),
 
         // Big Print Shop stays out: its input is an existing approved artifact,
         // not parameters — it joins the room when the project library picker does.

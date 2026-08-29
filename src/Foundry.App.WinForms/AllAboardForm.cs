@@ -7,27 +7,34 @@ using Foundry.Modules.BuiltIn.AllAboard;
 namespace Foundry.App.WinForms;
 
 /// <summary>
-/// The All Aboard typed-steps surface — the RATIFIED 0.1 slice only (second
-/// forge menu, item 2): a title, three to eight teacher-typed steps, and
-/// per-step symbols from the shipped CC0 pack chosen by their MEANING, never a
-/// filename (walkthrough step 6). The wall stands: no new visual-support
-/// interaction pattern, no symbol-set expansion, no co-design decision lives
-/// here — that territory is sealed for the AAC/SLP seat. Bilingual authoring
-/// waits with it; the engine's bilingual capability is untouched.
+/// The All Aboard surface — the RATIFIED 0.1 slice, now complete (third forge
+/// menu, item 3): Task strip, First/Then, Now/Next/Done, and Agency cards,
+/// all with tested builders, symbols chosen by MEANING from the shipped CC0
+/// pack, agency labels overridable per card so a classroom prints "Alto," not
+/// the catalog's English (RC-2). THE WALL: Choice Board and Change Preview
+/// also appear in the ratified flow's list, but they carry choice-preservation
+/// semantics and capture adjacency that belong to the AAC/SLP seat and the
+/// district instrument — their absence here is deliberate, and adding them is
+/// a governance act, not a code change.
 /// </summary>
 public sealed class AllAboardForm : Form
 {
     private readonly IAssetCatalog _catalog;
     private readonly Func<ReviewSession, ApprovedArtifact?> _reviewRunner;
     private readonly bool _modalReview;
-    private readonly TextBox _title;
+    private readonly ComboBox _mode;
+    private readonly TableLayoutPanel _grid;
     private readonly List<(TextBox Text, ComboBox Symbol)> _steps = [];
+    private readonly List<(CheckBox Include, TextBox Override)> _agency = [];
+    private readonly List<string> _symbolNames;
+    private TextBox? _title;
     private readonly Button _review;
     private readonly Button _print;
     private readonly Button _printView;
     private readonly Button _export;
     private readonly Button _save;
     private readonly Label _status;
+    private RecipeManifest _approvedRecipe = AllAboardRecipes.TaskStrip;
 
     public AllAboardForm(IAssetCatalog catalog, Func<ReviewSession, ApprovedArtifact?>? reviewRunner = null)
     {
@@ -35,40 +42,25 @@ public sealed class AllAboardForm : Form
         _modalReview = reviewRunner is null;
         _reviewRunner = reviewRunner ?? RunModalReview;
 
+        // The pack may hold two symbols with one meaning (it ships two Help
+        // variants): meaning stays the name, and only duplicates append their
+        // alt text — so every row a screen reader hears is distinct.
+        var duplicated = _catalog.All.GroupBy(p => p.IntendedMeaning)
+            .Where(g => g.Count() > 1).Select(g => g.Key).ToHashSet(StringComparer.Ordinal);
+        _symbolNames = [.. _catalog.All.Select(p => duplicated.Contains(p.IntendedMeaning)
+            ? UiStrings.Format(UiStrings.SymbolDisambiguation, p.IntendedMeaning, p.AltText)
+            : p.IntendedMeaning)];
+
         Text = UiStrings.AllAboardWindowTitle;
         MinimumSize = new Size(720, 560);
 
-        var grid = new TableLayoutPanel { Dock = DockStyle.Fill, ColumnCount = 2, AutoScroll = true };
-        grid.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
-        grid.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
+        _mode = new ComboBox { DropDownStyle = ComboBoxStyle.DropDownList, Width = 200, AccessibleName = UiStrings.OutputMode };
+        _mode.Items.AddRange([UiStrings.ModeTaskStrip, UiStrings.ModeFirstThen, UiStrings.ModeNowNextDone, UiStrings.ModeAgencyCards]);
+        _mode.SelectedIndexChanged += (_, _) => LoadMode();
 
-        _title = new TextBox { Width = 360, AccessibleName = UiStrings.TaskTitle };
-        AddRow(grid, UiStrings.TaskTitle, _title);
-
-        // The symbol list speaks each symbol's intended meaning from its
-        // provenance record — never "image", never a filename.
-        var symbolNames = _catalog.All.Select(p => p.IntendedMeaning).ToList();
-        for (var i = 1; i <= AllAboardBuilders.MaximumSteps; i++)
-        {
-            var text = new TextBox { Width = 360, AccessibleName = UiStrings.Format(UiStrings.StepTextLabel, i) };
-            var symbol = new ComboBox
-            {
-                DropDownStyle = ComboBoxStyle.DropDownList,
-                Width = 180,
-                AccessibleName = UiStrings.Format(UiStrings.StepSymbolLabel, i),
-            };
-            symbol.Items.Add(UiStrings.NoSymbol);
-            foreach (var name in symbolNames)
-            {
-                symbol.Items.Add(name);
-            }
-
-            symbol.SelectedIndex = 0;
-
-            AddRow(grid, UiStrings.Format(UiStrings.StepTextLabel, i), text);
-            AddRow(grid, UiStrings.Format(UiStrings.StepSymbolLabel, i), symbol);
-            _steps.Add((text, symbol));
-        }
+        _grid = new TableLayoutPanel { Dock = DockStyle.Fill, ColumnCount = 2, AutoScroll = true };
+        _grid.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
+        _grid.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
 
         _review = MakeButton(UiStrings.ReviewAndApprove, (_, _) => ReviewAndApprove());
         _print = MakeButton(UiStrings.PrintButton, (_, _) => WithApproved(a =>
@@ -85,14 +77,13 @@ public sealed class AllAboardForm : Form
         }));
         _printView = MakeButton(UiStrings.OpenPrintView, (_, _) => WithApproved(a =>
         {
-            AppServices.OpenPrintView(a, "all-aboard-task-strip");
+            AppServices.OpenPrintView(a, "all-aboard");
             SetStatus(UiStrings.StatusPrintView);
         }));
         _export = MakeButton(UiStrings.ExportEllipsis, (_, _) => WithApproved(Export));
         _save = MakeButton(UiStrings.SaveToLibrary, (_, _) => WithApproved(a =>
         {
-            var recipe = AllAboardRecipes.TaskStrip;
-            var hint = AppServices.SaveToLibrary(a, "task-strip", "all-aboard", recipe.Id, recipe.Version, _catalog);
+            var hint = AppServices.SaveToLibrary(a, _approvedRecipe.Id.Replace('.', '-'), "all-aboard", _approvedRecipe.Id, _approvedRecipe.Version, _catalog);
             SetStatus(UiStrings.Format(UiStrings.StatusSaved, hint));
         }));
 
@@ -103,10 +94,16 @@ public sealed class AllAboardForm : Form
         var buttons = new FlowLayoutPanel { Dock = DockStyle.Bottom, AutoSize = true, FlowDirection = FlowDirection.LeftToRight };
         buttons.Controls.AddRange([_review, _print, _printView, _export, _save]);
 
-        Controls.Add(grid);
+        var top = new FlowLayoutPanel { Dock = DockStyle.Top, AutoSize = true, FlowDirection = FlowDirection.LeftToRight, Padding = new Padding(4) };
+        top.Controls.Add(new Label { Text = UiStrings.OutputMode, AutoSize = true, Anchor = AnchorStyles.Left });
+        top.Controls.Add(_mode);
+
+        Controls.Add(_grid);
+        Controls.Add(top);
         Controls.Add(buttons);
         Controls.Add(_status);
 
+        _mode.SelectedIndex = 0;
         UpdateGatedButtons();
         UiLocale.ApplyChrome(this);
     }
@@ -124,13 +121,113 @@ public sealed class AllAboardForm : Form
         return button;
     }
 
-    private static void AddRow(TableLayoutPanel grid, string label, Control control)
+    private void LoadMode()
     {
-        var row = grid.RowCount++;
-        grid.RowStyles.Add(new RowStyle(SizeType.AutoSize));
-        grid.Controls.Add(new Label { Text = label, AutoSize = true, Anchor = AnchorStyles.Left }, 0, row);
-        grid.Controls.Add(control, 1, row);
+        ApprovedResult = null;
+        UpdateGatedButtons();
+
+        _grid.SuspendLayout();
+        _grid.Controls.Clear();
+        _grid.RowCount = 0;
+        _steps.Clear();
+        _agency.Clear();
+        _title = null;
+
+        switch (_mode.SelectedIndex)
+        {
+            case 1:
+                AddCardRows(UiStrings.Localize("First"), UiStrings.Localize("Then"));
+                break;
+            case 2:
+                AddCardRows(UiStrings.Localize("Now"), UiStrings.Localize("Next"), UiStrings.Localize("Done"));
+                break;
+            case 3:
+                AddAgencyRows();
+                break;
+            default:
+                AddTaskStripRows();
+                break;
+        }
+
+        _grid.ResumeLayout();
+        SetStatus(UiStrings.StatusReady);
     }
+
+    private void AddTaskStripRows()
+    {
+        _title = new TextBox { Width = 360, AccessibleName = UiStrings.TaskTitle };
+        AddRow(UiStrings.TaskTitle, _title);
+
+        for (var i = 1; i <= AllAboardBuilders.MaximumSteps; i++)
+        {
+            var text = new TextBox { Width = 360, AccessibleName = UiStrings.Format(UiStrings.StepTextLabel, i) };
+            var symbol = SymbolPicker(UiStrings.Format(UiStrings.StepSymbolLabel, i));
+            AddRow(UiStrings.Format(UiStrings.StepTextLabel, i), text);
+            AddRow(UiStrings.Format(UiStrings.StepSymbolLabel, i), symbol);
+            _steps.Add((text, symbol));
+        }
+    }
+
+    private void AddCardRows(params string[] cardNames)
+    {
+        foreach (var name in cardNames)
+        {
+            var text = new TextBox { Width = 360, AccessibleName = UiStrings.Format(UiStrings.CardTextLabel, name) };
+            var symbol = SymbolPicker(UiStrings.Format(UiStrings.CardSymbolLabel, name));
+            AddRow(UiStrings.Format(UiStrings.CardTextLabel, name), text);
+            AddRow(UiStrings.Format(UiStrings.CardSymbolLabel, name), symbol);
+            _steps.Add((text, symbol));
+        }
+    }
+
+    private void AddAgencyRows()
+    {
+        // Each card: include it or not, and optionally override its printed
+        // label — "Alto," not the catalog's English (RC-2). The MEANING still
+        // names the row: never "image", never a filename.
+        for (var i = 0; i < _catalog.All.Count; i++)
+        {
+            var include = new CheckBox { Text = _symbolNames[i], AutoSize = true, Checked = true };
+            var overrideBox = new TextBox
+            {
+                Width = 220,
+                AccessibleName = UiStrings.Format(UiStrings.AgencyOverrideLabel, _symbolNames[i]),
+            };
+
+            var row = _grid.RowCount++;
+            _grid.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+            _grid.Controls.Add(include, 0, row);
+            _grid.Controls.Add(overrideBox, 1, row);
+            _agency.Add((include, overrideBox));
+        }
+    }
+
+    private ComboBox SymbolPicker(string accessibleName)
+    {
+        var symbol = new ComboBox { DropDownStyle = ComboBoxStyle.DropDownList, Width = 180, AccessibleName = accessibleName };
+        symbol.Items.Add(UiStrings.NoSymbol);
+        foreach (var name in _symbolNames)
+        {
+            symbol.Items.Add(name);
+        }
+
+        symbol.SelectedIndex = 0;
+        return symbol;
+    }
+
+    private void AddRow(string label, Control control)
+    {
+        var row = _grid.RowCount++;
+        _grid.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+        _grid.Controls.Add(new Label { Text = label, AutoSize = true, Anchor = AnchorStyles.Left }, 0, row);
+        _grid.Controls.Add(control, 1, row);
+    }
+
+    private AssetId? SymbolAt(int index)
+        => _steps[index].Symbol.SelectedIndex > 0 ? _catalog.All[_steps[index].Symbol.SelectedIndex - 1].Id : null;
+
+    private CardSpec CardAt(int index)
+        => new(_steps[index].Text.Text, Symbol: SymbolAt(index));
 
     private void ReviewAndApprove()
     {
@@ -138,41 +235,64 @@ public sealed class AllAboardForm : Form
         UpdateGatedButtons();
 
         ArtifactDocument document;
+        RecipeManifest recipe;
         try
         {
-            // A row counts as a step when it carries text or a symbol; a
-            // symbol on a blank row flows through as a blank step so the
-            // review surface's validation says so out loud (walkthrough 7).
-            var steps = _steps
-                .Where(s => !string.IsNullOrWhiteSpace(s.Text.Text) || s.Symbol.SelectedIndex > 0)
-                .Select(s => new StepSpec(
-                    s.Text.Text,
-                    s.Symbol.SelectedIndex > 0 ? _catalog.All[s.Symbol.SelectedIndex - 1].Id : null))
-                .ToList();
+            switch (_mode.SelectedIndex)
+            {
+                case 1:
+                    document = AllAboardBuilders.FirstThen(CardAt(0), CardAt(1), _catalog);
+                    recipe = AllAboardRecipes.FirstThen;
+                    break;
 
-            document = AllAboardBuilders.TaskStrip(_title.Text, steps, _catalog);
+                case 2:
+                    document = AllAboardBuilders.NowNextDone(CardAt(0), CardAt(1), CardAt(2), _catalog);
+                    recipe = AllAboardRecipes.NowNextDone;
+                    break;
+
+                case 3:
+                    var chosen = _agency.Select((row, i) => (row, i)).Where(pair => pair.row.Include.Checked).ToList();
+                    document = AllAboardBuilders.AgencyCards(
+                        [.. chosen.Select(pair => _catalog.All[pair.i].Id)],
+                        _catalog,
+                        labels: chosen.Any(pair => !string.IsNullOrWhiteSpace(pair.row.Override.Text))
+                            ? [.. chosen.Select(pair => string.IsNullOrWhiteSpace(pair.row.Override.Text)
+                                ? _catalog.All[pair.i].IntendedMeaning
+                                : pair.row.Override.Text)]
+                            : null);
+                    recipe = AllAboardRecipes.AgencyCards;
+                    break;
+
+                default:
+                    var steps = _steps
+                        .Where(s => !string.IsNullOrWhiteSpace(s.Text.Text) || s.Symbol.SelectedIndex > 0)
+                        .Select(s => new StepSpec(s.Text.Text,
+                            s.Symbol.SelectedIndex > 0 ? _catalog.All[s.Symbol.SelectedIndex - 1].Id : null))
+                        .ToList();
+                    document = AllAboardBuilders.TaskStrip(_title!.Text, steps, _catalog);
+                    recipe = AllAboardRecipes.TaskStrip;
+                    break;
+            }
         }
         catch (ArgumentException refusal)
         {
             SetStatus(UiStrings.Format(UiStrings.StatusRefused, refusal.Message));
-            _title.Focus();
             return;
         }
 
         var session = AppServices.SessionOver(document);
         if (_modalReview)
         {
-            // Deferred one message-loop beat: automation sees the click
-            // complete, then the dialog arrive (harness finding, 29 Aug 2026).
-            BeginInvoke(() => CompleteReview(session));
+            // Deferred one message-loop beat (harness finding, 29 Aug 2026).
+            BeginInvoke(() => CompleteReview(recipe, session));
         }
         else
         {
-            CompleteReview(session);
+            CompleteReview(recipe, session);
         }
     }
 
-    private void CompleteReview(ReviewSession session)
+    private void CompleteReview(RecipeManifest recipe, ReviewSession session)
     {
         var approved = _reviewRunner(session);
         if (approved is null)
@@ -182,6 +302,7 @@ public sealed class AllAboardForm : Form
         }
 
         ApprovedResult = approved;
+        _approvedRecipe = recipe;
         UpdateGatedButtons();
         SetStatus(UiStrings.StatusApproved);
     }
@@ -204,7 +325,7 @@ public sealed class AllAboardForm : Form
     {
         using var dialog = new SaveFileDialog
         {
-            FileName = "task-strip",
+            FileName = _approvedRecipe.Id.Replace('.', '-'),
             Filter = $"{UiStrings.ExportFilterPrint}|*.html|{UiStrings.ExportFilterAccessible}|*.html",
         };
         if (dialog.ShowDialog(this) != DialogResult.OK)

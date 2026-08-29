@@ -136,6 +136,27 @@ public static class UiStrings
 
     public static string NoSymbol => T("(no symbol)");
 
+    public static string OutputMode => T("Output mode");
+
+    public static string ModeTaskStrip => T("Task strip");
+
+    public static string ModeFirstThen => T("First/Then");
+
+    public static string ModeNowNextDone => T("Now/Next/Done");
+
+    public static string ModeAgencyCards => T("Agency cards");
+
+    public static string CardTextLabel => T("{0} card text");
+
+    public static string CardSymbolLabel => T("{0} card symbol");
+
+    public static string AgencyOverrideLabel => T("Label override for {0} (blank keeps the catalog meaning)");
+
+    /// <summary>How a duplicated symbol meaning is told apart from its twin: meaning first, alt text after.</summary>
+    public static string SymbolDisambiguation => T("{0} — {1}");
+
+    public static string LowInkToggle => T("Low &ink");
+
     /// <summary>Module-supplied neutral text (press titles, parameter labels) rendered through the active locale.</summary>
     public static string Localize(string neutral)
     {

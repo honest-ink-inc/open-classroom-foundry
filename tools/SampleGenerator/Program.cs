@@ -196,6 +196,19 @@ var pressSamples = new (string Name, ArtifactDocument Document)[]
     ("algebra-tiles", ManipulativeMint.AlgebraTiles()),
     ("base-ten-blocks", ManipulativeMint.BaseTenBlocks()),
     ("tangram", ManipulativeMint.Tangram()),
+    ("worked-example-fader", WorkedExampleFader.Sheets(
+        "Solve: 3(x + 4) = 27",
+        ["3x + 12 = 27", "3x = 15", "x = 5"], fadeSheets: 2,
+        "Check: substitute your answer back into the problem.")),
+    ("timeline", TimelineWeaver.Sheet(
+        TimelineWeaver.Parse([("1957", "Sputnik"), ("1969", "Moon landing"), ("1972-1975", "Final Apollo era")]),
+        1950, 1980)),
+    ("portfolio-passport", LearnerHeldKit.PortfolioPassport(
+        ["What is it?", "Why I chose it"], ["Before, I...", "Now, I..."], contentsRows: 8,
+        "This record belongs to the learner and lives on paper - never in a data system.")),
+    ("one-point-rubric", RubricPresses.OnePointRubric(
+        ["The claim is stated in one clear sentence", "Every reason cites its evidence"],
+        "Evidence of growing toward", "Evidence of going beyond")),
 };
 
 foreach (var (name, document) in pressSamples)

@@ -21,6 +21,11 @@ public static class CalibrationPress
             throw new ArgumentException("A margin between 5 and 25 millimeters keeps every instrument on the page.", nameof(marginMm));
         }
 
+        if (size is PageSize.LetterLandscape or PageSize.A4Landscape)
+        {
+            throw new ArgumentException("The calibration sheet is a portrait instrument; its rulers and ramp are laid out for the tall page.", nameof(size));
+        }
+
         var (width, height) = BlankformsPress.Dimensions(size);
         var primitives = new List<VectorPrimitive>
         {
