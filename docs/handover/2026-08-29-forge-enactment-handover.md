@@ -22,7 +22,7 @@
 ### The closing rites (run for every item, in this order)
 1. `dotnet build` Release — warnings are errors; zero tolerance.
 2. `dotnet format OpenClassroomFoundry.slnx` (FIX first — new files land with LF and the repo wants CRLF), then `--verify-no-changes` and demand exit 0.
-3. Full `dotnet test` on the solution, then AT LEAST one stability re-run — the UIA suite is serialized but the whole solution under load has now flaked twice (once unreproduced on 29 Aug morning; once during menu-4 item 3's stability run, name LOST because the output was filtered to summary lines only — do not repeat that mistake: filter test output so failure NAMES survive). Suspicion, unproven: the dress rehearsal's shell-dialog legs under load. Green on the immediate rerun both times.
+3. Full `dotnet test` on the solution, then AT LEAST one stability re-run — and filter test output so failure NAMES survive (a flake's name was once lost to a summary-only filter). The recurring under-load flake was caught by name during menu-4 item 4 and killed at its root: it was the dress rehearsal's shell Open dialog leg, and the cure was the `libraryPicker` seam, not a better lookup (traceability finding 9). If a NEW flake appears, capture the name first, then ask whether the flaky thing is ours at all.
 4. If presses changed: run the SampleGenerator TWICE into scratch directories and hash-compare every `press-*` file. Byte-identical or it does not ship.
 5. Strike the menu item with a dated note (never delete), update `docs/README.md` if a document was added, commit, push.
 

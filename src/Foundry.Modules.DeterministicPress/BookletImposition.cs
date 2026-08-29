@@ -193,8 +193,13 @@ public static class DeterministicPressRecipes
         "Bell-to-bell lesson plans whose clock arithmetic is done exactly: cumulative times, transitions counted, the closure protected at the end, overruns refused before they reach a classroom.",
         "planning, suggesting, reordering, or trimming activities — the plan is the teacher's; the press does only the clock arithmetic");
 
+    public static RecipeManifest Fluency { get; } = Manifest(
+        "press.fluency",
+        "Repeated-reading rehearsal sheets from the teacher's own passage: text verbatim in large print, the teacher's phrase marks as visible breath-breaks, tally boxes, and a reflection line.",
+        "altering, leveling, simplifying, or re-phrasing the passage — the text and its phrase marks are the teacher's, preserved exactly");
+
     public static IReadOnlyList<RecipeManifest> All { get; } =
-        [Blankforms, Flashcards, BookletGuide, Manipulatives, Foldables, BigPrint, Handwriting, Labels, Calibration, Puzzles, Grouping, Computational, Retrieval, FieldJournal, MathScaffolds, History, LearnerHeld, Rubrics, Charts, Schedules];
+        [Blankforms, Flashcards, BookletGuide, Manipulatives, Foldables, BigPrint, Handwriting, Labels, Calibration, Puzzles, Grouping, Computational, Retrieval, FieldJournal, MathScaffolds, History, LearnerHeld, Rubrics, Charts, Schedules, Fluency];
 
     private static RecipeManifest Manifest(string id, string purpose, params string[] alsoProhibited) => new(
         Id: id,

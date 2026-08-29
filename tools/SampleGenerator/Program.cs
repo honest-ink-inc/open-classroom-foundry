@@ -206,6 +206,15 @@ var pressSamples = new (string Name, ArtifactDocument Document)[]
     ("bar-chart", ChartPress.Sheet(
         "Bean plants after three weeks (cm)",
         ChartPress.Parse([("Sun", "18"), ("Shade", "9"), ("Window", "12")]))),
+    ("bug-zoo", BugZoo.Sheet(
+        "This program should print 6 - but it does not.",
+        ["total = 0", "for n in [1, 2, 3]:", "    total = n", "print(total)"],
+        ["Diagnose - what exactly goes wrong, and on which line?", "Repair - write the corrected line or lines.", "Explain - why is the buggy version convincing?"],
+        "Assignment replaces; learners expect accumulation without writing total + n.")),
+    ("fluency-rehearsal", FluencyRehearsal.Sheet(
+        "The Little Boat",
+        ["The little boat | rocked gently | on the bright water,", "and the river | carried it | all the way home."],
+        readings: 3, "After my last reading, I noticed...")),
     ("bell-to-bell", BellToBell.Plan(
         "Tuesday, period 2", "8:30",
         BellToBell.Parse([("5", "Warm-up"), ("15", "Mini-lesson"), ("20", "Guided practice"), ("8", "Share out")]),

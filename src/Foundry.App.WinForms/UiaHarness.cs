@@ -81,9 +81,10 @@ public static class UiaHarness
         }
 
         var libraryIndex = Array.IndexOf(args, LibraryRootSwitch);
-        if (libraryIndex >= 0 && libraryIndex + 1 < args.Length)
+        var libraryRoot = libraryIndex >= 0 && libraryIndex + 1 < args.Length ? args[libraryIndex + 1] : null;
+        if (libraryRoot is not null)
         {
-            AppServices.LibraryRoot = args[libraryIndex + 1];
+            AppServices.LibraryRoot = libraryRoot;
         }
 
         // In harness mode a swallowed exception is invisible evidence; write
@@ -102,9 +103,19 @@ public static class UiaHarness
             "capture" => CreateCaptureForm(),
             // Filter index 2 is the booklet PDF: the imposition leg is the
             // seam-richest export, so it is the one the rehearsal exercises.
-            "pressroom" => exportTo is null
-                ? new PressRoomForm()
-                : new PressRoomForm(exportPicker: () => new PressRoomForm.ExportChoice(exportTo, 2)),
+            // The library picker resolves at CLICK time to the newest project
+            // in the fixture library — the shell Open dialog's UIA exposure
+            // proved flaky under load (traceability finding 9), and
+            // Microsoft's chrome is not what the rehearsal guards.
+            "pressroom" => new PressRoomForm(
+                libraryPicker: libraryRoot is null
+                    ? null
+                    : () => Directory.EnumerateFiles(libraryRoot, "*" + Storage.OcfprojProjectStore.Extension)
+                        .OrderByDescending(File.GetLastWriteTimeUtc)
+                        .FirstOrDefault(),
+                exportPicker: exportTo is null
+                    ? null
+                    : () => new PressRoomForm.ExportChoice(exportTo, 2)),
             "allaboard" => new AllAboardForm(AppServices.SymbolCatalog()),
             _ => null,
         };

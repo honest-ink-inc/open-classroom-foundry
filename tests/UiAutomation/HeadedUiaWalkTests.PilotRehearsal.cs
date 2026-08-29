@@ -11,11 +11,12 @@ namespace Foundry.Tests.UiAutomation;
 // bad morning on September 8. The print step asserts the gate and the status
 // path, never paper: rehearsal machines and CI runners have no printer worth
 // trusting. The library lives in a disposable directory the harness is
-// pointed at; the teacher's real Documents are never touched. The Open
-// dialog is driven for real (it commits typed paths honestly); the Save As
-// dialog does NOT — its name field cannot be committed by cross-process
-// automation — so the export leg goes through the Press Room's export seam
-// (see UiaHarness.ExportToSwitch for the full finding).
+// pointed at; the teacher's real Documents are never touched. Neither shell
+// file dialog is driven: the Save As dialog's name field cannot be committed
+// by cross-process automation, and no lookup on the Open dialog earned trust
+// under full-suite load (traceability findings 8-9) — so export and reopen
+// both go through the Press Room's ctor seams, injected by the harness, and
+// the rehearsal asserts only what is ours.
 public sealed partial class HeadedUiaWalkTests
 {
     private static AutomationElement DialogByTitle(HeadedApp app, string titleFragment)
@@ -28,50 +29,6 @@ public sealed partial class HeadedUiaWalkTests
     private static void InvokeButton(AutomationElement scope, string name)
         => ((InvokePattern)ByName(scope, ControlType.Button, name)
             .GetCurrentPattern(InvokePattern.Pattern)).Invoke();
-
-    /// <summary>
-    /// Common-dialog lookup. The legacy managed UIA client's Descendants
-    /// queries come back EMPTY over the shell file dialogs' DirectUI tree
-    /// (found 29 Aug 2026 building this rehearsal), while TreeWalker
-    /// navigation sees every control — so file-dialog controls are found by
-    /// walking, never by FindFirst.
-    /// </summary>
-    private static AutomationElement ByNameWalking(AutomationElement scope, ControlType type, string name)
-        => WaitFor(() => WalkFor(scope, type, name, 0));
-
-    private static AutomationElement? WalkFor(AutomationElement element, ControlType type, string name, int depth)
-    {
-        if (depth > 6)
-        {
-            return null;
-        }
-
-        var child = TreeWalker.ControlViewWalker.GetFirstChild(element);
-        while (child is not null)
-        {
-            var current = child.Current;
-            if (current.ControlType == type && current.Name == name)
-            {
-                return child;
-            }
-
-            // Never descend into the shell's namespace tree or items view:
-            // hundreds of slow cross-process calls for controls that cannot
-            // be there — under full-suite load the un-pruned walk blew the
-            // 20-second budget before reaching the File name combo, which
-            // sits AFTER them in sibling order.
-            if (current.ControlType != ControlType.Tree
-                && current.ControlType != ControlType.List
-                && WalkFor(child, type, name, depth + 1) is { } found)
-            {
-                return found;
-            }
-
-            child = TreeWalker.ControlViewWalker.GetNextSibling(child);
-        }
-
-        return null;
-    }
 
     /// <summary>Gate B arrives as its own window; approving it is the teacher's signature.</summary>
     private static void ApproveGateB(HeadedApp app)
@@ -148,13 +105,14 @@ public sealed partial class HeadedUiaWalkTests
         var project = WaitFor(() => Directory.EnumerateFiles(library, "*.ocfproj").FirstOrDefault());
 
         // Reopen: reversibility means a FRESH Gate B review, never an
-        // inherited approval — the gate is structural, not hereditary.
+        // inherited approval — the gate is structural, not hereditary. The
+        // reopen goes through the libraryPicker seam the in-process tests
+        // always used (the harness resolves the newest fixture project at
+        // click time): no lookup on the shell Open dialog earned trust under
+        // full-suite load — traceability finding 9 — and Microsoft's chrome
+        // is not what this rehearsal guards.
+        Assert.EndsWith(".ocfproj", project, StringComparison.Ordinal);
         InvokeButton(app.Window, "Open from library…");
-        var open = DialogByTitle(app, "Open");
-        ((ValuePattern)ByNameWalking(open, ControlType.Edit, "File name:")
-            .GetCurrentPattern(ValuePattern.Pattern)).SetValue(project);
-        ((InvokePattern)ByNameWalking(open, ControlType.Button, "Open")
-            .GetCurrentPattern(InvokePattern.Pattern)).Invoke();
         ApproveGateB(app);
         AwaitStatus(app.Window, "Approved —");
 

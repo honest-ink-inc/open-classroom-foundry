@@ -191,6 +191,89 @@ public static class TraceTableTutor
 }
 
 /// <summary>
+/// Bug Zoo (atlas #214; fourth forge menu, item 4): a buggy program the
+/// TEACHER wrote, printed verbatim with the trace-table discipline —
+/// indentation as geometry, code never interpreted — above diagnose, repair,
+/// and explain sections. The teacher's note naming the intended misconception
+/// is required and rides as a teacher-only notice: teacher-authored bugs
+/// only, and the note is that authorship in ink.
+/// </summary>
+public static class BugZoo
+{
+    public static ArtifactDocument Sheet(
+        string prompt,
+        IReadOnlyList<string> codeLines,
+        IReadOnlyList<string> sectionLabels,
+        string misconceptionNote,
+        PageSize size = PageSize.Letter,
+        double marginMm = BlankformsPress.DefaultMarginMm)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(prompt);
+        ArgumentNullException.ThrowIfNull(codeLines);
+        ArgumentNullException.ThrowIfNull(sectionLabels);
+
+        if (codeLines.Count is < 1 or > 16)
+        {
+            throw new ArgumentException("Between one and sixteen code lines.", nameof(codeLines));
+        }
+
+        if (sectionLabels.Count != 3 || sectionLabels.Any(string.IsNullOrWhiteSpace))
+        {
+            throw new ArgumentException("Exactly three non-blank section labels: diagnose, repair, explain.", nameof(sectionLabels));
+        }
+
+        if (string.IsNullOrWhiteSpace(misconceptionNote))
+        {
+            throw new ArgumentException("Name the intended misconception; Bug Zoo prints teacher-authored bugs only.", nameof(misconceptionNote));
+        }
+
+        var (width, height) = BlankformsPress.Dimensions(size);
+        const double codeLineHeight = 6;
+        var primitives = new List<VectorPrimitive>
+        {
+            new TextLabel(marginMm, marginMm + 5, prompt, 5, TextAnchor.Start),
+        };
+
+        var codeTop = marginMm + 12;
+        for (var i = 0; i < codeLines.Count; i++)
+        {
+            var y = codeTop + i * codeLineHeight;
+            primitives.Add(new TextLabel(marginMm + 6, y, (i + 1).ToString(System.Globalization.CultureInfo.InvariantCulture), 4, TextAnchor.End));
+
+            var line = codeLines[i];
+            var indent = line.Length - line.TrimStart().Length;
+            primitives.Add(new TextLabel(
+                marginMm + 10 + indent * ParsonsPress.IndentMmPerSpace, y, line.TrimStart(), 4.5, TextAnchor.Start));
+        }
+
+        var sectionsTop = codeTop + codeLines.Count * codeLineHeight + 8;
+        const double minSectionHeight = 30;
+        if (height - marginMm - sectionsTop < 3 * minSectionHeight)
+        {
+            throw new ArgumentException("The code plus the three sections must fit one page; fewer code lines.", nameof(codeLines));
+        }
+
+        var sectionHeight = (height - marginMm - sectionsTop) / 3;
+        for (var s = 0; s < 3; s++)
+        {
+            var top = sectionsTop + s * sectionHeight;
+            primitives.Add(new TextLabel(marginMm, top + 5, sectionLabels[s], 4.5, TextAnchor.Start));
+            for (var y = top + 14; y <= top + sectionHeight - 3; y += 9)
+            {
+                primitives.Add(new LineSeg(marginMm, y, width - marginMm, y, 0.3));
+            }
+        }
+
+        return new ArtifactDocument(
+        [
+            new VectorGraphic(width, height, primitives,
+                $"A Bug Zoo sheet: {codeLines.Count} numbered lines of the teacher's buggy program above diagnose, repair, and explain sections"),
+            new TeacherOnlyNotice($"Intended misconception (teacher only): {misconceptionNote}"),
+        ]);
+    }
+}
+
+/// <summary>
 /// Unplugged Algorithm Atelier (atlas #211) and Rubber Duck Deck (atlas #215):
 /// card decks the learners execute or interrogate as human programs. Every
 /// word on every card is teacher-typed or teacher-editable — control-card

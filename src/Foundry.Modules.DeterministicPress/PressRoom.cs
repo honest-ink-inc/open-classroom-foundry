@@ -215,6 +215,20 @@ public static class PressRoomCatalog
              Seed(), Page()],
             inputs => ParsonsPress.Puzzle(inputs.Text("prompt"), inputs.RawLines("solution"), inputs.RawLines("distractors"), inputs.Whole("seed"), inputs.Page())),
 
+        // Bug Zoo (menu 4, item 4): the default bug is a real misconception —
+        // assignment where accumulation was meant; should print 6, prints 3.
+        new("bug-zoo", "Bug Zoo", DeterministicPressRecipes.Computational,
+            [new TextParameter("prompt", "Task framing", "This program should print 6 - but it does not."),
+             new LinesParameter("code", "The buggy program you wrote, verbatim (indentation kept)", "total = 0\nfor n in [1, 2, 3]:\n    total = n\nprint(total)"),
+             new TextParameter("diagnose", "First section label", "Diagnose - what exactly goes wrong, and on which line?"),
+             new TextParameter("repair", "Second section label", "Repair - write the corrected line or lines."),
+             new TextParameter("explain", "Third section label", "Explain - why is the buggy version convincing?"),
+             new TextParameter("note", "Intended misconception (prints for the teacher only)", "Assignment replaces; learners expect accumulation without writing total + n."),
+             Page()],
+            inputs => BugZoo.Sheet(inputs.Text("prompt"), inputs.RawLines("code"),
+                [inputs.Text("diagnose"), inputs.Text("repair"), inputs.Text("explain")],
+                inputs.Text("note"), inputs.Page())),
+
         new("trace-table", "Trace-table sheet", DeterministicPressRecipes.Computational,
             [new TextParameter("prompt", "Prompt printed at the top", "Trace each variable line by line, then predict the output."),
              new LinesParameter("code", "Code, one line each (kept exactly as typed)", "x = 2\ny = 5\nwhile x < y:\n    x = x + 2\nprint(x)"),
@@ -333,6 +347,17 @@ public static class PressRoomCatalog
 
         // Bell-to-Bell (menu 4, item 3): the defaults meet the bell exactly —
         // 48 activity + 4 transition + 3 closure = 55 of 55.
+        // Fluency Rehearsal (menu 4, item 4): the passage is the teacher's,
+        // exactly; the | marks become breath-break slashes in ink.
+        new("fluency-rehearsal", "Fluency rehearsal", DeterministicPressRecipes.Fluency,
+            [new TextParameter("title", "Passage title", "The Little Boat"),
+             new LinesParameter("passage", "Passage lines, with | where a breath-break belongs", "The little boat | rocked gently | on the bright water,\nand the river | carried it | all the way home."),
+             new NumberParameter("readings", "Readings to tally", 1, 6, 3),
+             new TextParameter("reflection", "Reflection prompt", "After my last reading, I noticed..."),
+             Page()],
+            inputs => FluencyRehearsal.Sheet(inputs.Text("title"), inputs.Lines("passage"),
+                inputs.Whole("readings"), inputs.Text("reflection"), inputs.Page())),
+
         new("bell-to-bell", "Bell-to-bell plan", DeterministicPressRecipes.Schedules,
             [new TextParameter("title", "Plan title", "Tuesday, period 2"),
              new TextParameter("start", "Start time (like 8:30)", "8:30"),

@@ -181,3 +181,115 @@ public class BellToBellTests
         Assert.Throws<ArgumentException>(() => BellToBell.Plan("T", "8:30", [], 55, 1, "Closure", 3));
     }
 }
+
+// The verbatim-text kin (menu 4, item 4): Bug Zoo's code and the fluency
+// passage must reconstruct EXACTLY from the printed ink — the same discipline
+// the Parsons key test enforces.
+
+public class BugZooTests
+{
+    [Fact]
+    public void The_buggy_code_reconstructs_verbatim_with_indentation_as_geometry()
+    {
+        var definition = PressRoomCatalog.ById("bug-zoo");
+        var document = definition.Build(new PressInputs(PressRoomCatalog.Defaults(definition)));
+        var graphic = (VectorGraphic)document.Nodes[0];
+
+        const double codeLeft = BlankformsPress.DefaultMarginMm + 10;
+        // Section labels share font and anchor but sit at the margin; code
+        // lines start at the numbered gutter — x tells them apart.
+        var reconstructed = graphic.Primitives.OfType<TextLabel>()
+            .Where(l => l.Anchor == TextAnchor.Start && l.FontSizeMm == 4.5 && l.X >= codeLeft)
+            .OrderBy(l => l.Y)
+            .Select(l => new string(' ', (int)Math.Round((l.X - codeLeft) / ParsonsPress.IndentMmPerSpace)) + l.Text)
+            .ToList();
+
+        Assert.Equal(["total = 0", "for n in [1, 2, 3]:", "    total = n", "print(total)"], reconstructed);
+    }
+
+    [Fact]
+    public void The_misconception_note_rides_teacher_only_and_the_sections_stand()
+    {
+        var definition = PressRoomCatalog.ById("bug-zoo");
+        var document = definition.Build(new PressInputs(PressRoomCatalog.Defaults(definition)));
+
+        var notice = Assert.IsType<TeacherOnlyNotice>(document.Nodes[1]);
+        Assert.StartsWith("Intended misconception (teacher only): Assignment replaces", notice.Text, StringComparison.Ordinal);
+
+        var labels = ((VectorGraphic)document.Nodes[0]).Primitives.OfType<TextLabel>().ToList();
+        Assert.Contains(labels, l => l.Text.StartsWith("Diagnose", StringComparison.Ordinal));
+        Assert.Contains(labels, l => l.Text.StartsWith("Repair", StringComparison.Ordinal));
+        Assert.Contains(labels, l => l.Text.StartsWith("Explain", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void Bug_zoo_refuses_loudly_without_its_teacher_authorship()
+    {
+        string[] code = ["x = 1"];
+        string[] sections = ["Diagnose", "Repair", "Explain"];
+
+        Assert.Contains("teacher-authored",
+            Assert.Throws<ArgumentException>(() => BugZoo.Sheet("Prompt", code, sections, " ")).Message, StringComparison.Ordinal);
+        Assert.Throws<ArgumentException>(() => BugZoo.Sheet("Prompt", [], sections, "Note"));
+        Assert.Throws<ArgumentException>(() => BugZoo.Sheet("Prompt", code, ["Diagnose", "Repair"], "Note"));
+        Assert.Throws<ArgumentException>(() => BugZoo.Sheet("Prompt", code, ["Diagnose", " ", "Explain"], "Note"));
+        Assert.Throws<ArgumentException>(() => BugZoo.Sheet("Prompt",
+            [.. Enumerable.Range(1, 17).Select(i => $"line{i}")], sections, "Note"));
+    }
+}
+
+public class FluencyRehearsalTests
+{
+    [Fact]
+    public void The_passage_reconstructs_exactly_and_marks_become_breath_breaks()
+    {
+        string[] passage =
+        [
+            "The little boat | rocked gently | on the bright water,",
+            "and the river | carried it | all the way home.",
+        ];
+        var graphic = (VectorGraphic)FluencyRehearsal.Sheet("The Little Boat", passage, 3, "I noticed...").Nodes[0];
+
+        var printed = graphic.Primitives.OfType<TextLabel>()
+            .Where(l => l.FontSizeMm == 7)
+            .OrderBy(l => l.Y)
+            .Select(l => l.Text)
+            .ToList();
+
+        // Reconstruction like the Parsons key: splitting the printed line on
+        // the breath-break slash returns the teacher's phrases verbatim.
+        Assert.Equal(passage.Length, printed.Count);
+        for (var i = 0; i < passage.Length; i++)
+        {
+            Assert.Equal(
+                passage[i].Split('|').Select(s => s.Trim()),
+                printed[i].Split(FluencyRehearsal.BreakMark));
+        }
+    }
+
+    [Fact]
+    public void Tally_boxes_match_the_readings_and_the_reflection_prompt_prints()
+    {
+        var definition = PressRoomCatalog.ById("fluency-rehearsal");
+        var graphic = (VectorGraphic)definition.Build(new PressInputs(PressRoomCatalog.Defaults(definition))).Nodes[0];
+
+        Assert.Equal(3, graphic.Primitives.OfType<RectShape>().Count(r => r.StrokeWidthMm == 0.5));
+        Assert.Contains(graphic.Primitives.OfType<TextLabel>(), l => l.Text == "After my last reading, I noticed...");
+        Assert.Equal(2, graphic.Primitives.OfType<LineSeg>().Count(l => l.StrokeWidthMm == 0.3));
+    }
+
+    [Fact]
+    public void Fluency_refuses_loudly_when_wrong()
+    {
+        string[] fine = ["A short | passage."];
+
+        Assert.Contains("empty phrase",
+            Assert.Throws<ArgumentException>(() => FluencyRehearsal.Sheet("T", ["words || more"], 3, "R")).Message, StringComparison.Ordinal);
+        Assert.Throws<ArgumentException>(() => FluencyRehearsal.Sheet("T", ["ends with a mark |"], 3, "R"));
+        Assert.Throws<ArgumentException>(() => FluencyRehearsal.Sheet(" ", fine, 3, "R"));
+        Assert.Throws<ArgumentException>(() => FluencyRehearsal.Sheet("T", fine, 0, "R"));
+        Assert.Throws<ArgumentException>(() => FluencyRehearsal.Sheet("T", fine, 3, " "));
+        Assert.Throws<ArgumentException>(() => FluencyRehearsal.Sheet("T",
+            [.. Enumerable.Range(1, 15).Select(i => $"line {i}")], 3, "R"));
+    }
+}
