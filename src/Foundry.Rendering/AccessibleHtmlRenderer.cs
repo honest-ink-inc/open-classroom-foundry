@@ -35,10 +35,19 @@ public sealed class AccessibleHtmlRenderer : IRenderer
             return Task.FromResult(new RenderedOutput(RenderTarget.Svg, Encoding.UTF8.GetBytes(svg), "image/svg+xml"));
         }
 
+        if (request.Target == RenderTarget.PrintPdf)
+        {
+            // The vector-first press: mm-exact geometry as true PDF operators,
+            // deterministic bytes, no browser. Non-vector documents keep the
+            // HTML print path (headless PDF conversion) until parity.
+            var pdf = VectorPdfWriter.Write(artifact, request.Audience);
+            return Task.FromResult(new RenderedOutput(RenderTarget.PrintPdf, pdf, "application/pdf"));
+        }
+
         if (request.Target is not (RenderTarget.AccessibleHtml or RenderTarget.PrintHtml))
         {
             throw new NotSupportedException(
-                $"{request.Target} rendering arrives with the print pipeline; this renderer produces HTML and SVG.");
+                $"{request.Target} rendering is not part of this renderer; it produces HTML, SVG, and vector-first PDF.");
         }
 
         var html = Render(artifact, request);

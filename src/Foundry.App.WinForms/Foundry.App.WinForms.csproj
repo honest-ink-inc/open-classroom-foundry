@@ -10,6 +10,12 @@
     <ProjectReference Include="..\Foundry.Modules.BuiltIn\Foundry.Modules.BuiltIn.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <!-- The shipped CC0 symbol pack travels beside the executable; every file's
+         rights record is CI-verified (RightsMetadataTests). -->
+    <Content Include="..\..\assets\symbols\**\*" LinkBase="assets\symbols" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
   <PropertyGroup>
     <OutputType>WinExe</OutputType>
     <TargetFramework>net10.0-windows10.0.19041.0</TargetFramework>

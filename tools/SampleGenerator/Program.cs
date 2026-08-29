@@ -197,6 +197,16 @@ foreach (var (name, document) in pressSamples)
         Path.Combine(outputDirectory, $"press-{name}.print.html"), pressPrint.Content.ToArray());
 }
 
+// The vector-first PDF (second forge menu, item 3): the calibration instrument
+// as deterministic PDF bytes — the print pipeline's primary paper format.
+var approvedProof = ApprovalGate.Approve(
+    DraftArtifact.New(CalibrationPress.ProofPage(), DataLane.Green),
+    "sample-teacher@example.org", [], approvedAt);
+var proofPdf = await renderer.RenderAsync(
+    approvedProof, new RenderRequest(RenderTarget.PrintPdf, RenderAudience.Learner), CancellationToken.None);
+await File.WriteAllBytesAsync(
+    Path.Combine(outputDirectory, "press-calibration-proof.pdf"), proofPdf.Content.ToArray());
+
 Console.WriteLine($"Samples written to {outputDirectory}");
 return 0;
 

@@ -246,6 +246,38 @@ public sealed partial class HeadedUiaWalkTests
     }
 
     [HeadedFact]
+    public void Part2_Steps5to7_all_aboard_typed_entry_reaches_approval_over_real_uia()
+    {
+        using var app = new HeadedApp("allaboard");
+
+        Assert.Contains("All Aboard", app.Window.Current.Name, StringComparison.Ordinal);
+
+        ((ValuePattern)ByName(app.Window, ControlType.Edit, "Task title")
+            .GetCurrentPattern(ValuePattern.Pattern)).SetValue("Watering the class plants");
+        ((ValuePattern)ByName(app.Window, ControlType.Edit, "Step 1 text")
+            .GetCurrentPattern(ValuePattern.Pattern)).SetValue("Pick up the watering can.");
+        ((ValuePattern)ByName(app.Window, ControlType.Edit, "Step 2 text")
+            .GetCurrentPattern(ValuePattern.Pattern)).SetValue("Fill it to the line.");
+        ((ValuePattern)ByName(app.Window, ControlType.Edit, "Step 3 text")
+            .GetCurrentPattern(ValuePattern.Pattern)).SetValue("Water each plant once.");
+
+        ((InvokePattern)ByName(app.Window, ControlType.Button, "Review and approve…")
+            .GetCurrentPattern(InvokePattern.Pattern)).Invoke();
+
+        var review = WaitFor(() =>
+        {
+            var handle = Win32WindowByTitle(app.Process.Id, "reviewing a draft");
+            return handle == IntPtr.Zero ? null : AutomationElement.FromHandle(handle);
+        });
+
+        ((InvokePattern)ByName(review, ControlType.Button, "Approve")
+            .GetCurrentPattern(InvokePattern.Pattern)).Invoke();
+
+        var export = ByName(app.Window, ControlType.Button, "Export…");
+        WaitFor(() => export.Current.IsEnabled ? export : null);
+    }
+
+    [HeadedFact]
     public void Part4_Steps14and15_the_capture_window_speaks_lane_meaning_state_and_the_safety_pause()
     {
         using var app = new HeadedApp("capture");

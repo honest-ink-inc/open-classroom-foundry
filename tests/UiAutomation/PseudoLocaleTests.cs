@@ -89,8 +89,9 @@ public class PseudoLocaleTests
             using var review = UiaHarness.CreateReviewForm();
             using var capture = UiaHarness.CreateCaptureForm();
             using var pressRoom = new PressRoomForm(_ => null);
+            using var allAboard = new AllAboardForm(new AppServices.NoAssetsCatalog(), _ => null);
 
-            foreach (var form in new Form[] { review, capture, pressRoom })
+            foreach (var form in new Form[] { review, capture, pressRoom, allAboard })
             {
                 form.Show();
 

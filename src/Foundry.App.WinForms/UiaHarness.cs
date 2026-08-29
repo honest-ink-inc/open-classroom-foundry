@@ -70,6 +70,7 @@ public static class UiaHarness
             "review" => CreateReviewForm(),
             "capture" => CreateCaptureForm(),
             "pressroom" => new PressRoomForm(),
+            "allaboard" => new AllAboardForm(AppServices.SymbolCatalog()),
             _ => null,
         };
     }

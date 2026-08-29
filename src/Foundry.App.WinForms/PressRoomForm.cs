@@ -3,8 +3,6 @@ using Foundry.Application;
 using Foundry.Contracts;
 using Foundry.Domain;
 using Foundry.Modules.DeterministicPress;
-using Foundry.Rendering;
-using Foundry.Storage;
 
 namespace Foundry.App.WinForms;
 
@@ -61,6 +59,8 @@ public sealed class PressRoomForm : Form
         _printView = MakeButton(UiStrings.OpenPrintView, (_, _) => OpenPrintView());
         _export = MakeButton(UiStrings.ExportEllipsis, (_, _) => Export());
         _save = MakeButton(UiStrings.SaveToLibrary, (_, _) => SaveToLibrary());
+        // Deferred one beat like every modal-opener (harness finding, 29 Aug 2026).
+        var allAboard = MakeButton(UiStrings.AllAboardOpen, (_, _) => BeginInvoke(OpenAllAboard));
 
         // No AccessibleName override: the message itself must be what a screen
         // reader hears, not the word "Status" (a harness finding, 29 Aug 2026).
@@ -68,7 +68,7 @@ public sealed class PressRoomForm : Form
         SetStatus(UiStrings.StatusReady);
 
         var buttons = new FlowLayoutPanel { Dock = DockStyle.Bottom, AutoSize = true, FlowDirection = FlowDirection.LeftToRight };
-        buttons.Controls.AddRange([_review, _printView, _export, _save]);
+        buttons.Controls.AddRange([_review, _printView, _export, _save, allAboard]);
 
         var right = new TableLayoutPanel { Dock = DockStyle.Fill, ColumnCount = 1, RowCount = 2 };
         right.RowStyles.Add(new RowStyle(SizeType.AutoSize));
@@ -235,19 +235,7 @@ public sealed class PressRoomForm : Form
             return;
         }
 
-        var machine = new JobStateMachine();
-        foreach (var state in new[]
-        {
-            JobState.Imported, JobState.Normalized, JobState.DataLaneConfirmed,
-            JobState.DraftGenerated, JobState.SchemaValidated, JobState.InvariantsValidated,
-            JobState.AwaitingTeacherReview,
-        })
-        {
-            machine.Transition(state);
-        }
-
-        var session = new ReviewSession(
-            DraftArtifact.New(document, DataLane.Green), machine, new DefaultArtifactValidator(), new DomainApprovalGate());
+        var session = AppServices.SessionOver(document);
 
         if (_modalReview)
         {
@@ -290,12 +278,7 @@ public sealed class PressRoomForm : Form
             return;
         }
 
-        var directory = Path.Combine(Path.GetTempPath(), EngineIdentity.InternalId, "print-view");
-        Directory.CreateDirectory(directory);
-        var path = Path.Combine(directory, $"{_approvedDefinition!.Id}.print.html");
-        File.WriteAllBytes(path, Render(RenderTarget.PrintHtml));
-
-        System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(path) { UseShellExecute = true });
+        AppServices.OpenPrintView(ApprovedResult, _approvedDefinition!.Id);
         SetStatus(UiStrings.StatusPrintView);
     }
 
@@ -309,7 +292,7 @@ public sealed class PressRoomForm : Form
         using var dialog = new SaveFileDialog
         {
             FileName = _approvedDefinition!.Id,
-            Filter = $"{UiStrings.ExportFilterPrint}|*.html|{UiStrings.ExportFilterAccessible}|*.html|{UiStrings.ExportFilterSvg}|*.svg",
+            Filter = $"{UiStrings.ExportFilterPdf}|*.pdf|{UiStrings.ExportFilterPrint}|*.html|{UiStrings.ExportFilterAccessible}|*.html|{UiStrings.ExportFilterSvg}|*.svg",
         };
         if (dialog.ShowDialog(this) != DialogResult.OK)
         {
@@ -318,11 +301,23 @@ public sealed class PressRoomForm : Form
 
         var target = dialog.FilterIndex switch
         {
-            2 => RenderTarget.AccessibleHtml,
-            3 => RenderTarget.Svg,
+            1 => RenderTarget.PrintPdf,
+            3 => RenderTarget.AccessibleHtml,
+            4 => RenderTarget.Svg,
             _ => RenderTarget.PrintHtml,
         };
-        File.WriteAllBytes(dialog.FileName, Render(target));
+
+        try
+        {
+            File.WriteAllBytes(dialog.FileName, AppServices.Render(ApprovedResult, target));
+        }
+        catch (NotSupportedException refusal)
+        {
+            // Single-sheet-only SVG and vector-only PDF refuse loudly; say so.
+            SetStatus(UiStrings.Format(UiStrings.StatusRefused, refusal.Message));
+            return;
+        }
+
         SetStatus(UiStrings.Format(UiStrings.StatusExported, Path.GetFileName(dialog.FileName)));
     }
 
@@ -333,24 +328,11 @@ public sealed class PressRoomForm : Form
             return;
         }
 
-        var library = Path.Combine(
-            Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments), EngineIdentity.InternalId, "projects");
-        var store = new OcfprojProjectStore(library, new AccessibleHtmlRenderer(), new NoAssetsCatalog());
-
-        var hint = UiStrings.Format("{0}-{1}", _approvedDefinition!.Id,
-            DateTimeOffset.Now.ToString("yyyyMMdd-HHmmss", System.Globalization.CultureInfo.InvariantCulture));
-        store.SaveGreenProjectAsync(
-            ApprovedResult,
-            new ProjectSaveRequest(hint, "deterministic-press", _approvedDefinition.Recipe.Id, _approvedDefinition.Recipe.Version, DateTimeOffset.UtcNow),
-            CancellationToken.None).GetAwaiter().GetResult();
-
+        var hint = AppServices.SaveToLibrary(
+            ApprovedResult, _approvedDefinition!.Id, "deterministic-press",
+            _approvedDefinition.Recipe.Id, _approvedDefinition.Recipe.Version, new AppServices.NoAssetsCatalog());
         SetStatus(UiStrings.Format(UiStrings.StatusSaved, hint));
     }
-
-    private byte[] Render(RenderTarget target)
-        => new AccessibleHtmlRenderer().RenderAsync(
-                ApprovedResult!, new RenderRequest(target, RenderAudience.Learner), CancellationToken.None)
-            .GetAwaiter().GetResult().Content.ToArray();
 
     private void UpdateGatedButtons()
     {
@@ -362,18 +344,9 @@ public sealed class PressRoomForm : Form
 
     private void SetStatus(string text) => _status.Text = text;
 
-    /// <summary>Press artifacts carry no assets; the store's catalog is never consulted for them.</summary>
-    private sealed class NoAssetsCatalog : IAssetCatalog
+    private void OpenAllAboard()
     {
-        public IReadOnlyList<AssetProvenance> All => [];
-
-        public AssetProvenance? Find(AssetId id) => null;
-
-        public bool TryGetContent(AssetId id, out ReadOnlyMemory<byte> content, out string mimeType)
-        {
-            content = default;
-            mimeType = "";
-            return false;
-        }
+        using var form = new AllAboardForm(AppServices.SymbolCatalog());
+        form.ShowDialog(this);
     }
 }

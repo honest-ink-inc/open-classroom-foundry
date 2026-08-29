@@ -95,11 +95,26 @@ public static class UiStrings
 
     public static string StatusPrintView => T("Print view opened in your browser — print at 100 percent scale.");
 
+    public static string ExportFilterPdf => T("PDF (vector sheets)");
+
     public static string ExportFilterPrint => T("Print HTML");
 
     public static string ExportFilterAccessible => T("Accessible HTML");
 
     public static string ExportFilterSvg => T("SVG (single sheet only)");
+
+    // All Aboard surface — the ratified 0.1 typed-steps slice only.
+    public static string AllAboardOpen => T("&All Aboard task strip…");
+
+    public static string AllAboardWindowTitle => Compose(T("All Aboard — drafting a task strip"));
+
+    public static string TaskTitle => T("Task title");
+
+    public static string StepTextLabel => T("Step {0} text");
+
+    public static string StepSymbolLabel => T("Step {0} symbol");
+
+    public static string NoSymbol => T("(no symbol)");
 
     /// <summary>Module-supplied neutral text (press titles, parameter labels) rendered through the active locale.</summary>
     public static string Localize(string neutral)

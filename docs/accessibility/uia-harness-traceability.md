@@ -13,8 +13,8 @@
 | 2 | Every control announces role + name; no unnamed pane; order matches visual logic | `Part1_Step2_every_focusable…`, `Part1_Step2_the_action_buttons…` (in-proc); `Part1_Steps1and2` (headed, full document-order assertion) | Speech phrasing; visible focus indication |
 | 3 | `Shift+Tab` reverses without traps | — | Human only: focus traps are a runtime interaction property the harness does not simulate |
 | 4 | Reach the module/recipe choice by keyboard; state change discoverable | `Part2_Step4` (in-proc, PressRoom): choosing a press regenerates its labeled parameter controls; headed: press selection over SelectionItemPattern | Whether the regeneration is announced |
-| 5 | Enter fields by keyboard; each announces its label | PressRoom parameter analog: every generated control carries its label as its accessible name (`Part1_Step2` PressRoom tests); All Aboard's typed-steps entry awaits menu-2 item 2 | Typing echo; the All Aboard form itself |
-| 6 | Symbol picker announces names, never "image" | — | Awaits the All Aboard wiring (menu-2 item 2) |
+| 5 | Enter a title and steps by keyboard; each field announces its label | `Part2_Step5` (in-proc, AllAboardForm): title + four typed steps reach typed approval; headed `Part2_Steps5to7`: the same entry over real UIA ValuePatterns | Typing echo behavior |
+| 6 | Symbol picker announces names, never "image" | `Part2_Step6` (in-proc): every picker item is a provenance `IntendedMeaning`; no ".svg", no "image" anywhere AT can hear | The actual utterance on focus |
 | 7 | Validation announced, offending field reachable | `Part2_Step7` (in-proc, ReviewForm): blank step surfaces a named issue, approval disables; `Part2_Step7` (PressRoom): a press refusal lands in the status line, which now speaks its message | Whether NVDA announces the change unprompted |
 | 8 | Review announced as a review of a **draft** | `Part1_Step1` (title carries "draft") | Audibility in practice |
 | 9 | Position announced; new position after move | `Part3_Step9` (in-proc), `Part3_Steps9to12` (headed): selection follows the moved element, so the announced position is the new one | The actual "step 3 of 5" utterance |
