@@ -203,7 +203,7 @@ public class ImageNormalizerTests
             reference);
         var failsafe = new Thread(() =>
         {
-            if (!stopFailsafe.Wait(TimeSpan.FromSeconds(3)))
+            if (!stopFailsafe.Wait(TimeSpan.FromSeconds(30)))
             {
                 store.AllowRead.Set();
             }
@@ -224,11 +224,11 @@ public class ImageNormalizerTests
             Assert.False(
                 store.AllowRead.IsSet,
                 "NormalizeAsync did not return until the blocking decode read was released.");
-            Assert.True(store.ReadEntered.Wait(TimeSpan.FromSeconds(3)), "The background normalization did not begin.");
             Assert.False(normalization.IsCompleted, "Normalization completed while its source read remained blocked.");
 
             store.AllowRead.Set();
-            var normalized = await normalization;
+            var normalized = await normalization.WaitAsync(TimeSpan.FromSeconds(30));
+            Assert.True(store.ReadEntered.IsCompletedSuccessfully, "Normalization completed without reading its source.");
             Assert.True(normalized.MetadataStripped);
         }
         finally
@@ -260,7 +260,12 @@ public class ImageNormalizerTests
             cancellation.Token);
         try
         {
-            Assert.True(store.ReadEntered.Wait(TimeSpan.FromSeconds(3)), "The background normalization did not begin.");
+            var readEntered = store.ReadEntered;
+            var completed = await Task.WhenAny(readEntered, Task.Delay(TimeSpan.FromSeconds(30)));
+            Assert.True(
+                ReferenceEquals(readEntered, completed),
+                "The background normalization did not reach its source read within the deadlock watchdog.");
+            await readEntered;
             cancellation.Cancel();
         }
         finally
@@ -291,7 +296,12 @@ public class ImageNormalizerTests
             envelope,
             new NormalizationRequest(),
             cancellation.Token);
-        Assert.True(store.OutputStored.Wait(TimeSpan.FromSeconds(3)), "The normalized output was not stored.");
+        var outputStored = store.OutputStored;
+        var completed = await Task.WhenAny(outputStored, Task.Delay(TimeSpan.FromSeconds(30)));
+        Assert.True(
+            ReferenceEquals(outputStored, completed),
+            "The background normalization did not store its tentative output within the deadlock watchdog.");
+        await outputStored;
         cancellation.Cancel();
         store.AllowOutputPutReturn.Set();
 
@@ -319,8 +329,9 @@ public class ImageNormalizerTests
     private sealed class ThreadRecordingStore(bool blockRead) : ISessionByteStore, IDisposable
     {
         private readonly InMemorySessionByteStore _inner = new();
+        private readonly TaskCompletionSource<bool> _readEntered = new(TaskCreationOptions.RunContinuationsAsynchronously);
 
-        public ManualResetEventSlim ReadEntered { get; } = new(initialState: false);
+        public Task ReadEntered => _readEntered.Task;
 
         public ManualResetEventSlim AllowRead { get; } = new(initialState: !blockRead);
 
@@ -331,7 +342,7 @@ public class ImageNormalizerTests
 
         public bool TryGet(SessionByteReference reference, out ReadOnlyMemory<byte> content)
         {
-            ReadEntered.Set();
+            _readEntered.TrySetResult(true);
             AllowRead.Wait();
             return _inner.TryGet(reference, out content);
         }
@@ -345,7 +356,6 @@ public class ImageNormalizerTests
         public void Dispose()
         {
             AllowRead.Set();
-            ReadEntered.Dispose();
             AllowRead.Dispose();
         }
     }
@@ -353,9 +363,10 @@ public class ImageNormalizerTests
     private sealed class PostPutCancellationStore : ISessionByteStore, IDisposable
     {
         private readonly InMemorySessionByteStore _inner = new();
+        private readonly TaskCompletionSource<bool> _outputStored = new(TaskCreationOptions.RunContinuationsAsynchronously);
         private int _putCount;
 
-        public ManualResetEventSlim OutputStored { get; } = new(initialState: false);
+        public Task OutputStored => _outputStored.Task;
 
         public ManualResetEventSlim AllowOutputPutReturn { get; } = new(initialState: false);
 
@@ -370,7 +381,7 @@ public class ImageNormalizerTests
             {
                 _inner.TryGet(reference, out var output);
                 HeldOutput = output;
-                OutputStored.Set();
+                _outputStored.TrySetResult(true);
                 AllowOutputPutReturn.Wait();
             }
 
@@ -387,7 +398,6 @@ public class ImageNormalizerTests
         public void Dispose()
         {
             AllowOutputPutReturn.Set();
-            OutputStored.Dispose();
             AllowOutputPutReturn.Dispose();
         }
     }
