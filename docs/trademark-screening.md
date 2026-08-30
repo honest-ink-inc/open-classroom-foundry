@@ -46,12 +46,46 @@ Eliminated by this pass: **The Classroom Press** (Classroom Complete Press, K-12
 
 **Decided 29 August 2026: Honest Ink** (ADR-006). Counsel confirmation remains a pre-release checkpoint; Schoolhouse Foundry and Inkwright stand as ordered fallbacks. The subtitle policy holds: the name names, the subtitle explains.
 
+## Namespace observation — GitHub, 29 August 2026 (evidence, not clearance)
+
+Recorded because creating the organization forced the question, and because a bare "the name was taken" would mislead counsel. Two `honest-ink*` handles were unavailable, for two **unrelated** reasons:
+
+- **`honest-ink-edu` is the typist's own personal account.** Self-inflicted; evidence of nothing.
+- **`honest-ink` is held by a third party** — a *personal user account*, not an organization: created 13 Aug 2025, last activity 26 Jan 2026, six public repositories.
+
+The organization was therefore created as **`honest-ink-inc`**. The namespace is not contested by anyone in this field.
+
+### What that account publishes
+
+| Repository | Its own description | Language |
+|---|---|---|
+| `editorial-desk` | "a GPT that lets you test out story ideas against a media editor" | TypeScript |
+| `HotSeat`, `TheHotSeat2` | "the HotSeat Gameshow" | TypeScript |
+| `SG-Example-RAG` | "A blog site that uses RAG" | TypeScript |
+| `N8N-backup2` | "N8N backup JSONs" | — |
+| `Concierge` | "Files for Concierge import" | — |
+
+**Relatedness of goods and services:** the account's field is AI/LLM experimentation with a media-and-broadcast flavor — GPT wrappers, a RAG demo, workflow-automation backups, a gameshow project. Not education, not teacher tools, not accessibility, not classroom printing. Against a GPL classroom authoring-and-printing tool the overlap is essentially nil, and relatedness of goods and services is the axis on which confusion is judged.
+
+**No commercial signal at all:** empty bio, company, website, location, and email; zero followers; zero stars across all six repositories; a User account rather than an Organization. This reads as an individual's scratch account, not a business trading under a brand.
+
+**One adjacency, named rather than hidden:** `editorial-desk` is editorial/publishing-flavored, and "Honest Ink" is publishing-flavored too. That is not a conflict — their goods are AI chat experiments — but it is a small sign that the name reads as publishing-adjacent to other people, which is precisely the register a genuine conflict would come from. Screen the printing, tattoo, publishing, and journalism trades hardest.
+
+**Three limits, stated so this is not over-read:**
+
+1. **A GitHub username is not a trademark.** It is a namespace reservation on one platform. Rights arise from use in commerce, and no use in commerce is visible here.
+2. **This is one platform, not a search.** It says nothing about registered marks in the relevant classes, nor about common-law users who are not on GitHub. It supplements the professional screen below; it does not substitute for any step of it.
+3. **Inspection stopped at public repository metadata.** Identifying the individual behind the account is a different activity from screening a name, and is not needed for it.
+
+**Net: nothing here supports a goods-and-services conflict.** ADR-006 §4's counsel checkpoint is unchanged — this is a fact for counsel, not a clearance.
+
 ## Method for the professional screen (pre-release checklist)
 
 1. USPTO TESS search per name (word mark + design variants) in the relevant classes (education services; computer software).
 2. EUIPO and national registries where distribution is expected (OpenClassrooms is EU-based — the EU screen matters).
 3. App-store, domain, and common-law search per name.
-4. Counsel review of the survivors before any public 1.0 distribution.
+4. Code-forge and package-registry namespaces (GitHub, GitLab, npm, NuGet, PyPI) per name — a handle is not a mark, but an occupied one is a fact worth carrying to counsel, and it constrains the project’s own naming (see the namespace observation above).
+5. Counsel review of the survivors before any public 1.0 distribution.
 
 ## Sources
 
@@ -59,4 +93,5 @@ Eliminated by this pass: **The Classroom Press** (Classroom Complete Press, K-12
 - [The Lesson Loom](https://thelessonloom.com/) · [AVID Open Access on Loom (video product)](https://avidopenaccess.org/resource/loom/)
 - Visual-schedule category scan: [Goally](https://getgoally.com/blog/visual-schedule-apps/) · [Lil Planner (App Store)](https://apps.apple.com/us/app/lil-planner-visual-schedule/id6448482826) · [Adult Down Syndrome Center resource list](https://adscresources.advocatehealth.com/resources/visual-schedule-apps/)
 - AAC symbol ecosystem: [OpenSymbols](https://www.opensymbols.org/) · [open-aac/opensymbols (GitHub)](https://github.com/open-aac/opensymbols) · [OpenAAC symbol libraries](https://www.openaac.org/symbols.html) · [Mulberry Symbols](https://mulberrysymbols.org/)
+- Namespace observation (29 Aug 2026): GitHub REST API, `users/honest-ink` and `users/honest-ink/repos` — public account and repository metadata, read directly rather than from a third-party profile.
 - Finalist screening: [Schoolhouse.world](https://schoolhouse.world/) · [Schoolhouse.world — Crunchbase](https://www.crunchbase.com/organization/schoolhouse-world) · [Schoolhouse Technologies — ZoomInfo](https://www.zoominfo.com/c/schoolhouse-technologies-inc/59490436) · [Classroom Complete Press — PublishersGlobal](https://www.publishersglobal.com/directory/publisher-profile/19942) · [Chalk — LinkedIn](https://ca.linkedin.com/company/chalk-com) · [Chalkline Education & Support Ltd — Companies House](https://find-and-update.company-information.service.gov.uk/company/14221471) · [Chalkline, Inc.](https://www.crunchbase.com/organization/chalkline) · [Inkwright, Inc.](https://inkwright.inc/) · [Inkwright LLC — ZoomInfo](https://www.zoominfo.com/c/inkwright-llc/398698117) · [INKWRITER (cancelled Microsoft mark) — USPTO report](https://uspto.report/TM/74364351) · [Honestech — Wikipedia](https://en.wikipedia.org/wiki/Honestech) · [Ink Labs — LinkedIn](https://www.linkedin.com/company/inklabsedu)
