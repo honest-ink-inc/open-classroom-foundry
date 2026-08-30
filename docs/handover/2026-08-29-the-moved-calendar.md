@@ -1,5 +1,7 @@
 # The moved calendar — the long window, and what it is for
 
+> **Superseded for repository state by [the public turn](2026-08-30-the-public-turn.md) (30 Aug 2026).** The calendar reasoning, the counsel questions, and the re-ordered work below all still stand; the state of the repository moved on the same night.
+
 **Date:** 29 August 2026, after the fourth menu was exhausted and the last CI exclusion deleted · **Audience:** the typist, the second maintainer when one is seated, whichever hand next opens this repository, and — for §II and §VI — counsel.
 
 The pilot does not open on 8 September 2026. This document records why, what the critical path now is, what the delay unfreezes, and what must still not be built. It supersedes the September calendar in the [coordination plan](../pilots/human-gates-coordination-plan.md) and the [hardening checklist](../release/hardening-checklist.md); those documents' *substance* stands and only their dates are stale, which is itself a task in §V.
