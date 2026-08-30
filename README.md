@@ -22,15 +22,17 @@ The audited Writer's Kiosk baseline (commit `c2b670b`, 75 passing tests) lives a
 
 ## What gets built, in order
 
-| Release | Contents |
-|---|---|
-| 0.0 Foundation + Module Zero | Engine extraction from Writer's Kiosk; first Deterministic Press presses (Blankforms Press, Flashcard Flywheel, Booklet Binder) as the rendering pipeline's real cargo |
-| 0.1 | All Aboard: Visual Support Studio (vertical slice) |
-| 0.2 | Board to Brief, Directions Duet |
-| 0.3 | Scaffold Smith (with absorbed TaskDock preset, ADR-005), Lesson Loom, Talk Moves Studio, full Deterministic Press studio |
-| 0.4–0.5 | Symbol Commons, Access Remix, Source Lens, Green-only Family Bridge; Foundry.Inference.Local spike |
-| 0.6 | Exit Lens and Rubric Relay — synthetic fixtures first, Amber lane only with complete Amber architecture and written district approval |
-| 1.0 | Hardening, packaging, pilots, Open Commons |
+| Release | Contents | State, 29 Aug 2026 |
+|---|---|---|
+| 0.0 Foundation + Module Zero | Engine extraction from Writer's Kiosk; first Deterministic Press presses (Blankforms Press, Flashcard Flywheel, Booklet Binder) as the rendering pipeline's real cargo | **Delivered** — and the Press went well past its first three |
+| 0.1 | All Aboard: Visual Support Studio (vertical slice) | **Delivered** — mode-complete, with its own authoring surface |
+| 0.2 | Board to Brief, Directions Duet | **Builders only** — written and tested; no door |
+| 0.3 | Scaffold Smith (with absorbed TaskDock preset, ADR-005), Lesson Loom, Talk Moves Studio, full Deterministic Press studio | **Mixed** — the Press studio is delivered (56 engines, 23 recipes); the three builders are written and tested, no door |
+| 0.4–0.5 | Symbol Commons, Access Remix, Source Lens, Green-only Family Bridge; Foundry.Inference.Local spike | **Part-built** — the provenance catalog, local symbol store and pack export exist, but no Symbol Commons surface; three builders written, no door; the spike is a written feasibility assessment and the adapter is an empty project |
+| 0.6 | Exit Lens and Rubric Relay — synthetic fixtures first, Amber lane only with complete Amber architecture and written district approval | **Builders only, synthetic** — no door; the Amber lane has not been entered and cannot be until the district instrument is signed |
+| 1.0 | Hardening, packaging, pilots, Open Commons | **In progress** — unsigned, no installer, no pilot run, Open Commons not begun |
+
+**Builders only** means the module’s logic is written and covered by tests but no teacher can reach it from the running application — the gap named under Status above. Release numbers describe *shipped* releases, so a row is not “delivered” until a teacher can use it.
 
 The authoritative roadmap, module specifications, data-lane contract, human gates, and stop-ship conditions are in [docs/implementation-plan.md](docs/implementation-plan.md). The full 227-idea atlas is [docs/idea-atlas.md](docs/idea-atlas.md).
 
