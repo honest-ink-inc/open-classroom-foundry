@@ -40,7 +40,8 @@ public sealed class ReviewViewContext
 
     public ReviewViewContext(
         RenderRequest previewRequest,
-        ReviewSourceContext? source = null)
+        ReviewSourceContext? source = null,
+        IAssetCatalog? assetCatalog = null)
     {
         ArgumentNullException.ThrowIfNull(previewRequest);
         if (previewRequest.Target is not (RenderTarget.AccessibleHtml or RenderTarget.PrintHtml))
@@ -66,6 +67,7 @@ public sealed class ReviewViewContext
 
         PreviewRequest = previewRequest;
         Source = source;
+        AssetCatalog = assetCatalog;
     }
 
     /// <summary>
@@ -77,4 +79,11 @@ public sealed class ReviewViewContext
     public RenderRequest PreviewRequest { get; }
 
     public ReviewSourceContext? Source { get; }
+
+    /// <summary>
+    /// Exact local bytes used by the visual derivative when the semantic
+    /// document names image assets. This grants no output capability; it lets
+    /// Gate B show the same local image bytes that an approved render will use.
+    /// </summary>
+    public IAssetCatalog? AssetCatalog { get; }
 }

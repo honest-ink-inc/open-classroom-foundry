@@ -66,8 +66,7 @@ public sealed class EdgePdfExporter : IExporter
             Directory.CreateDirectory(destinationDirectory);
             cancellationToken.ThrowIfCancellationRequested();
 
-            process = Process.Start(StartInfo(edge, stagedPdf, tempHtml, profileDirectory))
-                ?? throw new InvalidOperationException("Edge failed to start.");
+            process = StartLocalPdfProcess(StartInfo(edge, stagedPdf, tempHtml, profileDirectory));
             // Drain both pipes without retaining their contents. Edge's output
             // is neither trusted nor content-free, so it can be a completion
             // signal but can never enter an exception, status line, or log.
@@ -124,6 +123,27 @@ public sealed class EdgePdfExporter : IExporter
                 guardAgainstLateCreation: process is not null && (!destinationCommitted || !producerSettled),
                 CleanupAttempts,
                 PdfPollInterval).ConfigureAwait(false);
+        }
+    }
+
+    /// <summary>
+    /// Starts the local producer behind a stable, speaking failure boundary.
+    /// Process-start exceptions can contain machine-specific executable paths;
+    /// callers and UI status receive only this message.
+    /// </summary>
+    internal static Process StartLocalPdfProcess(ProcessStartInfo startInfo)
+    {
+        ArgumentNullException.ThrowIfNull(startInfo);
+        try
+        {
+            return Process.Start(startInfo)
+                ?? throw new InvalidOperationException("The local PDF process returned no process handle.");
+        }
+        catch (Exception failure) when (failure is Win32Exception or InvalidOperationException)
+        {
+            throw new InvalidOperationException(
+                "Microsoft Edge could not start the local PDF process.",
+                failure);
         }
     }
 

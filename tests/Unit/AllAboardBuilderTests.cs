@@ -180,6 +180,14 @@ public class AllAboardBuilderTests
             Assert.Equal(DataLane.Green, recipe.MaximumLane);
             Assert.Empty(recipe.RequiredProviderCapabilities);
             Assert.Contains(recipe.ProhibitedPurposes, p => p.Contains("PECS", StringComparison.Ordinal));
+            Assert.Equal(
+                [
+                    RenderTarget.AccessibleHtml,
+                    RenderTarget.PrintHtml,
+                    RenderTarget.PrintPdf,
+                    RenderTarget.Svg,
+                ],
+                recipe.SupportedExports);
         });
     }
 }

@@ -52,6 +52,18 @@ public class AllAboardContractTests
     private static ComboBox Symbol(AllAboardForm form, int number)
         => (ComboBox)Input(form, $"Step {number} symbol");
 
+    private static void PumpUntil(Func<bool> condition)
+    {
+        var deadline = DateTime.UtcNow.AddSeconds(3);
+        while (!condition() && DateTime.UtcNow < deadline)
+        {
+            System.Windows.Forms.Application.DoEvents();
+            Thread.Sleep(10);
+        }
+
+        Assert.True(condition(), "The asynchronous UI operation did not reach its expected state.");
+    }
+
     [Fact]
     public void Part2_Step5_a_title_and_four_typed_steps_reach_typed_approval()
         => WithForm(form =>
@@ -90,6 +102,78 @@ public class AllAboardContractTests
             Assert.False(ReviewSurfaceContractTests.ByName(form, "Open print view").Enabled);
             Assert.False(ReviewSurfaceContractTests.ByName(form, "Export…").Enabled);
             Assert.False(ReviewSurfaceContractTests.ByName(form, "Save to library").Enabled);
+        });
+
+    [Fact]
+    public void Pdf_export_stays_responsive_announces_progress_and_can_be_cancelled()
+        => Sta.Run(() =>
+        {
+            var destination = Path.Combine(Path.GetTempPath(), $"all-aboard-{Guid.NewGuid():N}.pdf");
+            var started = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+            var pickerCalls = 0;
+            var exporterCalls = 0;
+            using var form = new AllAboardForm(
+                Catalog(),
+                GateRespectingApprove,
+                () =>
+                {
+                    pickerCalls++;
+                    return new AllAboardForm.ExportChoice(destination, 1);
+                },
+                async (_, _, _, cancellationToken) =>
+                {
+                    exporterCalls++;
+                    started.TrySetResult(true);
+                    await Task.Delay(Timeout.InfiniteTimeSpan, cancellationToken);
+                });
+            form.Show();
+            Title(form).Text = "Synthetic export routine";
+            Step(form, 1).Text = "Place the synthetic card on the tray.";
+            Step(form, 2).Text = "Check the synthetic marker.";
+            Step(form, 3).Text = "Return the synthetic card.";
+            ((Button)ReviewSurfaceContractTests.ByName(form, "Review and approve…")).PerformClick();
+
+            var export = (Button)ReviewSurfaceContractTests.ByName(form, "Export…");
+            var cancel = (Button)ReviewSurfaceContractTests.ByName(form, "Cancel export");
+            export.PerformClick();
+            export.PerformClick();
+            PumpUntil(() => started.Task.IsCompleted);
+
+            Assert.Equal(1, pickerCalls);
+            Assert.Equal(1, exporterCalls);
+            Assert.False(export.Enabled);
+            Assert.True(cancel.Enabled);
+            Assert.Contains("Exporting", form.StatusText, StringComparison.Ordinal);
+            Assert.False(Input(form, "Output mode").Enabled);
+
+            cancel.PerformClick();
+            PumpUntil(() => form.StatusText.Contains("cancelled", StringComparison.OrdinalIgnoreCase));
+
+            Assert.False(cancel.Enabled);
+            Assert.True(export.Enabled);
+            Assert.False(File.Exists(destination));
+        });
+
+    [Fact]
+    public void Export_picker_failure_is_announced_without_leaving_the_form_busy()
+        => Sta.Run(() =>
+        {
+            using var form = new AllAboardForm(
+                Catalog(),
+                GateRespectingApprove,
+                () => throw new InvalidOperationException("Synthetic picker refusal."));
+            form.Show();
+            Title(form).Text = "Synthetic dismissal routine";
+            Step(form, 1).Text = "Close the synthetic folder.";
+            Step(form, 2).Text = "Check the synthetic marker.";
+            Step(form, 3).Text = "Return the synthetic card.";
+            ((Button)ReviewSurfaceContractTests.ByName(form, "Review and approve…")).PerformClick();
+
+            ((Button)ReviewSurfaceContractTests.ByName(form, "Export…")).PerformClick();
+
+            Assert.Contains("Synthetic picker refusal", form.StatusText, StringComparison.Ordinal);
+            Assert.Contains("refused", form.StatusText, StringComparison.OrdinalIgnoreCase);
+            Assert.True(ReviewSurfaceContractTests.ByName(form, "Export…").Enabled);
         });
 
     [Fact]

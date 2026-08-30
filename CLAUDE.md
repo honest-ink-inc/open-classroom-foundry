@@ -15,4 +15,4 @@ Do not copy AGENTS.md's content here. One canonical file cannot drift out of ste
 
 - The harness may block outward-facing actions such as changing repository visibility. **That block is correct.** Do not route around it; report it and hand the step to the typist.
 - Some Bash tool patterns silently corrupt content in this repository — `\f` and other escapes in Python or Perl replacement strings, PowerShell `Get-Content | Set-Content` round-trips, control characters written into source. Verify bytes after any scripted edit, not just the tool's exit status.
-- The closing rites for every item are in the most recent [docs/handover/](docs/handover/) document. Run them in order, every time.
+- The closing rites for every item are in the handover marked **Current repository state** in [docs/README.md](docs/README.md). A date alone is not enough when handovers share one. Run the rites in order, every time.

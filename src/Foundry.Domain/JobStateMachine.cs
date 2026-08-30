@@ -17,7 +17,7 @@ public enum JobState
     Approved,
     Rendered,
 
-    /// <summary>Printed, exported, or deliberately saved.</summary>
+    /// <summary>Printed, exported, deliberately saved, or completed as a standalone capture.</summary>
     Completed,
 
     /// <summary>The only terminal state: transient sources verifiably purged.</summary>
@@ -68,6 +68,10 @@ public sealed class JobStateMachine
             (JobState.New, JobState.Imported) => true,
             (JobState.Imported, JobState.Normalized) => true,
             (JobState.Normalized, JobState.DataLaneConfirmed) => true,
+
+            // A standalone capture surface may end after the teacher's lane
+            // attestation. Full authoring flows instead continue to a draft.
+            (JobState.DataLaneConfirmed, JobState.Completed) => true,
 
             (JobState.DataLaneConfirmed, JobState.OutboundPayloadPreviewed) => true,
             // Deterministic authoring path: the teacher authors manually, no egress state exists.

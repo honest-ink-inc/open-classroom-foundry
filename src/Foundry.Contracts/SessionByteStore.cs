@@ -14,6 +14,10 @@ public interface ISessionByteStore
 {
     int Count { get; }
 
+    /// <summary>
+    /// Stores an owned defensive copy. The caller remains responsible for
+    /// zeroing any temporary buffer it supplied after this method returns.
+    /// </summary>
     SessionByteReference Put(ReadOnlyMemory<byte> content);
 
     bool TryGet(SessionByteReference reference, out ReadOnlyMemory<byte> content);

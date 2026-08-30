@@ -59,7 +59,8 @@ internal static class UnapprovedDraftPreviewFactory
 
     internal static UnapprovedDraftPreview Create(
         DraftArtifact draft,
-        RenderRequest request)
+        RenderRequest request,
+        IAssetCatalog? assetCatalog = null)
     {
         ArgumentNullException.ThrowIfNull(draft);
         ArgumentNullException.ThrowIfNull(request);
@@ -74,7 +75,8 @@ internal static class UnapprovedDraftPreviewFactory
             draft.Revision.Document,
             request,
             approval: null,
-            isUnapprovedPreview: true);
+            isUnapprovedPreview: true,
+            assetCatalog);
         return new UnapprovedDraftPreview(draft.Revision, request, documentText);
     }
 
@@ -86,11 +88,12 @@ internal static class UnapprovedDraftPreviewFactory
     internal static UnapprovedDraftPreview CreateForBrowser(
         DraftArtifact draft,
         RenderRequest request,
-        long loadGeneration)
+        long loadGeneration,
+        IAssetCatalog? assetCatalog = null)
     {
         ArgumentOutOfRangeException.ThrowIfNegativeOrZero(loadGeneration);
 
-        var unmarked = Create(draft, request);
+        var unmarked = Create(draft, request, assetCatalog);
         var marker = ComputeLoadMarker(
             unmarked.Revision,
             unmarked.Request,

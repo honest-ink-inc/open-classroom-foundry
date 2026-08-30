@@ -1,3 +1,4 @@
+using System.Buffers.Binary;
 using System.Drawing.Imaging;
 using Foundry.Application;
 using Foundry.Contracts;
@@ -160,6 +161,147 @@ public class ImageNormalizerTests
     }
 
     [Fact]
+    public async Task Encoded_capture_bytes_are_bounded_before_decode()
+    {
+        var oversized = new byte[ImageNormalizer.MaxEncodedImageBytes + 1];
+        var (normalizer, _, envelope) = Setup(oversized, "image/png");
+
+        var failure = await Assert.ThrowsAsync<InvalidDataException>(
+            () => normalizer.NormalizeAsync(envelope, new NormalizationRequest(), CancellationToken.None));
+
+        Assert.Contains("encoded-image contract", failure.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task Declared_dimensions_are_bounded_before_canvas_allocation()
+    {
+        var forged = MakePng(1, 1);
+        BinaryPrimitives.WriteUInt32BigEndian(
+            forged.AsSpan(16, 4),
+            (uint)ImageNormalizer.MaxImageDimension + 1);
+        var (normalizer, _, envelope) = Setup(forged, "image/png");
+
+        var failure = await Assert.ThrowsAsync<InvalidDataException>(
+            () => normalizer.NormalizeAsync(envelope, new NormalizationRequest(), CancellationToken.None));
+
+        Assert.Contains("decoded-image contract", failure.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task Normalization_returns_before_background_decode_and_encode_complete()
+    {
+        using var store = new ThreadRecordingStore(blockRead: true);
+        using var stopFailsafe = new ManualResetEventSlim(initialState: false);
+        var reference = store.Put(MakePng(40, 20));
+        var envelope = new SourceEnvelope(
+            "file-import",
+            "image/png",
+            1,
+            DataLane.Amber,
+            false,
+            string.Empty,
+            reference);
+        var failsafe = new Thread(() =>
+        {
+            if (!stopFailsafe.Wait(TimeSpan.FromSeconds(3)))
+            {
+                store.AllowRead.Set();
+            }
+        })
+        {
+            IsBackground = true,
+            Name = "image-normalizer-test-failsafe",
+        };
+        failsafe.Start();
+
+        try
+        {
+            var normalization = new ImageNormalizer(store).NormalizeAsync(
+                envelope,
+                new NormalizationRequest(),
+                CancellationToken.None);
+
+            Assert.False(
+                store.AllowRead.IsSet,
+                "NormalizeAsync did not return until the blocking decode read was released.");
+            Assert.True(store.ReadEntered.Wait(TimeSpan.FromSeconds(3)), "The background normalization did not begin.");
+            Assert.False(normalization.IsCompleted, "Normalization completed while its source read remained blocked.");
+
+            store.AllowRead.Set();
+            var normalized = await normalization;
+            Assert.True(normalized.MetadataStripped);
+        }
+        finally
+        {
+            store.AllowRead.Set();
+            stopFailsafe.Set();
+            failsafe.Join();
+        }
+    }
+
+    [Fact]
+    public async Task Cancellation_after_background_dispatch_stops_before_an_output_is_stored()
+    {
+        using var store = new ThreadRecordingStore(blockRead: true);
+        var reference = store.Put(MakePng(40, 20));
+        var envelope = new SourceEnvelope(
+            "file-import",
+            "image/png",
+            1,
+            DataLane.Amber,
+            false,
+            string.Empty,
+            reference);
+        using var cancellation = new CancellationTokenSource();
+
+        var normalization = new ImageNormalizer(store).NormalizeAsync(
+            envelope,
+            new NormalizationRequest(),
+            cancellation.Token);
+        try
+        {
+            Assert.True(store.ReadEntered.Wait(TimeSpan.FromSeconds(3)), "The background normalization did not begin.");
+            cancellation.Cancel();
+        }
+        finally
+        {
+            store.AllowRead.Set();
+        }
+
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() => normalization);
+        Assert.Equal(1, store.Count);
+    }
+
+    [Fact]
+    public async Task Cancellation_after_output_storage_releases_and_zeroes_the_tentative_result()
+    {
+        using var store = new PostPutCancellationStore();
+        var sourceReference = store.Put(MakePng(40, 20));
+        var envelope = new SourceEnvelope(
+            "file-import",
+            "image/png",
+            1,
+            DataLane.Amber,
+            false,
+            string.Empty,
+            sourceReference);
+        using var cancellation = new CancellationTokenSource();
+
+        var normalization = new ImageNormalizer(store).NormalizeAsync(
+            envelope,
+            new NormalizationRequest(),
+            cancellation.Token);
+        Assert.True(store.OutputStored.Wait(TimeSpan.FromSeconds(3)), "The normalized output was not stored.");
+        cancellation.Cancel();
+        store.AllowOutputPutReturn.Set();
+
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() => normalization);
+        Assert.Equal(1, store.Count);
+        Assert.True(store.TryGet(sourceReference, out _));
+        Assert.All(store.HeldOutput.ToArray(), value => Assert.Equal(0, value));
+    }
+
+    [Fact]
     public void Explicit_encoder_resolution_is_safe_during_simultaneous_first_saves()
     {
         Parallel.For(0, 64, index =>
@@ -172,5 +314,81 @@ public class ImageNormalizerTests
 
             Assert.True(stream.Length > 0);
         });
+    }
+
+    private sealed class ThreadRecordingStore(bool blockRead) : ISessionByteStore, IDisposable
+    {
+        private readonly InMemorySessionByteStore _inner = new();
+
+        public ManualResetEventSlim ReadEntered { get; } = new(initialState: false);
+
+        public ManualResetEventSlim AllowRead { get; } = new(initialState: !blockRead);
+
+        public int Count => _inner.Count;
+
+        public SessionByteReference Put(ReadOnlyMemory<byte> content)
+            => _inner.Put(content);
+
+        public bool TryGet(SessionByteReference reference, out ReadOnlyMemory<byte> content)
+        {
+            ReadEntered.Set();
+            AllowRead.Wait();
+            return _inner.TryGet(reference, out content);
+        }
+
+        public void Release(SessionByteReference reference)
+            => _inner.Release(reference);
+
+        public void PurgeAll()
+            => _inner.PurgeAll();
+
+        public void Dispose()
+        {
+            AllowRead.Set();
+            ReadEntered.Dispose();
+            AllowRead.Dispose();
+        }
+    }
+
+    private sealed class PostPutCancellationStore : ISessionByteStore, IDisposable
+    {
+        private readonly InMemorySessionByteStore _inner = new();
+        private int _putCount;
+
+        public ManualResetEventSlim OutputStored { get; } = new(initialState: false);
+
+        public ManualResetEventSlim AllowOutputPutReturn { get; } = new(initialState: false);
+
+        public ReadOnlyMemory<byte> HeldOutput { get; private set; }
+
+        public int Count => _inner.Count;
+
+        public SessionByteReference Put(ReadOnlyMemory<byte> content)
+        {
+            var reference = _inner.Put(content);
+            if (Interlocked.Increment(ref _putCount) == 2)
+            {
+                _inner.TryGet(reference, out var output);
+                HeldOutput = output;
+                OutputStored.Set();
+                AllowOutputPutReturn.Wait();
+            }
+
+            return reference;
+        }
+
+        public bool TryGet(SessionByteReference reference, out ReadOnlyMemory<byte> content)
+            => _inner.TryGet(reference, out content);
+
+        public void Release(SessionByteReference reference) => _inner.Release(reference);
+
+        public void PurgeAll() => _inner.PurgeAll();
+
+        public void Dispose()
+        {
+            AllowOutputPutReturn.Set();
+            OutputStored.Dispose();
+            AllowOutputPutReturn.Dispose();
+        }
     }
 }

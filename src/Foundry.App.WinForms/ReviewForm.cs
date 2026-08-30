@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 using System.Globalization;
 using System.Runtime.InteropServices;
+using Microsoft.CSharp.RuntimeBinder;
 using Foundry.Application;
 using Foundry.Contracts;
 using Foundry.Domain;
@@ -533,7 +534,8 @@ public sealed class ReviewForm : Form
             var preview = UnapprovedDraftPreviewFactory.CreateForBrowser(
                 _session.Draft,
                 request,
-                generation);
+                generation,
+                _session.ViewContext.AssetCatalog);
             if (!ReferenceEquals(preview.Revision, _session.Draft.Revision)
                 || !Equals(preview.Request, request)
                 || string.IsNullOrWhiteSpace(preview.LoadMarker))
@@ -577,7 +579,8 @@ public sealed class ReviewForm : Form
         try
         {
             if (eventArgs.Url is { Scheme: "about" }
-                && _previewBrowser.ReadyState == WebBrowserReadyState.Complete)
+                && _previewBrowser.ReadyState == WebBrowserReadyState.Complete
+                && PreviewImagesAreDecoded(_previewBrowser.Document))
             {
                 marker = _previewBrowser.Document?
                     .GetElementById(UnapprovedDraftPreviewFactory.LoadMarkerElementId)?
@@ -601,6 +604,59 @@ public sealed class ReviewForm : Form
             ? UiStrings.UnapprovedPreviewStatus
             : UiStrings.UnapprovedPreviewLoading);
         UpdateActionAvailability();
+    }
+
+    /// <summary>
+    /// A completed navigation marker is necessary but a broken learner symbol
+    /// is not review evidence. MSHTML exposes decode state only on the DOM image
+    /// object, so every image must report its own complete state and non-zero
+    /// rendered bounds. MSHTML reports zero natural bounds for valid viewBox-only
+    /// SVGs, but distinguishes a broken payload as uninitialized/incomplete.
+    /// Any COM/reflection uncertainty fails closed and a later completion event
+    /// may still recover.
+    /// </summary>
+    internal static bool PreviewImagesAreDecoded(HtmlDocument? document)
+    {
+        if (document is null)
+        {
+            return false;
+        }
+
+        foreach (HtmlElement image in document.Images)
+        {
+            try
+            {
+                dynamic dom = image.DomElement
+                    ?? throw new InvalidOperationException(
+                        UiStrings.WithoutMnemonic(UiStrings.PreviewImageNoDom));
+                object readyState = dom.readyState;
+                object complete = dom.complete;
+                object width = dom.width;
+                object height = dom.height;
+
+                if (!string.Equals(
+                        Convert.ToString(readyState, CultureInfo.InvariantCulture),
+                        "complete",
+                        StringComparison.OrdinalIgnoreCase)
+                    || !Convert.ToBoolean(complete, CultureInfo.InvariantCulture)
+                    || Convert.ToInt32(width, CultureInfo.InvariantCulture) <= 0
+                    || Convert.ToInt32(height, CultureInfo.InvariantCulture) <= 0)
+                {
+                    return false;
+                }
+            }
+            catch (Exception failure) when (failure is COMException
+                or RuntimeBinderException
+                or InvalidOperationException
+                or FormatException
+                or InvalidCastException
+                or OverflowException)
+            {
+                return false;
+            }
+        }
+
+        return true;
     }
 
     private void SetPreviewStatus(string template, params object?[] arguments)

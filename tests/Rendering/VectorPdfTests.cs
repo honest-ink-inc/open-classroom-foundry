@@ -129,6 +129,64 @@ public class VectorPdfTests
             Approve(guide), new RenderRequest(RenderTarget.PrintPdf), CancellationToken.None));
     }
 
+    [Fact]
+    public void Native_pdf_refuses_documents_over_the_structural_work_budget()
+    {
+        var primitives = Enumerable.Range(0, VectorPdfWriter.MaxPdfRenderUnits)
+            .Select(_ => (VectorPrimitive)new LineSeg(0, 0, 1, 1))
+            .ToList();
+        var document = new ArtifactDocument(
+            [new VectorGraphic(100, 100, primitives, "Bounded sheet")]);
+
+        var refusal = Assert.Throws<InvalidOperationException>(() =>
+            VectorPdfWriter.Write(Approve(document), RenderAudience.Learner));
+
+        Assert.Contains("unit limit", refusal.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Native_pdf_refuses_semantic_text_over_its_bound()
+    {
+        var oversized = new string('A', checked((int)VectorPdfWriter.MaxPdfTextCharacters + 1));
+        var document = new ArtifactDocument(
+            [new VectorGraphic(100, 100, [new TextLabel(50, 50, oversized)], "Bounded sheet")]);
+
+        var refusal = Assert.Throws<InvalidOperationException>(() =>
+            VectorPdfWriter.Write(Approve(document), RenderAudience.Learner));
+
+        Assert.Contains("semantic text", refusal.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Imposition_refuses_repetition_that_would_exceed_the_pdf_output_bound()
+    {
+        var label = new string('A', 1_000_000);
+        var document = new ArtifactDocument(
+            [new VectorGraphic(100, 100, [new TextLabel(50, 50, label)], "Repeated page")]);
+        var repeatedSides = Enumerable.Repeat((Left: 1, Right: 1), 20).ToList();
+
+        var refusal = Assert.Throws<InvalidOperationException>(() =>
+            VectorPdfWriter.WriteImposed(
+                Approve(document),
+                repeatedSides,
+                RenderAudience.Learner));
+
+        Assert.Contains("byte limit", refusal.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Native_pdf_honors_cancellation_before_materializing_output()
+    {
+        using var cancellation = new CancellationTokenSource();
+        cancellation.Cancel();
+
+        Assert.ThrowsAny<OperationCanceledException>(() =>
+            VectorPdfWriter.Write(
+                Approve(LabeledPages(2)),
+                RenderAudience.Learner,
+                cancellation.Token));
+    }
+
     private static ArtifactDocument LabeledPages(int count, double widthMm = 100, double heightMm = 200)
         => new([.. Enumerable.Range(1, count).Select(i => new VectorGraphic(
             widthMm, heightMm, [new TextLabel(widthMm / 2, heightMm / 2, $"P{i}")], $"Page {i}"))]);
@@ -184,6 +242,22 @@ public class VectorPdfTests
         ]);
         Assert.Throws<NotSupportedException>(
             () => VectorPdfWriter.WriteImposed(Approve(mixed), sides, RenderAudience.Learner));
+    }
+
+    [Fact]
+    public void Imposition_refuses_mixed_semantic_nodes_instead_of_dropping_them()
+    {
+        var mixed = new ArtifactDocument(
+        [
+            new VectorGraphic(100, 200, [new TextLabel(50, 100, "A")], "One"),
+            new Paragraph("Do not drop this paragraph"),
+        ]);
+
+        Assert.Throws<NotSupportedException>(() =>
+            VectorPdfWriter.WriteImposed(
+                Approve(mixed),
+                [(1, 1)],
+                RenderAudience.Learner));
     }
 
     [Fact]

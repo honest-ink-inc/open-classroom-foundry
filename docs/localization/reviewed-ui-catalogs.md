@@ -6,7 +6,7 @@ The mechanical loader validates a review **assertion** and binds it to the exact
 
 The catalog covers application chrome only: every static `UiStrings` entry, every dynamic Press Room title/field/choice label, every built-in module door/mode/field/table/choice label, and the All Aboard card labels. Artifact content, validation messages produced by the domain, teacher-entered text, symbol terminology, and the public name **Honest Ink** are outside this catalog. Submitted choice values are also outside it: a translated label never changes the stable value delivered to a builder.
 
-The neutral inventory measured on 30 August 2026 contains **979 ids**. Two independent exports were byte-identical: packet SHA-256 `DF2F52BC6BDCDBB6193EB10F9EE37AF0010236D03D9FF4421FE942D09DC73C6B`, bound to source digest `6178cb8d8a31a7187ab02cc7ef8888c9905008a01501e5befa47bbfff11ef071`. Re-export after any catalog-affecting source change; these values describe this repository state, not a permanent allowlist entry.
+The neutral inventory measured on 30 August 2026 contains **991 ids**. Two independent exports were byte-identical: packet SHA-256 `612C9786DDC6EEF3E9660BB86E2F8DC13B6708105B4521E3ADE7FFA3E9CDCAD2`, bound to source digest `f48952edb4b9ce115dcb2c62a296b6625b083c356c6fbc7b1da482a396b5a3ce`. Re-export after any catalog-affecting source change; these values describe this repository state, not a permanent allowlist entry.
 
 ## 1. Export the neutral review packet
 

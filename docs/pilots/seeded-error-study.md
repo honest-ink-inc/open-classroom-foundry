@@ -20,7 +20,7 @@ Two passes, ≥3 educator participants, at least a week apart:
 
 ## Scoring
 
-Per participant, per packet: hit (defect found and located), miss (seeded packet passed), false alarm (control flagged). Aggregate into the detection matrix:
+Per participant, per packet: hit (defect found and located), miss (seeded packet passed), false alarm (control flagged). The facilitator keeps that keyed detection matrix with the key, outside the repository. Publish only aggregate, non-keyed measures against these thresholds:
 
 | Threshold | Bar | Rationale |
 |---|---|---|
@@ -31,10 +31,10 @@ Per participant, per packet: hit (defect found and located), miss (seeded packet
 
 ## After both passes
 
-Reveal the key, debrief as a group (this is the most instructive hour of the pilot), file one issue per missed seed analyzing *why the surface let it hide*, and record the matrix and verdict in `docs/evidence/pilot/seeded-error-matrix.md`. If the gate fails: fix the surface, regenerate packets with **new** seeds (participants are now trained on these), and run again. The study is repeatable by construction; the artifacts are one `--seeded` run away.
+Reveal the key privately, debrief as a group (this is the most instructive hour of the pilot), and keep the packet-keyed matrix and analysis with the facilitator. File only sanitized surface-defect issues that do not identify packet letters, disclose seed definitions, or reconstruct the control key. Record aggregate non-keyed measures and the threshold verdict in `docs/evidence/pilot/seeded-error-verdict.md`. If the gate fails: fix the surface, regenerate packets with **new** seeds (participants are now trained on these), and run again. The study is repeatable by construction; the private artifacts are one `--seeded` run away.
 
 ## Honesty notes
 
 - Participants who took part may not be the sole reviewers of the fix — trained eyes overestimate the surface.
-- The kit's packets are burned for study purposes once revealed; they remain useful as review-surface training materials afterward, which is why they stay in the repository.
+- The generated packets are burned for blind-study purposes once revealed. They may remain private training material afterward, but neither packets, definitions, the keyed matrix, nor the facilitator key may enter this repository.
 - Nothing in this study touches Amber: all packets are Green, synthetic, teacher-authored fixtures.

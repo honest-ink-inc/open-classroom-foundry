@@ -40,4 +40,12 @@ public class EngineRegistrationTests
 
         Assert.DoesNotContain(collection, descriptor => descriptor.ServiceType == typeof(IApprovalGate));
     }
+
+    [Fact]
+    public void The_root_container_does_not_create_a_cross_job_session_byte_store()
+    {
+        var collection = new ServiceCollection().AddFoundryEngine();
+
+        Assert.DoesNotContain(collection, descriptor => descriptor.ServiceType == typeof(ISessionByteStore));
+    }
 }

@@ -17,6 +17,8 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <InternalsVisibleTo Include="Foundry.App.WinForms" />
+    <InternalsVisibleTo Include="Foundry.Tests.Integration" />
     <InternalsVisibleTo Include="Foundry.Tests.Unit" />
   </ItemGroup>
 

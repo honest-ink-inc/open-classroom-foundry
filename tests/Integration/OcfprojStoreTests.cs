@@ -85,6 +85,51 @@ public class OcfprojStoreTests : IDisposable
     }
 
     [Fact]
+    public async Task A_reopened_project_keeps_its_validated_assets_for_render_and_resave()
+    {
+        await _store.SaveGreenProjectAsync(ApprovedStrip(), Request("portable-assets"), CancellationToken.None);
+        var loaded = await _store.LoadProjectAsync("portable-assets", CancellationToken.None);
+
+        Assert.NotNull(loaded.Assets);
+        Assert.NotNull(loaded.Assets.Find(new AssetId("agency.help.v1")));
+        Assert.True(loaded.Assets.TryGetContent(new AssetId("agency.help.v1"), out var originalBytes, out var mimeType));
+        Assert.Equal("image/svg+xml", mimeType);
+
+        var reopenedApproval = ApprovalGate.Approve(
+            DraftArtifact.New(loaded.Document, DataLane.Green),
+            "teacher@example.org",
+            DocumentValidator.Validate(loaded.Document),
+            SomeInstant);
+        var rendered = await new AccessibleHtmlRenderer(loaded.Assets).RenderAsync(
+            reopenedApproval,
+            new RenderRequest(RenderTarget.AccessibleHtml),
+            CancellationToken.None);
+        Assert.Contains(
+            "<img src=\"data:image/svg+xml;base64,",
+            Encoding.UTF8.GetString(rendered.Content.Span),
+            StringComparison.Ordinal);
+
+        var secondRoot = Path.Combine(_root, "resaved");
+        var secondStore = new OcfprojProjectStore(
+            secondRoot,
+            new AccessibleHtmlRenderer(),
+            loaded.Assets);
+        await secondStore.SaveGreenProjectAsync(
+            reopenedApproval,
+            Request("portable-assets-resaved"),
+            CancellationToken.None);
+        var reopenedAgain = await secondStore.LoadProjectAsync("portable-assets-resaved", CancellationToken.None);
+
+        Assert.NotNull(reopenedAgain.Assets);
+        Assert.True(reopenedAgain.Assets.TryGetContent(
+            new AssetId("agency.help.v1"),
+            out var resavedBytes,
+            out var resavedMimeType));
+        Assert.Equal(mimeType, resavedMimeType);
+        Assert.Equal(originalBytes.ToArray(), resavedBytes.ToArray());
+    }
+
+    [Fact]
     public async Task The_package_carries_assets_provenance_and_a_readable_snapshot()
     {
         await _store.SaveGreenProjectAsync(ApprovedStrip(), Request("watering-plants"), CancellationToken.None);

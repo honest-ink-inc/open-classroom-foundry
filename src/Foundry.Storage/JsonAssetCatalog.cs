@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
-using System.Security.Cryptography;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using Foundry.Contracts;
 using Foundry.Domain;
+using Foundry.Rendering;
 
 namespace Foundry.Storage;
 
@@ -27,19 +27,37 @@ public sealed class JsonAssetCatalog : IAssetCatalog
 {
     public const string ManifestFileName = "manifest.json";
 
+    private static readonly Dictionary<string, string> ExtensionsByMime = new(StringComparer.Ordinal)
+    {
+        ["image/svg+xml"] = ".svg",
+        ["image/png"] = ".png",
+        ["image/jpeg"] = ".jpg",
+    };
+
     private readonly string _directory;
     private readonly Dictionary<AssetId, AssetProvenance> _assets;
 
     public JsonAssetCatalog(string directory)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(directory);
-        _directory = directory;
+        _directory = Path.TrimEndingDirectorySeparator(Path.GetFullPath(directory));
 
-        var manifestPath = Path.Combine(directory, ManifestFileName);
-        var records = JsonSerializer.Deserialize<List<AssetProvenance>>(File.ReadAllText(manifestPath), StorageJson.Options)
-            ?? throw new InvalidOperationException($"The asset manifest at {manifestPath} is empty.");
+        var manifestPath = Path.Combine(_directory, ManifestFileName);
+        var (records, _) = AssetManifestReader.Read(manifestPath, "asset manifest");
 
-        _assets = records.ToDictionary(r => r.Id);
+        _assets = [];
+        foreach (var provenance in records)
+        {
+            if (provenance is null || string.IsNullOrWhiteSpace(provenance.Id.Value))
+            {
+                throw new InvalidDataException("The asset manifest contains an invalid asset identity.");
+            }
+
+            if (!_assets.TryAdd(provenance.Id, provenance))
+            {
+                throw new InvalidDataException("The asset manifest contains a duplicate asset identity.");
+            }
+        }
     }
 
     public IReadOnlyList<AssetProvenance> All => [.. _assets.Values];
@@ -49,15 +67,12 @@ public sealed class JsonAssetCatalog : IAssetCatalog
 
     public bool TryGetContent(AssetId id, out ReadOnlyMemory<byte> content, out string mimeType)
     {
-        if (_assets.TryGetValue(id, out var provenance))
+        if (_assets.TryGetValue(id, out var provenance)
+            && TryReadVerifiedContent(provenance, out var bytes))
         {
-            var path = Path.Combine(_directory, provenance.FileName);
-            if (File.Exists(path))
-            {
-                content = File.ReadAllBytes(path);
-                mimeType = provenance.MimeType;
-                return true;
-            }
+            content = bytes;
+            mimeType = provenance.MimeType;
+            return true;
         }
 
         content = default;
@@ -68,33 +83,141 @@ public sealed class JsonAssetCatalog : IAssetCatalog
     public IReadOnlyList<ValidationIssue> VerifyIntegrity()
     {
         var issues = new List<ValidationIssue>();
-
-        foreach (var provenance in _assets.Values)
+        var fileNames = new HashSet<string>(AssetFileSafety.FileNameComparer)
         {
-            var path = Path.Combine(_directory, provenance.FileName);
-            if (!File.Exists(path))
-            {
-                issues.Add(ValidationIssue.Blocking("asset.missing-file", $"Asset {provenance.Id.Value} has provenance but no file '{provenance.FileName}'."));
-                continue;
-            }
+            ManifestFileName,
+        };
 
-            var actual = Convert.ToHexString(SHA256.HashData(File.ReadAllBytes(path)));
-            if (!actual.Equals(provenance.Sha256, StringComparison.OrdinalIgnoreCase))
+        foreach (var provenance in _assets.Values.OrderBy(asset => asset.Id.Value, StringComparer.Ordinal))
+        {
+            var id = provenance.Id.Value;
+            if (!AssetRightsPolicy.HasCompleteRequiredMetadata(provenance))
             {
-                issues.Add(ValidationIssue.Blocking("asset.hash-mismatch", $"Asset {provenance.Id.Value} does not match its recorded SHA-256."));
+                issues.Add(ValidationIssue.Blocking(
+                    "asset.incomplete-provenance",
+                    $"Asset {id} has incomplete required provenance."));
             }
 
             if (string.IsNullOrWhiteSpace(provenance.License))
             {
-                issues.Add(ValidationIssue.Blocking("asset.unknown-rights", $"Asset {provenance.Id.Value} has no license; unknown rights block distribution."));
+                issues.Add(ValidationIssue.Blocking("asset.unknown-rights", $"Asset {id} has no license; unknown rights block distribution."));
+            }
+            else if (!AssetRightsPolicy.CanEnterOpenCatalog(provenance))
+            {
+                issues.Add(ValidationIssue.Blocking(
+                    "asset.redistribution-rights",
+                    $"Asset {id} does not carry a known-open license with redistribution enabled."));
             }
 
             if (string.IsNullOrWhiteSpace(provenance.AltText))
             {
-                issues.Add(ValidationIssue.Blocking("asset.alt-text", $"Asset {provenance.Id.Value} has no alternative text."));
+                issues.Add(ValidationIssue.Blocking("asset.alt-text", $"Asset {id} has no alternative text."));
             }
+
+            if (!AssetRightsPolicy.HasSafeOptionalMetadata(provenance))
+            {
+                issues.Add(ValidationIssue.Blocking(
+                    "asset.invalid-optional-provenance",
+                    $"Asset {id} has oversized or control-bearing optional provenance."));
+            }
+
+            if (!AssetFileSafety.TryResolveLeaf(_directory, provenance.FileName, out var path))
+            {
+                issues.Add(ValidationIssue.Blocking("asset.invalid-file-name", $"Asset {id} has an unsafe asset filename."));
+                continue;
+            }
+
+            if (!fileNames.Add(provenance.FileName))
+            {
+                issues.Add(ValidationIssue.Blocking("asset.file-name-collision", $"Asset {id} collides with another catalog filename."));
+            }
+
+            if (string.IsNullOrWhiteSpace(provenance.MimeType)
+                || !ExtensionsByMime.TryGetValue(provenance.MimeType, out var expectedExtension)
+                || !Path.GetExtension(provenance.FileName).Equals(expectedExtension, StringComparison.OrdinalIgnoreCase))
+            {
+                issues.Add(ValidationIssue.Blocking("asset.media-type", $"Asset {id} has an unsupported or mismatched media type."));
+            }
+
+            if (!AssetFileSafety.IsSha256(provenance.Sha256))
+            {
+                issues.Add(ValidationIssue.Blocking("asset.invalid-hash", $"Asset {id} has no valid SHA-256 provenance."));
+                continue;
+            }
+
+            if (!File.Exists(path))
+            {
+                issues.Add(ValidationIssue.Blocking("asset.missing-file", $"Asset {id} has provenance but no file '{provenance.FileName}'."));
+                continue;
+            }
+
+            try
+            {
+                if ((File.GetAttributes(path) & FileAttributes.ReparsePoint) != 0)
+                {
+                    issues.Add(ValidationIssue.Blocking("asset.reparse-file", $"Asset {id} resolves through a reparse point."));
+                    continue;
+                }
+
+                var bytes = AssetFileSafety.ReadBoundedRegularFile(path);
+                if (!AssetFileSafety.MatchesSha256(bytes, provenance.Sha256))
+                {
+                    issues.Add(ValidationIssue.Blocking("asset.hash-mismatch", $"Asset {id} does not match its recorded SHA-256."));
+                }
+                else if (!AccessibleHtmlRenderer.IsSupportedSelfContainedImage(bytes, provenance.MimeType))
+                {
+                    issues.Add(ValidationIssue.Blocking("asset.unsafe-content", $"Asset {id} is not a supported, self-contained image."));
+                }
+            }
+            catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
+            {
+                issues.Add(ValidationIssue.Blocking("asset.unreadable-file", $"Asset {id} could not be read for integrity validation."));
+            }
+            catch (InvalidDataException)
+            {
+                issues.Add(ValidationIssue.Blocking("asset.size-limit", $"Asset {id} is empty, oversized, or changed while read."));
+            }
+
         }
 
         return issues;
+    }
+
+    private bool TryReadVerifiedContent(AssetProvenance provenance, out byte[] content)
+    {
+        content = [];
+        if (!AssetRightsPolicy.HasCompleteRequiredMetadata(provenance)
+            || !AssetRightsPolicy.HasSafeOptionalMetadata(provenance)
+            || !AssetRightsPolicy.CanEnterOpenCatalog(provenance)
+            || !AssetFileSafety.TryResolveLeaf(_directory, provenance.FileName, out var path)
+            || !AssetFileSafety.IsSha256(provenance.Sha256)
+            || string.IsNullOrWhiteSpace(provenance.MimeType)
+            || !ExtensionsByMime.TryGetValue(provenance.MimeType, out var expectedExtension)
+            || !Path.GetExtension(provenance.FileName).Equals(expectedExtension, StringComparison.OrdinalIgnoreCase))
+        {
+            return false;
+        }
+
+        try
+        {
+            if (!File.Exists(path) || (File.GetAttributes(path) & FileAttributes.ReparsePoint) != 0)
+            {
+                return false;
+            }
+
+            var bytes = AssetFileSafety.ReadBoundedRegularFile(path);
+            if (!AssetFileSafety.MatchesSha256(bytes, provenance.Sha256)
+                || !AccessibleHtmlRenderer.IsSupportedSelfContainedImage(bytes, provenance.MimeType))
+            {
+                return false;
+            }
+
+            content = bytes;
+            return true;
+        }
+        catch (Exception exception) when (exception is IOException or UnauthorizedAccessException or InvalidDataException)
+        {
+            return false;
+        }
     }
 }

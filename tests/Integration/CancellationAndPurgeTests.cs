@@ -1,7 +1,6 @@
 using Foundry.Application;
 using Foundry.Contracts;
 using Foundry.Domain;
-using Foundry.Infrastructure.Simulated;
 using Foundry.Infrastructure.Windows;
 
 namespace Foundry.Tests.Integration;
@@ -13,23 +12,21 @@ public class CancellationAndPurgeTests
     public async Task A_cancelled_job_still_purges_every_session_byte()
     {
         var store = new InMemorySessionByteStore();
-        var camera = new SimulatedCameraSource(store, new byte[] { 1, 2, 3, 4 });
-        var machine = new JobStateMachine();
+        var session = new CaptureSession(
+            new ByteImportCaptureSource(store),
+            new PassThroughNormalizer(),
+            store);
+        var captured = await session.CaptureAsync(
+            new CaptureRequest(ByteImportCaptureSource.Kind, "image/png", new byte[] { 1, 2, 3, 4 }),
+            CancellationToken.None);
+        Assert.True(store.TryGet(captured.Bytes, out var heldBytes));
 
-        machine.Transition(JobState.Imported);
-        var captured = await camera.CaptureAsync(new CaptureRequest(SimulatedCameraSource.Kind), CancellationToken.None);
-        machine.Transition(JobState.Normalized);
-        machine.Transition(JobState.DataLaneConfirmed);
-        machine.Transition(JobState.OutboundPayloadPreviewed);
-
-        // The teacher cancels mid-flight; purge follows exactly as it would after completion.
-        machine.Transition(JobState.Cancelled);
-        store.PurgeAll();
-        machine.Transition(JobState.TransientSourcesPurged);
+        Assert.True(session.Cancel());
 
         Assert.Equal(0, store.Count);
         Assert.False(store.TryGet(captured.Bytes, out _));
-        Assert.True(JobStateMachine.IsTerminal(machine.State));
+        Assert.All(heldBytes.ToArray(), value => Assert.Equal(0, value));
+        Assert.True(JobStateMachine.IsTerminal(session.Machine.State));
     }
 
     [Fact]
@@ -46,22 +43,61 @@ public class CancellationAndPurgeTests
     }
 
     [Fact]
-    public void An_incomplete_purge_is_explicit_and_the_retry_reaches_the_terminal_state()
+    public async Task An_incomplete_purge_is_explicit_and_the_retry_reaches_the_terminal_state()
     {
-        var machine = new JobStateMachine();
-        foreach (var state in new[]
+        var store = new FailsFirstPurgeStore();
+        var session = new CaptureSession(
+            new ByteImportCaptureSource(store),
+            new PassThroughNormalizer(),
+            store);
+        await session.CaptureAsync(
+            new CaptureRequest(ByteImportCaptureSource.Kind, "image/png", new byte[] { 1, 2, 3 }),
+            CancellationToken.None);
+
+        Assert.True(session.Cancel());
+        Assert.Equal(JobState.PurgeIncomplete, session.Machine.State);
+        Assert.Equal(1, store.Count);
+
+        Assert.True(session.PurgeTransientSources());
+        Assert.Equal(0, store.Count);
+        Assert.True(JobStateMachine.IsTerminal(session.Machine.State));
+    }
+
+    private sealed class PassThroughNormalizer : IDocumentNormalizer
+    {
+        public Task<SourceEnvelope> NormalizeAsync(
+            SourceEnvelope source,
+            NormalizationRequest request,
+            CancellationToken cancellationToken)
         {
-            JobState.Imported, JobState.Normalized, JobState.DataLaneConfirmed,
-            JobState.DraftGenerated, JobState.SchemaValidated, JobState.InvariantsValidated,
-            JobState.AwaitingTeacherReview, JobState.Approved, JobState.Rendered, JobState.Completed,
-        })
-        {
-            machine.Transition(state);
+            cancellationToken.ThrowIfCancellationRequested();
+            return Task.FromResult(source);
         }
+    }
 
-        machine.Transition(JobState.PurgeIncomplete);
-        machine.Transition(JobState.TransientSourcesPurged);
+    private sealed class FailsFirstPurgeStore : ISessionByteStore
+    {
+        private readonly InMemorySessionByteStore _inner = new();
+        private bool _failed;
 
-        Assert.True(JobStateMachine.IsTerminal(machine.State));
+        public int Count => _inner.Count;
+
+        public SessionByteReference Put(ReadOnlyMemory<byte> content) => _inner.Put(content);
+
+        public bool TryGet(SessionByteReference reference, out ReadOnlyMemory<byte> content)
+            => _inner.TryGet(reference, out content);
+
+        public void Release(SessionByteReference reference) => _inner.Release(reference);
+
+        public void PurgeAll()
+        {
+            if (!_failed)
+            {
+                _failed = true;
+                throw new IOException("Synthetic purge failure.");
+            }
+
+            _inner.PurgeAll();
+        }
     }
 }

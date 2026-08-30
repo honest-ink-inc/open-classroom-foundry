@@ -1,13 +1,121 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
+using System.IO;
 using Foundry.App.WinForms;
 using Foundry.Application;
 using Foundry.Contracts;
 using Foundry.Domain;
+using System.Text.Json.Nodes;
 
 namespace Foundry.Tests.UiAutomation;
 
 public sealed class ReviewPreviewContractTests
 {
+    [Fact]
+    public void Native_pdf_probe_falls_through_when_a_vector_glyph_is_not_encodable()
+    {
+        var document = new ArtifactDocument(
+        [
+            new VectorGraphic(
+                100,
+                100,
+                [new TextLabel(50, 50, "★")],
+                "A synthetic sheet with a star"),
+        ]);
+        var artifact = ApprovalGate.Approve(
+            DraftArtifact.New(document, DataLane.Green),
+            "synthetic-reviewer@example.invalid",
+            [],
+            new DateTimeOffset(2026, 8, 30, 12, 0, 0, TimeSpan.Zero));
+
+        Assert.True(Rendering.VectorPdfWriter.CanWrite(document));
+        Assert.Null(AppServices.TryRenderNativePdf(artifact, RenderAudience.Learner));
+    }
+
+    [Fact]
+    public async Task Transactional_export_preserves_an_existing_destination_and_removes_its_stage_on_failure()
+    {
+        var directory = Path.Combine(Path.GetTempPath(), "ocf-tests", Guid.NewGuid().ToString("N"));
+        var destination = Path.Combine(directory, "existing.pdf");
+        Directory.CreateDirectory(directory);
+        await File.WriteAllTextAsync(destination, "original exact bytes");
+        try
+        {
+            await using (var destinationLock = new FileStream(
+                destination,
+                FileMode.Open,
+                FileAccess.Read,
+                FileShare.None))
+            {
+                var failure = await Record.ExceptionAsync(() => AppServices.WriteExportBytesAsync(
+                    destination,
+                    "replacement bytes"u8.ToArray(),
+                    CancellationToken.None));
+                Assert.True(
+                    failure is IOException or UnauthorizedAccessException,
+                    $"Expected a filesystem promotion refusal; received {failure?.GetType().FullName ?? "no exception"}.");
+            }
+
+            Assert.Equal("original exact bytes", await File.ReadAllTextAsync(destination));
+            Assert.Empty(Directory.EnumerateFiles(directory, ".honest-ink-*.stage"));
+        }
+        finally
+        {
+            Directory.Delete(directory, recursive: true);
+        }
+    }
+
+    [Fact]
+    public async Task Transactional_export_honors_preexisting_cancellation_without_touching_the_destination()
+    {
+        var directory = Path.Combine(Path.GetTempPath(), "ocf-tests", Guid.NewGuid().ToString("N"));
+        var destination = Path.Combine(directory, "existing.pdf");
+        Directory.CreateDirectory(directory);
+        await File.WriteAllTextAsync(destination, "original exact bytes");
+        using var cancellation = new CancellationTokenSource();
+        cancellation.Cancel();
+        try
+        {
+            await Assert.ThrowsAnyAsync<OperationCanceledException>(() => AppServices.WriteExportBytesAsync(
+                destination,
+                "replacement bytes"u8.ToArray(),
+                cancellation.Token));
+
+            Assert.Equal("original exact bytes", await File.ReadAllTextAsync(destination));
+            Assert.Empty(Directory.EnumerateFiles(directory, ".honest-ink-*.stage"));
+        }
+        finally
+        {
+            Directory.Delete(directory, recursive: true);
+        }
+    }
+
+    [Fact]
+    public void Production_catalog_open_fails_before_use_when_required_provenance_is_blank()
+    {
+        var source = Path.Combine(AppContext.BaseDirectory, "assets", "symbols");
+        var directory = Path.Combine(Path.GetTempPath(), "ocf-tests", Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(directory);
+        try
+        {
+            foreach (var file in Directory.GetFiles(source))
+            {
+                File.Copy(file, Path.Combine(directory, Path.GetFileName(file)));
+            }
+
+            var manifestPath = Path.Combine(directory, "manifest.json");
+            var manifest = JsonNode.Parse(File.ReadAllText(manifestPath))!.AsArray();
+            manifest[0]!["source"] = string.Empty;
+            File.WriteAllText(manifestPath, manifest.ToJsonString());
+
+            var refusal = Assert.Throws<InvalidDataException>(() => AppServices.OpenSymbolCatalog(directory));
+            Assert.Contains("asset.incomplete-provenance", refusal.Message, StringComparison.Ordinal);
+        }
+        finally
+        {
+            Directory.Delete(directory, recursive: true);
+        }
+    }
+
     [Fact]
     public void Readiness_requires_the_exact_current_marker_revision_request_and_generation()
     {
@@ -142,6 +250,56 @@ public sealed class ReviewPreviewContractTests
             var current = TextByName(form, "Exact current semantic draft").Text;
             Assert.Contains("After exact edit.", current, StringComparison.Ordinal);
             Assert.DoesNotContain("Before exact edit.", current, StringComparison.Ordinal);
+        });
+
+    [Fact]
+    public void Gate_B_unlocks_only_after_the_actual_WebBrowser_decodes_the_reviewed_svg_symbol()
+        => Sta.Run(() =>
+        {
+            var catalog = AppServices.SymbolCatalog();
+            var context = new ReviewViewContext(
+                new RenderRequest(RenderTarget.AccessibleHtml),
+                assetCatalog: catalog);
+            using var form = new ReviewForm(Session(
+                context,
+                new ImageReference(new AssetId("agency.stop.v1"), "A stop symbol")));
+            var approve = (Button)ReviewSurfaceContractTests.ByName(form, "Approve");
+            form.Show();
+
+            var tabs = ReviewSurfaceContractTests.Flatten(form).OfType<TabControl>().Single();
+            tabs.SelectedIndex = 2;
+            System.Windows.Forms.Application.DoEvents();
+            var browser = ReviewSurfaceContractTests.Flatten(form).OfType<WebBrowser>().Single();
+            var html = AwaitDocument(browser, "data:image/svg+xml;base64,");
+            var image = Assert.Single(browser.Document!.Images.Cast<HtmlElement>());
+            Assert.True(
+                ReviewForm.PreviewImagesAreDecoded(browser.Document),
+                $"readyState='{image.GetAttribute("readyState")}', complete='{image.GetAttribute("complete")}', naturalWidth='{image.GetAttribute("naturalWidth")}', naturalHeight='{image.GetAttribute("naturalHeight")}', width='{image.GetAttribute("width")}', height='{image.GetAttribute("height")}', offset={image.OffsetRectangle}, dom='{image.DomElement?.GetType().FullName}'.");
+            AwaitEnabled(approve);
+
+            Assert.Contains("X-UA-Compatible", html, StringComparison.OrdinalIgnoreCase);
+        });
+
+    [Fact]
+    public void Gate_B_fails_closed_for_a_broken_image()
+        => Sta.Run(() =>
+        {
+            using var host = new Form();
+            using var browser = new WebBrowser { Dock = DockStyle.Fill, ScriptErrorsSuppressed = true };
+            host.Controls.Add(browser);
+            host.Show();
+            browser.DocumentText = "<!doctype html><html><head><meta http-equiv=\"X-UA-Compatible\" content=\"IE=edge\"></head><body><img alt=\"Broken synthetic image\" src=\"data:image/svg+xml;base64,QUFBQQ==\"></body></html>";
+
+            var deadline = DateTime.UtcNow.AddSeconds(3);
+            while ((browser.Document is null || browser.Document.Images.Count == 0) && DateTime.UtcNow < deadline)
+            {
+                System.Windows.Forms.Application.DoEvents();
+                Thread.Sleep(10);
+            }
+
+            Assert.NotNull(browser.Document);
+            Assert.Single(browser.Document.Images.Cast<HtmlElement>());
+            Assert.False(ReviewForm.PreviewImagesAreDecoded(browser.Document));
         });
 
     [Theory]

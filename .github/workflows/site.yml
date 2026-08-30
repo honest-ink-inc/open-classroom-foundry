@@ -9,8 +9,9 @@
 # after counsel answers, not a convenience to be added in passing.
 #
 # The first manual publication completed on 30 Aug 2026, so Pages is already
-# configured. Every later run remains a fresh typist act: the workflow must be
-# started manually from the Actions tab and must never gain an automatic trigger.
+# configured. Every later run remains a fresh typist act: a human may dispatch it
+# through the Actions UI, API, or GitHub CLI, and it must never gain an automatic
+# trigger.
 # A custom domain (honest-ink.org) is a THIRD, separate act — it is the loudest
 # public use of the name, and it is the one ADR-006 most clearly reaches. The
 # default *.github.io URL still publishes the name in the page content, so even
@@ -18,7 +19,8 @@
 #
 # AGENTS NEVER RUN THIS. The action versions below are exact Node-24-generation
 # commits. A typist who deliberately republishes must read that run's own
-# conclusion; nothing is published half-way because deploy-pages is atomic.
+# conclusion. GitHub's deployment action performs the outward operation; this
+# repository does not prove transactional or atomic visibility of that service.
 
 name: Publish site
 
@@ -49,11 +51,14 @@ jobs:
         with:
           global-json-file: global.json
 
+      - name: Restore the checked-in dependency graph
+        run: dotnet restore tools/SiteGenerator/Foundry.Tools.SiteGenerator.csproj --locked-mode --configfile NuGet.config
+
       # The generator is deterministic by contract (SiteBuilderTests) and reads
       # the repository's own governing documents — the site cannot drift from
       # what the repository actually says.
       - name: Generate the site
-        run: dotnet run --project tools/SiteGenerator -c Release -- "$PWD" _site
+        run: dotnet run --project tools/SiteGenerator -c Release --no-restore -- "$PWD" _site
 
       - name: Show what will be published
         run: ls -la _site

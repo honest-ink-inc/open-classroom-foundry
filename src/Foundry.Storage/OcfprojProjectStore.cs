@@ -6,6 +6,7 @@ using System.Text;
 using System.Text.Json;
 using Foundry.Contracts;
 using Foundry.Domain;
+using Foundry.Rendering;
 
 namespace Foundry.Storage;
 
@@ -13,7 +14,8 @@ public sealed record LoadedProject(
     ProjectManifest Manifest,
     ArtifactDocument Document,
     ProjectValidationEnvelope? Validation,
-    ProjectRenderProfile? RenderProfile);
+    ProjectRenderProfile? RenderProfile,
+    IAssetCatalog? Assets = null);
 
 /// <summary>
 /// The real .ocfproj store (plan §6.5, ADR-003): a ZIP/JSON package holding
@@ -108,8 +110,15 @@ public sealed class OcfprojProjectStore(string rootDirectory, IRenderer renderer
         // language order, but its durable snapshot is always learner-audience
         // and therefore carries neither teacher-only material nor approval PII.
         var snapshotRequest = OcfprojPackageValidator.SnapshotRenderRequest(request.RenderProfile);
-        var snapshot = await renderer.RenderAsync(
-            artifact, snapshotRequest, cancellationToken).ConfigureAwait(false);
+        var snapshot = renderer is AccessibleHtmlRenderer
+            ? await AccessibleHtmlRenderer.RenderPortableSnapshotAsync(
+                artifact,
+                snapshotRequest,
+                cancellationToken).ConfigureAwait(false)
+            : await renderer.RenderAsync(
+                artifact,
+                snapshotRequest,
+                cancellationToken).ConfigureAwait(false);
 
         Directory.CreateDirectory(rootDirectory);
         var path = PathFor(request.DestinationHint);

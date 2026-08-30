@@ -66,7 +66,30 @@ public static class AppServices
     public static IAssetCatalog SymbolCatalog()
     {
         var packaged = Path.Combine(AppContext.BaseDirectory, "assets", "symbols");
-        return Directory.Exists(packaged) ? new JsonAssetCatalog(packaged) : new NoAssetsCatalog();
+        return OpenSymbolCatalog(packaged);
+    }
+
+    internal static IAssetCatalog OpenSymbolCatalog(string packaged)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(packaged);
+        if (!Directory.Exists(packaged))
+        {
+            return new NoAssetsCatalog();
+        }
+
+        var catalog = new JsonAssetCatalog(packaged);
+        var blocking = catalog.VerifyIntegrity()
+            .Where(issue => issue.Severity == ValidationSeverity.Blocking)
+            .ToArray();
+        if (blocking.Length > 0)
+        {
+            throw new InvalidDataException(
+                UiStrings.FormatWithoutMnemonic(
+                    UiStrings.SymbolCatalogIntegrityFailed,
+                    string.Join(Environment.NewLine, blocking.Select(issue => issue.Code))));
+        }
+
+        return catalog;
     }
 
     public static JobStateMachine MachineAtReview()
@@ -148,13 +171,142 @@ public static class AppServices
             && approved.Receipt.RevisionNumber == revision.Number;
     }
 
-    public static byte[] Render(ApprovedArtifact artifact, RenderTarget target)
-        => Render(artifact, new RenderRequest(target));
+    public static byte[] Render(
+        ApprovedArtifact artifact,
+        RenderTarget target,
+        IAssetCatalog? assetCatalog = null,
+        CancellationToken cancellationToken = default)
+        => Render(artifact, new RenderRequest(target), assetCatalog, cancellationToken);
 
-    public static byte[] Render(ApprovedArtifact artifact, RenderRequest request)
-        => new AccessibleHtmlRenderer().RenderAsync(
-                artifact, request, CancellationToken.None)
+    public static byte[] Render(
+        ApprovedArtifact artifact,
+        RenderRequest request,
+        IAssetCatalog? assetCatalog = null,
+        CancellationToken cancellationToken = default)
+        => new AccessibleHtmlRenderer(assetCatalog).RenderAsync(
+                artifact, request, cancellationToken)
             .GetAwaiter().GetResult().Content.ToArray();
+
+    /// <summary>
+    /// Exports an HTML-shaped approved artifact through the bounded local Edge
+    /// PDF pipeline. The caller supplies the destination deliberately; this
+    /// method neither installs, distributes, nor publishes anything.
+    /// </summary>
+    public static void ExportPdf(
+        ApprovedArtifact artifact,
+        string destination,
+        IAssetCatalog? assetCatalog = null,
+        RenderAudience audience = RenderAudience.Learner,
+        double textScalePercent = 100,
+        bool targetLanguageFirst = false)
+        => ExportPdfAsync(
+                artifact,
+                destination,
+                assetCatalog,
+                audience,
+                textScalePercent,
+                targetLanguageFirst,
+                CancellationToken.None)
+            .GetAwaiter().GetResult();
+
+    /// <summary>
+    /// Responsive PDF route: vector-only presses retain the deterministic native
+    /// writer; semantic/image documents take the bounded Edge HTML path.
+    /// Both routes commit only a completed file at the teacher's destination.
+    /// </summary>
+    public static async Task ExportPdfAsync(
+        ApprovedArtifact artifact,
+        string destination,
+        IAssetCatalog? assetCatalog = null,
+        RenderAudience audience = RenderAudience.Learner,
+        double textScalePercent = 100,
+        bool targetLanguageFirst = false,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(artifact);
+        ArgumentException.ThrowIfNullOrWhiteSpace(destination);
+
+        cancellationToken.ThrowIfCancellationRequested();
+        AccessibleHtmlRenderer.ValidateTextScaleContract(new RenderRequest(
+            RenderTarget.PrintPdf,
+            audience,
+            textScalePercent,
+            targetLanguageFirst));
+        var nativePdf = await Task.Run(
+            () => TryRenderNativePdf(artifact, audience, cancellationToken),
+            cancellationToken).ConfigureAwait(false);
+        if (nativePdf is not null)
+        {
+            await WriteExportBytesAsync(destination, nativePdf, cancellationToken).ConfigureAwait(false);
+            return;
+        }
+
+        await new Infrastructure.Windows.EdgePdfExporter(new AccessibleHtmlRenderer(assetCatalog))
+            .ExportAsync(
+                artifact,
+                new ExportRequest(
+                    RenderTarget.PrintPdf,
+                    destination,
+                    audience,
+                    textScalePercent,
+                    targetLanguageFirst),
+                cancellationToken)
+            .ConfigureAwait(false);
+    }
+
+    /// <summary>
+    /// Attempts the deterministic native route. Shape support alone is not
+    /// enough: the writer can still refuse a glyph it cannot encode. That
+    /// refusal selects the richer local HTML/Edge route; it is not an export
+    /// failure in its own right.
+    /// </summary>
+    internal static byte[]? TryRenderNativePdf(
+        ApprovedArtifact artifact,
+        RenderAudience audience,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(artifact);
+        cancellationToken.ThrowIfCancellationRequested();
+        if (!VectorPdfWriter.CanWrite(artifact.Revision.Document))
+        {
+            return null;
+        }
+
+        try
+        {
+            return VectorPdfWriter.Write(artifact, audience, cancellationToken);
+        }
+        catch (NotSupportedException)
+        {
+            return null;
+        }
+    }
+
+    internal static async Task WriteExportBytesAsync(
+        string destination,
+        ReadOnlyMemory<byte> content,
+        CancellationToken cancellationToken)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(destination);
+        var resolved = Path.GetFullPath(destination);
+        var directory = Path.GetDirectoryName(resolved)
+            ?? throw new IOException(UiStrings.WithoutMnemonic(UiStrings.ExportDestinationNoParent));
+        Directory.CreateDirectory(directory);
+        var stage = Path.Combine(directory, $".honest-ink-{Guid.NewGuid():N}.stage");
+        try
+        {
+            await File.WriteAllBytesAsync(stage, content, cancellationToken).ConfigureAwait(false);
+            cancellationToken.ThrowIfCancellationRequested();
+            File.Move(stage, resolved, overwrite: true);
+        }
+        finally
+        {
+            if (File.Exists(stage))
+            {
+                File.Delete(stage);
+            }
+        }
+    }
 
     /// <summary>
     /// Writes the print view to a temporary file and opens it in the default
@@ -166,7 +318,8 @@ public static class AppServices
         string name,
         RenderAudience audience = RenderAudience.Learner,
         double textScalePercent = 100,
-        bool targetLanguageFirst = false)
+        bool targetLanguageFirst = false,
+        IAssetCatalog? assetCatalog = null)
     {
         var directory = Path.Combine(Path.GetTempPath(), EngineIdentity.InternalId, "print-view");
         Directory.CreateDirectory(directory);
@@ -175,7 +328,8 @@ public static class AppServices
             path,
             Render(
                 artifact,
-                new RenderRequest(RenderTarget.PrintHtml, audience, textScalePercent, targetLanguageFirst)));
+                new RenderRequest(RenderTarget.PrintHtml, audience, textScalePercent, targetLanguageFirst),
+                assetCatalog));
 
         System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(path) { UseShellExecute = true });
     }
@@ -304,7 +458,10 @@ public static class AppServices
         var validator = PersistedProjectValidator.Create(loaded.Validation, notices);
         return SessionOver(
             DraftArtifact.New(loaded.Document, DataLane.Green),
-            validator);
+            validator,
+            new ReviewViewContext(
+                ReviewViewContext.ManualDefault.PreviewRequest,
+                assetCatalog: loaded.Assets));
     }
 
     private static ValidationIssue[] ResolveTrustedSavedNotices()
@@ -326,8 +483,9 @@ public static class AppServices
         ApprovedArtifact artifact,
         RenderAudience audience = RenderAudience.Learner,
         double textScalePercent = 100,
-        bool targetLanguageFirst = false)
-        => new Infrastructure.Windows.WindowsPdfPrinter(new AccessibleHtmlRenderer())
+        bool targetLanguageFirst = false,
+        IAssetCatalog? assetCatalog = null)
+        => new Infrastructure.Windows.WindowsPdfPrinter(new AccessibleHtmlRenderer(assetCatalog))
             .PrintAsync(
                 artifact,
                 new PrintRequest(

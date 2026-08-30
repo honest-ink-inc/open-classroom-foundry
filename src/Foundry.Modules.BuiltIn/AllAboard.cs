@@ -271,7 +271,13 @@ public static class AllAboardRecipes
         ValidatorIds: ["document.structural"],
         EditorId: "editor.review-session",
         RendererId: "renderer.accessible-html",
-        SupportedExports: [RenderTarget.AccessibleHtml, RenderTarget.PrintHtml],
+        SupportedExports:
+        [
+            RenderTarget.AccessibleHtml,
+            RenderTarget.PrintHtml,
+            RenderTarget.PrintPdf,
+            RenderTarget.Svg,
+        ],
         Warnings: ["Visual supports supplement, never replace, an established AAC system."],
         EvaluationSuiteVersion: "0.1");
 }

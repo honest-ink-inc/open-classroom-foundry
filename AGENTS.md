@@ -21,7 +21,7 @@ Note that Claude Code has been the only generator used on this repository throug
 ## Read before you act
 
 1. [CONTRIBUTING.md](CONTRIBUTING.md) §"The rules that outrank everything" — the three categories that must never enter this repository.
-2. The most recent file in [docs/handover/](docs/handover/) — repository state, the closing rites, and the traps already sprung.
+2. The handover marked **Current repository state** in [docs/README.md](docs/README.md) — repository state, the closing rites, and the traps already sprung. A date alone is not enough: when handovers share a date, follow their supersession notices and the index's explicit current-state marker.
 3. Whatever governing document your task touches: an ADR outranks the implementation plan, which outranks the atlas.
 
 ## Never commit

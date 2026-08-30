@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
+using System.IO;
 using Foundry.App.WinForms;
 using Foundry.Application;
+using Foundry.Contracts;
 using Foundry.Domain;
 using Foundry.Modules.DeterministicPress;
 
@@ -19,6 +21,45 @@ public class PressRoomContractTests
         return session.Approve(Environment.UserName, DateTimeOffset.UtcNow);
     }
 
+    [Fact]
+    public void App_render_bridge_forwards_export_cancellation_into_the_renderer()
+    {
+        var approved = AutoApprove(AppServices.SessionOverGreen(
+            new ArtifactDocument([new Paragraph("Synthetic cancellable export")])));
+        using var cancellation = new CancellationTokenSource();
+        cancellation.Cancel();
+
+        Assert.ThrowsAny<OperationCanceledException>(() => AppServices.Render(
+            approved,
+            RenderTarget.AccessibleHtml,
+            cancellationToken: cancellation.Token));
+    }
+
+    [Theory]
+    [InlineData(double.NaN)]
+    [InlineData(99d)]
+    [InlineData(201d)]
+    public async Task Native_pdf_export_cannot_bypass_the_persisted_text_scale_contract(double textScalePercent)
+    {
+        var approved = AutoApprove(AppServices.SessionOverGreen(new ArtifactDocument([
+            new VectorGraphic(
+                10,
+                10,
+                [new LineSeg(1, 1, 9, 9)],
+                "Synthetic bounded scale sheet"),
+        ])));
+        var destination = Path.Combine(
+            Path.GetTempPath(),
+            $"honest-ink-invalid-scale-{Guid.NewGuid():N}.pdf");
+
+        await Assert.ThrowsAsync<ArgumentOutOfRangeException>(() => AppServices.ExportPdfAsync(
+            approved,
+            destination,
+            textScalePercent: textScalePercent));
+
+        Assert.False(File.Exists(destination));
+    }
+
     private static void WithPressRoom(Func<ReviewSession, ApprovedArtifact?> runner, Action<PressRoomForm> assert)
         => Sta.Run(() =>
         {
@@ -31,6 +72,18 @@ public class PressRoomContractTests
     {
         var list = (ListBox)ReviewSurfaceContractTests.ByName(form, "Presses");
         list.SelectedIndex = PressRoomCatalog.All.ToList().FindIndex(d => d.Id == id);
+    }
+
+    private static void PumpUntil(Func<bool> condition)
+    {
+        var deadline = DateTime.UtcNow.AddSeconds(3);
+        while (!condition() && DateTime.UtcNow < deadline)
+        {
+            System.Windows.Forms.Application.DoEvents();
+            Thread.Sleep(10);
+        }
+
+        Assert.True(condition(), "The asynchronous UI operation did not reach its expected state.");
     }
 
     /// <summary>
@@ -55,6 +108,71 @@ public class PressRoomContractTests
             Assert.True(ReviewSurfaceContractTests.ByName(form, "Open print view").Enabled);
             Assert.True(ReviewSurfaceContractTests.ByName(form, "Export…").Enabled);
             Assert.True(ReviewSurfaceContractTests.ByName(form, "Save to library").Enabled);
+        });
+
+    [Fact]
+    public void Pdf_export_gates_mutation_announces_progress_and_remains_keyboard_cancellable()
+        => Sta.Run(() =>
+        {
+            var destination = Path.Combine(Path.GetTempPath(), $"press-room-{Guid.NewGuid():N}.pdf");
+            var started = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+            var pickerCalls = 0;
+            var exporterCalls = 0;
+            using var form = new PressRoomForm(
+                AutoApprove,
+                exportPicker: () =>
+                {
+                    pickerCalls++;
+                    return new PressRoomForm.ExportChoice(destination, 1);
+                },
+                pdfExporter: async (_, _, _, cancellationToken) =>
+                {
+                    exporterCalls++;
+                    started.TrySetResult(true);
+                    await Task.Delay(Timeout.InfiniteTimeSpan, cancellationToken);
+                });
+            form.Show();
+            SelectPress(form, "graph-paper");
+            ((Button)ReviewSurfaceContractTests.ByName(form, "Review and approve…")).PerformClick();
+
+            var export = (Button)ReviewSurfaceContractTests.ByName(form, "Export…");
+            var cancel = (Button)ReviewSurfaceContractTests.ByName(form, "Cancel export");
+            export.PerformClick();
+            export.PerformClick();
+            PumpUntil(() => started.Task.IsCompleted);
+
+            Assert.Equal(1, pickerCalls);
+            Assert.Equal(1, exporterCalls);
+            Assert.False(export.Enabled);
+            Assert.True(cancel.Enabled);
+            Assert.Contains("Exporting", form.StatusText, StringComparison.Ordinal);
+            Assert.False(ReviewSurfaceContractTests.ByName(form, "Presses").Enabled);
+            Assert.False(ReviewSurfaceContractTests.ByName(form, "Open from library…").Enabled);
+
+            cancel.PerformClick();
+            PumpUntil(() => form.StatusText.Contains("cancelled", StringComparison.OrdinalIgnoreCase));
+
+            Assert.False(cancel.Enabled);
+            Assert.True(export.Enabled);
+            Assert.False(File.Exists(destination));
+        });
+
+    [Fact]
+    public void Export_picker_failure_is_announced_instead_of_escaping_the_ui_dispatch()
+        => Sta.Run(() =>
+        {
+            using var form = new PressRoomForm(
+                AutoApprove,
+                exportPicker: () => throw new InvalidOperationException("Synthetic picker refusal."));
+            form.Show();
+            SelectPress(form, "graph-paper");
+            ((Button)ReviewSurfaceContractTests.ByName(form, "Review and approve…")).PerformClick();
+
+            ((Button)ReviewSurfaceContractTests.ByName(form, "Export…")).PerformClick();
+            PumpUntil(() => form.StatusText.Contains("Synthetic picker refusal", StringComparison.Ordinal));
+
+            Assert.Contains("refused", form.StatusText, StringComparison.OrdinalIgnoreCase);
+            Assert.True(ReviewSurfaceContractTests.ByName(form, "Export…").Enabled);
         });
 
     [Fact]

@@ -132,4 +132,63 @@ public class RepositoryHygieneTests
             Assert.Contains(pattern, ignore, StringComparison.Ordinal);
         }
     }
+
+    [Fact]
+    public void Every_external_GitHub_Action_is_pinned_to_an_exact_commit()
+    {
+        // Repository settings currently permit tag-based actions. Keep the
+        // supply-chain invariant enforceable in a clone and in CI instead of
+        // depending on an administrator setting that may drift.
+        var root = RepoRoot();
+        var workflowRoot = Path.Combine(root, ".github", "workflows");
+        var workflowFiles = Directory.EnumerateFiles(workflowRoot, "*", SearchOption.AllDirectories)
+            .Select(path => Path.GetRelativePath(root, path).Replace('\\', '/'))
+            .Where(path => path.EndsWith(".yml", StringComparison.OrdinalIgnoreCase)
+                || path.EndsWith(".yaml", StringComparison.OrdinalIgnoreCase));
+
+        var offenders = new List<string>();
+        foreach (var relativePath in workflowFiles)
+        {
+            var lineNumber = 0;
+            foreach (var line in File.ReadLines(Path.Combine(root, relativePath)))
+            {
+                lineNumber++;
+                var declaration = line.TrimStart();
+                if (declaration.StartsWith("- ", StringComparison.Ordinal))
+                {
+                    declaration = declaration[2..].TrimStart();
+                }
+
+                var colon = declaration.IndexOf(':');
+                if (colon < 0
+                    || !declaration[..colon].TrimEnd().Equals("uses", StringComparison.Ordinal))
+                {
+                    continue;
+                }
+
+                var reference = declaration[(colon + 1)..].TrimStart();
+                var separator = reference.IndexOfAny(' ', '\t', '#');
+                if (separator >= 0)
+                {
+                    reference = reference[..separator];
+                }
+
+                reference = reference.Trim('\'', '"');
+                var at = reference.LastIndexOf('@');
+                var commit = at >= 0 ? reference[(at + 1)..] : string.Empty;
+                if (reference.StartsWith("./", StringComparison.Ordinal)
+                    || (at > 0 && commit.Length == 40 && commit.All(Uri.IsHexDigit)))
+                {
+                    continue;
+                }
+
+                offenders.Add($"{relativePath}:{lineNumber} ({reference})");
+            }
+        }
+
+        Assert.True(
+            offenders.Count == 0,
+            "External GitHub Actions must use an exact 40-character commit SHA; tag and branch references can move: "
+            + string.Join(", ", offenders));
+    }
 }

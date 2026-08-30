@@ -1,0 +1,87 @@
+# Code-owned SAST gate for implementation plan §7/§12. Results remain ordinary
+# build evidence: upload is disabled in CodeQL itself, so this workflow needs no
+# security-settings change and keeps the repository token read-only. A green run
+# is evidence only; this file cannot prove or configure branch protection.
+name: CodeQL SAST
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  analyze-csharp:
+    runs-on: windows-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
+        with:
+          global-json-file: global.json
+
+      - name: Exact SDK gate
+        shell: pwsh
+        run: |
+          $settings = Get-Content global.json -Raw | ConvertFrom-Json
+          $expected = ([string]$settings.sdk.version).Trim()
+          $actual = ([string](& dotnet --version)).Trim()
+          if ($LASTEXITCODE -ne 0 -or -not [string]::Equals($actual, $expected, [System.StringComparison]::Ordinal)) {
+            throw "Resolved .NET SDK '$actual' did not equal global.json SDK '$expected'."
+          }
+          Write-Host "Exact .NET SDK: $actual"
+
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@cdf488f595d80d6e07e03d4674febd5ab45fa938 # v4.37.9
+        with:
+          languages: csharp
+          build-mode: manual
+          queries: security-extended
+
+      - name: Restore the checked-in dependency graph
+        run: dotnet restore OpenClassroomFoundry.slnx --locked-mode --configfile NuGet.config
+
+      - name: Build for extraction (warnings are errors)
+        run: dotnet build OpenClassroomFoundry.slnx --no-restore --configuration Release
+
+      - name: Analyze without changing repository security settings
+        uses: github/codeql-action/analyze@cdf488f595d80d6e07e03d4674febd5ab45fa938 # v4.37.9
+        with:
+          category: /language:csharp
+          output: codeql-results
+          upload: never
+
+      - name: Require a clean SARIF result
+        shell: pwsh
+        run: |
+          $sarifFiles = @(Get-ChildItem -LiteralPath codeql-results -Filter '*.sarif' -File -Recurse)
+          if ($sarifFiles.Count -eq 0) { throw 'CodeQL produced no SARIF evidence.' }
+
+          $results = @()
+          foreach ($file in $sarifFiles) {
+            $sarif = Get-Content -LiteralPath $file.FullName -Raw | ConvertFrom-Json -Depth 100
+            foreach ($run in @($sarif.runs)) {
+              if ($null -ne $run.results) {
+                $results += @($run.results)
+              }
+            }
+          }
+
+          if ($results.Count -ne 0) {
+            $ruleIds = @($results | ForEach-Object { $_.ruleId } | Sort-Object -Unique)
+            throw "CodeQL reported $($results.Count) result(s): $($ruleIds -join ', ')."
+          }
+          Write-Host "CodeQL SARIF clean across $($sarifFiles.Count) file(s)."
+
+      - name: Retain CodeQL evidence
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: codeql-sarif
+          path: codeql-results
+          if-no-files-found: error
+          retention-days: 30

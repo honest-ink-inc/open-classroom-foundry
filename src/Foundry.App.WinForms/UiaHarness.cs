@@ -67,7 +67,7 @@ public static class UiaHarness
     {
         var store = new InMemorySessionByteStore();
         return new CaptureForm(
-            new CaptureSession(new ByteImportCaptureSource(store), new ImageNormalizer(store)),
+            new CaptureSession(new ByteImportCaptureSource(store), new ImageNormalizer(store), store),
             DistrictPolicy.Offline);
     }
 

@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 using Foundry.App.WinForms;
 using Foundry.Application;
+using Foundry.Contracts;
 using Foundry.Domain;
 
 namespace Foundry.Tests.UiAutomation;
@@ -626,7 +627,14 @@ public class ReviewSurfaceContractTests
                     .OfType<char>()
                     .ToList();
 
-                Assert.Equal(mnemonics.Count, mnemonics.Distinct().Count());
+                var duplicateMnemonics = mnemonics
+                    .GroupBy(mnemonic => mnemonic)
+                    .Where(group => group.Count() > 1)
+                    .Select(group => $"{group.Key}:{group.Count()}")
+                    .ToList();
+                Assert.True(
+                    duplicateMnemonics.Count == 0,
+                    $"{form.GetType().Name} has duplicate action mnemonics: {string.Join(", ", duplicateMnemonics)}.");
             }
         });
 
@@ -741,6 +749,24 @@ public class CaptureSurfaceContractTests
     });
 
     [Fact]
+    public void Capture_dependent_actions_start_disabled_until_bytes_exist()
+        => WithCaptureForm(form =>
+        {
+            var controls = ReviewSurfaceContractTests.Flatten(form).ToList();
+            var buttons = controls.OfType<Button>().ToList();
+
+            Assert.True(Assert.Single(buttons, button =>
+                button.AccessibilityObject.Name?.Contains("Import", StringComparison.OrdinalIgnoreCase) == true).Enabled);
+            Assert.False(Assert.Single(buttons, button =>
+                button.AccessibilityObject.Name?.Contains("Rotate", StringComparison.OrdinalIgnoreCase) == true).Enabled);
+            Assert.False(Assert.Single(buttons, button =>
+                button.AccessibilityObject.Name?.Contains("Confirm", StringComparison.OrdinalIgnoreCase) == true).Enabled);
+            Assert.True(Assert.Single(buttons, button =>
+                button.AccessibilityObject.Name?.Contains("pause", StringComparison.OrdinalIgnoreCase) == true).Enabled);
+            Assert.All(controls.OfType<RadioButton>(), radio => Assert.False(radio.Enabled));
+        });
+
+    [Fact]
     public void Part1_Step2_every_capture_tab_stop_announces_a_name_and_a_role()
         => WithCaptureForm(form => Assert.All(
             ReviewSurfaceContractTests.TabStops(form),
@@ -776,4 +802,635 @@ public class CaptureSurfaceContractTests
             Assert.InRange(pauseIndex, 0, 5); // "reachable in ≤ a few tabs"
             Assert.Contains("concerning", stops[pauseIndex].AccessibilityObject.Name, StringComparison.Ordinal);
         });
+
+    [Fact]
+    public void Failed_initial_normalization_exposes_a_working_keyboard_retry_for_the_retained_capture()
+        => Sta.Run(() =>
+        {
+            var store = new InMemorySessionByteStore();
+            var session = new CaptureSession(
+                new ByteImportCaptureSource(store),
+                new FailsOnceUiNormalizer(),
+                store);
+            session.CaptureAsync(
+                    new CaptureRequest(ByteImportCaptureSource.Kind, "image/png", new byte[] { 1, 2, 3 }),
+                    CancellationToken.None)
+                .GetAwaiter().GetResult();
+
+            using var form = new CaptureForm(session, DistrictPolicy.Offline);
+            form.Show();
+            var import = ReviewSurfaceContractTests.Flatten(form).OfType<Button>()
+                .Single(button => button.Visible
+                    && button.Text.Contains("Retry", StringComparison.OrdinalIgnoreCase));
+
+            import.PerformClick();
+            System.Windows.Forms.Application.DoEvents();
+            Assert.Equal(JobState.Imported, session.Machine.State);
+            Assert.True(import.Enabled);
+            Assert.Contains("Retry", import.AccessibilityObject.Name, StringComparison.OrdinalIgnoreCase);
+
+            import.PerformClick();
+            System.Windows.Forms.Application.DoEvents();
+            Assert.Equal(JobState.Normalized, session.Machine.State);
+            Assert.False(import.Enabled);
+            Assert.True(ReviewSurfaceContractTests.ByName(form, "Rotate 90°").Enabled);
+        });
+
+    [Fact]
+    public void Pending_retry_gates_every_competing_action_but_keeps_safety_pause_usable_at_the_floor()
+        => Sta.Run(() =>
+        {
+            var normalizer = new DeferredUiNormalizer();
+            var (session, _, _) = ImportedSession(normalizer);
+            using var form = new CaptureForm(session, DistrictPolicy.Offline)
+            {
+                Size = new Size(1366, 768),
+            };
+            form.Show();
+            var retry = ButtonContaining(form, "Retry");
+            var pause = ButtonContaining(form, "pause");
+
+            retry.PerformClick();
+
+            Assert.Equal(1, normalizer.CallCount);
+            AssertBusyControlsAreGated(form);
+            Assert.True(pause.Enabled);
+            retry.PerformClick();
+            Assert.Equal(1, normalizer.CallCount);
+            AssertInsideClientFloor(form, pause);
+            AssertInsideClientFloor(form, ReviewSurfaceContractTests.Flatten(form).OfType<Label>().Single());
+
+            normalizer.Complete();
+            PumpUntil(() => session.Machine.State == JobState.Normalized && ButtonContaining(form, "Rotate").Enabled);
+
+            Assert.False(retry.Enabled);
+            Assert.True(ButtonContaining(form, "Rotate").Enabled);
+            Assert.True(ButtonContaining(form, "Confirm").Enabled);
+            Assert.All(ReviewSurfaceContractTests.Flatten(form).OfType<RadioButton>(), radio => Assert.True(radio.Enabled));
+        });
+
+    [Fact]
+    public void Pending_rotation_cannot_race_a_second_rotation_or_lane_confirmation()
+        => Sta.Run(() =>
+        {
+            var normalizer = new DeferredRotationUiNormalizer();
+            var (session, _, _) = ImportedSession(normalizer);
+            session.NormalizeAsync(new NormalizationRequest(), CancellationToken.None).GetAwaiter().GetResult();
+            using var form = new CaptureForm(session, DistrictPolicy.Offline);
+            form.Show();
+            var rotate = ButtonContaining(form, "Rotate");
+            var confirm = ButtonContaining(form, "Confirm");
+
+            rotate.PerformClick();
+
+            Assert.Equal(1, normalizer.RotationCallCount);
+            AssertBusyControlsAreGated(form);
+            Assert.True(ButtonContaining(form, "pause").Enabled);
+            rotate.PerformClick();
+            confirm.PerformClick();
+            Assert.Equal(1, normalizer.RotationCallCount);
+            Assert.Equal(JobState.Normalized, session.Machine.State);
+
+            normalizer.CompleteRotation();
+            PumpUntil(() => rotate.Enabled);
+
+            Assert.Equal(JobState.Normalized, session.Machine.State);
+            Assert.True(confirm.Enabled);
+            Assert.Contains(
+                "Rotated",
+                ReviewSurfaceContractTests.Flatten(form).OfType<Label>().Single().Text,
+                StringComparison.Ordinal);
+        });
+
+    [Fact]
+    public void Rotation_refusal_is_announced_and_restores_the_normalized_controls()
+        => Sta.Run(() =>
+        {
+            var normalizer = new RefusesRotationUiNormalizer();
+            var (session, _, _) = ImportedSession(normalizer);
+            session.NormalizeAsync(new NormalizationRequest(), CancellationToken.None).GetAwaiter().GetResult();
+            using var form = new CaptureForm(session, DistrictPolicy.Offline);
+            form.Show();
+            var rotate = ButtonContaining(form, "Rotate");
+
+            rotate.PerformClick();
+            System.Windows.Forms.Application.DoEvents();
+
+            Assert.Equal(JobState.Normalized, session.Machine.State);
+            Assert.True(rotate.Enabled);
+            Assert.True(ButtonContaining(form, "Confirm").Enabled);
+            Assert.Contains(
+                "Synthetic rotation refusal.",
+                ReviewSurfaceContractTests.Flatten(form).OfType<Label>().Single().Text,
+                StringComparison.Ordinal);
+        });
+
+    [Fact]
+    public void Closing_during_normalization_cancels_the_owned_token_and_prevents_a_late_commit()
+        => Sta.Run(() =>
+        {
+            var normalizer = new DeferredUiNormalizer();
+            var (session, captured, store) = ImportedSession(normalizer);
+            Assert.True(store.TryGet(captured.Bytes, out var heldBytes));
+            using var form = new CaptureForm(session, DistrictPolicy.Offline);
+            form.Show();
+            ButtonContaining(form, "Retry").PerformClick();
+
+            form.Close();
+
+            Assert.True(normalizer.ObservedToken.IsCancellationRequested);
+            Assert.Equal(JobState.Cancelled, session.Machine.State);
+            Assert.True(form.Visible);
+            Assert.Equal(DialogResult.None, form.DialogResult);
+            normalizer.Complete();
+            PumpUntil(() => normalizer.Finished && !form.OperationPending && !form.Visible);
+            Assert.Null(normalizer.RegistrationFailure);
+            Assert.Null(session.Envelope);
+            Assert.Equal(0, store.Count);
+            Assert.All(heldBytes.ToArray(), value => Assert.Equal(0, value));
+            Assert.Equal(JobState.TransientSourcesPurged, session.Machine.State);
+            Assert.Equal(DialogResult.Cancel, form.DialogResult);
+        });
+
+    [Fact]
+    public void Safety_pause_cancels_pending_normalization_before_blocking_the_session()
+        => Sta.Run(() =>
+        {
+            var normalizer = new DeferredUiNormalizer();
+            var (session, captured, store) = ImportedSession(normalizer);
+            Assert.True(store.TryGet(captured.Bytes, out var heldBytes));
+            SafetyPauseResult? presented = null;
+            using var form = new CaptureForm(session, DistrictPolicy.Offline, result => presented = result);
+            form.Show();
+            ButtonContaining(form, "Retry").PerformClick();
+
+            ButtonContaining(form, "pause").PerformClick();
+
+            Assert.NotNull(presented);
+            Assert.True(normalizer.ObservedToken.IsCancellationRequested);
+            Assert.Equal(JobState.Blocked, session.Machine.State);
+            Assert.True(form.Visible);
+            Assert.Equal(DialogResult.None, form.DialogResult);
+            normalizer.Complete();
+            PumpUntil(() => normalizer.Finished && !form.OperationPending && !form.Visible);
+            Assert.Null(normalizer.RegistrationFailure);
+            Assert.Null(session.Envelope);
+            Assert.Equal(0, store.Count);
+            Assert.All(heldBytes.ToArray(), value => Assert.Equal(0, value));
+            Assert.Equal(JobState.TransientSourcesPurged, session.Machine.State);
+            Assert.Equal(DialogResult.Abort, form.DialogResult);
+        });
+
+    [Fact]
+    public void Closing_during_normalization_keeps_a_late_failed_purge_visible_and_retryable()
+        => Sta.Run(() =>
+        {
+            var store = new FailsSecondPurgeStore();
+            var normalizer = new LateAllocatingDeferredUiNormalizer(store);
+            var session = new CaptureSession(new ByteImportCaptureSource(store), normalizer, store);
+            session.CaptureAsync(
+                    new CaptureRequest(ByteImportCaptureSource.Kind, "image/png", new byte[] { 1, 2, 3 }),
+                    CancellationToken.None)
+                .GetAwaiter()
+                .GetResult();
+            using var form = new CaptureForm(session, DistrictPolicy.Offline);
+            form.Show();
+            ButtonContaining(form, "Retry").PerformClick();
+
+            form.Close();
+
+            Assert.True(normalizer.ObservedToken.IsCancellationRequested);
+            Assert.Equal(JobState.Cancelled, session.Machine.State);
+            Assert.True(form.Visible);
+            Assert.Equal(DialogResult.None, form.DialogResult);
+
+            normalizer.Complete();
+            PumpUntil(() => !form.OperationPending && session.Machine.State == JobState.PurgeIncomplete);
+
+            Assert.True(form.Visible);
+            Assert.Equal(DialogResult.None, form.DialogResult);
+            AssertPurgeRecoveryOnly(form);
+            Assert.Equal(2, store.PurgeAttempts);
+            Assert.NotNull(normalizer.LateReference);
+            Assert.True(store.TryGet(normalizer.LateReference.Value, out var heldLateBytes));
+            Assert.Equal(1, store.Count);
+
+            ButtonContaining(form, "secure purge").PerformClick();
+            System.Windows.Forms.Application.DoEvents();
+
+            Assert.Equal(DialogResult.Cancel, form.DialogResult);
+            Assert.Equal(JobState.TransientSourcesPurged, session.Machine.State);
+            Assert.Equal(0, store.Count);
+            Assert.All(heldLateBytes.ToArray(), value => Assert.Equal(0, value));
+        });
+
+    [Fact]
+    public void Lane_confirmation_completes_the_capture_form_only_after_transient_bytes_are_purged()
+        => Sta.Run(() =>
+        {
+            var normalizer = new DeferredRotationUiNormalizer();
+            var (session, captured, store) = ImportedSession(normalizer);
+            Assert.True(store.TryGet(captured.Bytes, out var heldBytes));
+            session.NormalizeAsync(new NormalizationRequest(), CancellationToken.None).GetAwaiter().GetResult();
+            using var form = new CaptureForm(session, DistrictPolicy.Offline);
+            form.Show();
+
+            ButtonContaining(form, "Confirm").PerformClick();
+            System.Windows.Forms.Application.DoEvents();
+
+            Assert.Equal(DialogResult.OK, form.DialogResult);
+            Assert.Equal(JobState.TransientSourcesPurged, session.Machine.State);
+            Assert.Null(session.Envelope);
+            Assert.Equal(0, store.Count);
+            Assert.All(heldBytes.ToArray(), value => Assert.Equal(0, value));
+        });
+
+    [Fact]
+    public void Lane_confirmation_keeps_an_incomplete_purge_visible_and_retryable_without_resuming_capture()
+        => Sta.Run(() =>
+        {
+            var store = new FailsFirstPurgeStore();
+            var normalizer = new DeferredRotationUiNormalizer();
+            var session = new CaptureSession(new ByteImportCaptureSource(store), normalizer, store);
+            var captured = session.CaptureAsync(
+                    new CaptureRequest(ByteImportCaptureSource.Kind, "image/png", new byte[] { 1, 2, 3 }),
+                    CancellationToken.None)
+                .GetAwaiter()
+                .GetResult();
+            Assert.True(store.TryGet(captured.Bytes, out var heldBytes));
+            session.NormalizeAsync(new NormalizationRequest(), CancellationToken.None).GetAwaiter().GetResult();
+            using var form = new CaptureForm(session, DistrictPolicy.Offline);
+            form.Show();
+
+            ButtonContaining(form, "Confirm").PerformClick();
+            System.Windows.Forms.Application.DoEvents();
+
+            Assert.Equal(JobState.PurgeIncomplete, session.Machine.State);
+            Assert.True(form.Visible);
+            Assert.Equal(DialogResult.None, form.DialogResult);
+            AssertPurgeRecoveryOnly(form);
+
+            ButtonContaining(form, "secure purge").PerformClick();
+            System.Windows.Forms.Application.DoEvents();
+
+            Assert.Equal(DialogResult.OK, form.DialogResult);
+            Assert.Equal(JobState.TransientSourcesPurged, session.Machine.State);
+            Assert.Equal(0, store.Count);
+            Assert.All(heldBytes.ToArray(), value => Assert.Equal(0, value));
+        });
+
+    [Fact]
+    public void Gate_C_keeps_an_incomplete_purge_visible_and_retryable()
+        => Sta.Run(() =>
+        {
+            var store = new FailsFirstPurgeStore();
+            var session = new CaptureSession(
+                new ByteImportCaptureSource(store),
+                new DeferredRotationUiNormalizer(),
+                store);
+            var captured = session.CaptureAsync(
+                    new CaptureRequest(ByteImportCaptureSource.Kind, "image/png", new byte[] { 1, 2, 3 }),
+                    CancellationToken.None)
+                .GetAwaiter()
+                .GetResult();
+            Assert.True(store.TryGet(captured.Bytes, out var heldBytes));
+            using var form = new CaptureForm(session, DistrictPolicy.Offline, _ => { });
+            form.Show();
+
+            ButtonContaining(form, "pause").PerformClick();
+            System.Windows.Forms.Application.DoEvents();
+
+            Assert.Equal(JobState.PurgeIncomplete, session.Machine.State);
+            Assert.True(form.Visible);
+            AssertPurgeRecoveryOnly(form);
+
+            ButtonContaining(form, "secure purge").PerformClick();
+            System.Windows.Forms.Application.DoEvents();
+
+            Assert.Equal(DialogResult.Abort, form.DialogResult);
+            Assert.Equal(JobState.TransientSourcesPurged, session.Machine.State);
+            Assert.Equal(0, store.Count);
+            Assert.All(heldBytes.ToArray(), value => Assert.Equal(0, value));
+        });
+
+    [Fact]
+    public void Window_close_is_refused_after_an_incomplete_purge_until_retry_succeeds()
+        => Sta.Run(() =>
+        {
+            var store = new FailsFirstPurgeStore();
+            var session = new CaptureSession(
+                new ByteImportCaptureSource(store),
+                new DeferredRotationUiNormalizer(),
+                store);
+            var captured = session.CaptureAsync(
+                    new CaptureRequest(ByteImportCaptureSource.Kind, "image/png", new byte[] { 1, 2, 3 }),
+                    CancellationToken.None)
+                .GetAwaiter()
+                .GetResult();
+            Assert.True(store.TryGet(captured.Bytes, out var heldBytes));
+            using var form = new CaptureForm(session, DistrictPolicy.Offline);
+            form.Show();
+
+            form.Close();
+            System.Windows.Forms.Application.DoEvents();
+
+            Assert.Equal(JobState.PurgeIncomplete, session.Machine.State);
+            Assert.True(form.Visible);
+            AssertPurgeRecoveryOnly(form);
+
+            ButtonContaining(form, "secure purge").PerformClick();
+            System.Windows.Forms.Application.DoEvents();
+
+            Assert.Equal(DialogResult.Cancel, form.DialogResult);
+            Assert.Equal(JobState.TransientSourcesPurged, session.Machine.State);
+            Assert.Equal(0, store.Count);
+            Assert.All(heldBytes.ToArray(), value => Assert.Equal(0, value));
+        });
+
+    private static (CaptureSession Session, SourceEnvelope Captured, InMemorySessionByteStore Store) ImportedSession(
+        IDocumentNormalizer normalizer)
+    {
+        var store = new InMemorySessionByteStore();
+        var session = new CaptureSession(new ByteImportCaptureSource(store), normalizer, store);
+        var captured = session.CaptureAsync(
+                new CaptureRequest(ByteImportCaptureSource.Kind, "image/png", new byte[] { 1, 2, 3 }),
+                CancellationToken.None)
+            .GetAwaiter()
+            .GetResult();
+        return (session, captured, store);
+    }
+
+    private static Button ButtonContaining(CaptureForm form, string text)
+        => ReviewSurfaceContractTests.Flatten(form).OfType<Button>().Single(button =>
+            button.Visible
+                && button.AccessibilityObject.Name?.Contains(text, StringComparison.OrdinalIgnoreCase) == true);
+
+    private static void AssertBusyControlsAreGated(CaptureForm form)
+    {
+        var importOrRetry = ReviewSurfaceContractTests.Flatten(form).OfType<Button>().Single(button =>
+            button.Visible
+                && (button.AccessibilityObject.Name?.Contains("Import", StringComparison.OrdinalIgnoreCase) == true
+                    || button.AccessibilityObject.Name?.Contains("Retry", StringComparison.OrdinalIgnoreCase) == true));
+        Assert.False(importOrRetry.Enabled);
+        Assert.False(ButtonContaining(form, "Rotate").Enabled);
+        Assert.False(ButtonContaining(form, "Confirm").Enabled);
+        Assert.All(ReviewSurfaceContractTests.Flatten(form).OfType<RadioButton>(), radio => Assert.False(radio.Enabled));
+    }
+
+    private static void AssertPurgeRecoveryOnly(CaptureForm form)
+    {
+        var retryPurge = ButtonContaining(form, "secure purge");
+        Assert.True(retryPurge.Visible);
+        Assert.True(retryPurge.Enabled);
+        Assert.All(
+            ReviewSurfaceContractTests.Flatten(form).OfType<Button>().Where(button => button != retryPurge),
+            button => Assert.False(button.Enabled));
+        Assert.All(ReviewSurfaceContractTests.Flatten(form).OfType<RadioButton>(), radio => Assert.False(radio.Enabled));
+        Assert.Contains(
+            "could not be fully purged",
+            ReviewSurfaceContractTests.Flatten(form).OfType<Label>().Single().Text,
+            StringComparison.Ordinal);
+    }
+
+    private static void AssertInsideClientFloor(Form form, Control control)
+    {
+        var screenBounds = control.Parent!.RectangleToScreen(control.Bounds);
+        var clientBounds = form.RectangleToClient(screenBounds);
+        Assert.True(
+            clientBounds.Left >= 0
+                && clientBounds.Top >= 0
+                && clientBounds.Right <= form.ClientSize.Width
+                && clientBounds.Bottom <= form.ClientSize.Height,
+            $"{control.GetType().Name} escaped the 1366×768 client floor: {clientBounds} in {form.ClientRectangle}.");
+    }
+
+    private static void PumpUntil(Func<bool> condition)
+    {
+        var deadline = DateTime.UtcNow.AddSeconds(3);
+        while (DateTime.UtcNow < deadline && !condition())
+        {
+            System.Windows.Forms.Application.DoEvents();
+            Thread.Sleep(10);
+        }
+
+        Assert.True(condition(), "The pending capture operation did not settle before the test deadline.");
+    }
+
+    private sealed class FailsOnceUiNormalizer : IDocumentNormalizer
+    {
+        private bool _failed;
+
+        public Task<SourceEnvelope> NormalizeAsync(
+            SourceEnvelope source,
+            NormalizationRequest request,
+            CancellationToken cancellationToken)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            if (!_failed)
+            {
+                _failed = true;
+                throw new ArgumentException("Synthetic corrupt image.", nameof(source));
+            }
+
+            return Task.FromResult(source with { MetadataStripped = true });
+        }
+    }
+
+    private sealed class DeferredUiNormalizer : IDocumentNormalizer
+    {
+        private readonly TaskCompletionSource _release = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        private int _finished;
+
+        public int CallCount { get; private set; }
+
+        public CancellationToken ObservedToken { get; private set; }
+
+        public bool Finished => Volatile.Read(ref _finished) == 1;
+
+        public Exception? RegistrationFailure { get; private set; }
+
+        public Task<SourceEnvelope> NormalizeAsync(
+            SourceEnvelope source,
+            NormalizationRequest request,
+            CancellationToken cancellationToken)
+        {
+            CallCount++;
+            ObservedToken = cancellationToken;
+            return CompleteWhenReleasedAsync(source, cancellationToken);
+        }
+
+        public void Complete()
+            => _release.TrySetResult();
+
+        private async Task<SourceEnvelope> CompleteWhenReleasedAsync(
+            SourceEnvelope source,
+            CancellationToken cancellationToken)
+        {
+            try
+            {
+                await _release.Task.ConfigureAwait(false);
+                try
+                {
+                    using var registration = cancellationToken.Register(static () => { });
+                    cancellationToken.ThrowIfCancellationRequested();
+                }
+                catch (Exception failure) when (failure is not OperationCanceledException)
+                {
+                    RegistrationFailure = failure;
+                    throw;
+                }
+
+                return source with { MetadataStripped = true };
+            }
+            finally
+            {
+                Volatile.Write(ref _finished, 1);
+            }
+        }
+    }
+
+    private sealed class DeferredRotationUiNormalizer : IDocumentNormalizer
+    {
+        private readonly TaskCompletionSource _rotationRelease = new(
+            TaskCreationOptions.RunContinuationsAsynchronously);
+
+        public int RotationCallCount { get; private set; }
+
+        public Task<SourceEnvelope> NormalizeAsync(
+            SourceEnvelope source,
+            NormalizationRequest request,
+            CancellationToken cancellationToken)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            if (request.Rotation == RotationDegrees.None)
+            {
+                return Task.FromResult(source with { MetadataStripped = true });
+            }
+
+            RotationCallCount++;
+            return CompleteRotationWhenReleasedAsync(source, cancellationToken);
+        }
+
+        public void CompleteRotation()
+            => _rotationRelease.SetResult();
+
+        private async Task<SourceEnvelope> CompleteRotationWhenReleasedAsync(
+            SourceEnvelope source,
+            CancellationToken cancellationToken)
+        {
+            await _rotationRelease.Task.ConfigureAwait(false);
+            cancellationToken.ThrowIfCancellationRequested();
+            return source;
+        }
+    }
+
+    private sealed class LateAllocatingDeferredUiNormalizer(ISessionByteStore store) : IDocumentNormalizer
+    {
+        private readonly TaskCompletionSource _release = new(TaskCreationOptions.RunContinuationsAsynchronously);
+
+        public CancellationToken ObservedToken { get; private set; }
+
+        public SessionByteReference? LateReference { get; private set; }
+
+        public Task<SourceEnvelope> NormalizeAsync(
+            SourceEnvelope source,
+            NormalizationRequest request,
+            CancellationToken cancellationToken)
+        {
+            ObservedToken = cancellationToken;
+            return CompleteWhenReleasedAsync(source, cancellationToken);
+        }
+
+        public void Complete()
+            => _release.TrySetResult();
+
+        private async Task<SourceEnvelope> CompleteWhenReleasedAsync(
+            SourceEnvelope source,
+            CancellationToken cancellationToken)
+        {
+            await _release.Task.ConfigureAwait(false);
+            var lateBytes = new byte[] { 9, 8, 7 };
+            try
+            {
+                LateReference = store.Put(lateBytes);
+            }
+            finally
+            {
+                Array.Clear(lateBytes);
+            }
+
+            cancellationToken.ThrowIfCancellationRequested();
+            return source with { Bytes = LateReference.Value, MetadataStripped = true };
+        }
+    }
+
+    private sealed class RefusesRotationUiNormalizer : IDocumentNormalizer
+    {
+        public Task<SourceEnvelope> NormalizeAsync(
+            SourceEnvelope source,
+            NormalizationRequest request,
+            CancellationToken cancellationToken)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            if (request.Rotation != RotationDegrees.None)
+            {
+                throw new InvalidOperationException("Synthetic rotation refusal.");
+            }
+
+            return Task.FromResult(source with { MetadataStripped = true });
+        }
+    }
+
+    private sealed class FailsFirstPurgeStore : ISessionByteStore
+    {
+        private readonly InMemorySessionByteStore _inner = new();
+        private bool _failed;
+
+        public int Count => _inner.Count;
+
+        public SessionByteReference Put(ReadOnlyMemory<byte> content) => _inner.Put(content);
+
+        public bool TryGet(SessionByteReference reference, out ReadOnlyMemory<byte> content)
+            => _inner.TryGet(reference, out content);
+
+        public void Release(SessionByteReference reference) => _inner.Release(reference);
+
+        public void PurgeAll()
+        {
+            if (!_failed)
+            {
+                _failed = true;
+                throw new System.IO.IOException("Synthetic purge failure.");
+            }
+
+            _inner.PurgeAll();
+        }
+    }
+
+    private sealed class FailsSecondPurgeStore : ISessionByteStore
+    {
+        private readonly InMemorySessionByteStore _inner = new();
+
+        public int Count => _inner.Count;
+
+        public int PurgeAttempts { get; private set; }
+
+        public SessionByteReference Put(ReadOnlyMemory<byte> content) => _inner.Put(content);
+
+        public bool TryGet(SessionByteReference reference, out ReadOnlyMemory<byte> content)
+            => _inner.TryGet(reference, out content);
+
+        public void Release(SessionByteReference reference) => _inner.Release(reference);
+
+        public void PurgeAll()
+        {
+            PurgeAttempts++;
+            if (PurgeAttempts == 2)
+            {
+                throw new System.IO.IOException("Synthetic late purge failure.");
+            }
+
+            _inner.PurgeAll();
+        }
+    }
 }

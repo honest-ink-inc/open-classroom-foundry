@@ -1,6 +1,6 @@
 # Contributing
 
-Thank you for helping build free tools for teachers. The project is in its charter phase — contributions right now are mostly review, co-design, and fixtures, not code.
+Thank you for helping build free tools for teachers. The project is in an alpha engineering and evidence phase: code, tests, documentation, synthetic fixtures, review, and co-design are welcome within the gates below. No contribution can substitute for protected-seat, district, or pilot evidence.
 
 ## The rules that outrank everything
 
@@ -35,7 +35,7 @@ If the hook refuses your commit, it is working. Fix the content, never the hook.
 - **Fixture authoring** — synthetic classroom materials for the seven fixture families (implementation plan §12): gold, ambiguity, privacy-adversarial, pedagogical edges, language, accessibility/rendering, rights/provenance.
 - **Specialist review** — accessibility, AAC, multilingual, privacy, and OER-licensing expertise, per the governance roles.
 
-Code contributions begin with Release 0.0; watch the ADRs and the implementation plan's Days 16–30 milestones.
+Code contributions are active. Start with an issue and the current handover or roadmap; changes that enter protected territory wait for their named gate.
 
 ## Ground rules
 

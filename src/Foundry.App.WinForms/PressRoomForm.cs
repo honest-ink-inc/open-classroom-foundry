@@ -23,22 +23,35 @@ public sealed class PressRoomForm : Form
     private readonly Button _review;
     private readonly Button _printView;
     private readonly Button _export;
+    private readonly Button _cancelExport;
     private readonly Button _save;
     private readonly Label _status;
     private readonly Button _print;
     private readonly Button _tile;
+    private readonly Button _openLibrary;
+    private readonly Button _allAboard;
+    private readonly Button _builtInStudios;
     private readonly CheckBox _lowInk;
     private readonly Dictionary<string, Func<string>> _valueReaders = new(StringComparer.Ordinal);
     private readonly Func<string?> _libraryPicker;
     private readonly Func<ExportChoice?> _exportPicker;
     private readonly Func<Storage.LoadedProject, LoadedProjectGreenConfirmation?> _loadedProjectPreflight;
+    private readonly Func<ApprovedArtifact, string, IAssetCatalog?, CancellationToken, Task> _pdfExporter;
     private bool _loadingParameters;
     private bool _reviewPending;
+    private bool _exportInProgress;
+    private bool _exportDispatchPending;
+    private CancellationTokenSource? _exportCancellation;
     private long _stateGeneration;
     private ApprovedContext? _context;
 
     /// <summary>What an approval belongs to, whether it was pressed here or reopened from the library.</summary>
-    private sealed record ApprovedContext(string Name, string ModuleId, string RecipeId, string RecipeVersion);
+    private sealed record ApprovedContext(
+        string Name,
+        string ModuleId,
+        string RecipeId,
+        string RecipeVersion,
+        IAssetCatalog? AssetCatalog = null);
 
     /// <summary>Where an export goes and as what (the 1-based filter index of the export dialog).</summary>
     public sealed record ExportChoice(string Path, int FilterIndex);
@@ -54,13 +67,20 @@ public sealed class PressRoomForm : Form
         Func<ReviewSession, ApprovedArtifact?>? reviewRunner = null,
         Func<string?>? libraryPicker = null,
         Func<ExportChoice?>? exportPicker = null,
-        Func<Storage.LoadedProject, LoadedProjectGreenConfirmation?>? loadedProjectPreflight = null)
+        Func<Storage.LoadedProject, LoadedProjectGreenConfirmation?>? loadedProjectPreflight = null,
+        Func<ApprovedArtifact, string, IAssetCatalog?, CancellationToken, Task>? pdfExporter = null)
     {
         _modalReview = reviewRunner is null;
         _reviewRunner = reviewRunner ?? RunModalReview;
         _libraryPicker = libraryPicker ?? PickFromLibraryDialog;
         _exportPicker = exportPicker ?? PickExportDialog;
         _loadedProjectPreflight = loadedProjectPreflight ?? RunLoadedProjectPreflight;
+        _pdfExporter = pdfExporter ?? ((artifact, destination, assets, cancellationToken) =>
+            AppServices.ExportPdfAsync(
+                artifact,
+                destination,
+                assets,
+                cancellationToken: cancellationToken));
 
         Text = UiStrings.WithoutMnemonic(UiStrings.MainWindowTitle);
         MinimumSize = new Size(860, 560);
@@ -97,12 +117,13 @@ public sealed class PressRoomForm : Form
         _printView = MakeButton(UiStrings.OpenPrintView, (_, _) => OpenPrintView());
         // Modal-openers defer one beat (harness finding, 29 Aug 2026) — Export
         // included, since the pilot dress rehearsal drives its save dialog.
-        _export = MakeButton(UiStrings.ExportEllipsis, (_, _) => BeginInvoke(Export));
+        _export = MakeButton(UiStrings.ExportEllipsis, (_, _) => QueueExport());
+        _cancelExport = MakeButton(UiStrings.CancelExport, (_, _) => _exportCancellation?.Cancel());
         _save = MakeButton(UiStrings.SaveToLibrary, (_, _) => SaveToLibrary());
         _tile = MakeButton(UiStrings.TileForWall, (_, _) => BeginInvoke(ShowTileDialog));
-        var openLibrary = MakeButton(UiStrings.OpenFromLibrary, (_, _) => BeginInvoke(OpenFromLibrary));
-        var allAboard = MakeButton(UiStrings.AllAboardOpen, (_, _) => BeginInvoke(OpenAllAboard));
-        var builtInStudios = MakeButton(UiStrings.BuiltInStudiosOpen, (_, _) => BeginInvoke(OpenModuleStudios));
+        _openLibrary = MakeButton(UiStrings.OpenFromLibrary, (_, _) => BeginInvoke(OpenFromLibrary));
+        _allAboard = MakeButton(UiStrings.AllAboardOpen, (_, _) => BeginInvoke(OpenAllAboard));
+        _builtInStudios = MakeButton(UiStrings.BuiltInStudiosOpen, (_, _) => BeginInvoke(OpenModuleStudios));
 
         // The message itself must be what a screen reader hears, not the word
         // "Status" (a harness finding, 29 Aug 2026).
@@ -110,7 +131,7 @@ public sealed class PressRoomForm : Form
         SetStatus(UiStrings.StatusReady);
 
         var buttons = new FlowLayoutPanel { Dock = DockStyle.Bottom, AutoSize = true, FlowDirection = FlowDirection.LeftToRight };
-        buttons.Controls.AddRange([_review, _print, _printView, _export, _save, _tile, openLibrary, allAboard, builtInStudios]);
+        buttons.Controls.AddRange([_review, _print, _printView, _export, _cancelExport, _save, _tile, _openLibrary, _allAboard, _builtInStudios]);
 
         var right = new TableLayoutPanel { Dock = DockStyle.Fill, ColumnCount = 1, RowCount = 3 };
         right.RowStyles.Add(new RowStyle(SizeType.AutoSize));
@@ -381,7 +402,7 @@ public sealed class PressRoomForm : Form
             return;
         }
 
-        AppServices.OpenPrintView(ApprovedResult, _context!.Name);
+        AppServices.OpenPrintView(ApprovedResult, _context!.Name, assetCatalog: _context.AssetCatalog);
         SetStatus(UiStrings.StatusPrintView);
     }
 
@@ -394,7 +415,7 @@ public sealed class PressRoomForm : Form
 
         try
         {
-            AppServices.Print(ApprovedResult);
+            AppServices.Print(ApprovedResult, assetCatalog: _context!.AssetCatalog);
             SetStatus(UiStrings.StatusPrinted);
         }
         catch (Exception failure) when (failure is InvalidOperationException or IOException or NotSupportedException)
@@ -404,40 +425,114 @@ public sealed class PressRoomForm : Form
         }
     }
 
-    private void Export()
+    private async Task ExportAsync()
     {
-        if (ApprovedResult is null)
+        if (_exportInProgress)
         {
             return;
         }
 
-        var choice = _exportPicker();
-        if (choice is null)
+        var approved = ApprovedResult;
+        var context = _context;
+        if (approved is null || context is null)
         {
             return;
         }
 
+        ExportChoice? choice = null;
         try
         {
-            var bytes = choice.FilterIndex switch
+            choice = _exportPicker();
+            if (choice is null)
             {
-                1 => AppServices.Render(ApprovedResult, RenderTarget.PrintPdf),
-                2 => ImposeBooklet(ApprovedResult),
-                4 => AppServices.Render(ApprovedResult, RenderTarget.AccessibleHtml),
-                5 => AppServices.Render(ApprovedResult, RenderTarget.Svg),
-                _ => AppServices.Render(ApprovedResult, RenderTarget.PrintHtml),
-            };
-            File.WriteAllBytes(choice.Path, bytes);
+                return;
+            }
+
+            _exportCancellation = new CancellationTokenSource();
+            var exportToken = _exportCancellation.Token;
+            _exportInProgress = true;
+            UpdateGatedButtons();
+            SetStatus(UiStrings.StatusExporting, Path.GetFileName(choice.Path));
+
+            if (choice.FilterIndex == 1)
+            {
+                await _pdfExporter(approved, choice.Path, context.AssetCatalog, exportToken);
+            }
+            else
+            {
+                var bytes = await Task.Run(() => choice.FilterIndex switch
+                {
+                    2 => ImposeBooklet(approved, exportToken),
+                    4 => AppServices.Render(approved, RenderTarget.AccessibleHtml, context.AssetCatalog, exportToken),
+                    5 => AppServices.Render(approved, RenderTarget.Svg, context.AssetCatalog, exportToken),
+                    _ => AppServices.Render(approved, RenderTarget.PrintHtml, context.AssetCatalog, exportToken),
+                }, exportToken);
+                await AppServices.WriteExportBytesAsync(choice.Path, bytes, exportToken);
+            }
         }
-        catch (NotSupportedException refusal)
+        catch (OperationCanceledException)
         {
-            // Single-sheet-only SVG, vector-only PDF, and uniform-page booklets
+            SetStatus(UiStrings.StatusExportCancelled);
+            return;
+        }
+        catch (Exception refusal) when (refusal is InvalidOperationException
+            or IOException
+            or UnauthorizedAccessException
+            or NotSupportedException
+            or ArgumentException)
+        {
+            // Single-sheet-only SVG and uniform-page booklets
             // refuse loudly; say so.
             SetStatus(UiStrings.StatusRefused, refusal.Message);
             return;
         }
+        finally
+        {
+            _exportCancellation?.Dispose();
+            _exportCancellation = null;
+            _exportInProgress = false;
+            UpdateGatedButtons();
+        }
 
         SetStatus(UiStrings.StatusExported, Path.GetFileName(choice.Path));
+    }
+
+    private void QueueExport()
+    {
+        if (_exportDispatchPending || _exportInProgress || ApprovedResult is null)
+        {
+            return;
+        }
+
+        _exportDispatchPending = true;
+        UpdateGatedButtons();
+        try
+        {
+            BeginInvoke(new Action(async () =>
+            {
+                try
+                {
+                    if (!IsDisposed)
+                    {
+                        await ExportAsync();
+                    }
+                }
+                finally
+                {
+                    _exportDispatchPending = false;
+                    UpdateGatedButtons();
+                }
+            }));
+        }
+        catch (InvalidOperationException failure)
+        {
+            _exportDispatchPending = false;
+            UpdateGatedButtons();
+            if (!IsDisposed)
+            {
+                SetStatus(UiStrings.StatusRefused, failure.Message);
+            }
+        }
     }
 
     private ExportChoice? PickExportDialog()
@@ -452,7 +547,9 @@ public sealed class PressRoomForm : Form
             : null;
     }
 
-    private static byte[] ImposeBooklet(ApprovedArtifact approved)
+    private static byte[] ImposeBooklet(
+        ApprovedArtifact approved,
+        CancellationToken cancellationToken)
     {
         var contentPages = approved.Revision.Document.Nodes.OfType<VectorGraphic>().Count();
         if (contentPages < 2)
@@ -463,7 +560,8 @@ public sealed class PressRoomForm : Form
         return Rendering.VectorPdfWriter.WriteImposed(
             approved,
             BookletImposition.PdfSides(BookletImposition.Compute(contentPages)),
-            RenderAudience.Teacher);
+            RenderAudience.Teacher,
+            cancellationToken);
     }
 
     private void SaveToLibrary()
@@ -475,7 +573,8 @@ public sealed class PressRoomForm : Form
 
         var hint = AppServices.SaveToLibrary(
             ApprovedResult, _context!.Name, _context.ModuleId,
-            _context.RecipeId, _context.RecipeVersion, AppServices.SymbolCatalog());
+            _context.RecipeId, _context.RecipeVersion,
+            _context.AssetCatalog ?? AppServices.SymbolCatalog());
         SetStatus(UiStrings.StatusSaved, hint);
     }
 
@@ -510,7 +609,8 @@ public sealed class PressRoomForm : Form
                 Path.GetFileNameWithoutExtension(path),
                 AppServices.PortableProjectModuleId,
                 AppServices.PortableProjectRecipeId,
-                AppServices.PortableProjectRecipeVersion);
+                AppServices.PortableProjectRecipeVersion,
+                loaded.Assets);
         ReviewSession session;
         try
         {
@@ -610,14 +710,27 @@ public sealed class PressRoomForm : Form
 
     private void UpdateGatedButtons()
     {
+        if (IsDisposed)
+        {
+            return;
+        }
+
         // The structural gate, visible: these do nothing until a typed approval exists.
-        var approved = !_reviewPending && ApprovedResult is not null;
-        _review.Enabled = !_reviewPending;
+        var idle = !_reviewPending && !_exportDispatchPending && !_exportInProgress;
+        var approved = idle && ApprovedResult is not null;
+        _review.Enabled = idle;
         _print.Enabled = approved;
         _printView.Enabled = approved;
         _export.Enabled = approved;
+        _cancelExport.Enabled = _exportInProgress;
         _save.Enabled = approved;
         _tile.Enabled = approved;
+        _pressList.Enabled = idle;
+        _parameterPanel.Enabled = idle;
+        _lowInk.Enabled = idle;
+        _openLibrary.Enabled = idle;
+        _allAboard.Enabled = idle;
+        _builtInStudios.Enabled = idle;
     }
 
     private void InputChanged()
@@ -659,6 +772,11 @@ public sealed class PressRoomForm : Form
 
     private void SetStatus(string template, params object?[] arguments)
     {
+        if (IsDisposed)
+        {
+            return;
+        }
+
         var text = UiStrings.FormatWithoutMnemonic(template, arguments);
         _status.Text = text;
         _status.AccessibleName = text;
@@ -674,5 +792,11 @@ public sealed class PressRoomForm : Form
     {
         using var form = new ModuleStudioForm();
         form.ShowDialog(this);
+    }
+
+    protected override void OnFormClosed(FormClosedEventArgs e)
+    {
+        _exportCancellation?.Cancel();
+        base.OnFormClosed(e);
     }
 }

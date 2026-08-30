@@ -29,6 +29,10 @@ internal static class OcfprojPackageValidator
     private const int MaxEntryNameCharacters = 256;
     private const int MaxSegmentCharacters = 128;
     private const int MaxManifestAssetCount = 256;
+    private const int MaxDocumentNodes = 4096;
+    private const int MaxDocumentRenderUnits = 16384;
+    private const int MaxImageReferences = 512;
+    private const long MaxEmbeddedDerivativeCharacters = 32L * 1024 * 1024;
 
     private static readonly UTF8Encoding StrictUtf8 = new(
         encoderShouldEmitUTF8Identifier: false,
@@ -122,8 +126,6 @@ internal static class OcfprojPackageValidator
         "redistributable",
     ];
 
-    private static readonly byte[] PngSignature = [0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A];
-
     private static readonly HashSet<string> SafeSnapshotTags = new(StringComparer.OrdinalIgnoreCase)
     {
         "html", "head", "meta", "title", "style", "body",
@@ -189,7 +191,8 @@ internal static class OcfprojPackageValidator
             inspection.Manifest,
             inspection.Document ?? throw Invalid("package.artifact-missing", "The project package has no validated artifact."),
             inspection.Validation,
-            inspection.RenderProfile);
+            inspection.RenderProfile,
+            inspection.Assets);
     }
 
     internal static bool IsSafePackageSegment(string value)
@@ -471,15 +474,30 @@ internal static class OcfprojPackageValidator
         => text.AsSpan(startIndex).StartsWith(value, comparison);
 
     internal static IReadOnlyList<string> ReferencedAssetIds(ArtifactDocument document)
-        => [.. document.Nodes
-            .SelectMany(node => node switch
+        => [.. ReferencedAssetOccurrences(document).Keys.Order(StringComparer.Ordinal)];
+
+    private static Dictionary<string, int> ReferencedAssetOccurrences(ArtifactDocument document)
+    {
+        var occurrences = new Dictionary<string, int>(StringComparer.Ordinal);
+        foreach (var node in document.Nodes)
+        {
+            var image = node switch
             {
-                ImageReference image => new[] { image.Asset.Value },
-                StepRow { Symbol: { } symbol } => [symbol.Asset.Value],
-                _ => [],
-            })
-            .Distinct(StringComparer.Ordinal)
-            .Order(StringComparer.Ordinal)];
+                ImageReference direct => direct,
+                StepRow { Symbol: { } symbol } => symbol,
+                _ => null,
+            };
+            if (image is null)
+            {
+                continue;
+            }
+
+            occurrences.TryGetValue(image.Asset.Value, out var count);
+            occurrences[image.Asset.Value] = count + 1;
+        }
+
+        return occurrences;
+    }
 
     private static async Task<PackageInspection> InspectAsync(
         Stream package,
@@ -519,7 +537,7 @@ internal static class OcfprojPackageValidator
 
             if (!fullValidation)
             {
-                return new PackageInspection(manifest, null, null, null);
+                return new PackageInspection(manifest, null, null, null, null);
             }
 
             if (!string.Equals(manifest.SchemaVersion, EngineIdentity.ProjectSchemaVersion, StringComparison.Ordinal))
@@ -600,6 +618,9 @@ internal static class OcfprojPackageValidator
                 snapshotBytes);
 
             var assetFileNames = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            var resolvedAssets = new List<(AssetProvenance Provenance, byte[] Content)>();
+            var assetOccurrences = ReferencedAssetOccurrences(document);
+            long embeddedDerivativeCharacters = 0;
 
             foreach (var assetId in manifest.AssetIds)
             {
@@ -630,11 +651,33 @@ internal static class OcfprojPackageValidator
 
                 var assetEntryName = $"assets/{provenance.FileName}";
                 var assetEntry = RequireEntry(entries, assetEntryName);
-                var actualHash = await HashEntryAsync(assetEntry, cancellationToken).ConfigureAwait(false);
+                var assetContent = await ReadEntryBytesAsync(
+                    assetEntry,
+                    EntryLimit(assetEntryName),
+                    cancellationToken).ConfigureAwait(false);
+                var actualHash = Convert.ToHexString(SHA256.HashData(assetContent));
                 if (!actualHash.Equals(provenance.Sha256, StringComparison.OrdinalIgnoreCase))
                 {
                     throw Invalid("package.asset-hash", "A project asset does not match its provenance hash.");
                 }
+
+                if (!AccessibleHtmlRenderer.IsSupportedSelfContainedImage(assetContent, provenance.MimeType))
+                {
+                    throw Invalid("package.asset-content", "A project asset is not a supported, self-contained image.");
+                }
+
+                var base64Characters = ((long)assetContent.Length + 2) / 3 * 4;
+                var perReferenceCharacters = checked(base64Characters + provenance.MimeType.Length + 13);
+                embeddedDerivativeCharacters = checked(
+                    embeddedDerivativeCharacters + (perReferenceCharacters * assetOccurrences[assetId]));
+                if (embeddedDerivativeCharacters > MaxEmbeddedDerivativeCharacters)
+                {
+                    throw Invalid(
+                        "package.asset-derivative-budget",
+                        "The project image references exceed the bounded embedded-derivative budget.");
+                }
+
+                resolvedAssets.Add((provenance, assetContent));
 
                 expectedEntries.Add(provenanceEntryName);
                 expectedEntries.Add(assetEntryName);
@@ -651,7 +694,12 @@ internal static class OcfprojPackageValidator
                 throw Invalid("package.entry-unknown", "The project package contains an entry outside the admitted topology.");
             }
 
-            return new PackageInspection(manifest, document, validation, renderProfile);
+            return new PackageInspection(
+                manifest,
+                document,
+                validation,
+                renderProfile,
+                new ValidatedPackageAssetCatalog(resolvedAssets));
         }
         catch (OperationCanceledException)
         {
@@ -943,6 +991,47 @@ internal static class OcfprojPackageValidator
             throw Invalid("package.artifact-manifest", "The project artifact and manifest disagree or were tampered with.");
         }
 
+        if (document.Nodes.Count > MaxDocumentNodes)
+        {
+            throw Invalid(
+                "package.artifact-bounds",
+                $"The project artifact exceeds the bounded {MaxDocumentNodes}-node limit.");
+        }
+
+        long renderUnits = document.Nodes.Count;
+        var imageReferenceCount = 0;
+        foreach (var node in document.Nodes)
+        {
+            renderUnits += node switch
+            {
+                OrderedSteps steps => steps.Steps.Count,
+                UnorderedList list => list.Items.Count,
+                TableNode table => (table.HeaderRow?.Count ?? 0)
+                    + table.Rows.Count
+                    + table.Rows.Sum(row => (long)row.Count),
+                ChoiceSet choices => choices.Options.Count,
+                VectorGraphic graphic => graphic.Primitives.Count,
+                _ => 0,
+            };
+            if (renderUnits > MaxDocumentRenderUnits)
+            {
+                throw Invalid(
+                    "package.artifact-bounds",
+                    $"The project artifact exceeds the bounded {MaxDocumentRenderUnits}-unit limit.");
+            }
+
+            if (node is ImageReference or StepRow { Symbol: not null })
+            {
+                imageReferenceCount++;
+                if (imageReferenceCount > MaxImageReferences)
+                {
+                    throw Invalid(
+                        "package.artifact-bounds",
+                        $"The project artifact exceeds the bounded {MaxImageReferences}-image-reference limit.");
+                }
+            }
+        }
+
         IReadOnlyList<ValidationIssue> issues;
         try
         {
@@ -1058,39 +1147,22 @@ internal static class OcfprojPackageValidator
         {
             throw Invalid("package.provenance-values", "A project provenance record has invalid required values.");
         }
-    }
 
-    private static async Task<string> HashEntryAsync(ZipArchiveEntry entry, CancellationToken cancellationToken)
-    {
-        await using var content = entry.Open();
-        using var hash = IncrementalHash.CreateHash(HashAlgorithmName.SHA256);
-        var buffer = new byte[128 * 1024];
-        long total = 0;
-        int read;
-        while ((read = await content.ReadAsync(buffer, cancellationToken).ConfigureAwait(false)) > 0)
+        // A private project may retain an explicitly non-redistributable asset
+        // under a non-open license. Its boolean may not manufacture or conceal
+        // redistribution authority, however.
+        if (!AssetRightsPolicy.HasConsistentRedistributionRights(provenance))
         {
-            total = checked(total + read);
-            if (total > entry.Length || total > EntryLimit(entry.FullName))
-            {
-                throw Invalid("package.entry-overrun", "A project package entry exceeds its declared size.");
-            }
-
-            hash.AppendData(buffer, 0, read);
+            throw Invalid(
+                "package.provenance-rights",
+                "A project provenance record has inconsistent license and redistribution metadata.");
         }
-
-        if (total != entry.Length)
-        {
-            throw Invalid("package.entry-truncated", "A project package entry ended before its declared size.");
-        }
-
-        return Convert.ToHexString(hash.GetHashAndReset());
     }
 
     private static async Task ValidatePngPreviewAsync(ZipArchiveEntry entry, CancellationToken cancellationToken)
     {
         var content = await ReadEntryBytesAsync(entry, MaxPreviewBytes, cancellationToken).ConfigureAwait(false);
-        if (content.Length < PngSignature.Length
-            || !content.AsSpan(0, PngSignature.Length).SequenceEqual(PngSignature))
+        if (!AccessibleHtmlRenderer.IsSupportedSelfContainedImage(content, "image/png"))
         {
             throw Invalid("package.preview", "A project preview is not a bounded PNG image.");
         }
@@ -1112,7 +1184,8 @@ internal static class OcfprojPackageValidator
         ProjectManifest Manifest,
         ArtifactDocument? Document,
         ProjectValidationEnvelope? Validation,
-        ProjectRenderProfile? RenderProfile);
+        ProjectRenderProfile? RenderProfile,
+        IAssetCatalog? Assets);
 
     private sealed record SnapshotStartTag(
         string Name,

@@ -32,18 +32,36 @@ public sealed class AllAboardForm : Form
     private readonly Button _print;
     private readonly Button _printView;
     private readonly Button _export;
+    private readonly Button _cancelExport;
     private readonly Button _save;
     private readonly Label _status;
     private bool _loadingMode;
     private bool _reviewPending;
+    private bool _exportInProgress;
+    private CancellationTokenSource? _exportCancellation;
     private long _stateGeneration;
     private RecipeManifest _approvedRecipe = AllAboardRecipes.TaskStrip;
+    private readonly Func<ExportChoice?> _exportPicker;
+    private readonly Func<ApprovedArtifact, string, IAssetCatalog?, CancellationToken, Task> _pdfExporter;
 
-    public AllAboardForm(IAssetCatalog catalog, Func<ReviewSession, ApprovedArtifact?>? reviewRunner = null)
+    public sealed record ExportChoice(string Path, int FilterIndex);
+
+    public AllAboardForm(
+        IAssetCatalog catalog,
+        Func<ReviewSession, ApprovedArtifact?>? reviewRunner = null,
+        Func<ExportChoice?>? exportPicker = null,
+        Func<ApprovedArtifact, string, IAssetCatalog?, CancellationToken, Task>? pdfExporter = null)
     {
         _catalog = catalog ?? throw new ArgumentNullException(nameof(catalog));
         _modalReview = reviewRunner is null;
         _reviewRunner = reviewRunner ?? RunModalReview;
+        _exportPicker = exportPicker ?? PickExportDialog;
+        _pdfExporter = pdfExporter ?? ((artifact, destination, assets, cancellationToken) =>
+            AppServices.ExportPdfAsync(
+                artifact,
+                destination,
+                assets,
+                cancellationToken: cancellationToken));
 
         // The pack may hold two symbols with one meaning (it ships two Help
         // variants): meaning stays the name, and only duplicates append their
@@ -80,7 +98,7 @@ public sealed class AllAboardForm : Form
         {
             try
             {
-                AppServices.Print(a);
+                AppServices.Print(a, assetCatalog: _catalog);
                 SetStatus(UiStrings.StatusPrinted);
             }
             catch (Exception failure) when (failure is InvalidOperationException or IOException or NotSupportedException)
@@ -90,10 +108,11 @@ public sealed class AllAboardForm : Form
         }));
         _printView = MakeButton(UiStrings.OpenPrintView, (_, _) => WithApproved(a =>
         {
-            AppServices.OpenPrintView(a, "all-aboard");
+            AppServices.OpenPrintView(a, "all-aboard", assetCatalog: _catalog);
             SetStatus(UiStrings.StatusPrintView);
         }));
-        _export = MakeButton(UiStrings.ExportEllipsis, (_, _) => WithApproved(Export));
+        _export = MakeButton(UiStrings.ExportEllipsis, async (_, _) => await WithApprovedAsync(ExportAsync));
+        _cancelExport = MakeButton(UiStrings.CancelExport, (_, _) => _exportCancellation?.Cancel());
         _save = MakeButton(UiStrings.SaveToLibrary, (_, _) => WithApproved(a =>
         {
             var hint = AppServices.SaveToLibrary(a, _approvedRecipe.Id.Replace('.', '-'), "all-aboard", _approvedRecipe.Id, _approvedRecipe.Version, _catalog);
@@ -105,7 +124,7 @@ public sealed class AllAboardForm : Form
         SetStatus(UiStrings.StatusReady);
 
         var buttons = new FlowLayoutPanel { Dock = DockStyle.Bottom, AutoSize = true, FlowDirection = FlowDirection.LeftToRight };
-        buttons.Controls.AddRange([_review, _print, _printView, _export, _save]);
+        buttons.Controls.AddRange([_review, _print, _printView, _export, _cancelExport, _save]);
 
         var top = new FlowLayoutPanel { Dock = DockStyle.Top, AutoSize = true, FlowDirection = FlowDirection.LeftToRight, Padding = new Padding(4) };
         top.Controls.Add(new Label { Text = UiStrings.OutputMode, AutoSize = true, Anchor = AnchorStyles.Left });
@@ -336,7 +355,10 @@ public sealed class AllAboardForm : Form
         var session = AppServices.SessionOverRecipe(
             outcome.CreateDraft(),
             new DefaultArtifactValidator(),
-            outcome.Recipe);
+            outcome.Recipe,
+            viewContext: new ReviewViewContext(
+                ReviewViewContext.ManualDefault.PreviewRequest,
+                assetCatalog: _catalog));
         var generation = _stateGeneration;
         BeginPendingReview();
         if (_modalReview)
@@ -388,32 +410,115 @@ public sealed class AllAboardForm : Form
         }
     }
 
-    private void Export(ApprovedArtifact approved)
+    private async Task WithApprovedAsync(Func<ApprovedArtifact, Task> action)
+    {
+        if (ApprovedResult is not null)
+        {
+            await action(ApprovedResult);
+        }
+    }
+
+    private ExportChoice? PickExportDialog()
     {
         using var dialog = new SaveFileDialog
         {
             FileName = _approvedRecipe.Id.Replace('.', '-'),
-            Filter = $"{UiStrings.WithoutMnemonic(UiStrings.ExportFilterPrint)}|*.html|{UiStrings.WithoutMnemonic(UiStrings.ExportFilterAccessible)}|*.html",
+            Filter = $"{UiStrings.WithoutMnemonic(UiStrings.ExportFilterPdf)}|*.pdf|{UiStrings.WithoutMnemonic(UiStrings.ExportFilterSvg)}|*.svg|{UiStrings.WithoutMnemonic(UiStrings.ExportFilterPrint)}|*.html|{UiStrings.WithoutMnemonic(UiStrings.ExportFilterAccessible)}|*.html",
         };
         if (dialog.ShowDialog(this) != DialogResult.OK)
+        {
+            return null;
+        }
+
+        return new ExportChoice(dialog.FileName, dialog.FilterIndex);
+    }
+
+    private async Task ExportAsync(ApprovedArtifact approved)
+    {
+        if (_exportInProgress)
         {
             return;
         }
 
-        var target = dialog.FilterIndex == 2 ? RenderTarget.AccessibleHtml : RenderTarget.PrintHtml;
-        File.WriteAllBytes(dialog.FileName, AppServices.Render(approved, target));
-        SetStatus(UiStrings.StatusExported, Path.GetFileName(dialog.FileName));
+        try
+        {
+            var choice = _exportPicker();
+            if (choice is null)
+            {
+                return;
+            }
+
+            var target = choice.FilterIndex switch
+            {
+                1 => RenderTarget.PrintPdf,
+                2 => RenderTarget.Svg,
+                4 => RenderTarget.AccessibleHtml,
+                _ => RenderTarget.PrintHtml,
+            };
+            if (!_approvedRecipe.SupportedExports.Contains(target))
+            {
+                throw new NotSupportedException(target.ToString());
+            }
+
+            _exportCancellation = new CancellationTokenSource();
+            var exportToken = _exportCancellation.Token;
+            _exportInProgress = true;
+            UpdateGatedButtons();
+            SetStatus(UiStrings.StatusExporting, Path.GetFileName(choice.Path));
+
+            if (target == RenderTarget.PrintPdf)
+            {
+                await _pdfExporter(approved, choice.Path, _catalog, exportToken);
+            }
+            else
+            {
+                var bytes = await Task.Run(
+                    () => AppServices.Render(approved, target, _catalog, exportToken),
+                    exportToken);
+                await AppServices.WriteExportBytesAsync(choice.Path, bytes, exportToken);
+            }
+
+            SetStatus(UiStrings.StatusExported, Path.GetFileName(choice.Path));
+        }
+        catch (OperationCanceledException)
+        {
+            SetStatus(UiStrings.StatusExportCancelled);
+        }
+        catch (Exception refusal) when (refusal is InvalidOperationException
+            or IOException
+            or UnauthorizedAccessException
+            or NotSupportedException
+            or ArgumentException)
+        {
+            SetStatus(UiStrings.StatusRefused, refusal.Message);
+        }
+        finally
+        {
+            _exportCancellation?.Dispose();
+            _exportCancellation = null;
+            _exportInProgress = false;
+            UpdateGatedButtons();
+        }
     }
 
     private void UpdateGatedButtons()
     {
+        if (IsDisposed)
+        {
+            return;
+        }
+
         // The structural gate, visible: nothing unlocks before typed approval.
-        var enabled = !_reviewPending && ApprovedResult is not null;
-        _review.Enabled = !_reviewPending;
+        var idle = !_reviewPending && !_exportInProgress;
+        var enabled = idle && ApprovedResult is not null;
+        _review.Enabled = idle;
         _print.Enabled = enabled;
         _printView.Enabled = enabled;
         _export.Enabled = enabled;
+        _cancelExport.Enabled = _exportInProgress;
         _save.Enabled = enabled;
+        _mode.Enabled = idle;
+        _grid.Enabled = idle;
     }
 
     private void InputChanged()
@@ -452,8 +557,19 @@ public sealed class AllAboardForm : Form
 
     private void SetStatus(string template, params object?[] arguments)
     {
+        if (IsDisposed)
+        {
+            return;
+        }
+
         var text = UiStrings.FormatWithoutMnemonic(template, arguments);
         _status.Text = text;
         _status.AccessibleName = text;
+    }
+
+    protected override void OnFormClosed(FormClosedEventArgs e)
+    {
+        _exportCancellation?.Cancel();
+        base.OnFormClosed(e);
     }
 }

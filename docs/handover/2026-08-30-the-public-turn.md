@@ -1,5 +1,7 @@
 # The public turn — the project acquired a public face, and guardrails to deserve one
 
+> **Historical state.** On 30 August 2026 this handover was superseded for current repository state and closing evidence by [the forge closeout](2026-08-30-forge-closeout.md). It remains the record of the earlier public turn; do not infer current test counts or open forge work from it.
+
 **Date:** 30 August 2026, early hours · **Audience:** the typist, the second maintainer when one is seated, and any agent — Claude, Codex, or another — opening this repository next. Read [AGENTS.md](../../AGENTS.md) before you commit anything.
 
 The [moved calendar](2026-08-29-the-moved-calendar.md) records why the pilot left 8 September and what the long window is for. This records what happened in the window's first night: the repository became public under an organization, the site went live, a study instrument was rebuilt after a near-miss, and the project acquired machine guardrails it had been relying on care to provide.

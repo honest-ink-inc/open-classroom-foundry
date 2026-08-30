@@ -2,6 +2,7 @@
 using System.IO;
 using Foundry.App.WinForms;
 using Foundry.Application;
+using Foundry.Contracts;
 using Foundry.Domain;
 using Foundry.Storage;
 
@@ -369,6 +370,59 @@ public class LibraryDoorTests : IDisposable
             Assert.Equal(ArtifactPurpose.Unknown, form.ApprovedResult.Revision.Purpose);
             Assert.Contains("Approved", form.StatusText, StringComparison.Ordinal);
             Assert.True(ReviewSurfaceContractTests.ByName(form, "Print").Enabled);
+        });
+
+    [Fact]
+    public void Reopened_All_Aboard_content_routes_pdf_to_the_semantic_exporter_with_its_assets()
+        => Sta.Run(() =>
+        {
+            var catalog = AppServices.SymbolCatalog();
+            var sourceSession = AppServices.SessionOverGreen(new ArtifactDocument([
+                new Heading(1, "Synthetic reopened routine"),
+                new StepRow(
+                    "Stop at the synthetic marker.",
+                    new ImageReference(new AssetId("agency.stop.v1"), "A stop symbol")),
+            ]));
+            var sourceApproval = Assert.IsType<ApprovedArtifact>(GateRespectingApprove(sourceSession));
+            _ = AppServices.SaveToLibrary(
+                sourceApproval,
+                "all-aboard-reopen",
+                "all-aboard",
+                Modules.BuiltIn.AllAboard.AllAboardRecipes.TaskStrip.Id,
+                Modules.BuiltIn.AllAboard.AllAboardRecipes.TaskStrip.Version,
+                catalog);
+            var pickedPath = Assert.Single(Directory.GetFiles(_tempRoot, "*.ocfproj"));
+            var destination = Path.Combine(_tempRoot, "reopened-all-aboard.pdf");
+            ApprovedArtifact? routedArtifact = null;
+            IAssetCatalog? routedCatalog = null;
+
+            using var form = new PressRoomForm(
+                GateRespectingApprove,
+                () => pickedPath,
+                () => new PressRoomForm.ExportChoice(destination, 1),
+                ConfirmSyntheticLoadedProject,
+                (artifact, _, assets, _) =>
+                {
+                    routedArtifact = artifact;
+                    routedCatalog = assets;
+                    return Task.CompletedTask;
+                });
+            form.Show();
+            form.OpenFromLibrary();
+            ((Button)ReviewSurfaceContractTests.ByName(form, "Export…")).PerformClick();
+
+            var deadline = DateTime.UtcNow.AddSeconds(3);
+            while (routedArtifact is null && DateTime.UtcNow < deadline)
+            {
+                System.Windows.Forms.Application.DoEvents();
+                Thread.Sleep(10);
+            }
+
+            Assert.NotNull(routedArtifact);
+            Assert.False(Rendering.VectorPdfWriter.CanWrite(routedArtifact.Revision.Document));
+            Assert.NotNull(routedCatalog);
+            Assert.True(routedCatalog.TryGetContent(new AssetId("agency.stop.v1"), out _, out _));
+            Assert.Contains("Exported", form.StatusText, StringComparison.Ordinal);
         });
 
     [Fact]

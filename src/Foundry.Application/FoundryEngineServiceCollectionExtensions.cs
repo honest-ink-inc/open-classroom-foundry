@@ -20,7 +20,10 @@ public static class FoundryEngineServiceCollectionExtensions
         services.TryAddSingleton<IDataPolicyEvaluator, DefaultDataPolicyEvaluator>();
         services.TryAddSingleton<IArtifactValidator, DefaultArtifactValidator>();
         services.TryAddSingleton<IDiagnosticsSink, InMemoryDiagnosticsSink>();
-        services.TryAddSingleton<ISessionByteStore, InMemorySessionByteStore>();
+        // A byte store is owned by exactly one capture job and is purged as
+        // that job's privacy unit. Registering one in the root container would
+        // let one job erase another job's bytes. Composition roots must create
+        // the store, source, normalizer, and CaptureSession as one object graph.
 
         return services;
     }

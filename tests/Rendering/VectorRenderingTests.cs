@@ -77,6 +77,24 @@ public class VectorRenderingTests
     }
 
     [Fact]
+    public async Task A_vector_sheet_mixed_with_other_semantic_nodes_refuses_instead_of_dropping_content()
+    {
+        var document = new ArtifactDocument(
+        [
+            new Heading(1, "Do not drop this heading"),
+            new VectorGraphic(100, 50, [new LineSeg(0, 0, 1, 1)], "One sheet"),
+        ]);
+
+        var refusal = await Assert.ThrowsAsync<NotSupportedException>(
+            () => new AccessibleHtmlRenderer().RenderAsync(
+                Approve(document),
+                new RenderRequest(RenderTarget.Svg),
+                CancellationToken.None));
+
+        Assert.Contains("no other nodes", refusal.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void Vector_documents_survive_polymorphic_serialization()
     {
         var document = SheetWithLabel("50");

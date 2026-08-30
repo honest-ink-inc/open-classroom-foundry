@@ -1,3 +1,6 @@
+using System.Diagnostics;
+using System.Security.Cryptography;
+using System.Text;
 using Foundry.Contracts;
 using Foundry.Domain;
 using Foundry.Infrastructure.Windows;
@@ -19,8 +22,8 @@ public class EdgePdfExporterTests
     {
         var bytes = await File.ReadAllBytesAsync(path);
         Assert.True(bytes.Length > 1000, "The PDF is implausibly small.");
-        Assert.Equal("%PDF", System.Text.Encoding.ASCII.GetString(bytes, 0, 4));
-        Assert.Contains("%%EOF", System.Text.Encoding.ASCII.GetString(bytes), StringComparison.Ordinal);
+        Assert.Equal("%PDF", Encoding.ASCII.GetString(bytes, 0, 4));
+        Assert.Contains("%%EOF", Encoding.ASCII.GetString(bytes), StringComparison.Ordinal);
     }
 
     private static async Task ReplaceTextWithRetryAsync(string path, string content)
@@ -51,6 +54,26 @@ public class EdgePdfExporterTests
     }
 
     [Fact]
+    public void Producer_start_failure_has_one_stable_path_free_message()
+    {
+        var missingExecutable = Path.Combine(
+            Path.GetTempPath(),
+            "ocf-tests",
+            Guid.NewGuid().ToString("N"),
+            "missing-edge.exe");
+
+        var failure = Assert.Throws<InvalidOperationException>(() =>
+            EdgePdfExporter.StartLocalPdfProcess(new ProcessStartInfo(missingExecutable)
+            {
+                UseShellExecute = false,
+            }));
+
+        Assert.Equal("Microsoft Edge could not start the local PDF process.", failure.Message);
+        Assert.DoesNotContain(missingExecutable, failure.Message, StringComparison.OrdinalIgnoreCase);
+        Assert.NotNull(failure.InnerException);
+    }
+
+    [Fact]
     public async Task An_approved_artifact_becomes_a_real_pdf()
     {
         if (EdgePdfExporter.FindEdge() is null)
@@ -67,6 +90,57 @@ public class EdgePdfExporterTests
                 Artifact("Ten-frame practice"), new ExportRequest(RenderTarget.PrintPdf, destination), CancellationToken.None);
 
             await AssertRealPdfAsync(destination);
+        }
+        finally
+        {
+            var directory = Path.GetDirectoryName(destination);
+            if (Directory.Exists(directory))
+            {
+                Directory.Delete(directory, recursive: true);
+            }
+        }
+    }
+
+    [Fact]
+    public async Task The_real_edge_pipeline_resolves_an_asset_and_produces_a_pdf()
+    {
+        if (EdgePdfExporter.FindEdge() is null)
+        {
+            return;
+        }
+
+        var symbolId = new AssetId("synthetic.stop.v1");
+        var symbol = Encoding.UTF8.GetBytes(
+            "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 100 100\" role=\"img\"><title>Synthetic stop marker</title><rect x=\"5\" y=\"5\" width=\"90\" height=\"90\" fill=\"#fff\" stroke=\"#000\"/></svg>");
+        var catalog = new OneAssetCatalog(symbolId, symbol, "image/svg+xml");
+        var artifact = ApprovalGate.Approve(
+            DraftArtifact.New(new ArtifactDocument(
+            [
+                new Heading(1, "Synthetic asset-backed routine"),
+                new StepRow(
+                    "Stop at the synthetic marker.",
+                    new ImageReference(symbolId, "A synthetic stop marker")),
+            ]), DataLane.Green),
+            "synthetic-reviewer@example.invalid",
+            [],
+            SomeInstant);
+        var destination = Path.Combine(
+            Path.GetTempPath(),
+            "ocf-tests",
+            Guid.NewGuid().ToString("N"),
+            "semantic-with-asset.pdf");
+
+        try
+        {
+            await new EdgePdfExporter(new AccessibleHtmlRenderer(catalog)).ExportAsync(
+                artifact,
+                new ExportRequest(RenderTarget.PrintPdf, destination),
+                CancellationToken.None);
+
+            await AssertRealPdfAsync(destination);
+            Assert.True(
+                catalog.ContentCalls > 0,
+                "The semantic PDF route never resolved its referenced asset; this test does not claim pixel-level appearance evidence.");
         }
         finally
         {
@@ -271,5 +345,51 @@ public class EdgePdfExporterTests
         await Assert.ThrowsAsync<NotSupportedException>(
             () => new EdgePdfExporter(new AccessibleHtmlRenderer()).ExportAsync(
                 artifact, new ExportRequest(RenderTarget.Svg, "x.svg"), CancellationToken.None));
+    }
+
+    private sealed class OneAssetCatalog : IAssetCatalog
+    {
+        private readonly ReadOnlyMemory<byte> _content;
+        private readonly AssetProvenance _provenance;
+
+        internal OneAssetCatalog(AssetId id, ReadOnlyMemory<byte> content, string mimeType)
+        {
+            _content = content;
+            _provenance = new AssetProvenance(
+                id,
+                "concept.synthetic.stop",
+                "1.0.0",
+                "synthetic-stop.svg",
+                mimeType,
+                "Synthetic in-memory integration fixture",
+                "Honest Ink test suite",
+                "CC0-1.0",
+                Convert.ToHexString(SHA256.HashData(content.Span)),
+                "Synthetic stop marker",
+                "A synthetic stop marker",
+                Redistributable: true);
+        }
+
+        internal int ContentCalls { get; private set; }
+
+        public IReadOnlyList<AssetProvenance> All => [_provenance];
+
+        public AssetProvenance? Find(AssetId id)
+            => id == _provenance.Id ? _provenance : null;
+
+        public bool TryGetContent(AssetId id, out ReadOnlyMemory<byte> content, out string mimeType)
+        {
+            ContentCalls++;
+            if (id == _provenance.Id)
+            {
+                content = _content;
+                mimeType = _provenance.MimeType;
+                return true;
+            }
+
+            content = default;
+            mimeType = string.Empty;
+            return false;
+        }
     }
 }

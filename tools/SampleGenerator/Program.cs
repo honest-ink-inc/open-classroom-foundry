@@ -35,8 +35,11 @@ Directory.CreateDirectory(outputDirectory);
 
 var approvedAt = new DateTimeOffset(2026, 8, 29, 12, 0, 0, TimeSpan.Zero);
 var catalog = new JsonAssetCatalog(Path.Combine(repoRoot, "assets", "symbols"));
-var renderer = new AccessibleHtmlRenderer();
-var store = new OcfprojProjectStore(outputDirectory, renderer, catalog);
+var renderer = new AccessibleHtmlRenderer(catalog);
+// The 0.7 package snapshot format remains byte-compatible until the typist
+// versions it. Assets travel beside that accessible semantic fallback; live
+// HTML and print output above/below use the asset-aware renderer.
+var store = new OcfprojProjectStore(outputDirectory, new AccessibleHtmlRenderer(), catalog);
 
 if (args.Length == 4)
 {

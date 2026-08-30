@@ -7,6 +7,18 @@
     <LangVersion>latest</LangVersion>
     <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
     <Deterministic>true</Deterministic>
+    <!-- Release symbols and PE debug records use repository-relative paths and
+         the canonical organization source map, never a contributor's local path. -->
+    <ContinuousIntegrationBuild>true</ContinuousIntegrationBuild>
+    <DeterministicSourcePaths>true</DeterministicSourcePaths>
+    <PathMap>$(MSBuildThisFileDirectory)=/_/</PathMap>
+    <RepositoryType>git</RepositoryType>
+    <RepositoryUrl>https://github.com/honest-ink-inc/open-classroom-foundry</RepositoryUrl>
+    <PublishRepositoryUrl>true</PublishRepositoryUrl>
+    <EmbedUntrackedSources>false</EmbedUntrackedSources>
     <AnalysisLevel>latest</AnalysisLevel>
+    <!-- Every project commits its resolved NuGet graph. CI and packaging restore
+         only in locked mode, so a moving feed cannot silently rewrite a build. -->
+    <RestorePackagesWithLockFile>true</RestorePackagesWithLockFile>
   </PropertyGroup>
 </Project>

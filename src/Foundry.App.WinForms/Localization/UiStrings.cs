@@ -302,6 +302,16 @@ public static class UiStrings
 
     public static string StatusExported => T("Exported to {0}.");
 
+    public static string StatusExporting => T("Exporting {0}…");
+
+    public static string StatusExportCancelled => T("Export cancelled; no completed output was reported.");
+
+    public static string CancelExport => T("Cancel e&xport");
+
+    public static string ExportDestinationNoParent => T("The export destination has no parent directory.");
+
+    public static string SymbolCatalogIntegrityFailed => T("The shipped symbol catalog failed integrity validation: {0}.");
+
     public static string StatusPrintView => T("Print view opened in your browser — print at 100 percent scale.");
 
     public static string PrintButton => T("&Print");
@@ -324,7 +334,7 @@ public static class UiStrings
 
     public static string ExportFilterBooklet => T("Booklet PDF (2-up saddle-stitch)");
 
-    public static string ExportFilterPdf => T("PDF (vector sheets)");
+    public static string ExportFilterPdf => T("PDF (local print pipeline)");
 
     public static string ExportFilterPrint => T("Print HTML");
 
@@ -472,6 +482,8 @@ public static class UiStrings
     public static string UnapprovedPreviewStatus => T("UNAPPROVED DRAFT — preview only. This surface cannot print, export, or save the draft.");
 
     public static string UnapprovedPreviewLoading => T("UNAPPROVED DRAFT — loading the exact visual preview. Approval remains locked until this exact revision is displayed.");
+
+    public static string PreviewImageNoDom => T("The preview image has no DOM element.");
 
     public static string UnapprovedPreviewProfile => T("Exact preview profile: {0}; {1}; text scale {2} percent; {3}.");
 
@@ -736,6 +748,12 @@ public static class UiStrings
 
     public static string ImportImage => T("&Import image…");
 
+    public static string ImportImageSizeRefused => T("The selected image is empty or exceeds the 16 MiB capture limit.");
+
+    public static string RetryNormalization => T("Retry &normalization");
+
+    public static string RetrySecurePurge => T("Retry sec&ure purge");
+
     public static string Rotate90 => T("&Rotate 90°");
 
     public static string LaneGreen => T("Staged materials or empty space — &Green (my attestation)");
@@ -748,9 +766,15 @@ public static class UiStrings
 
     public static string StatusImported => T("Imported and normalized: metadata stripped.");
 
+    public static string StatusNormalizationRetry => T("Normalization was refused: {0} The image bytes were retained safely; retry normalization before continuing.");
+
+    public static string StatusCaptureRefused => T("The capture operation was refused: {0}");
+
     public static string StatusRotated => T("Rotated.");
 
     public static string StatusLaneConfirmed => T("Lane confirmed: {0}.");
+
+    public static string StatusPurgeIncomplete => T("Captured bytes could not be fully purged. Retry secure purge before closing.");
 
     public static string PauseCaption => T("Paused — for the supervising adult");
 

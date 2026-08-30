@@ -1,0 +1,23 @@
+{
+  "version": 1,
+  "dependencies": {
+    "net10.0": {
+      "foundry.contracts": {
+        "type": "Project",
+        "dependencies": {
+          "Foundry.Domain": "[1.0.0, )"
+        }
+      },
+      "foundry.domain": {
+        "type": "Project"
+      },
+      "foundry.inference.abstractions": {
+        "type": "Project",
+        "dependencies": {
+          "Foundry.Contracts": "[1.0.0, )",
+          "Foundry.Domain": "[1.0.0, )"
+        }
+      }
+    }
+  }
+}
