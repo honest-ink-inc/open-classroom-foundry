@@ -38,3 +38,9 @@ Desktop.ini
 # Local-only artifacts — never commit generated projects or captures
 *.ocfproj
 *.log
+
+# Seeded-error study: the packet definitions and the answer key define a BLIND
+# study and must never enter a repository meant to be public. Only the
+# obviously-fictional example is tracked.
+docs/evidence/pilot-kit/seeded-packets.json
+**/FACILITATOR-KEY.md

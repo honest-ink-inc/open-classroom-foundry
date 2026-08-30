@@ -1,0 +1,25 @@
+{
+  "_readme": "EXAMPLE ONLY — fictional, defect-free, and safe to publish. The real seeded-error definitions are the facilitator's and MUST NOT live in this repository: semantic defects written in plain language are legible to anyone who reads the file, so committing them would train every participant who browses the repo. Keep the real definitions with the facilitator, beside the correspondence ledger, and pass the path: SampleGenerator <repoRoot> <outDir> --seeded <definitions.json>. This example exists to document the shape and to keep the loader under test.",
+
+  "packets": [
+    {
+      "letter": "x",
+      "title": "Example packet — watering the example plant",
+      "steps": [
+        { "text": "Fill the example watering can." },
+        { "text": "Water the example plant once." },
+        { "text": "Return the can to the example shelf.", "symbol": "agency.finished.v1" }
+      ]
+    },
+    {
+      "letter": "y",
+      "title": "Example packet — bilingual shape",
+      "targetLocale": "es",
+      "steps": [
+        { "text": "Take one example step.", "targetText": "Toma un paso de ejemplo." },
+        { "text": "Ask for help if you need it.", "symbol": "agency.help.v1", "targetText": "Pide ayuda si la necesitas." },
+        { "text": "Put the example away when you finish.", "targetText": "Guarda el ejemplo cuando termines." }
+      ]
+    }
+  ]
+}

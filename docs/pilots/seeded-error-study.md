@@ -4,8 +4,8 @@
 
 ## Materials
 
-- The [pilot kit](../evidence/pilot-kit/): eight printable review packets, A–H, generated deterministically by `SampleGenerator --seeded`. Six carry exactly one planted defect each; two are clean controls. Letters carry no information.
-- The facilitator key (`docs/evidence/pilot-kit/FACILITATOR-KEY.md`): **facilitator's eyes only, never printed for participants, never discussed until both passes are done.**
+- The [pilot kit](../evidence/pilot-kit/): eight printable review packets, A–H, generated deterministically by `SampleGenerator --seeded <definitions.json>`. Six carry exactly one planted defect each; two are clean controls. Letters carry no information.
+- The packet definitions and the facilitator key: **kept with the facilitator, outside this repository** (29 Aug 2026 — a blind study cannot define its seeds in a repository meant to be public; the reasoning is in the [pilot kit README](../evidence/pilot-kit/README.md)). **Facilitator's eyes only, never printed for participants, never discussed until both passes are done.** Only an obviously-fictional example is committed, and a unit test fails if real definitions or a key ever land in the tree.
 
 ## Design
 
