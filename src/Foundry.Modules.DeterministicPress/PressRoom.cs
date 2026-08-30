@@ -75,12 +75,57 @@ public sealed class PressInputs(IReadOnlyDictionary<string, string> values)
         })];
 }
 
-public sealed record PressDefinition(
-    string Id,
-    string Title,
-    RecipeManifest Recipe,
-    IReadOnlyList<PressParameter> Parameters,
-    Func<PressInputs, ArtifactDocument> Build);
+public sealed record PressDefinition
+{
+    public const string NeutralEnglishLanguage = "en";
+
+    private readonly Func<PressInputs, ArtifactDocument> _build;
+
+    public PressDefinition(
+        string id,
+        string title,
+        RecipeManifest recipe,
+        IReadOnlyList<PressParameter> parameters,
+        Func<PressInputs, ArtifactDocument> build,
+        string artifactFurnitureLanguage = NeutralEnglishLanguage)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(id);
+        ArgumentException.ThrowIfNullOrWhiteSpace(title);
+        ArgumentNullException.ThrowIfNull(recipe);
+        ArgumentNullException.ThrowIfNull(parameters);
+        ArgumentNullException.ThrowIfNull(build);
+        LanguageTag.RequireValid(artifactFurnitureLanguage, nameof(artifactFurnitureLanguage));
+
+        Id = id;
+        Title = title;
+        Recipe = recipe;
+        Parameters = parameters;
+        _build = build;
+        ArtifactFurnitureLanguage = artifactFurnitureLanguage;
+    }
+
+    public string Id { get; }
+
+    public string Title { get; }
+
+    public RecipeManifest Recipe { get; }
+
+    public IReadOnlyList<PressParameter> Parameters { get; }
+
+    /// <summary>
+    /// Language of the press's built-in artifact furniture. This is catalog
+    /// metadata, not a claim about teacher-entered content and therefore does
+    /// not supply a missing whole-document language.
+    /// </summary>
+    public string ArtifactFurnitureLanguage { get; }
+
+    public ArtifactDocument Build(PressInputs inputs)
+    {
+        ArgumentNullException.ThrowIfNull(inputs);
+        return _build(inputs)
+            ?? throw new InvalidOperationException($"Press '{Id}' returned no document.");
+    }
+}
 
 public static class PressRoomCatalog
 {

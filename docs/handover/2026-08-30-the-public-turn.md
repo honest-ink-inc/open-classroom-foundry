@@ -30,7 +30,7 @@ The [moved calendar](2026-08-29-the-moved-calendar.md) records why the pilot lef
 
 The generator's own comment claimed the packet-to-defect mapping "lives only in the facilitator key." **It was false** — the defects are semantic and written in plain language, so anyone reading `Program.cs` could reconstruct the key. Deleting the key file would have achieved nothing; the source was the leak.
 
-So the packets became an **input**: `--seeded <definitions.json>`, with definitions and key kept by the facilitator outside this repository. Only a fictional example is committed. A **second generation** was then written — eight all-new scenarios, six seeded and two controls, class-to-tier mapping deliberately unchanged so results stay comparable — and the burned first generation was deleted from the tree. It survives in history at `2813ad1` if the reveal ever wants it as an exhibit.
+So the packets became an **input**: `--seeded <definitions.json>`, with definitions and key kept by the facilitator outside this repository. Only a fictional example is committed. A **second generation** was then written — eight all-new scenarios, six seeded and two controls, class-to-tier mapping deliberately unchanged so results stay comparable — and the burned first generation was deleted from the tree. It remains in already-public history; the current tree does not provide a retrieval pointer.
 
 **The definitions and key are deliberately not located in this repository, and their storage path is deliberately not written down here.** A public repository naming the place the answer key lives would be gratuitous reconnaissance. The facilitator knows where it is; a future hand who needs it should ask, not search. **Do not "helpfully" record the path.**
 

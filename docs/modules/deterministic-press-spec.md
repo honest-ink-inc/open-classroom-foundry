@@ -59,6 +59,8 @@ The three MVP presses are chosen deliberately: together they exercise **paramete
 
 **Geometry engine:** millimeter-exact vector primitives composed into the semantic ArtifactDocument (extended with a `geometry` node family: line, grid, arc, path, registration mark). Layout is deterministic — identical parameters produce byte-identical vector output, which CI compares as a rendering regression.
 
+**Current rendering and language boundary (recorded 30 August 2026):** each catalog definition separately declares neutral English for its built-in furniture; that metadata never guesses the language of teacher-entered content. Builders and composers preserve an exact or null whole-document language. The native vector-PDF path uses standard-14 Courier and admits exactly 218 WinAnsi-encodable Unicode code points. Unsupported characters refuse without substitution and select the Unicode HTML/Edge path. HTML/SVG use installed system fonts; no bundled font or universal script coverage is claimed. The complete boundary and protected remainder are in the [artifact language contract](../localization/artifact-language-contract.md).
+
 **Gates:** Gate A and Gate C are structurally vacuous (proven, not waived). Gate B applies in its lightest form: the teacher reviews parameters beside an exact-scale print preview and approves; render, export, and print still accept only an ApprovedArtifact. Architectural uniformity is the point — Module Zero teaches every teacher the approval rhythm on artifacts where approval is effortless.
 
 ## 5. Press specifications

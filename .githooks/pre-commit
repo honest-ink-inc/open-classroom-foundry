@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/usr/bin/env bash
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
 # Refuse a commit that carries a secret — BEFORE it exists in history.
@@ -11,7 +11,51 @@
 #
 # Install:  pwsh tools/install-hooks.ps1     (or: git config core.hooksPath .githooks)
 
-set -e
+set -euo pipefail
+
+# gitleaks cannot recognize a blind-study instrument: it is ordinary prose,
+# not a credential-shaped value. Refuse the exact classes of file that this
+# repository has already learned must never enter history. Deletions are
+# deliberately excluded so removing a bad file can always be committed. A
+# temporary NUL-delimited inventory keeps odd-but-valid filenames intact and,
+# unlike a pipeline, lets the hook check git diff's own exit status.
+staged_paths_file=$(mktemp "${TMPDIR:-/tmp}/ocf-precommit-paths.XXXXXX")
+trap 'rm -f -- "$staged_paths_file"' EXIT HUP INT TERM
+if ! git diff --cached --name-only --diff-filter=ACMR -z > "$staged_paths_file"; then
+    echo "pre-commit: REFUSED — staged-path enumeration failed." >&2
+    exit 1
+fi
+
+while IFS= read -r -d '' staged_path; do
+    lower_path=$(printf '%s' "$staged_path" | tr '[:upper:]' '[:lower:]')
+    base_name=${lower_path##*/}
+
+    case "$base_name" in
+        facilitator-key.md|seeded-packets.json|packet-*.print.html|secrets.json|id_rsa*|id_ed25519*|*.pem|*.key|*.pfx|*.p12|*.publishsettings)
+            printf 'pre-commit: REFUSED — forbidden staged path: %s\n' "$staged_path" >&2
+            cat >&2 <<'FORBIDDEN_PATH'
+
+The staged path is a credential container, private-key convention, blind-study
+definition/key, or generated study packet. Rename is not a remedy for study
+content: keep the real instrument with the facilitator, outside this repository.
+FORBIDDEN_PATH
+            exit 1
+            ;;
+        .env|.env.*)
+            if [ "$base_name" != ".env.example" ]; then
+                printf 'pre-commit: REFUSED — forbidden staged path: %s\n' "$staged_path" >&2
+                exit 1
+            fi
+            ;;
+    esac
+
+    case "$lower_path" in
+        docs/evidence/pilot-kit/packet-*|*/docs/evidence/pilot-kit/packet-*)
+            printf 'pre-commit: REFUSED — generated study packet staged: %s\n' "$staged_path" >&2
+            exit 1
+            ;;
+    esac
+done < "$staged_paths_file"
 
 if [ "${OCF_SKIP_SECRET_HOOK:-}" = "1" ]; then
     echo "pre-commit: secret scan SKIPPED via OCF_SKIP_SECRET_HOOK=1." >&2

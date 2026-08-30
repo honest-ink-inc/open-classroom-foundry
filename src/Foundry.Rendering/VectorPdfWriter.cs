@@ -581,7 +581,13 @@ public static class VectorPdfWriter
         return builder.ToString();
     }
 
-    private static byte EncodeWinAnsi(char ch) => ch switch
+    internal static bool CanEncodeWinAnsi(char ch) => WinAnsiByte(ch).HasValue;
+
+    private static byte EncodeWinAnsi(char ch)
+        => WinAnsiByte(ch) ?? throw new NotSupportedException(
+            $"Character U+{(int)ch:X4} has no WinAnsi encoding; this document needs the HTML print path.");
+
+    private static byte? WinAnsiByte(char ch) => ch switch
     {
         >= ' ' and <= '~' => (byte)ch,
         >= ' ' and <= 'ÿ' => (byte)ch,
@@ -612,8 +618,7 @@ public static class VectorPdfWriter
         'œ' => 0x9C,
         'ž' => 0x9E,
         'Ÿ' => 0x9F,
-        _ => throw new NotSupportedException(
-            $"Character U+{(int)ch:X4} has no WinAnsi encoding; this document needs the HTML print path."),
+        _ => null,
     };
 
     private static string EscapeString(string encoded)

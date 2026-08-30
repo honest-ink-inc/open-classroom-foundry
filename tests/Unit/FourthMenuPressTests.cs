@@ -463,6 +463,7 @@ public class StudioSamplerTests
         var document = StudioSampler.Catalog();
         var pages = document.Nodes.OfType<VectorGraphic>().ToList();
 
+        Assert.Equal(PressDefinition.NeutralEnglishLanguage, document.Language);
         Assert.Equal(StudioSampler.Plan().Included.Count + 1, pages.Count);
         Assert.All(pages, p =>
         {
@@ -519,6 +520,7 @@ public class ClassSetsTests
         var set = WordSearchSet(baseSeed: 100, variants: 3);
         var pages = set.Nodes.OfType<VectorGraphic>().ToList();
 
+        Assert.Null(set.Language);
         // The word search builds two sheets (puzzle and key) per variant.
         Assert.Equal(6, pages.Count);
         for (var variant = 1; variant <= 3; variant++)

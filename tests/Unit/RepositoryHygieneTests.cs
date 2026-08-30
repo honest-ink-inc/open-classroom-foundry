@@ -126,11 +126,48 @@ public class RepositoryHygieneTests
         Assert.True(File.Exists(claude), "CLAUDE.md is missing; Claude Code would then load no project guidance.");
         Assert.Contains("AGENTS.md", File.ReadAllText(claude), StringComparison.Ordinal);
 
+        var hook = File.ReadAllText(Path.Combine(root, ".githooks", "pre-commit"));
+        Assert.Contains("git diff --cached --name-only --diff-filter=ACMR -z > \"$staged_paths_file\"", hook, StringComparison.Ordinal);
+        Assert.Contains("done < \"$staged_paths_file\"", hook, StringComparison.Ordinal);
+        Assert.Contains("staged-path enumeration failed", hook, StringComparison.Ordinal);
+        foreach (var forbiddenPath in new[]
+        {
+            "facilitator-key.md",
+            "seeded-packets.json",
+            "packet-*.print.html",
+            "docs/evidence/pilot-kit/packet-",
+        })
+        {
+            Assert.Contains(forbiddenPath, hook, StringComparison.Ordinal);
+        }
+
         var ignore = File.ReadAllText(Path.Combine(root, ".gitignore"));
         foreach (var pattern in new[] { ".env", "*.pem", "seeded-packets.json", "FACILITATOR-KEY.md" })
         {
             Assert.Contains(pattern, ignore, StringComparison.Ordinal);
         }
+
+        var modeStart = new ProcessStartInfo("git")
+        {
+            WorkingDirectory = root,
+            RedirectStandardOutput = true,
+            RedirectStandardError = true,
+            UseShellExecute = false,
+        };
+        foreach (var argument in new[] { "ls-files", "--stage", "--", ".githooks/pre-commit" })
+        {
+            modeStart.ArgumentList.Add(argument);
+        }
+
+        using var modeProcess = Process.Start(modeStart)
+            ?? throw new InvalidOperationException("Could not start git to verify the tracked hook mode.");
+        var modeOutput = modeProcess.StandardOutput.ReadToEnd();
+        var modeError = modeProcess.StandardError.ReadToEnd();
+        modeProcess.WaitForExit();
+        Assert.True(
+            modeProcess.ExitCode == 0,
+            $"'git ls-files --stage' failed while checking the hook mode: {modeError}");
+        Assert.StartsWith("100755 ", modeOutput, StringComparison.Ordinal);
     }
 
     [Fact]

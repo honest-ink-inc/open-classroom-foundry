@@ -2,7 +2,9 @@
 
 **Date:** 30 August 2026 · **Audience:** the typist, council, District IT, the next maintainer, and any automated contributor. Read [AGENTS.md](../../AGENTS.md) before acting.
 
-This is the current repository state at the commit containing this file. It closes every forge-owned part of the standing directives in [the moved calendar](2026-08-29-the-moved-calendar.md), records what measurement changed, and names every remaining human, release, and compatibility hold that code must not counterfeit as complete. The engine remains `0.7.0-alpha`. No version, tag, signature, installation, distribution, publication, filing, correspondence, district decision, GitHub protection-setting change, or protected-seat acceptance was performed.
+> **Historical repository state.** The later [Audit D enactment handover](2026-08-30-audit-D-enactment.md) is the explicit current-state marker. This closeout remains the inherited full forge record.
+
+This was the repository state at the commit that first contained this file. It closes every forge-owned part of the standing directives in [the moved calendar](2026-08-29-the-moved-calendar.md), records what measurement changed, and names every remaining human, release, and compatibility hold that code must not counterfeit as complete. The engine remains `0.7.0-alpha`. No version, tag, signature, installation, distribution, publication, filing, correspondence, district decision, GitHub protection-setting change, or protected-seat acceptance was performed.
 
 ## I. Exact measured state
 

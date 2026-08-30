@@ -1,0 +1,63 @@
+# Audit D enactment — useful evidence admitted, stale authority refused
+
+**Current repository state · Date:** 30 August 2026 · **Audit comparison base:** `7bdd020afdf9442fa54334136fef29cb65024ab5`
+
+This handover supersedes the [forge closeout](2026-08-30-forge-closeout.md) only as the current-state marker; it inherits that closeout's full engine, UI, minimum-floor, Atlas, release, human-hold, and historical-flake record unless a row below expressly changes it.
+
+## Authority and replay
+
+The external D packet was read as evidence, not instruction. Its own provenance says it reviewed `21759178d442849a72a0bf361201b22eedbdbb57` without reading the canonical atlas, the ADR set itself, contributor law, trust boundaries, release traceability, or current handovers. That missing current context matters even where the packet cites an ADR or plan section: ADR > plan > atlas > review remains the repository hierarchy, and protected seats cannot be replaced by an outside review or a keyboard.
+
+Both attached verifiers were replayed unchanged against the comparison base:
+
+- `verify_layers.py` returned 8/9. Its only failure was false: the regex classified `System.IO.Compression` and bounded `MemoryStream`/zlib work in Rendering as filesystem reach. The script's five admitted outsider rules were not imported as project law.
+- `verify_reach.py` crashed under the ordinary Windows CP-1252 console while printing a Unicode sample. Forced UTF-8 made it exit zero, but it silently reported the neutral catalog count as null because its wording regex predates the current 996-id record. Its network scan also misses the separately governed loopback print-view listener, and its asset result proves hashes rather than complete rights provenance. It is not a fail-closed repository guard.
+
+No attached script or generated report was copied into the repository.
+
+## What the forge enacted
+
+1. **Non-Windows proof became CI work.** A separate Ubuntu job restores and builds only the portable SampleGenerator graph under the exact pinned SDK, runs it twice, refuses an empty output, compares the complete file inventories, and compares every byte. It does not pretend the WinForms shell is cross-platform.
+2. **Artifact furniture gained explicit catalog metadata without guessing teacher content.** Every Deterministic Press definition now declares neutral English as the language of its built-in furniture. A builder's exact whole-document language is preserved, an unknown language remains null through Class Sets, and the fixed English Studio Sampler declares `en`. This changes metadata, not words, and neither translates nor mislabels teacher input.
+3. **The PDF repertoire became executable evidence.** The production WinAnsi encoder exposes its own bounded capability predicate to the Rendering test assembly; a regression counts the exact 218 admitted code points. Unsupported text still refuses without substitution and takes the Unicode HTML/Edge application route.
+4. **Ratified architecture gained a bounded BCL-side tripwire.** Existing project-reference and `ApprovedArtifact` tests already disproved the packet's claim that the boundaries were unguarded. A source-boundary test now also refuses a reviewed vocabulary of common file/directory/path, network/socket, process, device, and printer APIs in module source while deliberately allowing in-memory compression. It is a useful lexical tripwire, not a claim to semantic completeness.
+5. **Repository build properties became an inventory, not an assumption.** A contract enumerates every project, checks that nested build-property files continue importing the root contract, and fails on an unknown target framework or a directly declared weakening of nullable analysis, implicit usings, language/analysis level, warnings-as-errors, deterministic build, continuous-integration build, or deterministic source paths.
+6. **The burned study lesson moved in front of gitleaks.** The hook now rejects known staged facilitator-key, seeded-definition, generated-packet, credential-container, and private-key filename conventions before secret scanning. The explicit secret-scan escape hatch cannot bypass this path guard, and the hook is tracked executable for POSIX clones. Current-tree tests retain the same prohibition. This is defense in depth, not semantic detection of a renamed prose instrument.
+7. **The stable documentation now says what is actually bounded.** The indexed [artifact language contract](../localization/artifact-language-contract.md) separates UI chrome, artifact furniture, teacher content, per-segment locales, the 218-code-point native-PDF lane, Unicode/system-font fallback, and the protected font/translation remainder.
+
+## D1–D20 disposition
+
+| Finding | Current disposition |
+|---|---|
+| D1 | **Enacted.** Exact 218-code-point native-PDF boundary is now a production-derived test and stable indexed documentation. |
+| D2 | **Measured and held.** No font ships; Unicode HTML/SVG relies on installed fonts. Font rights, embedding, script coverage, and protected review are not invented. |
+| D3 | **Rescoped and recorded.** Chrome and artifact furniture are now explicitly separate. A complete translation inventory and actual translated furniture remain multilingual-seat work. |
+| D4 | **Not adopted.** Letter remains the visible default and A4 remains available. The packet reversed its scaling example: Letter→A4 same-orientation fit is about 97.27%; about 94.1% is A4→Letter. Changing the product default needs an explicit product decision and physical-print evidence. |
+| D5 | **Already governed.** ADR-002 records portable services and a Windows-first shell. The new Ubuntu job tests the headless claim without authorizing a second UI. |
+| D6 | **Enacted as policy; hosted result pending this commit's push.** Portable sample generation now has an Ubuntu build/run/determinism gate. |
+| D7 | **Human/rights hold.** The printable/documentation free-culture license is deliberately not selected by automation. |
+| D8 | **Already governed.** Version, tag, sign, install, distribute, publish, file, pilot, district, and maintainer acts remain with their named humans. |
+| D9 | **No defect.** The audit corrected its own WinAnsi range reading. |
+| D10 | **Rejected as a guard.** The replay proved encoding, stale-regex, silent-omission, egress-classification, and provenance blind spots. Native tests/documentation took the useful facts. |
+| D11 | **External-packet defect.** Its missing Atlas 3.1 subject cannot supersede this repository's canonical Atlas 2.0. |
+| D12 | **Already governed, narrowly.** Council-first remains mandatory for choosing Atlas work; it is not a moratorium on ordinary authorized engineering. |
+| D13 | **Overbroad and stale count; safe residue enacted and protected remainder held.** Several builders already supplied or preserved language. Catalog furniture now carries separate `en` metadata and composers preserve an exact or null document language instead of guessing teacher content. The renderer's legacy fallback and mixed-language scope remain for protected multilingual/accessibility review. |
+| D14 | **Already guarded and strengthened.** Ratified module references were already tests; a bounded common-platform vocabulary tripwire was added without adopting the false `System.IO.Compression` rule or claiming semantic completeness. |
+| D15 | **Already satisfied.** Sink reflection tests enforce `ApprovedArtifact` and no public approval constructor. |
+| D16 | **Already satisfied.** The compiler owns the service interfaces. No brittle exact-count freeze was added that would obstruct a future ratified seam change. |
+| D17 | **Rejected.** A one-file/line-count egress cap is an outsider rule, misses governed loopback networking, and conflicts with the planned multiple-provider boundary. Existing trust-boundary and provider policy remain authoritative. |
+| D18 | **False in the packet, useful residue enacted.** Architecture/approval tests predated the audit commit; project build-property weakening is now additionally guarded. |
+| D19 | **Not adopted.** The five admitted observed rules require normal ADR/product-owner consideration; the replay already falsified one. |
+| D20 | **Already superseded.** Accessibility has eight minimum-floor tests and the indexed release traceability matrix owns machine and human evidence without claiming AT completion. |
+
+## The known burned study generation
+
+The first-generation definitions and key remain reachable in already-public history; the current tree deliberately gives no retrieval pointer. This continuation did not open or copy the regenerated external instrument or key. It did remove residual study-specific descriptive fragments from a tracked source comment without reproducing them, and it strengthened prevention for future commits. It did not rewrite public history: a rewrite is destructive, cannot retract existing clones, changes every descendant identity, and requires a specific human decision and coordination beyond an ordinary code commit. Before any release, site publication, visibility change, or public filing, the hardening checklist still requires a whole-history/manual review and an authorized disposition. The regenerated study remains the facilitator's protected material, outside this repository.
+
+## Evidence and unchanged holds
+
+The local closing sequence resolved the exact `global.json` SDK **10.0.302**. `dotnet format` fix completed and `--verify-no-changes` exited 0. The Release solution then built with warnings as errors at **0 warnings, 0 errors**. Two complete, independently logged stability runs each passed **1,238/1,238**, with zero failed or skipped: Unit 535, Integration 226, UI automation 213, Contract 100, Rendering 81, Instructional Evals 75, and Accessibility 8. All headed UIA cases executed; none of the three retained under-load sightings reproduced.
+
+The Release SampleGenerator ran twice into fresh directories. Both inventories contained **40 files**, every corresponding byte matched, and the canonical sorted SHA-256 manifest digest was `4953E2E38B3B7E9ACCF021BA2BC33BD21D92CC59BD27F3C972C4F1E0E7D1CB2A`. The Bash hook syntax check passed, its tracked index mode is `100755`, and a deliberately unreadable index made staged-path enumeration refuse with exit 1 even when secret scanning was explicitly skipped. The real staged hook then exited 0 after gitleaks `8.30.1` scanned approximately 41.15 KB and found no leaks. The commit, push, and exact hosted CI/CodeQL conclusions necessarily follow this pre-commit snapshot and must be read from their own conclusions. A successful Ubuntu sample job will be the first non-Windows execution proof; workflow text alone is not that proof.
+
+Unchanged human/protected work remains unchanged: the real second UI language; complete artifact-furniture translation scope; font/OER rights; the Letter/A4 product decision and physical print evidence; AAC/SLP and accessibility-seat judgments; the council's Atlas session; district approval; coherent version/tag/sign/package/install/distribution/publication; pilot evidence; and a genuine second maintainer. The three load failures remain sightings, not diagnoses.

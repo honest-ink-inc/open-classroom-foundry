@@ -24,6 +24,7 @@ public class PressRoomCatalogTests
         var document = definition.Build(new PressInputs(PressRoomCatalog.Defaults(definition)));
 
         Assert.NotEmpty(document.Nodes);
+        Assert.Equal(PressDefinition.NeutralEnglishLanguage, definition.ArtifactFurnitureLanguage);
         Assert.False(DocumentValidator.HasBlockingIssues(DocumentValidator.Validate(document)));
 
         // The byte-identical claim holds at the catalog boundary too.
@@ -95,5 +96,35 @@ public class PressRoomCatalogTests
 
         var exception = Assert.Throws<ArgumentException>(() => wordSearch.Build(new PressInputs(values)));
         Assert.Contains("letters only", exception.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Builder_language_is_preserved_without_guessing_teacher_content_and_invalid_furniture_language_is_refused()
+    {
+        var spanish = new ArtifactDocument([new Paragraph("Texto sintético.")], "es");
+        var explicitDefinition = new PressDefinition(
+            "synthetic-language-proof",
+            "Synthetic language proof",
+            DeterministicPressRecipes.Blankforms,
+            [],
+            _ => spanish);
+        var unknown = new ArtifactDocument([new Paragraph("Synthetic teacher text.")]);
+        var unknownDefinition = new PressDefinition(
+            "synthetic-unknown-language-proof",
+            "Synthetic unknown language proof",
+            DeterministicPressRecipes.Blankforms,
+            [],
+            _ => unknown);
+
+        Assert.Same(spanish, explicitDefinition.Build(new PressInputs(new Dictionary<string, string>())));
+        Assert.Same(unknown, unknownDefinition.Build(new PressInputs(new Dictionary<string, string>())));
+        Assert.Null(unknownDefinition.Build(new PressInputs(new Dictionary<string, string>())).Language);
+        Assert.Throws<ArgumentException>(() => new PressDefinition(
+            "synthetic-invalid-language",
+            "Synthetic invalid language",
+            DeterministicPressRecipes.Blankforms,
+            [],
+            _ => spanish,
+            "not_a_language"));
     }
 }

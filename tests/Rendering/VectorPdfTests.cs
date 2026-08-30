@@ -98,6 +98,22 @@ public class VectorPdfTests
     }
 
     [Fact]
+    public void Native_pdf_character_repertoire_is_the_documented_218_code_points()
+    {
+        var repertoire = Enumerable.Range(char.MinValue, char.MaxValue + 1)
+            .Select(value => (char)value)
+            .Where(VectorPdfWriter.CanEncodeWinAnsi)
+            .ToArray();
+
+        Assert.Equal(218, repertoire.Length);
+        Assert.Contains(' ', repertoire);
+        Assert.Contains('ÿ', repertoire);
+        Assert.Contains('€', repertoire);
+        Assert.DoesNotContain('\n', repertoire);
+        Assert.DoesNotContain('★', repertoire);
+    }
+
+    [Fact]
     public void Winansi_text_including_accents_and_dashes_encodes_and_escapes()
     {
         var document = new ArtifactDocument([new VectorGraphic(100, 100,

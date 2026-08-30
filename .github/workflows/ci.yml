@@ -28,7 +28,8 @@
 #   [x] Deterministic SAMPLES gate: the SampleGenerator runs twice on the runner and every byte
 #       is hash-compared (menu 4 item 7) — determinism re-proven on a machine nobody tuned.
 #       No exclusions: the .ocfproj writer was made deterministic on 29 Aug 2026 and the last
-#       standing exclusion was deleted with it
+#       standing exclusion was deleted with it. A separate Ubuntu job builds only the portable
+#       sample graph and repeats the same all-file comparison off Windows.
 #   [x] UIA accessibility harness (tests/UiAutomation): in-process contract tests always run;
 #       headed UIA tests run where the runner offers an interactive desktop and are VISIBLY
 #       skipped otherwise (or with OCF_SKIP_HEADED=1) — a skip is an honest gap, never a pass
@@ -912,12 +913,99 @@ jobs:
             **/TestResults/*.trx
             **/TestResults/**/coverage.cobertura.xml
 
+  # The application shell is Windows-first, while the headless SampleGenerator
+  # dependency graph claims platform-neutral execution. This separate runner
+  # is configured to test that bounded claim without asking an Ubuntu host to
+  # build the WinForms solution; only a green hosted conclusion is proof.
+  portable-samples:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
+        with:
+          global-json-file: global.json
+
+      - name: Exact SDK gate
+        shell: bash
+        run: |
+          set -euo pipefail
+          expected="$(awk -F'"' '/"version"/ { print $4; exit }' global.json)"
+          actual="$(dotnet --version)"
+          if [[ -z "${expected}" || "${actual}" != "${expected}" ]]; then
+            printf 'Resolved .NET SDK %s did not equal global.json SDK %s.\n' "${actual}" "${expected}" >&2
+            exit 1
+          fi
+          printf 'Exact .NET SDK: %s\n' "${actual}"
+
+      - name: Restore and build the portable sample graph
+        shell: bash
+        run: |
+          set -euo pipefail
+          dotnet restore tools/SampleGenerator/Foundry.Tools.SampleGenerator.csproj --locked-mode --configfile NuGet.config
+          dotnet build tools/SampleGenerator/Foundry.Tools.SampleGenerator.csproj --no-restore --configuration Release
+
+      - name: Linux determinism gate (SampleGenerator twice, every byte hash-compared)
+        shell: bash
+        run: |
+          set -euo pipefail
+          generator="tools/SampleGenerator/bin/Release/net10.0/Foundry.Tools.SampleGenerator.dll"
+          dotnet "${generator}" "${PWD}" samples-linux-a
+          dotnet "${generator}" "${PWD}" samples-linux-b
+
+          inventory_a="${RUNNER_TEMP}/samples-linux-a.inventory"
+          inventory_b="${RUNNER_TEMP}/samples-linux-b.inventory"
+          find samples-linux-a -type f -printf '%P\0' | LC_ALL=C sort -z > "${inventory_a}"
+          find samples-linux-b -type f -printf '%P\0' | LC_ALL=C sort -z > "${inventory_b}"
+          if [[ ! -s "${inventory_a}" ]]; then
+            printf 'SampleGenerator produced no Linux files.\n' >&2
+            exit 1
+          fi
+          if ! cmp --silent "${inventory_a}" "${inventory_b}"; then
+            printf 'Sample file inventories differ between Linux runs.\n' >&2
+            exit 1
+          fi
+          compared=0
+          while IFS= read -r -d '' file; do
+            if ! cmp --silent "samples-linux-a/${file}" "samples-linux-b/${file}"; then
+              printf 'Nondeterministic Linux output: %s\n' "${file}" >&2
+              exit 1
+            fi
+            compared=$((compared + 1))
+          done < "${inventory_a}"
+          printf '%s files compared byte-for-byte on Linux.\n' "${compared}"
+
   secret-scan:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
+
+      - name: Pre-commit path guard contract
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -x .githooks/pre-commit
+          bash -n .githooks/pre-commit
+          OCF_SKIP_SECRET_HOOK=1 .githooks/pre-commit
+
+          if GIT_INDEX_FILE="${PWD}" OCF_SKIP_SECRET_HOOK=1 .githooks/pre-commit; then
+            printf 'Hook passed after staged-path enumeration failed.\n' >&2
+            exit 1
+          fi
+
+          hook_index="${RUNNER_TEMP}/ocf-hook-index"
+          trap 'rm -f -- "${hook_index}"' EXIT
+          rm -f -- "${hook_index}"
+          GIT_INDEX_FILE="${hook_index}" git read-tree HEAD
+          harmless_blob="$(git rev-parse HEAD:README.md)"
+          GIT_INDEX_FILE="${hook_index}" git update-index \
+            --add --cacheinfo "100644,${harmless_blob},scratch/packet-synthetic.print.html"
+          if GIT_INDEX_FILE="${hook_index}" OCF_SKIP_SECRET_HOOK=1 .githooks/pre-commit; then
+            printf 'Hook admitted a generated study-packet filename outside the pilot-kit directory.\n' >&2
+            exit 1
+          fi
 
       # gitleaks the SCANNER is MIT-licensed and free; only gitleaks-ACTION,
       # the wrapper, carries organization licensing — which became binding the

@@ -1,5 +1,5 @@
 {
-  "_readme": "EXAMPLE ONLY — fictional, defect-free, and safe to publish. The real seeded-error definitions are the facilitator's and MUST NOT live in this repository: semantic defects written in plain language are legible to anyone who reads the file, so committing them would train every participant who browses the repo. Keep the real definitions with the facilitator, beside the correspondence ledger, and pass the path: SampleGenerator <repoRoot> <outDir> --seeded <definitions.json>. This example exists to document the shape and to keep the loader under test.",
+  "_readme": "EXAMPLE ONLY — fictional, defect-free, and safe to publish. The real seeded-error definitions are the facilitator's and MUST NOT live in this repository: semantic defects written in plain language are legible to anyone who reads the file, so committing them would train every participant who browses the repo. Keep the real definitions facilitator-held outside the repository and provide them only at run time: SampleGenerator <repoRoot> <outDir> --seeded <definitions.json>. This example exists to document the shape and to keep the loader under test.",
 
   "packets": [
     {

@@ -17,16 +17,13 @@ public sealed record SeededPacketSet(IReadOnlyList<SeededPacket> Packets);
 /// <summary>
 /// The seeded-error study's packets are an INPUT, never source.
 ///
-/// They used to be a literal array in this tool, under a comment claiming the
-/// packet-to-defect mapping "lives only in the facilitator key". That claim was
-/// false: the defects are semantic and written in plain language, so anyone
-/// reading the source could reconstruct the whole answer key — packet A's
-/// unexecutable order and packet C's once/"dos veces" mistranslation are legible
-/// on their face. A blind study cannot define its seeds in a repository anyone
-/// may read, and this repository is meant to be public.
+/// Earlier versions embedded protected study design here. Those definitions were
+/// removed; real definitions remain facilitator-held outside this repository.
+/// A blind study cannot define its seeds in a repository anyone may read.
 ///
-/// So the definitions live outside the repository, with the facilitator, beside
-/// the correspondence ledger. Only an obviously-fictional example is committed —
+/// Real definitions remain facilitator-held outside the repository, and their
+/// storage location is deliberately not recorded here. Only an obviously-fictional
+/// example is committed —
 /// enough to document the shape and keep the loader tested, not enough to train
 /// anyone. Refusals here are loud and readable because a facilitator hand-edits
 /// this file, often shortly before a session.

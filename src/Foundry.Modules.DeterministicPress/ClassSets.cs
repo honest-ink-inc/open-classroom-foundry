@@ -45,6 +45,8 @@ public static class ClassSets
         }
 
         var nodes = new List<DocumentNode>();
+        string? documentLanguage = null;
+        var capturedLanguage = false;
         for (var variant = 1; variant <= variants; variant++)
         {
             var seed = baseSeed + variant - 1;
@@ -54,6 +56,17 @@ public static class ClassSets
             };
 
             var document = definition.Build(new PressInputs(perVariant));
+            if (!capturedLanguage)
+            {
+                documentLanguage = document.Language;
+                capturedLanguage = true;
+            }
+            else if (!string.Equals(documentLanguage, document.Language, StringComparison.Ordinal))
+            {
+                throw new InvalidOperationException(
+                    $"'{definition.Id}' changed document language between class-set variants.");
+            }
+
             var stamp = $"Variant {variant} of {variants} · seed {seed}";
             foreach (var node in document.Nodes)
             {
@@ -73,6 +86,6 @@ public static class ClassSets
             }
         }
 
-        return new ArtifactDocument(nodes);
+        return new ArtifactDocument(nodes, documentLanguage);
     }
 }

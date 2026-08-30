@@ -10,6 +10,41 @@ namespace Foundry.Tests.Unit;
 /// </summary>
 public class ArchitectureRulesTests
 {
+    private static readonly string[] DirectPlatformReachTokens =
+    [
+        "System.IO.File",
+        "System.IO.Directory",
+        "System.IO.FileStream",
+        "System.IO.DriveInfo",
+        "System.IO.FileSystemWatcher",
+        "System.Net.Http.HttpClient",
+        "System.Net.Sockets",
+        "System.Diagnostics.Process",
+        "System.Drawing.Printing",
+        "Microsoft.Win32",
+        "Windows.Devices",
+        "File.",
+        "Directory.",
+        "FileStream(",
+        "FileInfo(",
+        "DirectoryInfo(",
+        "DriveInfo(",
+        "FileSystemWatcher(",
+        "Path.",
+        "HttpClient(",
+        "WebRequest.",
+        "NetworkStream(",
+        "Socket(",
+        "TcpClient(",
+        "TcpListener(",
+        "UdpClient(",
+        "Process.",
+        "ProcessStartInfo(",
+        "PrintDocument(",
+        "PrinterSettings(",
+        "Environment.GetFolderPath",
+    ];
+
     private static string RepoRoot()
     {
         var dir = new DirectoryInfo(AppContext.BaseDirectory);
@@ -38,6 +73,39 @@ public class ArchitectureRulesTests
         Assert.DoesNotContain(references, r => r.Contains("Inference", StringComparison.OrdinalIgnoreCase));
         Assert.DoesNotContain(references, r => r.Contains("Infrastructure", StringComparison.OrdinalIgnoreCase));
         Assert.DoesNotContain(references, r => r.Contains("App.WinForms", StringComparison.OrdinalIgnoreCase));
+    }
+
+    [Fact]
+    public void Modules_do_not_use_known_direct_platform_api_vocabulary()
+    {
+        // ProjectReference checks close the architectural door to adapters;
+        // this bounded source vocabulary closes the BCL side doors that do not
+        // require a project reference. It is deliberately narrower than a
+        // claim that all System.IO is impure: in-memory streams are valid.
+        var root = RepoRoot();
+        var moduleRoots = new[]
+        {
+            Path.Combine(root, "src", "Foundry.Modules.DeterministicPress"),
+            Path.Combine(root, "src", "Foundry.Modules.BuiltIn"),
+        };
+        var offenders = new List<string>();
+        foreach (var file in moduleRoots
+                     .SelectMany(path => Directory.EnumerateFiles(path, "*.cs", SearchOption.AllDirectories))
+                     .Where(path => !path.Split(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar)
+                         .Any(segment => segment.Equals("bin", StringComparison.OrdinalIgnoreCase)
+                             || segment.Equals("obj", StringComparison.OrdinalIgnoreCase))))
+        {
+            var source = File.ReadAllText(file);
+            foreach (var token in DirectPlatformReachTokens.Where(token => source.Contains(token, StringComparison.Ordinal)))
+            {
+                offenders.Add($"{Path.GetRelativePath(root, file)} ({token})");
+            }
+        }
+
+        Assert.True(
+            offenders.Count == 0,
+            "ADR-001 requires modules to use engine service seams rather than direct platform reach:\n"
+            + string.Join('\n', offenders));
     }
 
     [Fact]

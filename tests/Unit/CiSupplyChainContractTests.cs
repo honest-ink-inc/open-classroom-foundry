@@ -9,6 +9,93 @@ public sealed class CiSupplyChainContractTests
     private static readonly string Root = FindRepositoryRoot();
 
     [Fact]
+    public void Repository_project_files_do_not_declare_a_weaker_build_contract()
+    {
+        var properties = XDocument.Load(Path.Combine(Root, "Directory.Build.props"));
+        Assert.Equal("enable", Property(properties, "Nullable"));
+        Assert.Equal("enable", Property(properties, "ImplicitUsings"));
+        Assert.Equal("latest", Property(properties, "LangVersion"));
+        Assert.Equal("true", Property(properties, "TreatWarningsAsErrors"));
+        Assert.Equal("true", Property(properties, "Deterministic"));
+        Assert.Equal("true", Property(properties, "ContinuousIntegrationBuild"));
+        Assert.Equal("true", Property(properties, "DeterministicSourcePaths"));
+        Assert.Equal("latest", Property(properties, "AnalysisLevel"));
+
+        var allowedFrameworks = new HashSet<string>(StringComparer.Ordinal)
+        {
+            "net10.0",
+            "net10.0-windows10.0.19041.0",
+        };
+        var weakened = new List<string>();
+        var nestedBuildProperties = Directory.EnumerateFiles(Root, "Directory.Build.props", SearchOption.AllDirectories)
+            .Where(path => !Path.GetFullPath(path).Equals(
+                Path.GetFullPath(Path.Combine(Root, "Directory.Build.props")),
+                StringComparison.OrdinalIgnoreCase))
+            .Where(path => !PathSegments(path).Any(segment =>
+                segment.Equals("bin", StringComparison.OrdinalIgnoreCase)
+                || segment.Equals("obj", StringComparison.OrdinalIgnoreCase)))
+            .ToArray();
+        foreach (var nestedPath in nestedBuildProperties)
+        {
+            var nested = XDocument.Load(nestedPath);
+            if (!nested.Descendants("Import").Any(element =>
+                    (element.Attribute("Project")?.Value ?? string.Empty)
+                    .Contains("GetPathOfFileAbove('Directory.Build.props'", StringComparison.Ordinal)))
+            {
+                weakened.Add($"{Path.GetRelativePath(Root, nestedPath)} does not import the repository build contract");
+            }
+        }
+
+        foreach (var projectPath in Directory.EnumerateFiles(Root, "*.csproj", SearchOption.AllDirectories)
+                     .Where(path => !PathSegments(path).Any(segment =>
+                         segment.Equals("bin", StringComparison.OrdinalIgnoreCase)
+                         || segment.Equals("obj", StringComparison.OrdinalIgnoreCase))))
+        {
+            var project = XDocument.Load(projectPath);
+            var framework = Property(project, "TargetFramework");
+            if (!allowedFrameworks.Contains(framework))
+            {
+                weakened.Add($"{Path.GetRelativePath(Root, projectPath)} target framework '{framework}'");
+            }
+
+            foreach (var invariant in new[]
+            {
+                "TreatWarningsAsErrors",
+                "Deterministic",
+                "ContinuousIntegrationBuild",
+                "DeterministicSourcePaths",
+            })
+            {
+                var localValues = project.Descendants(invariant).Select(element => element.Value.Trim()).ToArray();
+                if (localValues.Any(value => !string.Equals(value, "true", StringComparison.OrdinalIgnoreCase)))
+                {
+                    weakened.Add($"{Path.GetRelativePath(Root, projectPath)} overrides {invariant}");
+                }
+            }
+
+            var nullableValues = project.Descendants("Nullable").Select(element => element.Value.Trim()).ToArray();
+            if (nullableValues.Any(value => !string.Equals(value, "enable", StringComparison.OrdinalIgnoreCase)))
+            {
+                weakened.Add($"{Path.GetRelativePath(Root, projectPath)} weakens Nullable");
+            }
+
+            foreach (var invariant in new[] { "ImplicitUsings", "LangVersion", "AnalysisLevel" })
+            {
+                var expected = invariant == "ImplicitUsings" ? "enable" : "latest";
+                var localValues = project.Descendants(invariant).Select(element => element.Value.Trim()).ToArray();
+                if (localValues.Any(value => !string.Equals(value, expected, StringComparison.OrdinalIgnoreCase)))
+                {
+                    weakened.Add($"{Path.GetRelativePath(Root, projectPath)} overrides {invariant}");
+                }
+            }
+        }
+
+        Assert.True(
+            weakened.Count == 0,
+            "Project files must not declare a weaker repository build contract:\n" + string.Join('\n', weakened));
+    }
+
+    [Fact]
     public void NuGet_resolution_is_one_source_mapped_and_every_project_has_a_lock()
     {
         var configuration = XDocument.Load(Path.Combine(Root, "NuGet.config"));
@@ -95,6 +182,16 @@ public sealed class CiSupplyChainContractTests
         Assert.Contains("restored Foundry.App.WinForms win-x64 NuGet dependency closure", workflow, StringComparison.Ordinal);
         Assert.Contains("not-claimed:", workflow, StringComparison.Ordinal);
         Assert.Contains("this workflow neither configures nor proves GitHub branch protection", workflow, StringComparison.Ordinal);
+        Assert.Contains("portable-samples:", workflow, StringComparison.Ordinal);
+        Assert.Contains(
+            "dotnet restore tools/SampleGenerator/Foundry.Tools.SampleGenerator.csproj --locked-mode --configfile NuGet.config",
+            workflow,
+            StringComparison.Ordinal);
+        Assert.Contains("samples-linux-a", workflow, StringComparison.Ordinal);
+        Assert.Contains("cmp --silent", workflow, StringComparison.Ordinal);
+        Assert.Contains("test -x .githooks/pre-commit", workflow, StringComparison.Ordinal);
+        Assert.Contains("GIT_INDEX_FILE=\"${PWD}\"", workflow, StringComparison.Ordinal);
+        Assert.Contains("scratch/packet-synthetic.print.html", workflow, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -127,6 +224,9 @@ public sealed class CiSupplyChainContractTests
 
     private static string[] PathSegments(string path)
         => path.Split(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+
+    private static string Property(XDocument document, string name)
+        => document.Descendants(name).Select(element => element.Value.Trim()).LastOrDefault() ?? string.Empty;
 
     private static string FindRepositoryRoot()
     {

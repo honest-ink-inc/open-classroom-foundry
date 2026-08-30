@@ -53,7 +53,7 @@ public static class StudioSampler
         var plan = Plan();
         var nodes = new List<DocumentNode> { Cover(plan) };
         nodes.AddRange(plan.Included.Select(entry => entry.Sheet));
-        return new ArtifactDocument(nodes);
+        return new ArtifactDocument(nodes, PressDefinition.NeutralEnglishLanguage);
     }
 
     private static VectorGraphic Cover(SamplerPlan plan)
