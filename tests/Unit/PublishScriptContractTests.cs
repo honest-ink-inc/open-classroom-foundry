@@ -45,6 +45,11 @@ public class PublishScriptContractTests
         Assert.Contains("Foundry.App.WinForms/$EngineVersion", UnsignedScript, StringComparison.Ordinal);
         Assert.Contains("Compiled dependency identity does not equal EngineIdentity.", UnsignedScript, StringComparison.Ordinal);
         Assert.Contains("$expectedProductVersion = \"$EngineVersion+$SourceCommit\"", UnsignedScript, StringComparison.Ordinal);
+
+        // D3 / SS-13: the assertion above is only satisfiable if the build is told
+        // the version. Directory.Build.props is required to stay version-free, so
+        // the injection happens on the publish command line, from EngineIdentity.
+        Assert.Contains("-p:Version=$engineVersion", UnsignedScript, StringComparison.Ordinal);
         Assert.Contains("Get-AuthenticodeSignature", UnsignedScript, StringComparison.Ordinal);
         Assert.Contains("accepts only unsigned first-party inputs", UnsignedScript, StringComparison.Ordinal);
         Assert.Contains("A release PDB lacked the canonical Honest Ink SourceLink mapping.", UnsignedScript, StringComparison.Ordinal);

@@ -199,7 +199,15 @@ try {
         throw "Locked win-x64 restore failed."
     }
 
-    dotnet publish $applicationProject -c Release --runtime win-x64 --self-contained false --no-restore --artifacts-path $stagedBuildArtifacts -o $stagedPayload --nologo
+    # D3 / SS-13: EngineIdentity is the single source of truth, and
+    # Assert-BuildIdentity below refuses any assembly whose ProductVersion is not
+    # "$engineVersion+$headCommit". Nothing supplied that prefix, so the default
+    # 1.0.0 was compiled in and packaging failed on its own assertion. The version
+    # is injected here rather than declared in Directory.Build.props, because
+    # PublishScriptContractTests requires that file to stay version-free: a
+    # released version is a packaging fact bound to an exact commit, not a
+    # property of every developer's local build.
+    dotnet publish $applicationProject -c Release --runtime win-x64 --self-contained false --no-restore -p:Version=$engineVersion --artifacts-path $stagedBuildArtifacts -o $stagedPayload --nologo
     if ($LASTEXITCODE -ne 0) {
         throw "Unsigned pre-sign build failed."
     }
