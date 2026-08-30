@@ -11,3 +11,11 @@ assets/** -text
 *.jpg binary
 *.pdf binary
 *.ocfproj binary
+
+# Shell scripts and git hooks MUST check out with LF on every platform. The
+# repository-wide eol=crlf above would otherwise hand a Linux or macOS clone a
+# `#!/bin/sh` line ending in , which fails as "bad interpreter" — silently
+# disabling the pre-commit secret scan for precisely the contributors who did
+# not write it. Protection that does not run still reads as protection.
+.githooks/** text eol=lf
+*.sh text eol=lf
