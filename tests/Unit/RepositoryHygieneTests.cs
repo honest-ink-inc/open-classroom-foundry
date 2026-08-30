@@ -117,6 +117,15 @@ public class RepositoryHygieneTests
         Assert.True(File.Exists(Path.Combine(root, ".githooks", "pre-commit")),
             "The pre-commit secret-scan hook is missing; CONTRIBUTING.md and AGENTS.md both promise it.");
 
+        Assert.True(File.Exists(Path.Combine(root, "AGENTS.md")),
+            "AGENTS.md is canonical for automated contributors and is referenced by CONTRIBUTING.md and README.md.");
+
+        // Claude Code loads CLAUDE.md, Codex loads AGENTS.md. A missing pointer
+        // means the tool that wrote most of this repository reads no rules at all.
+        var claude = Path.Combine(root, "CLAUDE.md");
+        Assert.True(File.Exists(claude), "CLAUDE.md is missing; Claude Code would then load no project guidance.");
+        Assert.Contains("AGENTS.md", File.ReadAllText(claude), StringComparison.Ordinal);
+
         var ignore = File.ReadAllText(Path.Combine(root, ".gitignore"));
         foreach (var pattern in new[] { ".env", "*.pem", "seeded-packets.json", "FACILITATOR-KEY.md" })
         {

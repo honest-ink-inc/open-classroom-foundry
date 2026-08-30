@@ -4,6 +4,20 @@
 
 Nothing here is hypothetical. Every rule below was learned from something that happened in this repository.
 
+## Which tool reads what
+
+This file is canonical. It is wired to the tools that look for different names, and **whoever adds a new agent to this project is responsible for wiring it too** — an agent that reads nothing is the risk this file exists to reduce.
+
+| Tool | Loads | Status |
+|---|---|---|
+| Codex, and most agents following the cross-tool convention | `AGENTS.md` | This file — canonical |
+| Claude Code | `CLAUDE.md` | A thin pointer here; it must never duplicate this content |
+| Anything else | — | Point it here before you let it commit |
+
+If a pointer file ever disagrees with this one, **this one wins and the pointer is the defect.**
+
+Note that Claude Code has been the only generator used on this repository through 30 Aug 2026, so nothing below has been exercised by a second toolchain. Treat the first Codex or other-agent session as a test of these instructions as much as of the task — and if something here proves ambiguous in practice, fix the wording rather than working around it.
+
 ## Read before you act
 
 1. [CONTRIBUTING.md](CONTRIBUTING.md) §"The rules that outrank everything" — the three categories that must never enter this repository.
