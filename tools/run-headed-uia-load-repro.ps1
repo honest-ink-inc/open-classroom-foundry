@@ -23,6 +23,27 @@ $ErrorActionPreference = "Stop"
 
 $repositoryRoot = [IO.Path]::GetFullPath((Join-Path $PSScriptRoot ".."))
 $testProject = "tests\UiAutomation\Foundry.Tests.UiAutomation.csproj"
+
+$repositoryCommit = (& git -C $repositoryRoot rev-parse --verify HEAD 2>$null)
+if ($LASTEXITCODE -ne 0 -or $repositoryCommit -notmatch '^[0-9a-fA-F]{40}$') {
+    throw "The repository commit could not be resolved; no source-bound evidence was collected."
+}
+$repositoryCommit = $repositoryCommit.ToLowerInvariant()
+
+$repositoryStatus = @(& git -C $repositoryRoot status --porcelain=v1 --untracked-files=all 2>$null)
+if ($LASTEXITCODE -ne 0) {
+    throw "The repository tree state could not be measured; no source-bound evidence was collected."
+}
+if ($repositoryStatus.Count -ne 0) {
+    throw "The repository tree is not clean; commit or set aside every change before collecting source-bound evidence."
+}
+
+$dotnetSdk = (& dotnet --version 2>$null)
+if ($LASTEXITCODE -ne 0 -or [string]::IsNullOrWhiteSpace($dotnetSdk)) {
+    throw "The .NET SDK identity could not be measured; no source-bound evidence was collected."
+}
+$dotnetSdk = $dotnetSdk.Trim()
+
 $runId = (Get-Date).ToUniversalTime().ToString("yyyyMMddTHHmmssZ", [Globalization.CultureInfo]::InvariantCulture)
 $runId += "-" + [Guid]::NewGuid().ToString("N")
 $relativeEvidenceRoot = Join-Path "out\uia-load-repro" $runId
@@ -324,6 +345,17 @@ finally {
 $summary = [ordered]@{
     RunId = $runId
     Statement = "Passing repetitions are non-reproductions, not a diagnosis of either historical sighting."
+    Source = [ordered]@{
+        RepositoryCommit = $repositoryCommit
+        TreeState = "clean"
+        DotnetSdk = $dotnetSdk
+        BuildPerformed = -not $SkipBuild.IsPresent
+    }
+    Host = [ordered]@{
+        OperatingSystem = [Environment]::OSVersion.VersionString
+        ProcessorCount = [Environment]::ProcessorCount
+        UserInteractive = [Environment]::UserInteractive
+    }
     Configuration = [ordered]@{
         Repetitions = $Repetitions
         CpuWorkers = $CpuWorkers

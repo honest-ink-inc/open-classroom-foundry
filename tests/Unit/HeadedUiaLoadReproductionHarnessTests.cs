@@ -40,6 +40,22 @@ public class HeadedUiaLoadReproductionHarnessTests
     }
 
     [Fact]
+    public void Evidence_is_bound_to_an_exact_clean_source_commit_and_records_its_build_context()
+    {
+        Assert.Contains("rev-parse --verify HEAD", Harness, StringComparison.Ordinal);
+        Assert.Contains("status --porcelain=v1 --untracked-files=all", Harness, StringComparison.Ordinal);
+        Assert.Contains("The repository tree is not clean", Harness, StringComparison.Ordinal);
+        Assert.Contains("RepositoryCommit = $repositoryCommit", Harness, StringComparison.Ordinal);
+        Assert.Contains("TreeState = \"clean\"", Harness, StringComparison.Ordinal);
+        Assert.Contains("DotnetSdk = $dotnetSdk", Harness, StringComparison.Ordinal);
+        Assert.Contains("BuildPerformed = -not $SkipBuild.IsPresent", Harness, StringComparison.Ordinal);
+        Assert.True(
+            Harness.IndexOf("status --porcelain=v1", StringComparison.Ordinal)
+                < Harness.IndexOf("New-Item -ItemType Directory -Path $evidenceRoot", StringComparison.Ordinal),
+            "Tree cleanliness must be measured before the ignored evidence directory is created.");
+    }
+
+    [Fact]
     public void Each_repetition_retains_the_named_result_and_content_free_failure_evidence()
     {
         Assert.Equal(1, CountOccurrences(Harness, "\"test\", $testProject,"));
