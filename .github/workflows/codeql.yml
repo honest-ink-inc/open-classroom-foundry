@@ -12,6 +12,7 @@ on:
 
 permissions:
   contents: read
+  security-events: read
 
 jobs:
   analyze-csharp:
@@ -41,6 +42,7 @@ jobs:
           languages: csharp
           build-mode: manual
           queries: security-extended
+          tools: linked
 
       - name: Restore the checked-in dependency graph
         run: dotnet restore OpenClassroomFoundry.slnx --locked-mode --configfile NuGet.config
@@ -54,6 +56,7 @@ jobs:
           category: /language:csharp
           output: codeql-results
           upload: never
+          upload-database: false
 
       - name: Require a clean SARIF result
         shell: pwsh

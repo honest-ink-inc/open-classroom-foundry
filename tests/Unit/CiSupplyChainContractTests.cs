@@ -214,6 +214,11 @@ public sealed class CiSupplyChainContractTests
         Assert.Contains("dotnet restore OpenClassroomFoundry.slnx --locked-mode --configfile NuGet.config", codeQl, StringComparison.Ordinal);
         Assert.Contains("A green run", codeQl, StringComparison.Ordinal);
         Assert.Contains("cannot prove or configure branch protection", codeQl, StringComparison.Ordinal);
+        Assert.Contains("security-events: read", codeQl, StringComparison.Ordinal);
+        Assert.DoesNotContain("security-events: write", codeQl, StringComparison.Ordinal);
+        Assert.Contains("tools: linked", codeQl, StringComparison.Ordinal);
+        Assert.Contains("upload: never", codeQl, StringComparison.Ordinal);
+        Assert.Contains("upload-database: false", codeQl, StringComparison.Ordinal);
 
         var site = File.ReadAllText(Path.Combine(Root, ".github", "workflows", "site.yml"));
         Assert.Contains("dotnet restore tools/SiteGenerator/Foundry.Tools.SiteGenerator.csproj --locked-mode --configfile NuGet.config", site, StringComparison.Ordinal);
