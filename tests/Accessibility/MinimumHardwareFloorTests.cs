@@ -54,16 +54,27 @@ public sealed class MinimumHardwareFloorTests
                     tile,
                 };
 
-                foreach (var surface in surfaces)
+                var floorHosts = new List<Panel>();
+                try
                 {
-                    PrepareAtFloor(surface, scale);
-                    AssertFloor(surface);
-                }
+                    foreach (var surface in surfaces)
+                    {
+                        floorHosts.Add(PrepareAtFloor(surface, scale));
+                        AssertFloor(surface);
+                    }
 
-                ExerciseEveryPressAtFloor(pressRoom);
-                ExerciseEveryAllAboardModeAtFloor(allAboard);
-                ExerciseEveryModuleModeAtFloor(modules);
-                ExerciseEveryNodeEditorVariantAtFloor(scale);
+                    ExerciseEveryPressAtFloor(pressRoom);
+                    ExerciseEveryAllAboardModeAtFloor(allAboard);
+                    ExerciseEveryModuleModeAtFloor(modules);
+                    ExerciseEveryNodeEditorVariantAtFloor(scale);
+                }
+                finally
+                {
+                    foreach (var host in floorHosts)
+                    {
+                        host.Dispose();
+                    }
+                }
             }
             finally
             {
@@ -84,7 +95,7 @@ public sealed class MinimumHardwareFloorTests
                 Size = new Size(180, 30),
             };
             form.Controls.Add(clipped);
-            PrepareAtFloor(form, 1.0f, maximize: false);
+            using var host = PrepareAtFloor(form, 1.0f, maximize: false);
 
             var failure = Assert.ThrowsAny<Xunit.Sdk.XunitException>(() => AssertFloor(form));
             Assert.Contains("Synthetic clipped control", failure.Message, StringComparison.Ordinal);
@@ -176,7 +187,7 @@ public sealed class MinimumHardwareFloorTests
         foreach (var node in nodes)
         {
             using var editor = new NodeEditorForm(node);
-            PrepareAtFloor(editor, scale);
+            using var host = PrepareAtFloor(editor, scale);
             AssertFloor(editor);
             if (node is VectorGraphic)
             {
@@ -192,11 +203,9 @@ public sealed class MinimumHardwareFloorTests
         }
     }
 
-    private static void PrepareAtFloor(Form form, float scale, bool maximize = true)
+    private static Panel PrepareAtFloor(Form form, float scale, bool maximize = true)
     {
-        form.StartPosition = FormStartPosition.Manual;
         form.ShowInTaskbar = false;
-        form.Opacity = 0;
         if (scale != 1.0f)
         {
             form.Scale(new SizeF(scale, scale));
@@ -207,9 +216,35 @@ public sealed class MinimumHardwareFloorTests
             : new Size(
                 Math.Min(form.Width, FloorWorkingArea.Width),
                 Math.Min(form.Height, FloorWorkingArea.Height));
-        form.Bounds = new Rectangle(FloorWorkingArea.Location, requested);
-        form.Show();
-        FlushLayout(form);
+
+        // A hosted Windows runner can expose a desktop narrower than the
+        // product's 1366 px floor. A top-level Form silently clamps to that
+        // host desktop's MaxWindowTrackSize, which turns this contract into a
+        // test of the runner (the 30 Aug 2026 hosted run measured 1028 px of
+        // client width). Exercise the real Form and its real non-client frame
+        // as a child window inside an exact-size, non-visible host instead.
+        // Child Forms are not screen-clamped, so the geometry is hermetic and
+        // remains the physical 1366 x 728 working-area contract on every host.
+        var host = new Panel
+        {
+            Bounds = new Rectangle(FloorWorkingArea.Location, requested),
+        };
+        try
+        {
+            host.CreateControl();
+            form.TopLevel = false;
+            host.Controls.Add(form);
+            form.Dock = DockStyle.Fill;
+            form.Show();
+            FlushLayout(form);
+            Assert.Equal(new Rectangle(Point.Empty, requested), form.Bounds);
+            return host;
+        }
+        catch
+        {
+            host.Dispose();
+            throw;
+        }
     }
 
     private static void AssertFloor(Form form)
