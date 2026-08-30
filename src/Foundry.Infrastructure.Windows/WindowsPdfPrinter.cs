@@ -37,13 +37,26 @@ public sealed class WindowsPdfPrinter(IRenderer renderer) : IPrinter
             try
             {
                 var native = await renderer.RenderAsync(
-                    artifact, new RenderRequest(RenderTarget.PrintPdf, RenderAudience.Learner), cancellationToken).ConfigureAwait(false);
+                    artifact,
+                    new RenderRequest(
+                        RenderTarget.PrintPdf,
+                        request.Audience,
+                        request.TextScalePercent,
+                        request.TargetLanguageFirst),
+                    cancellationToken).ConfigureAwait(false);
                 await File.WriteAllBytesAsync(tempPdf, native.Content.ToArray(), cancellationToken).ConfigureAwait(false);
             }
             catch (NotSupportedException)
             {
                 await new EdgePdfExporter(renderer).ExportAsync(
-                    artifact, new ExportRequest(RenderTarget.PrintPdf, tempPdf), cancellationToken).ConfigureAwait(false);
+                    artifact,
+                    new ExportRequest(
+                        RenderTarget.PrintPdf,
+                        tempPdf,
+                        request.Audience,
+                        request.TextScalePercent,
+                        request.TargetLanguageFirst),
+                    cancellationToken).ConfigureAwait(false);
             }
 
             var settings = new PrinterSettings();

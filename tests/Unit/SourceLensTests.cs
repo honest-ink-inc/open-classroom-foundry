@@ -34,6 +34,11 @@ public class SourceLensTests
         var observe = result.Document.Nodes.OfType<TableNode>().Last();
         Assert.Contains("observe", observe.HeaderRow![0], StringComparison.Ordinal);
         Assert.Contains("infer", observe.HeaderRow![1], StringComparison.Ordinal);
+        Assert.All(observe.Rows, row =>
+        {
+            Assert.Equal(SourceLensBuilder.ObservationPrompt, row[0]);
+            Assert.Equal(SourceLensBuilder.InferencePrompt, row[1]);
+        });
     }
 
     [Fact]

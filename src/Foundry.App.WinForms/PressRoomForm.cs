@@ -31,6 +31,10 @@ public sealed class PressRoomForm : Form
     private readonly Dictionary<string, Func<string>> _valueReaders = new(StringComparer.Ordinal);
     private readonly Func<string?> _libraryPicker;
     private readonly Func<ExportChoice?> _exportPicker;
+    private readonly Func<Storage.LoadedProject, LoadedProjectGreenConfirmation?> _loadedProjectPreflight;
+    private bool _loadingParameters;
+    private bool _reviewPending;
+    private long _stateGeneration;
     private ApprovedContext? _context;
 
     /// <summary>What an approval belongs to, whether it was pressed here or reopened from the library.</summary>
@@ -39,13 +43,24 @@ public sealed class PressRoomForm : Form
     /// <summary>Where an export goes and as what (the 1-based filter index of the export dialog).</summary>
     public sealed record ExportChoice(string Path, int FilterIndex);
 
+    /// <summary>Visible text is translated; Value is the catalog's unchanged submitted choice.</summary>
+    private sealed record ChoiceDisplayItem(string Value, string Text)
+    {
+        public override string ToString() => Text;
+    }
+
     /// <summary>The runner and picker seams exist so tests can drive the flows without modal dialogs; production uses the real ReviewForm and file dialogs. The export seam earns its place the hard way: the shell Save As dialog's name field cannot be committed by any cross-process automation (harness finding, 29 Aug 2026).</summary>
-    public PressRoomForm(Func<ReviewSession, ApprovedArtifact?>? reviewRunner = null, Func<string?>? libraryPicker = null, Func<ExportChoice?>? exportPicker = null)
+    public PressRoomForm(
+        Func<ReviewSession, ApprovedArtifact?>? reviewRunner = null,
+        Func<string?>? libraryPicker = null,
+        Func<ExportChoice?>? exportPicker = null,
+        Func<Storage.LoadedProject, LoadedProjectGreenConfirmation?>? loadedProjectPreflight = null)
     {
         _modalReview = reviewRunner is null;
         _reviewRunner = reviewRunner ?? RunModalReview;
         _libraryPicker = libraryPicker ?? PickFromLibraryDialog;
         _exportPicker = exportPicker ?? PickExportDialog;
+        _loadedProjectPreflight = loadedProjectPreflight ?? RunLoadedProjectPreflight;
 
         Text = UiStrings.MainWindowTitle;
         MinimumSize = new Size(860, 560);
@@ -53,7 +68,7 @@ public sealed class PressRoomForm : Form
         _pressList = new ListBox { Dock = DockStyle.Fill, AccessibleName = UiStrings.PressList };
         foreach (var definition in PressRoomCatalog.All)
         {
-            _pressList.Items.Add(UiStrings.Localize(definition.Title));
+            _pressList.Items.Add(UiStrings.Localize(UiCatalogIds.PressTitle(definition.Id), definition.Title));
         }
 
         _budget = new Label { AutoSize = true, AccessibleName = UiStrings.Format(UiStrings.BudgetLine, PressRoomCatalog.BudgetMinutes) };
@@ -79,6 +94,7 @@ public sealed class PressRoomForm : Form
         _tile = MakeButton(UiStrings.TileForWall, (_, _) => BeginInvoke(ShowTileDialog));
         var openLibrary = MakeButton(UiStrings.OpenFromLibrary, (_, _) => BeginInvoke(OpenFromLibrary));
         var allAboard = MakeButton(UiStrings.AllAboardOpen, (_, _) => BeginInvoke(OpenAllAboard));
+        var builtInStudios = MakeButton(UiStrings.BuiltInStudiosOpen, (_, _) => BeginInvoke(OpenModuleStudios));
 
         // No AccessibleName override: the message itself must be what a screen
         // reader hears, not the word "Status" (a harness finding, 29 Aug 2026).
@@ -86,7 +102,7 @@ public sealed class PressRoomForm : Form
         SetStatus(UiStrings.StatusReady);
 
         var buttons = new FlowLayoutPanel { Dock = DockStyle.Bottom, AutoSize = true, FlowDirection = FlowDirection.LeftToRight };
-        buttons.Controls.AddRange([_review, _print, _printView, _export, _save, _tile, openLibrary, allAboard]);
+        buttons.Controls.AddRange([_review, _print, _printView, _export, _save, _tile, openLibrary, allAboard, builtInStudios]);
 
         var right = new TableLayoutPanel { Dock = DockStyle.Fill, ColumnCount = 1, RowCount = 3 };
         right.RowStyles.Add(new RowStyle(SizeType.AutoSize));
@@ -107,6 +123,7 @@ public sealed class PressRoomForm : Form
         Controls.Add(_status);
 
         _pressList.SelectedIndexChanged += (_, _) => LoadPress();
+        _lowInk.CheckedChanged += (_, _) => InputChanged();
         _pressList.SelectedIndex = 0;
 
         UiLocale.ApplyChrome(this);
@@ -130,6 +147,8 @@ public sealed class PressRoomForm : Form
 
     private void LoadPress()
     {
+        _stateGeneration++;
+        _loadingParameters = true;
         ApprovedResult = null;
         _context = null;
         UpdateGatedButtons();
@@ -142,6 +161,7 @@ public sealed class PressRoomForm : Form
         if (SelectedPress is not { } definition)
         {
             _parameterPanel.ResumeLayout();
+            _loadingParameters = false;
             return;
         }
 
@@ -151,12 +171,14 @@ public sealed class PressRoomForm : Form
         }
 
         _parameterPanel.ResumeLayout();
+        _loadingParameters = false;
         SetStatus(UiStrings.StatusReady);
     }
 
     private void AddParameterRow(PressParameter parameter)
     {
-        var label = UiStrings.Localize(parameter.Label);
+        var pressId = SelectedPress?.Id ?? throw new InvalidOperationException();
+        var label = UiStrings.Localize(UiCatalogIds.PressParameter(pressId, parameter.Key), parameter.Label);
         Control control;
         switch (parameter)
         {
@@ -176,13 +198,16 @@ public sealed class PressRoomForm : Form
 
             case ChoiceParameter choice:
                 var combo = new ComboBox { DropDownStyle = ComboBoxStyle.DropDownList, Width = 160 };
-                foreach (var option in choice.Options)
+                for (var optionIndex = 0; optionIndex < choice.Options.Count; optionIndex++)
                 {
-                    combo.Items.Add(option);
+                    var value = choice.Options[optionIndex];
+                    combo.Items.Add(new ChoiceDisplayItem(
+                        value,
+                        UiStrings.Localize(UiCatalogIds.PressChoice(pressId, parameter.Key, value), value)));
                 }
 
                 combo.SelectedIndex = choice.Options.ToList().IndexOf(choice.Default);
-                _valueReaders[parameter.Key] = () => (string)combo.SelectedItem!;
+                _valueReaders[parameter.Key] = () => ((ChoiceDisplayItem)combo.SelectedItem!).Value;
                 control = combo;
                 break;
 
@@ -218,6 +243,21 @@ public sealed class PressRoomForm : Form
         }
 
         control.AccessibleName = label;
+        switch (control)
+        {
+            case NumericUpDown spinner:
+                spinner.ValueChanged += (_, _) => InputChanged();
+                break;
+            case ComboBox combo:
+                combo.SelectedIndexChanged += (_, _) => InputChanged();
+                break;
+            case CheckBox check:
+                check.CheckedChanged += (_, _) => InputChanged();
+                break;
+            case TextBox box:
+                box.TextChanged += (_, _) => InputChanged();
+                break;
+        }
 
         var row = _parameterPanel.RowCount++;
         _parameterPanel.RowStyles.Add(new RowStyle(SizeType.AutoSize));
@@ -239,8 +279,7 @@ public sealed class PressRoomForm : Form
             return;
         }
 
-        ApprovedResult = null;
-        _context = null;
+        ClearApproval();
 
         ArtifactDocument document;
         try
@@ -261,35 +300,49 @@ public sealed class PressRoomForm : Form
             document = LowInkPress.Apply(document);
         }
 
-        var session = AppServices.SessionOver(document);
+        var session = AppServices.SessionOverRecipe(
+            DraftArtifact.New(document, DataLane.Green),
+            new DefaultArtifactValidator(),
+            definition.Recipe);
         var context = new ApprovedContext(definition.Id, "deterministic-press", definition.Recipe.Id, definition.Recipe.Version);
+        var generation = _stateGeneration;
+        BeginPendingReview();
 
         if (_modalReview)
         {
             // The modal opens on the next message-loop beat, not re-entrantly
             // from the click: assistive technology and UI Automation see the
             // click complete, then the dialog arrive — no call left pending.
-            BeginInvoke(() => CompleteReview(context, session));
+            BeginInvoke(() => CompleteReview(context, session, generation));
         }
         else
         {
-            CompleteReview(context, session);
+            CompleteReview(context, session, generation);
         }
     }
 
-    private void CompleteReview(ApprovedContext context, ReviewSession session)
+    private void CompleteReview(ApprovedContext context, ReviewSession session, long generation)
     {
-        var approved = _reviewRunner(session);
-        if (approved is null)
+        try
         {
-            SetStatus(UiStrings.StatusNotApproved);
-            return;
-        }
+            var approved = _reviewRunner(session);
+            if (approved is null
+                || generation != _stateGeneration
+                || !AppServices.IsExactApproval(session, approved))
+            {
+                SetStatus(UiStrings.StatusNotApproved);
+                return;
+            }
 
-        ApprovedResult = approved;
-        _context = context;
-        UpdateGatedButtons();
-        SetStatus(UiStrings.StatusApproved);
+            ApprovedResult = approved;
+            _context = context;
+            UpdateGatedButtons();
+            SetStatus(UiStrings.StatusApproved);
+        }
+        finally
+        {
+            EndPendingReview();
+        }
     }
 
     private static ApprovedArtifact? RunModalReview(ReviewSession session)
@@ -412,9 +465,7 @@ public sealed class PressRoomForm : Form
             return;
         }
 
-        ApprovedResult = null;
-        _context = null;
-        UpdateGatedButtons();
+        ClearApproval();
 
         Storage.LoadedProject loaded;
         try
@@ -429,13 +480,42 @@ public sealed class PressRoomForm : Form
             return;
         }
 
-        CompleteReview(
-            new ApprovedContext(
+        // A mutable package cannot authenticate its module or recipe selectors.
+        // Any deliberate re-save is a portable semantic edit under an
+        // engine-owned identity, never fabricated continuation provenance.
+        var context = new ApprovedContext(
                 Path.GetFileNameWithoutExtension(path),
-                loaded.Manifest.ModuleId,
-                loaded.Manifest.RecipeId,
-                loaded.Manifest.RecipeVersion),
-            AppServices.SessionOver(loaded.Document));
+                AppServices.PortableProjectModuleId,
+                AppServices.PortableProjectRecipeId,
+                AppServices.PortableProjectRecipeVersion);
+        ReviewSession session;
+        try
+        {
+            var laneConfirmation = _loadedProjectPreflight(loaded);
+            if (laneConfirmation is null)
+            {
+                SetStatus(UiStrings.StatusLoadedProjectPreflightNotConfirmed);
+                return;
+            }
+
+            session = AppServices.SessionOverLoadedProject(loaded, laneConfirmation);
+        }
+        catch (InvalidOperationException refusal)
+        {
+            SetStatus(UiStrings.Format(UiStrings.StatusRefused, refusal.Message));
+            return;
+        }
+        var generation = ++_stateGeneration;
+        BeginPendingReview();
+        CompleteReview(context, session, generation);
+    }
+
+    private LoadedProjectGreenConfirmation? RunLoadedProjectPreflight(Storage.LoadedProject loaded)
+    {
+        using var preflight = new LoadedProjectPreflightForm(loaded);
+        return preflight.ShowDialog(this) == DialogResult.OK
+            ? preflight.Confirmation
+            : null;
     }
 
     private void ShowTileDialog()
@@ -482,11 +562,16 @@ public sealed class PressRoomForm : Form
             return;
         }
 
-        CompleteReview(
-            new ApprovedContext(
+        var context = new ApprovedContext(
                 _context.Name + "-tiles", "deterministic-press",
-                DeterministicPressRecipes.BigPrint.Id, DeterministicPressRecipes.BigPrint.Version),
-            AppServices.SessionOver(tiled));
+                DeterministicPressRecipes.BigPrint.Id, DeterministicPressRecipes.BigPrint.Version);
+        var session = AppServices.SessionOverRecipe(
+            DraftArtifact.TrustedLayoutDerivative(ApprovedResult, tiled, DataLane.Green),
+            new DefaultArtifactValidator(),
+            DeterministicPressRecipes.BigPrint);
+        var generation = ++_stateGeneration;
+        BeginPendingReview();
+        CompleteReview(context, session, generation);
     }
 
     private static string? PickFromLibraryDialog()
@@ -503,11 +588,50 @@ public sealed class PressRoomForm : Form
     private void UpdateGatedButtons()
     {
         // The structural gate, visible: these do nothing until a typed approval exists.
-        _print.Enabled = ApprovedResult is not null;
-        _printView.Enabled = ApprovedResult is not null;
-        _export.Enabled = ApprovedResult is not null;
-        _save.Enabled = ApprovedResult is not null;
-        _tile.Enabled = ApprovedResult is not null;
+        var approved = !_reviewPending && ApprovedResult is not null;
+        _review.Enabled = !_reviewPending;
+        _print.Enabled = approved;
+        _printView.Enabled = approved;
+        _export.Enabled = approved;
+        _save.Enabled = approved;
+        _tile.Enabled = approved;
+    }
+
+    private void InputChanged()
+    {
+        if (_loadingParameters)
+        {
+            return;
+        }
+
+        _stateGeneration++;
+        ClearApproval();
+        SetStatus(UiStrings.StatusModuleChanged);
+    }
+
+    private void ClearApproval()
+    {
+        ApprovedResult = null;
+        _context = null;
+        UpdateGatedButtons();
+    }
+
+    private void BeginPendingReview()
+    {
+        _reviewPending = true;
+        _pressList.Enabled = false;
+        _parameterPanel.Enabled = false;
+        _lowInk.Enabled = false;
+        UpdateGatedButtons();
+    }
+
+    private void EndPendingReview()
+    {
+        _reviewPending = false;
+        _pressList.Enabled = true;
+        _parameterPanel.Enabled = true;
+        _lowInk.Enabled = true;
+        UpdateGatedButtons();
     }
 
     private void SetStatus(string text) => _status.Text = text;
@@ -515,6 +639,12 @@ public sealed class PressRoomForm : Form
     private void OpenAllAboard()
     {
         using var form = new AllAboardForm(AppServices.SymbolCatalog());
+        form.ShowDialog(this);
+    }
+
+    private void OpenModuleStudios()
+    {
+        using var form = new ModuleStudioForm();
         form.ShowDialog(this);
     }
 }

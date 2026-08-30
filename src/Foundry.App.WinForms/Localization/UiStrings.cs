@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
+using System.Runtime.CompilerServices;
 using System.Text;
 
 namespace Foundry.App.WinForms;
@@ -7,6 +8,7 @@ public enum UiLocaleMode
 {
     Neutral,
     Pseudo,
+    ReviewedCatalog,
 }
 
 /// <summary>
@@ -15,7 +17,8 @@ public enum UiLocaleMode
 /// stretches every string by at least forty percent, brackets it so truncation
 /// confesses at a glance, and forces right-to-left mirroring — so layout and
 /// mirroring defects surface before the multilingual seat's review, not during
-/// it. Real translations arrive as additional catalogs; the mechanism is ready.
+/// it. A real catalog can activate only after the multilingual seat supplies
+/// its text and review assertion; this plumbing does not grant that review.
 /// </summary>
 public static class UiLocale
 {
@@ -23,22 +26,115 @@ public static class UiLocale
 
     public const string PseudoEnvironmentVariable = "OCF_PSEUDO_LOCALE";
 
+    public const string CatalogSwitch = "--ui-catalog";
+
+    public const string CatalogEnvironmentVariable = "OCF_UI_CATALOG";
+
+    public const string ExportTemplateSwitch = "--export-ui-catalog-template";
+
+    private static ReviewedUiCatalog? _catalog;
+
     public static UiLocaleMode Mode { get; private set; }
 
-    /// <summary>BCP-47-shaped tag for diagnostics and future catalogs; "ẋẋ" marks the pseudo-locale.</summary>
-    public static string LanguageTag => Mode == UiLocaleMode.Pseudo ? "ẋẋ" : "en";
+    /// <summary>Canonical BCP-47 tag for active reviewed catalogs; "ẋẋ" marks the pseudo-locale.</summary>
+    public static string LanguageTag => Mode switch
+    {
+        UiLocaleMode.Pseudo => "ẋẋ",
+        UiLocaleMode.ReviewedCatalog => _catalog!.LanguageTag,
+        _ => "en",
+    };
+
+    public static UiTextDirection TextDirection
+        => Mode == UiLocaleMode.Pseudo || _catalog?.Direction == UiTextDirection.RightToLeft
+            ? UiTextDirection.RightToLeft
+            : UiTextDirection.LeftToRight;
+
+    /// <summary>The active file's assertion; this is not authentication of the named human.</summary>
+    public static UiCatalogReviewMetadata? ActiveReview => _catalog?.Review;
+
+    public static UiCatalogProvenance? ActiveCatalogProvenance => _catalog?.Provenance;
 
     public static void Configure(string[] args)
+        => ConfigureCore(args, UiCatalogDeployment.ApprovedCatalogSha256);
+
+    /// <summary>
+    /// Exercises the selector and loader with synthetic, exact-byte pins. Only
+    /// friend test assemblies can supply these pins; production always uses
+    /// the build's compiled deployment allowlist.
+    /// </summary>
+    internal static void ConfigureForTest(
+        string[] args,
+        IReadOnlySet<string> approvedCatalogSha256)
+        => ConfigureCore(args, approvedCatalogSha256);
+
+    private static void ConfigureCore(
+        string[] args,
+        IReadOnlySet<string> approvedCatalogSha256)
     {
         ArgumentNullException.ThrowIfNull(args);
-        Mode = args.Contains(PseudoSwitch, StringComparer.Ordinal)
+        ArgumentNullException.ThrowIfNull(approvedCatalogSha256);
+        Reset();
+
+        var catalogPath = SwitchValue(args, CatalogSwitch)
+            ?? NullIfWhiteSpace(Environment.GetEnvironmentVariable(CatalogEnvironmentVariable));
+        var pseudo = args.Contains(PseudoSwitch, StringComparer.Ordinal)
+            || Environment.GetEnvironmentVariable(PseudoEnvironmentVariable) == "1";
+        if (pseudo && catalogPath is not null)
+        {
+            throw new InvalidDataException(UiStrings.CatalogSelectorConflict);
+        }
+
+        if (catalogPath is not null)
+        {
+            _catalog = UiCatalogDeployment.LoadApproved(
+                catalogPath,
+                approvedCatalogSha256);
+            Mode = UiLocaleMode.ReviewedCatalog;
+        }
+        else if (pseudo)
+        {
+            Mode = UiLocaleMode.Pseudo;
+        }
+    }
+
+    /// <summary>Writes the neutral review packet and tells Program not to open a window.</summary>
+    public static bool TryExportTemplate(string[] args)
+    {
+        ArgumentNullException.ThrowIfNull(args);
+        var path = SwitchValue(args, ExportTemplateSwitch);
+        if (path is null)
+        {
+            return false;
+        }
+
+        if (args.Contains(PseudoSwitch, StringComparer.Ordinal)
+            || SwitchValue(args, CatalogSwitch) is not null
             || Environment.GetEnvironmentVariable(PseudoEnvironmentVariable) == "1"
-            ? UiLocaleMode.Pseudo
-            : UiLocaleMode.Neutral;
+            || NullIfWhiteSpace(Environment.GetEnvironmentVariable(CatalogEnvironmentVariable)) is not null)
+        {
+            throw new InvalidDataException(UiStrings.CatalogExportSelectorConflict);
+        }
+
+        UiCatalogInventory.WriteTemplate(path);
+        return true;
     }
 
     /// <summary>Test seam; production code configures from args and environment.</summary>
-    public static void Set(UiLocaleMode mode) => Mode = mode;
+    public static void Set(UiLocaleMode mode)
+    {
+        if (mode == UiLocaleMode.ReviewedCatalog)
+        {
+            throw new ArgumentOutOfRangeException(nameof(mode));
+        }
+
+        _catalog = null;
+        Mode = mode;
+    }
+
+    internal static string Translate(string id, string neutralFallback)
+        => Mode == UiLocaleMode.ReviewedCatalog
+            ? _catalog!.Translate(id, neutralFallback)
+            : neutralFallback;
 
     /// <summary>
     /// The renderer forces dir="rtl" on right-to-left documents; this is the
@@ -48,12 +144,56 @@ public static class UiLocale
     public static void ApplyChrome(Form form)
     {
         ArgumentNullException.ThrowIfNull(form);
-        if (Mode == UiLocaleMode.Pseudo)
-        {
-            form.RightToLeft = RightToLeft.Yes;
-            form.RightToLeftLayout = true;
-        }
+        var rightToLeft = TextDirection == UiTextDirection.RightToLeft;
+        form.RightToLeft = rightToLeft ? RightToLeft.Yes : RightToLeft.No;
+        form.RightToLeftLayout = rightToLeft;
     }
+
+    private static void Reset()
+    {
+        _catalog = null;
+        Mode = UiLocaleMode.Neutral;
+    }
+
+    private static string? SwitchValue(string[] args, string switchName)
+    {
+        string? value = null;
+        for (var index = 0; index < args.Length; index++)
+        {
+            string? candidate = null;
+            if (string.Equals(args[index], switchName, StringComparison.Ordinal))
+            {
+                if (index + 1 >= args.Length || args[index + 1].StartsWith("--", StringComparison.Ordinal))
+                {
+                    throw new InvalidDataException(UiStrings.Format(UiStrings.CatalogSwitchValueMissing, switchName));
+                }
+
+                candidate = args[++index];
+            }
+            else if (args[index].StartsWith(switchName + "=", StringComparison.Ordinal))
+            {
+                candidate = args[index][(switchName.Length + 1)..];
+            }
+
+            if (candidate is null)
+            {
+                continue;
+            }
+
+            if (value is not null)
+            {
+                throw new InvalidDataException(UiStrings.Format(UiStrings.CatalogSwitchDuplicate, switchName));
+            }
+
+            value = NullIfWhiteSpace(candidate)
+                ?? throw new InvalidDataException(UiStrings.Format(UiStrings.CatalogSwitchValueMissing, switchName));
+        }
+
+        return value;
+    }
+
+    private static string? NullIfWhiteSpace(string? value)
+        => string.IsNullOrWhiteSpace(value) ? null : value;
 }
 
 /// <summary>
@@ -65,6 +205,9 @@ public static class UiLocale
 /// </summary>
 public static class UiStrings
 {
+    private static readonly Lock ChromeLock = new();
+    private static readonly Dictionary<string, string> ChromeFallbacks = new(StringComparer.Ordinal);
+
     // Main surface — the Press Room. The subtitle's neutral source lives in
     // ProductIdentity (ADR-006's single name record); localization routes here.
     public static string MainWindowTitle => Compose(T(ProductIdentity.Subtitle));
@@ -91,13 +234,77 @@ public static class UiStrings
 
     public static string StatusSaved => T("Saved to the library as {0}.");
 
+    public static string SavedArtifactContextMismatch => T("The saved validation context or render profile does not bind to this exact approved artifact.");
+
+    public static string SavedProjectNeedsManagedUpgrade => T("This saved project predates exact validation context. Prepare a managed side-by-side compatible copy before reopening it.");
+
+    public static string ProjectLibraryRootSwitchInvalid => T("The project-library-root switch is incomplete or repeated.");
+
+    public static string ProjectLibraryRootInvalid => T("The project library root must be an absolute existing non-linked directory.");
+
+    public static string ProjectLibraryRootVersionSegmentMissing => T("The project library root does not contain this engine's literal version segment.");
+
+    public static string ProjectOutsideConfiguredLibrary => T("The selected project is outside the configured project library.");
+
+    public static string SavedOriginUnverifiedWarning => T("This mutable package cannot authenticate its originating recipe, purpose, review notices, protected-seat review, or output settings. Treat its purpose as unknown; inspect every exact element, keep learner output selected unless teacher-only material is intended, and verify paper size and 100 percent calibration before printing. It cannot serve as an Access source.");
+
+    public static string LoadedProjectPreflightWindowTitle => Compose(T("reopened project data-lane preflight"));
+
+    public static string LoadedProjectPreflightIntroduction => T("A project package is editable, so its Green label is not evidence. Classify the content itself before exact Gate B review. If any statement is false, cancel; early-release outputs stay locked.");
+
+    public static string LoadedProjectPreflightChecklist => T("Green data-lane classification");
+
+    public static string LoadedProjectExactDocument => T("Exact loaded semantic document");
+
+    public static string LoadedProjectDocumentDigest => T("Exact semantic document SHA-256: {0}");
+
+    public static string LoadedProjectDocumentLanguage => T("Document language: {0}");
+
+    public static string LoadedProjectDocumentElement => T("Element {0}");
+
+    public static string ExactValueNotSet => T("(not set)");
+
+    public static string LoadedProjectExactStringFrame => T("UTF-16 code units {0}: \"{1}\"");
+
+    public static string BooleanYes => T("Yes");
+
+    public static string BooleanNo => T("No");
+
+    public static string TextAnchorStart => T("Start");
+
+    public static string TextAnchorMiddle => T("Middle");
+
+    public static string TextAnchorEnd => T("End");
+
+    public static string SeverityInformation => T("Information");
+
+    public static string SeverityWarning => T("Warning");
+
+    public static string SeverityBlocking => T("Blocking");
+
+    public static string LoadedProjectGreenContent => T("This exact project's content is generic, teacher-created, staged, openly licensed, public-domain, or otherwise authorized for this use.");
+
+    public static string LoadedProjectNoLearnerLinkedContent => T("It contains no student work, handwriting, faces, voices, identifying or linkable learner information, or personalized family communication.");
+
+    public static string LoadedProjectNoRestrictedContent => T("It contains no IEP/504, diagnosis, medical, counseling, behavioral, disciplinary, custody, private schedule, individualized AAC or communication, safety-disclosure, or recipient-list material.");
+
+    public static string LoadedProjectPreflightExactBinding => T("This teacher classification applies only to the exact selected document. Any change requires a new classification and fresh review; it does not authenticate purpose, recipe, or protected-seat approval.");
+
+    public static string ContinueToExactReview => T("&Continue to exact review");
+
+    public static string Cancel => T("&Cancel");
+
+    public static string LoadedProjectGreenChecklistIncomplete => T("Every Green data-lane statement must be confirmed for this exact document.");
+
+    public static string StatusLoadedProjectPreflightNotConfirmed => T("The reopened project remains Amber by default; Green outputs stay locked until its exact data-lane preflight is completed.");
+
     public static string StatusExported => T("Exported to {0}.");
 
     public static string StatusPrintView => T("Print view opened in your browser — print at 100 percent scale.");
 
     public static string PrintButton => T("&Print");
 
-    public static string StatusPrinted => T("Sent to the printer at 100 percent scale.");
+    public static string StatusPrinted => T("Sent to the printer; verify paper size and 100 percent scale with the calibration page.");
 
     public static string OpenFromLibrary => T("Open from &library…");
 
@@ -125,6 +332,87 @@ public static class UiStrings
 
     // All Aboard surface — the ratified 0.1 typed-steps slice only.
     public static string AllAboardOpen => T("&All Aboard task strip…");
+
+    // Built-in module studios. Module/field labels have stable identifiers in
+    // ModuleStudioCatalog; their neutral fallbacks pass through the same
+    // chrome catalog until a seat-reviewed language pack is supplied.
+    public static string BuiltInStudiosOpen => T("&Built-in studios…");
+
+    public static string ModuleStudioWindowTitle => Compose(T("built-in module studios"));
+
+    public static string ModuleDoors => T("Module doors");
+
+    public static string ModuleMode => T("Studio mode");
+
+    public static string ModuleInputs => T("Module inputs");
+
+    public static string ModuleLaneConfirmation => T("Data lane confirmation");
+
+    public static string ModuleClassroomSupportPurpose => T("This artifact is classroom support, not a formal or high-stakes assessment.");
+
+    public static string ModulePurposeClassification => T("Intended-use classification");
+
+    public static string GreenInputAttestation => T("I confirm these inputs are staged, generic, teacher-created, or openly licensed — &Green");
+
+    public static string ModuleNotes => T("Module notes and safeguards");
+
+    public static string ModuleOutputOptions => T("Reviewed output options");
+
+    public static string OutputAudience => T("Output audience");
+
+    public static string AudienceTeacher => T("Teacher copy");
+
+    public static string AudienceLearner => T("Learner copy");
+
+    public static string TextScalePercent => T("Text scale percent");
+
+    public static string TargetLanguageFirst => T("Target-&language first");
+
+    public static string ChooseApprovedProject => T("&Choose approved project…");
+
+    public static string NoApprovedProject => T("No approved project selected");
+
+    public static string ApprovedProjectSelected => T("Approved project selected: {0}");
+
+    public static string CurrentApprovedArtifactSelected => T("Current exact approval selected");
+
+    public static string ModuleLaneAndRecipe => T("Lane: {0}. Recipe: {1}, version {2}.");
+
+    public static string ModuleSyntheticStarter => T("The starter values are synthetic and contain no learner data.");
+
+    public static string ModuleApprovedInputRequired => T("This mode starts only from a Green project that passes a fresh named review.");
+
+    public static string ModuleSensitiveInput => T("This field can hold governed material. Follow the displayed lane and district safeguards.");
+
+    public static string ModuleProhibitedPurpose => T("Refused purpose: {0}");
+
+    public static string StatusModuleReady => T("Set the module inputs and reviewed output options, then review and approve.");
+
+    public static string StatusModuleGreenRequired => T("Green confirmation is required. Unknown or learner-linked inputs remain Amber and cannot enter this studio.");
+
+    public static string StatusModulePurposeRequired => T("Classify the intended use before review.");
+
+    public static string StatusModuleUnavailable => T("Unavailable: {0}");
+
+    public static string StatusModuleProjectApproved => T("The source project passed a fresh named review.");
+
+    public static string StatusModuleProjectNotApproved => T("The source project was not approved; Access Remix remains locked.");
+
+    public static string StatusModuleBuiltWithIssues => T("The draft has {0} blocking issue(s); review announces them and approval remains unavailable.");
+
+    public static string ModuleIssueDetail => T("{0}: {1}");
+
+    public static string StatusModuleApproved => T("Approved — print, print view, export, and save are unlocked for these output options.");
+
+    public static string StatusModuleNotApproved => T("Review ended without approval; no output is unlocked.");
+
+    public static string StatusModuleChanged => T("An input or output option changed; fresh review and approval are required.");
+
+    public static string ExportFilterModulePrint => T("Print HTML");
+
+    public static string ExportFilterModuleAccessible => T("Accessible HTML");
+
+    public static string RecordTableHint => T("Add rows as needed. Choice cells submit stable values even when their labels are translated.");
 
     public static string AllAboardWindowTitle => Compose(T("All Aboard — drafting a task strip"));
 
@@ -157,11 +445,17 @@ public static class UiStrings
 
     public static string LowInkToggle => T("Low &ink");
 
-    /// <summary>Module-supplied neutral text (press titles, parameter labels) rendered through the active locale.</summary>
-    public static string Localize(string neutral)
+    /// <summary>
+    /// Stable-id chrome seam for press and module labels. Unknown ids fall
+    /// back exactly; reviewed catalogs must contain every known inventory id.
+    /// </summary>
+    public static string Localize(string localizationId, string neutralFallback)
     {
-        ArgumentNullException.ThrowIfNull(neutral);
-        return T(neutral);
+        ArgumentException.ThrowIfNullOrWhiteSpace(localizationId);
+        ArgumentNullException.ThrowIfNull(neutralFallback);
+        return UiLocale.Mode == UiLocaleMode.Pseudo
+            ? Pseudoize(neutralFallback)
+            : UiLocale.Translate(localizationId, neutralFallback);
     }
 
     // Review surface.
@@ -169,11 +463,55 @@ public static class UiStrings
 
     public static string DraftElements => T("Draft elements");
 
+    public static string ReviewElementsTab => T("&Elements and issues");
+
+    public static string SourceComparisonTab => T("&Source comparison");
+
+    public static string VisualPreviewTab => T("&Visual preview");
+
+    public static string ExactSourceContext => T("Exact source or verified transcription");
+
+    public static string ExactCurrentDraft => T("Exact current semantic draft");
+
+    public static string SourceUnavailable => T("Source unavailable for this manual or reopened path. No source or transcription has been fabricated.");
+
+    public static string ExactSourceCodeUnitCount => T("UTF-16 code units: {0}");
+
+    public static string ExactSourceBegins => T("--- exact source begins ---");
+
+    public static string ExactSourceEnds => T("--- exact source ends ---");
+
+    public static string UnapprovedVisualPreview => T("Unapproved visual preview");
+
+    public static string UnapprovedPreviewBrowser => T("Embedded unapproved visual derivative; printing, saving, navigation, and browser shortcuts are disabled");
+
+    public static string UnapprovedPreviewStatus => T("UNAPPROVED DRAFT — preview only. This surface cannot print, export, or save the draft.");
+
+    public static string UnapprovedPreviewLoading => T("UNAPPROVED DRAFT — loading the exact visual preview. Approval remains locked until this exact revision is displayed.");
+
+    public static string UnapprovedPreviewProfile => T("Exact preview profile: {0}; {1}; text scale {2} percent; {3}.");
+
+    public static string PreviewPrintLayout => T("print HTML layout");
+
+    public static string PreviewAccessibleLayout => T("accessible HTML layout");
+
+    public static string PreviewSourceLanguageFirst => T("source language first");
+
+    public static string PreviewTargetLanguageFirst => T("target language first");
+
+    public static string PreviewUnavailable => T("The exact visual derivative could not be created. Approval remains locked: {0}");
+
+    public static string PreviewGenerationExhausted => T("The exact visual preview load identity was exhausted. Approval remains locked; close and reopen review.");
+
     public static string SelectedElementText => T("Selected element text");
 
     public static string ValidationIssues => T("Validation issues");
 
+    public static string SelectedValidationIssueDetail => T("Selected validation issue detail");
+
     public static string ApplyEdit => T("&Apply edit");
+
+    public static string EditElement => T("Edit &element…");
 
     public static string RemoveElement => T("&Remove element");
 
@@ -186,6 +524,154 @@ public static class UiStrings
     public static string Reject => T("Re&ject");
 
     public static string ApproveDescription => T("Records your named approval of this exact revision; only approved artifacts can print, save, or export.");
+
+    public static string ReviewWarningsAcknowledgement => T("I have reviewed the non-dismissable warnings");
+
+    public static string ReviewWarningsAcknowledgementDescription => T("Required warnings must be acknowledged before approval.");
+
+    public static string PendingEditMustBeAppliedOrRejected => T("Apply the pending edit or choose Reject to discard it before closing.");
+
+    public static string NodeEditorWindowTitle => Compose(T("editing one exact draft element"));
+
+    public static string ExactSelectedElementBeforeEdit => T("Exact selected element before edit");
+
+    public static string TypedElementFields => T("Typed element fields");
+
+    public static string ApplyReplacement => T("&Apply replacement");
+
+    public static string DiscardReplacement => T("&Discard replacement");
+
+    public static string PendingReplacementMustBeAppliedOrDiscarded => T("Apply this pending replacement or choose Discard replacement before closing.");
+
+    public static string NodeEditorInvalidNumber => T("Enter a finite number for {0}; the replacement has not been applied.");
+
+    public static string NodeEditorNoEditableFields => T("This element has no fields. It can still be moved or removed from the review surface.");
+
+    public static string EditorHeadingLevel => T("Heading level");
+
+    public static string EditorText => T("Text");
+
+    public static string EditorCardTitle => T("Card title");
+
+    public static string EditorCardBody => T("Card body");
+
+    public static string EditorAssetIdentity => T("Asset identity");
+
+    public static string EditorAlternativeText => T("Alternative text");
+
+    public static string EditorSourceText => T("Source text");
+
+    public static string EditorTargetText => T("Target text");
+
+    public static string EditorSourceLocale => T("Source locale");
+
+    public static string EditorTargetLocale => T("Target locale");
+
+    public static string EditorClaim => T("Evidence claim");
+
+    public static string EditorSourcePointer => T("Evidence source pointer");
+
+    public static string EditorIncludeTranslation => T("Include aligned translation and locales");
+
+    public static string EditorIncludeSymbol => T("Include step symbol");
+
+    public static string EditorSequenceItems => T("Sequence items");
+
+    public static string EditorItemText => T("Item text");
+
+    public static string AddItem => T("Add &item");
+
+    public static string RemoveItem => T("&Remove item");
+
+    public static string MoveItemUp => T("Move item &up");
+
+    public static string MoveItemDown => T("Move item do&wn");
+
+    public static string EditorTableHasHeader => T("First row contains table headers");
+
+    public static string EditorTableColumnCount => T("Table column count");
+
+    public static string EditorTableCells => T("Table cells; the first row is the header when selected");
+
+    public static string EditorTableColumn => T("Column {0}");
+
+    public static string EditorTableHeaderRow => T("Header");
+
+    public static string EditorTableDataRow => T("Row {0}");
+
+    public static string AddTableRow => T("Add &row");
+
+    public static string RemoveTableRow => T("Remo&ve row");
+
+    public static string MoveTableRowUp => T("Move row &up");
+
+    public static string MoveTableRowDown => T("Move row do&wn");
+
+    public static string EditorVectorDescription => T("Vector graphic accessible description");
+
+    public static string EditorVectorWidthMm => T("Vector graphic width in millimeters");
+
+    public static string EditorVectorHeightMm => T("Vector graphic height in millimeters");
+
+    public static string EditorVectorPrimitives => T("Vector primitives in drawing order");
+
+    public static string EditorVectorPrimitiveType => T("Primitive type to add or replace");
+
+    public static string AddPrimitive => T("Add pri&mitive");
+
+    public static string ReplacePrimitiveType => T("Replace primitive &type");
+
+    public static string RemovePrimitive => T("Remo&ve primitive");
+
+    public static string MovePrimitiveUp => T("Move primitive &up");
+
+    public static string MovePrimitiveDown => T("Move primitive do&wn");
+
+    public static string ApplyPrimitiveEdit => T("A&pply primitive edit");
+
+    public static string DiscardPrimitiveEdit => T("Dis&card primitive edit");
+
+    public static string PrimitiveLine => T("Line");
+
+    public static string PrimitiveCircle => T("Circle");
+
+    public static string PrimitiveRectangle => T("Rectangle");
+
+    public static string PrimitiveTextLabel => T("Text label");
+
+    public static string EditorX1Mm => T("Start X in millimeters");
+
+    public static string EditorY1Mm => T("Start Y in millimeters");
+
+    public static string EditorX2Mm => T("End X in millimeters");
+
+    public static string EditorY2Mm => T("End Y in millimeters");
+
+    public static string EditorCenterXMm => T("Center X in millimeters");
+
+    public static string EditorCenterYMm => T("Center Y in millimeters");
+
+    public static string EditorXPositionMm => T("X position in millimeters");
+
+    public static string EditorYPositionMm => T("Y position in millimeters");
+
+    public static string EditorRadiusMm => T("Radius in millimeters");
+
+    public static string EditorWidthMm => T("Width in millimeters");
+
+    public static string EditorHeightMm => T("Height in millimeters");
+
+    public static string EditorStrokeWidthMm => T("Stroke width in millimeters");
+
+    public static string EditorDashed => T("Dashed line");
+
+    public static string EditorFilled => T("Filled shape");
+
+    public static string EditorLabelText => T("Vector label text");
+
+    public static string EditorFontSizeMm => T("Font size in millimeters");
+
+    public static string EditorTextAnchor => T("Text anchor");
 
     public static string SplitterDraftEditor => T("Splitter between the draft list and the editor");
 
@@ -215,6 +701,50 @@ public static class UiStrings
 
     public static string NodeTeacherOnly => T("Teacher-only: {0}");
 
+    public static string NodeStepRow => T("Step row");
+
+    public static string NodePageBreak => T("Page break");
+
+    public static string NodeVectorGraphic => T("Vector graphic: {0}");
+
+    public static string NodeTextContent => T("Text: {0}");
+
+    public static string NodeBodyContent => T("Body: {0}");
+
+    public static string NodeTranslationContent => T("Translation: {0}");
+
+    public static string NodeLocalesContent => T("Locales: {0} to {1}");
+
+    public static string NodeSymbolAltContent => T("Symbol alt text: {0}");
+
+    public static string NodeImageAssetIdentity => T("Image asset id: {0}");
+
+    public static string NodeDimensionsContent => T("Dimensions: {0} × {1} mm");
+
+    public static string NodeVectorPrimitiveCounts => T("Vector primitives: {0} line(s), {1} circle(s), {2} rectangle(s), {3} text label(s)");
+
+    public static string NodeVectorLineDetail => T("Line: ({0}, {1}) mm to ({2}, {3}) mm; stroke {4} mm; dashed {5}");
+
+    public static string NodeVectorCircleDetail => T("Circle: center ({0}, {1}) mm; radius {2} mm; stroke {3} mm; filled {4}");
+
+    public static string NodeVectorRectangleDetail => T("Rectangle: x {0} mm, y {1} mm, width {2} mm, height {3} mm; stroke {4} mm; filled {5}");
+
+    public static string NodeVectorTextLabelDetail => T("Text label: x {0} mm, y {1} mm; text {2}; font {3} mm; anchor {4}");
+
+    public static string NodeTableHeaderCell => T("Header {0}: {1}");
+
+    public static string NodeTableCell => T("Row {0}, column {1}: {2}");
+
+    public static string NodeTableNoHeaders => T("Headers: none");
+
+    public static string NodeOrderedStepItem => T("Step {0}: {1}");
+
+    public static string NodeListItem => T("List item {0}: {1}");
+
+    public static string NodeChoiceItem => T("Choice {0}: {1}");
+
+    public static string NodeSourcePointerContent => T("Source pointer: {0}");
+
     public static string IssueLine => T("{0}: {1}");
 
     // Capture surface.
@@ -242,14 +772,124 @@ public static class UiStrings
 
     public static string ImagesFilterLabel => T("Images");
 
-    public static string Format(string template, params object[] arguments)
+    // Catalog startup and review-packet refusals. These stay in the neutral
+    // catalog too: an invalid pack cannot be trusted to translate its own error.
+    public static string CatalogSelectorConflict => T("Choose either the pseudo-locale or one reviewed UI catalog, not both.");
+
+    public static string CatalogExportSelectorConflict => T("Template export cannot be combined with a locale selector.");
+
+    public static string CatalogSwitchValueMissing => T("The {0} switch requires a file path.");
+
+    public static string CatalogSwitchDuplicate => T("The {0} switch may be supplied only once.");
+
+    public static string CatalogUnreadable => T("The UI catalog at {0} could not be read ({1}).");
+
+    public static string UiaHarnessSwitchInvalid => T("The UI Automation harness request is invalid.");
+
+    public static string UiaHarnessExportInvalid => T("The UI Automation harness export request is invalid.");
+
+    public static string CatalogInvalidJson => T("The UI catalog is not strict JSON near line {0}, byte {1}.");
+
+    public static string CatalogUnsupportedSchema => T("The UI catalog schema version is unsupported: {0}.");
+
+    public static string CatalogDraftRefused => T("This UI catalog is a draft. A named multilingual-seat review is required before activation.");
+
+    public static string CatalogReviewStatusInvalid => T("The UI catalog review status is invalid: {0}.");
+
+    public static string CatalogDirectionInvalid => T("The UI catalog direction must be exactly ltr or rtl, not {0}.");
+
+    public static string CatalogReviewerMissing => T("The reviewed UI catalog must name its reviewer without surrounding whitespace.");
+
+    public static string CatalogReviewerRoleInvalid => T("The reviewed UI catalog has the wrong reviewer role: {0}.");
+
+    public static string CatalogReviewDateInvalid => T("The reviewed-at time must be canonical UTC in yyyy-MM-ddTHH:mm:ssZ form, not {0}.");
+
+    public static string CatalogDigestMismatch => T("The reviewed UI catalog covers source digest {0}, but this build requires {1}.");
+
+    public static string CatalogNeutralMissing => T("The neutral source table is missing string id {0}.");
+
+    public static string CatalogNeutralUnknown => T("The neutral source table contains unknown string id {0}.");
+
+    public static string CatalogNeutralChanged => T("The neutral source text changed for string id {0}; export a fresh packet.");
+
+    public static string CatalogStringMissing => T("The translated string table is missing string id {0}.");
+
+    public static string CatalogStringUnknown => T("The translated string table contains unknown string id {0}.");
+
+    public static string CatalogStringBlank => T("The translated string is blank, padded, or contains a control character for string id {0}.");
+
+    public static string CatalogPlaceholderMismatch => T("Format placeholders do not match the neutral source for string id {0}.");
+
+    public static string CatalogMnemonicMismatch => T("Keyboard mnemonic markers do not match the neutral source for string id {0}.");
+
+    public static string CatalogObjectRequired => T("The UI catalog value at {0} must be an object.");
+
+    public static string CatalogPropertyUnknown => T("The UI catalog object {0} contains unknown property {1}.");
+
+    public static string CatalogPropertyDuplicate => T("The UI catalog object {0} repeats property {1}.");
+
+    public static string CatalogPropertyMissing => T("The UI catalog object {0} is missing property {1}.");
+
+    public static string CatalogStringRequired => T("The UI catalog value at {0}.{1} must be a string.");
+
+    public static string CatalogLanguageTagInvalid => T("The reviewed UI catalog language tag is not canonical or supported: {0}.");
+
+    public static string CatalogFormatInvalid => T("A UI catalog source or translation has invalid format braces: {0}.");
+
+    public static string CatalogProvenanceInvalid => T("The UI catalog provenance value is missing or malformed: {0}.");
+
+    public static string CatalogArrayRequired => T("The UI catalog value at {0} must be an array.");
+
+    public static string CatalogNotApprovedForBuild => T("This exact UI catalog is not approved for this Honest Ink build. A command-line path or JSON review assertion cannot grant multilingual-seat approval.");
+
+    public static string CatalogFileSizeInvalid => T("The UI catalog file is empty or exceeds the bounded catalog size.");
+
+    public static string Format(string template, params object?[] arguments)
         => string.Format(System.Globalization.CultureInfo.InvariantCulture, template, arguments);
+
+    internal static IReadOnlyDictionary<string, string> NeutralChrome
+    {
+        get
+        {
+            // Calling every public string property makes T register its stable
+            // member-name id and neutral fallback. No translated return value is
+            // used here, so active locale state cannot contaminate the packet.
+            foreach (var property in typeof(UiStrings).GetProperties()
+                .Where(property => property.PropertyType == typeof(string)
+                    && property.GetMethod?.IsStatic == true
+                    && property.GetIndexParameters().Length == 0))
+            {
+                _ = property.GetValue(null);
+            }
+
+            lock (ChromeLock)
+            {
+                return new SortedDictionary<string, string>(ChromeFallbacks, StringComparer.Ordinal);
+            }
+        }
+    }
 
     /// <summary>The public name never localizes (ADR-006); only the phrase beside it does.</summary>
     private static string Compose(string phrase) => $"{ProductIdentity.PublicName} — {phrase}";
 
-    private static string T(string neutral)
-        => UiLocale.Mode == UiLocaleMode.Pseudo ? Pseudoize(neutral) : neutral;
+    private static string T(string neutral, [CallerMemberName] string memberName = "")
+    {
+        var id = UiCatalogIds.Chrome(memberName);
+        lock (ChromeLock)
+        {
+            if (ChromeFallbacks.TryGetValue(id, out var existing)
+                && !string.Equals(existing, neutral, StringComparison.Ordinal))
+            {
+                throw new InvalidOperationException(id);
+            }
+
+            ChromeFallbacks[id] = neutral;
+        }
+
+        return UiLocale.Mode == UiLocaleMode.Pseudo
+            ? Pseudoize(neutral)
+            : UiLocale.Translate(id, neutral);
+    }
 
     /// <summary>
     /// Deterministic pseudo-localization: accents most letters, keeps format

@@ -3,12 +3,19 @@
   <ItemGroup>
     <ProjectReference Include="..\Foundry.Domain\Foundry.Domain.csproj" />
     <ProjectReference Include="..\Foundry.Contracts\Foundry.Contracts.csproj" />
+    <ProjectReference Include="..\Foundry.Rendering\Foundry.Rendering.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="Foundry.Tests.Integration" />
   </ItemGroup>
 
   <PropertyGroup>
     <TargetFramework>net10.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
+    <!-- Required by the LibraryImport-generated held-handle identity probes. -->
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
   </PropertyGroup>
 
 </Project>

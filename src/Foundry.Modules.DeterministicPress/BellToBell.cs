@@ -15,6 +15,8 @@ public sealed record PlannedActivity(int Minutes, string Label);
 
 public static class BellToBell
 {
+    public const string NoTransitionAfterClosure = "none — closure meets bell";
+
     /// <summary>Parses a start time like "8:30" — hours 0-23, minutes 0-59, refused loudly otherwise.</summary>
     public static int ParseStartMinutes(string start)
     {
@@ -125,7 +127,13 @@ public static class BellToBell
         // The closure holds its ground at the end of the period, whatever the
         // rows before it leave open.
         var closureStart = startMinutes + periodMinutes - closureMinutes;
-        rows.Add([Clock(closureStart), closureMinutes.ToString(System.Globalization.CultureInfo.InvariantCulture), closureLabel, ""]);
+        rows.Add(
+        [
+            Clock(closureStart),
+            closureMinutes.ToString(System.Globalization.CultureInfo.InvariantCulture),
+            closureLabel,
+            NoTransitionAfterClosure,
+        ]);
 
         var open = closureStart - clock;
         var summary = open == 0

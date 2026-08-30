@@ -37,7 +37,9 @@
   <Folder Name="/tests/Unit/">
     <Project Path="tests/Unit/Foundry.Tests.Unit.csproj" />
   </Folder>
-  <Folder Name="/tools/" />
+  <Folder Name="/tools/">
+    <Project Path="tools/ProjectUpgradeHost/Foundry.Tools.ProjectUpgradeHost.csproj" />
+  </Folder>
   <Folder Name="/tools/SampleGenerator/">
     <Project Path="tools/SampleGenerator/Foundry.Tools.SampleGenerator.csproj" />
   </Folder>

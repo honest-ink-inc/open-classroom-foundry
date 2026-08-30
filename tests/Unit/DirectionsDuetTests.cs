@@ -27,7 +27,8 @@ public class DirectionsDuetTests
         Assert.Equal(3, result.Document.Nodes.OfType<BilingualPair>().Count());
 
         var status = Assert.Single(result.Document.Nodes.OfType<TeacherOnlyNotice>());
-        Assert.Contains("Glossary 2026-fall.2", status.Text, StringComparison.Ordinal);
+        Assert.Contains("Working glossary 2026-fall.2", status.Text, StringComparison.Ordinal);
+        Assert.Contains("not approved by this application", status.Text, StringComparison.Ordinal);
         Assert.Contains("NOT yet language-reviewed", status.Text, StringComparison.Ordinal);
 
         // RC-6: the status speaks only to review, never to origin.
@@ -35,13 +36,25 @@ public class DirectionsDuetTests
     }
 
     [Fact]
-    public void A_recorded_reviewer_changes_the_status_honestly()
+    public void Caller_text_cannot_self_attest_a_language_review()
     {
-        var result = DirectionsDuetBuilder.Build(
-            "Morning routine", Steps(), "en", "es", SchoolGlossary, [], reviewedBy: "M. Alvarez, bilingual liaison");
+        var error = Assert.Throws<ArgumentException>(() => DirectionsDuetBuilder.Build(
+            "Morning routine", Steps(), "en", "es", SchoolGlossary, [], reviewedBy: "M. Alvarez, bilingual liaison"));
 
-        Assert.Contains("language-reviewed by M. Alvarez",
-            Assert.Single(result.Document.Nodes.OfType<TeacherOnlyNotice>()).Text, StringComparison.Ordinal);
+        Assert.Equal("reviewedBy", error.ParamName);
+        Assert.Contains("cannot be self-attested", error.Message, StringComparison.Ordinal);
+    }
+
+    [Theory]
+    [InlineData("e n", "es")]
+    [InlineData("en", "not_a_tag")]
+    public void Keyboard_language_tags_fail_clearly_before_a_duet_is_built(string sourceLocale, string targetLocale)
+    {
+        var error = Assert.Throws<ArgumentException>(() => DirectionsDuetBuilder.Build(
+            "Morning routine", Steps(), sourceLocale, targetLocale, SchoolGlossary, []));
+
+        Assert.Contains("structurally valid language tag", error.Message, StringComparison.Ordinal);
+        Assert.True(error.ParamName is "sourceLocale" or "targetLocale");
     }
 
     [Fact]
@@ -54,7 +67,9 @@ public class DirectionsDuetTests
 
         var result = DirectionsDuetBuilder.Build("Morning routine", steps, "en", "es", SchoolGlossary, []);
 
-        Assert.Contains(result.Issues, i => i.Code == "duet.glossary" && i.Message.Contains("carpeta", StringComparison.Ordinal));
+        Assert.Contains(result.Issues, i => i.Code == "duet.glossary"
+            && i.Message.Contains("carpeta", StringComparison.Ordinal)
+            && i.Message.Contains("not approved by this application", StringComparison.Ordinal));
     }
 
     [Fact]

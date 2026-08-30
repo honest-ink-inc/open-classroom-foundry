@@ -11,4 +11,11 @@
     <Nullable>enable</Nullable>
   </PropertyGroup>
 
+  <ItemGroup>
+    <!-- Draft-preview construction stays inside the desktop review shell.
+         Storage uses only the narrow public PortableProjectSnapshot verifier. -->
+    <InternalsVisibleTo Include="Foundry.App.WinForms" />
+    <InternalsVisibleTo Include="Foundry.Tests.Rendering" />
+  </ItemGroup>
+
 </Project>

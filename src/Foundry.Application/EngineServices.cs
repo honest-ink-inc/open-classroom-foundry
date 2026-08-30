@@ -5,7 +5,7 @@ using Foundry.Domain;
 namespace Foundry.Application;
 
 /// <summary>Delegates to the Domain gate — the only path that constructs approved content.</summary>
-public sealed class DomainApprovalGate : IApprovalGate
+internal sealed class DomainApprovalGate : IApprovalGate
 {
     public ApprovedArtifact Approve(DraftArtifact draft, string approvedBy, IReadOnlyList<ValidationIssue> outstandingIssues, DateTimeOffset approvedAtUtc)
         => ApprovalGate.Approve(draft, approvedBy, outstandingIssues, approvedAtUtc);

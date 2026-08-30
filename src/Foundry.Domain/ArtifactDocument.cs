@@ -1,4 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
+using System.Collections.ObjectModel;
+
 namespace Foundry.Domain;
 
 /// <summary>
@@ -7,9 +9,47 @@ namespace Foundry.Domain;
 /// scripts, arbitrary markup, remote resources, commands, and filesystem paths are
 /// unrepresentable by construction (there is no node that could carry them).
 /// </summary>
-public sealed record ArtifactDocument(IReadOnlyList<DocumentNode> Nodes, string? Language = null)
+public sealed record ArtifactDocument
 {
+    [System.Text.Json.Serialization.JsonConstructor]
+    public ArtifactDocument(IReadOnlyList<DocumentNode> nodes, string? language = null)
+    {
+        ArgumentNullException.ThrowIfNull(nodes);
+        Nodes = Freeze(nodes.Select(FreezeNode));
+        Language = language;
+    }
+
+    public IReadOnlyList<DocumentNode> Nodes { get; }
+
+    public string? Language { get; }
+
     public static ArtifactDocument Empty { get; } = new([]);
+
+    private static DocumentNode FreezeNode(DocumentNode node)
+    {
+        ArgumentNullException.ThrowIfNull(node);
+        return node switch
+        {
+            OrderedSteps steps => new OrderedSteps(Freeze(steps.Steps)),
+            UnorderedList list => new UnorderedList(Freeze(list.Items)),
+            TableNode table => new TableNode(
+                table.HeaderRow is null ? null : Freeze(table.HeaderRow),
+                Freeze(table.Rows.Select(Freeze))),
+            ChoiceSet choices => new ChoiceSet(Freeze(choices.Options)),
+            VectorGraphic graphic => new VectorGraphic(
+                graphic.WidthMm,
+                graphic.HeightMm,
+                Freeze(graphic.Primitives),
+                graphic.Description),
+            _ => node,
+        };
+    }
+
+    private static ReadOnlyCollection<T> Freeze<T>(IEnumerable<T> values)
+    {
+        ArgumentNullException.ThrowIfNull(values);
+        return Array.AsReadOnly(values.ToArray());
+    }
 }
 
 [System.Text.Json.Serialization.JsonPolymorphic(TypeDiscriminatorPropertyName = "$type")]

@@ -105,6 +105,9 @@ public static class AccessRemixer
         EditorId: "editor.review-session",
         RendererId: "renderer.accessible-html",
         SupportedExports: [RenderTarget.AccessibleHtml, RenderTarget.PrintHtml],
-        Warnings: ["Construct-change warnings are non-dismissable; a formal assessment disguised as a worksheet is refused."],
+        Warnings:
+        [
+            "Formal or high-stakes assessment conversion is prohibited. Access Remix accepts only an exact in-memory artifact explicitly classified for classroom support; it does not detect assessment content disguised as a worksheet.",
+        ],
         EvaluationSuiteVersion: "0.1");
 }

@@ -74,7 +74,7 @@ public class SuggestionFlowTests
             suggestion.Title, TaskStripSuggestionParser.ToSteps(suggestion), new EmptyCatalog());
         var session = new ReviewSession(
             DraftArtifact.New(document, DataLane.Green), MachineAtReview(),
-            new DefaultArtifactValidator(), new DomainApprovalGate());
+            new DefaultArtifactValidator());
 
         // The proposal is editable and only the teacher's act approves it.
         session.ReplaceNode(1, new Paragraph("Model output is a draft the teacher owns."));

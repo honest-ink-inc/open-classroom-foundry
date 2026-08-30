@@ -50,17 +50,51 @@ public sealed class AccessibleHtmlRenderer : IRenderer
                 $"{request.Target} rendering is not part of this renderer; it produces HTML, SVG, and vector-first PDF.");
         }
 
-        var html = Render(artifact, request);
+        var html = RenderHtmlDocument(
+            artifact.Revision.Document,
+            request,
+            artifact.Receipt,
+            isUnapprovedPreview: false);
         return Task.FromResult(new RenderedOutput(request.Target, Encoding.UTF8.GetBytes(html), "text/html"));
     }
 
-    private static string Render(ApprovedArtifact artifact, RenderRequest request)
+    /// <summary>
+    /// The one semantic HTML core used by approved output and the sealed
+    /// in-process draft preview. Approval controls the frame and output
+    /// capability, not a second rendering implementation: the derivative
+    /// between the exact-derivative markers is byte-for-byte the same for the
+    /// same document and request.
+    /// </summary>
+    internal static string RenderHtmlDocument(
+        ArtifactDocument document,
+        RenderRequest request,
+        ApprovalReceipt? approval,
+        bool isUnapprovedPreview,
+        bool isPortableSnapshot = false)
     {
-        var document = artifact.Revision.Document;
+        ArgumentNullException.ThrowIfNull(document);
+        ArgumentNullException.ThrowIfNull(request);
+        if (request.Target is not (RenderTarget.AccessibleHtml or RenderTarget.PrintHtml))
+        {
+            throw new ArgumentOutOfRangeException(nameof(request));
+        }
+
+        if (isPortableSnapshot
+            ? isUnapprovedPreview || approval is not null || request.Audience != RenderAudience.Learner
+            : isUnapprovedPreview == (approval is not null))
+        {
+            throw new ArgumentException(
+                "HTML must be framed as either an approved output with a receipt or an unapproved preview without one.");
+        }
+
         var builder = new StringBuilder();
 
         var language = Attribute(document.Language ?? "en");
-        var title = document.Nodes.OfType<Heading>().FirstOrDefault()?.Text ?? "Approved artifact";
+        var documentTitle = document.Nodes.OfType<Heading>().FirstOrDefault()?.Text
+            ?? (isUnapprovedPreview ? UnapprovedMark : "Approved artifact");
+        var title = isUnapprovedPreview
+            ? $"{UnapprovedMark} — {documentTitle}"
+            : documentTitle;
 
         builder.Append("<!DOCTYPE html>\n");
         builder.Append("<html lang=\"").Append(language).Append('"');
@@ -84,8 +118,108 @@ public sealed class AccessibleHtmlRenderer : IRenderer
             builder.Append(PrintStyle);
         }
 
-        builder.Append("</style>\n</head>\n<body>\n");
+        if (isUnapprovedPreview)
+        {
+            builder.Append(UnapprovedPreviewStyle);
+        }
 
+        builder.Append("</style>\n</head>\n<body");
+        if (isUnapprovedPreview)
+        {
+            builder.Append(" class=\"unapproved-draft-preview\" data-review-state=\"unapproved\"");
+        }
+
+        builder.Append(">\n");
+        if (isUnapprovedPreview)
+        {
+            // Both literal banners remain in the document if its complete
+            // contents are copied. The fixed watermark is visible over every
+            // printed page; the embedded browser disables its own copy/print/
+            // save shortcuts as a second, UI-level containment measure.
+            builder.Append("<aside class=\"unapproved-draft-banner\" role=\"status\">")
+                .Append(UnapprovedMark)
+                .Append(" — preview only; approve the exact revision before use.</aside>\n")
+                .Append("<div class=\"unapproved-draft-watermark\" aria-hidden=\"true\">")
+                .Append(UnapprovedMark)
+                .Append("</div>\n");
+        }
+
+        var derivative = RenderSemanticDerivative(document, request);
+        if (isUnapprovedPreview)
+        {
+            builder.Append(ExactDerivativeStart).Append('\n');
+        }
+
+        builder.Append(derivative);
+        if (isUnapprovedPreview)
+        {
+            builder.Append(ExactDerivativeEnd).Append('\n');
+        }
+
+        if (request.Audience == RenderAudience.Teacher && approval is not null)
+        {
+            builder.Append("<footer class=\"approval\"><p>Approved by ")
+                .Append(Text(approval.ApprovedBy))
+                .Append(" · revision ")
+                .Append(approval.RevisionNumber)
+                .Append(" · ")
+                .Append(Text(approval.ApprovedAtUtc.ToString("u", System.Globalization.CultureInfo.InvariantCulture)))
+                .Append("</p></footer>\n");
+        }
+
+        if (isUnapprovedPreview)
+        {
+            builder.Append("<p class=\"unapproved-draft-banner unapproved-draft-banner-end\">")
+                .Append(UnapprovedMark)
+                .Append(" — end of preview.</p>\n");
+        }
+
+        builder.Append("</body>\n</html>\n");
+        return builder.ToString();
+    }
+
+    /// <summary>
+    /// Canonical portable-project snapshot. A package carries the exact learner
+    /// derivative, never the approval receipt or teacher-only material. Keeping
+    /// this on the renderer's semantic core lets the hostile-package reader
+    /// reconstruct and compare every byte from artifact.json and the bounded
+    /// render profile without minting a synthetic approval identity.
+    /// </summary>
+    internal static byte[] RenderPortableSnapshot(
+        ArtifactDocument document,
+        RenderRequest request)
+    {
+        ArgumentNullException.ThrowIfNull(document);
+        ArgumentNullException.ThrowIfNull(request);
+        if (request.Target != RenderTarget.AccessibleHtml
+            || request.Audience != RenderAudience.Learner)
+        {
+            throw new ArgumentOutOfRangeException(
+                nameof(request),
+                "A portable project snapshot is always learner-audience accessible HTML.");
+        }
+
+        return Encoding.UTF8.GetBytes(RenderHtmlDocument(
+            document,
+            request,
+            approval: null,
+            isUnapprovedPreview: false,
+            isPortableSnapshot: true));
+    }
+
+    /// <summary>
+    /// Exact body fragment shared by approved output and draft preview. It has
+    /// no frame, approval receipt, preview marker, or output capability. Keeping
+    /// it separate lets tests prove equality without adding comments or other
+    /// tokens to persisted approved snapshots.
+    /// </summary>
+    internal static string RenderSemanticDerivative(
+        ArtifactDocument document,
+        RenderRequest request)
+    {
+        ArgumentNullException.ThrowIfNull(document);
+        ArgumentNullException.ThrowIfNull(request);
+        var builder = new StringBuilder();
         // Step rows group into ordered lists whose numbering derives from document
         // order and continues across page breaks (chunking preserves numbering).
         var stepNumber = 1;
@@ -117,18 +251,6 @@ public sealed class AccessibleHtmlRenderer : IRenderer
             }
         }
 
-        if (request.Audience == RenderAudience.Teacher)
-        {
-            builder.Append("<footer class=\"approval\"><p>Approved by ")
-                .Append(Text(artifact.Receipt.ApprovedBy))
-                .Append(" · revision ")
-                .Append(artifact.Receipt.RevisionNumber)
-                .Append(" · ")
-                .Append(Text(artifact.Receipt.ApprovedAtUtc.ToString("u", System.Globalization.CultureInfo.InvariantCulture)))
-                .Append("</p></footer>\n");
-        }
-
-        builder.Append("</body>\n</html>\n");
         return builder.ToString();
     }
 
@@ -412,6 +534,12 @@ public sealed class AccessibleHtmlRenderer : IRenderer
         return primary is "ar" or "he" or "fa" or "ur";
     }
 
+    internal const string UnapprovedMark = "UNAPPROVED DRAFT — NOT FOR USE";
+
+    internal const string ExactDerivativeStart = "<!-- exact-artifact-derivative:start -->";
+
+    internal const string ExactDerivativeEnd = "<!-- exact-artifact-derivative:end -->";
+
     private const string BaseStyle =
         """
         body { font-family: "Segoe UI", system-ui, sans-serif; line-height: 1.5; margin: 2rem; }
@@ -436,5 +564,44 @@ public sealed class AccessibleHtmlRenderer : IRenderer
         li, .card, .bilingual-pair, tr { break-inside: avoid; }
         figure.vector-sheet { break-after: page; break-inside: avoid; margin: 0; }
         .page-break { break-after: page; }
+        """;
+
+    private const string UnapprovedPreviewStyle =
+        """
+
+        .unapproved-draft-preview { position: relative; }
+        .unapproved-draft-banner {
+          position: relative;
+          z-index: 2147483647;
+          border: 4px solid #8b0000;
+          background: #fff4f4;
+          color: #650000;
+          font-weight: 800;
+          padding: 0.75rem;
+          margin: 0 0 1rem 0;
+          text-align: center;
+        }
+        .unapproved-draft-banner-end { margin: 1rem 0 0 0; }
+        .unapproved-draft-watermark {
+          position: fixed;
+          z-index: 2147483646;
+          left: 8%;
+          right: 8%;
+          top: 42%;
+          transform: rotate(-22deg);
+          border: 0.16em solid rgba(139, 0, 0, 0.34);
+          color: rgba(139, 0, 0, 0.34);
+          font-size: 3.2rem;
+          font-weight: 900;
+          line-height: 1.15;
+          padding: 0.35em;
+          text-align: center;
+          pointer-events: none;
+        }
+        @media print {
+          .unapproved-draft-banner,
+          .unapproved-draft-watermark { display: block !important; }
+          .unapproved-draft-watermark { position: fixed; }
+        }
         """;
 }

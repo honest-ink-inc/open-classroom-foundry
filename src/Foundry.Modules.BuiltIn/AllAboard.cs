@@ -14,10 +14,92 @@ public sealed record StepSpec(string Text, AssetId? Symbol = null, string? Targe
 
 public sealed record CardSpec(string Label, string Body = "", AssetId? Symbol = null, string? SymbolAltText = null);
 
+/// <summary>
+/// A typed All Aboard build result. The module, not a generic form or package,
+/// owns the in-memory classroom-support classification consumed by Access.
+/// </summary>
+public sealed class AllAboardBuildOutcome
+{
+    private readonly ArtifactPurposeEvidence _purposeEvidence;
+
+    internal AllAboardBuildOutcome(
+        ArtifactDocument document,
+        RecipeManifest recipe,
+        DataLane lane,
+        ArtifactPurposeEvidence purposeEvidence)
+    {
+        ArgumentNullException.ThrowIfNull(document);
+        ArgumentNullException.ThrowIfNull(purposeEvidence);
+        if (!purposeEvidence.AppliesTo(document, lane))
+        {
+            throw new InvalidOperationException(
+                "An All Aboard outcome cannot carry purpose evidence for another document or lane.");
+        }
+
+        Document = document;
+        Recipe = recipe;
+        Lane = lane;
+        _purposeEvidence = purposeEvidence;
+    }
+
+    public ArtifactDocument Document { get; }
+
+    public RecipeManifest Recipe { get; }
+
+    public DataLane Lane { get; }
+
+    public ArtifactPurpose Purpose => _purposeEvidence.Purpose;
+
+    public DraftArtifact CreateDraft() => DraftArtifact.NewClassified(Document, Lane, _purposeEvidence);
+}
+
 public static class AllAboardBuilders
 {
     public const int MinimumSteps = 3;
     public const int MaximumSteps = 8;
+
+    public static AllAboardBuildOutcome BuildTaskStrip(
+        string title,
+        IReadOnlyList<StepSpec> steps,
+        IAssetCatalog assetCatalog,
+        string sourceLocale = "en",
+        string? targetLocale = null)
+        => Outcome(
+            TaskStrip(title, steps, assetCatalog, sourceLocale, targetLocale),
+            AllAboardRecipes.TaskStrip);
+
+    public static AllAboardBuildOutcome BuildFirstThen(
+        CardSpec first,
+        CardSpec then,
+        IAssetCatalog assetCatalog,
+        string language = "en",
+        string firstLabel = "First",
+        string thenLabel = "Then")
+        => Outcome(
+            FirstThen(first, then, assetCatalog, language, firstLabel, thenLabel),
+            AllAboardRecipes.FirstThen);
+
+    public static AllAboardBuildOutcome BuildNowNextDone(
+        CardSpec now,
+        CardSpec next,
+        CardSpec done,
+        IAssetCatalog assetCatalog,
+        string language = "en",
+        string nowLabel = "Now",
+        string nextLabel = "Next",
+        string doneLabel = "Done")
+        => Outcome(
+            NowNextDone(now, next, done, assetCatalog, language, nowLabel, nextLabel, doneLabel),
+            AllAboardRecipes.NowNextDone);
+
+    public static AllAboardBuildOutcome BuildAgencyCards(
+        IReadOnlyList<AssetId> symbols,
+        IAssetCatalog assetCatalog,
+        string language = "en",
+        IReadOnlyList<string>? labels = null)
+        => Outcome(
+            AgencyCards(symbols, assetCatalog, language, labels),
+            AllAboardRecipes.AgencyCards);
 
     /// <summary>A three-to-eight-step task strip; bilingual when a target locale is given.</summary>
     public static ArtifactDocument TaskStrip(
@@ -30,6 +112,11 @@ public static class AllAboardBuilders
         ArgumentException.ThrowIfNullOrWhiteSpace(title);
         ArgumentNullException.ThrowIfNull(steps);
         ArgumentNullException.ThrowIfNull(assetCatalog);
+        LanguageTag.RequireValid(sourceLocale, nameof(sourceLocale));
+        if (targetLocale is not null)
+        {
+            LanguageTag.RequireValid(targetLocale, nameof(targetLocale));
+        }
 
         if (steps.Count is < MinimumSteps or > MaximumSteps)
         {
@@ -84,6 +171,7 @@ public static class AllAboardBuilders
     {
         ArgumentNullException.ThrowIfNull(symbols);
         ArgumentNullException.ThrowIfNull(assetCatalog);
+        LanguageTag.RequireValid(language, nameof(language));
 
         if (symbols.Count == 0)
         {
@@ -101,8 +189,12 @@ public static class AllAboardBuilders
         for (var i = 0; i < symbols.Count; i++)
         {
             var provenance = Resolve(symbols[i], assetCatalog);
+            var cardLabel = labels?[i] ?? provenance.IntendedMeaning;
             nodes.Add(new ImageReference(symbols[i], provenance.AltText));
-            nodes.Add(new Card(labels?[i] ?? provenance.IntendedMeaning, string.Empty));
+            // The label is the learner-facing action, not empty layout filler.
+            // Repeating it in the body keeps a Card structurally complete while
+            // leaving curator ambiguity notes exclusively in teacher content.
+            nodes.Add(new Card(cardLabel, cardLabel));
 
             if (!string.IsNullOrWhiteSpace(provenance.AmbiguityNotes))
             {
@@ -117,6 +209,7 @@ public static class AllAboardBuilders
     private static ArtifactDocument Sequence(IAssetCatalog assetCatalog, string language, params (string Label, CardSpec Spec)[] cards)
     {
         ArgumentNullException.ThrowIfNull(assetCatalog);
+        LanguageTag.RequireValid(language, nameof(language));
 
         var nodes = new List<DocumentNode>();
         foreach (var (label, spec) in cards)
@@ -127,7 +220,8 @@ public static class AllAboardBuilders
                 nodes.Add(ImageFor(symbol, assetCatalog));
             }
 
-            nodes.Add(new Card($"{label}: {spec.Label}", spec.Body));
+            var body = string.IsNullOrWhiteSpace(spec.Body) ? spec.Label : spec.Body;
+            nodes.Add(new Card($"{label}: {spec.Label}", body));
         }
 
         return new ArtifactDocument(nodes, language);
@@ -142,6 +236,18 @@ public static class AllAboardBuilders
     private static AssetProvenance Resolve(AssetId id, IAssetCatalog assetCatalog)
         => assetCatalog.Find(id)
             ?? throw new InvalidOperationException($"Symbol '{id.Value}' has no provenance in the catalog; unknown rights block distribution.");
+
+    private static AllAboardBuildOutcome Outcome(
+        ArtifactDocument document,
+        RecipeManifest recipe)
+        => new(
+            document,
+            recipe,
+            DataLane.Green,
+            ArtifactPurposeEvidence.ClassroomSupport(
+                document,
+                DataLane.Green,
+                ArtifactPurposeAuthority.BuiltInAllAboard));
 }
 
 /// <summary>The thin slice's recipe identities (plan §6.6). Data only; Green lane; no model required.</summary>

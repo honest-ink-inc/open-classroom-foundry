@@ -78,9 +78,20 @@ public sealed record RenderRequest(
 
 public sealed record RenderedOutput(RenderTarget Target, ReadOnlyMemory<byte> Content, string MimeType);
 
-public sealed record PrintRequest(string PrinterName, bool Duplex, int Copies);
+public sealed record PrintRequest(
+    string PrinterName,
+    bool Duplex,
+    int Copies,
+    RenderAudience Audience = RenderAudience.Learner,
+    double TextScalePercent = 100,
+    bool TargetLanguageFirst = false);
 
-public sealed record ExportRequest(RenderTarget Target, string DestinationHint);
+public sealed record ExportRequest(
+    RenderTarget Target,
+    string DestinationHint,
+    RenderAudience Audience = RenderAudience.Learner,
+    double TextScalePercent = 100,
+    bool TargetLanguageFirst = false);
 
 /// <summary>
 /// DestinationHint is a file-name stem inside the store's teacher-selected root —
@@ -92,6 +103,8 @@ public sealed record ProjectSaveRequest(
     string ModuleId = "",
     string RecipeId = "",
     string RecipeVersion = "",
-    DateTimeOffset SavedAtUtc = default);
+    DateTimeOffset SavedAtUtc = default,
+    ProjectValidationEnvelope? Validation = null,
+    ProjectRenderProfile? RenderProfile = null);
 
 public sealed record RecipeRunInputs(IReadOnlyList<SourceEnvelope> Sources, IReadOnlyDictionary<string, string> Parameters);

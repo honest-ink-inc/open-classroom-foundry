@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 using System.Diagnostics;
 using System.IO;
+using System.Runtime.CompilerServices;
 using System.Windows.Automation;
 
 namespace Foundry.Tests.UiAutomation;
@@ -57,6 +58,8 @@ public sealed partial class HeadedUiaWalkTests
 
     private sealed class HeadedApp : IDisposable
     {
+        private readonly string? _ownedRehearsalRoot;
+
         public Process Process { get; }
 
         public AutomationElement Window { get; }
@@ -66,10 +69,25 @@ public sealed partial class HeadedUiaWalkTests
             var exe = Path.Combine(AppContext.BaseDirectory, "Foundry.App.WinForms.exe");
             Assert.True(File.Exists(exe), $"App executable not beside the tests: {exe}");
 
-            Process = Process.Start(new ProcessStartInfo(exe, $"--uia-harness {harnessMode}"))!;
+            var arguments = $"--uia-harness {harnessMode}";
+            if (harnessMode is "pressroom" or "allaboard" or "modules")
+            {
+                _ownedRehearsalRoot = Path.Combine(
+                    Path.GetTempPath(),
+                    "ocf-rehearsal-" + Guid.NewGuid().ToString("N"));
+                var library = Path.Combine(
+                    _ownedRehearsalRoot,
+                    Domain.EngineIdentity.EngineVersion,
+                    "prepared-library");
+                Directory.CreateDirectory(library);
+                arguments += $" {App.WinForms.ProjectLibraryRootConfiguration.Switch} \"{library}\"";
+            }
+
+            Process = Process.Start(new ProcessStartInfo(exe, arguments))!;
             Window = WaitFor(() => AutomationElement.RootElement.FindFirst(
                 TreeScope.Children,
-                new PropertyCondition(AutomationElement.ProcessIdProperty, Process.Id)));
+                new PropertyCondition(AutomationElement.ProcessIdProperty, Process.Id)),
+                expectation: $"the top-level window for harness mode '{harnessMode}' (process {Process.Id})");
         }
 
         public void Dispose()
@@ -77,13 +95,30 @@ public sealed partial class HeadedUiaWalkTests
             if (!Process.HasExited)
             {
                 Process.Kill(entireProcessTree: true);
+                _ = Process.WaitForExit(5000);
             }
 
             Process.Dispose();
+            if (_ownedRehearsalRoot is not null)
+            {
+                try
+                {
+                    Directory.Delete(_ownedRehearsalRoot, recursive: true);
+                }
+                catch (Exception failure) when (failure is IOException or UnauthorizedAccessException)
+                {
+                    // The process is already gone; temp cleanup must not hide
+                    // the headed assertion that owns this fixture.
+                }
+            }
         }
     }
 
-    private static T WaitFor<T>(Func<T?> probe, int timeoutMs = 20000)
+    private static T WaitFor<T>(
+        Func<T?> probe,
+        int timeoutMs = 20000,
+        string? expectation = null,
+        [CallerArgumentExpression(nameof(probe))] string? probeExpression = null)
         where T : class
     {
         var clock = Stopwatch.StartNew();
@@ -97,13 +132,15 @@ public sealed partial class HeadedUiaWalkTests
             Thread.Sleep(200);
         }
 
-        throw new TimeoutException("The UI Automation element did not appear in time.");
+        var awaited = expectation ?? probeExpression ?? "the requested UI Automation condition";
+        throw new TimeoutException($"Timed out after {timeoutMs} ms waiting for {awaited}.");
     }
 
     private static AutomationElement ByName(AutomationElement scope, ControlType type, string name)
         => WaitFor(() => scope.FindFirst(TreeScope.Descendants, new AndCondition(
             new PropertyCondition(AutomationElement.ControlTypeProperty, type),
-            new PropertyCondition(AutomationElement.NameProperty, name))));
+            new PropertyCondition(AutomationElement.NameProperty, name))),
+            expectation: $"a {type.ProgrammaticName} named '{name}'");
 
     [HeadedFact]
     public void Part1_Steps1and2_the_review_window_exposes_only_named_roled_reachable_controls()
@@ -116,9 +153,9 @@ public sealed partial class HeadedUiaWalkTests
 
         // Step 2: every keyboard-reachable element carries a name — over the
         // real UIA tree, not the WinForms model — and the document order (which
-        // is the tab-cycle order) follows the visual logic: splitter, draft
-        // list, splitter, editor, issues, then the action buttons. The window's
-        // own system menu is OS chrome, excluded.
+        // is the tab-cycle order) follows the visual logic: the review tabs and
+        // selected tab, splitter, draft list, splitter, editor, issues, then the
+        // action buttons. The window's own system menu is OS chrome, excluded.
         var focusable = app.Window.FindAll(
                 TreeScope.Descendants,
                 new PropertyCondition(AutomationElement.IsKeyboardFocusableProperty, true))
@@ -134,12 +171,19 @@ public sealed partial class HeadedUiaWalkTests
 
         Assert.Equal(
             [
+                App.WinForms.UiStrings.ReviewWindowTitle,
+                App.WinForms.UiStrings.ReviewElementsTab.Replace("&", string.Empty, StringComparison.Ordinal),
                 "Splitter between the draft list and the editor",
                 "Draft elements",
                 "Splitter between the editor and the validation issues",
                 "Selected element text",
                 "Validation issues",
+                "Selected validation issue detail",
+                App.WinForms.UiStrings.ReviewElementsTab,
+                App.WinForms.UiStrings.SourceComparisonTab,
+                App.WinForms.UiStrings.VisualPreviewTab,
                 "Apply edit",
+                "Edit element…",
                 "Remove element",
                 "Move up",
                 "Move down",
@@ -231,14 +275,7 @@ public sealed partial class HeadedUiaWalkTests
         ((InvokePattern)ByName(app.Window, ControlType.Button, "Review and approve…")
             .GetCurrentPattern(InvokePattern.Pattern)).Invoke();
 
-        var review = WaitFor(() =>
-        {
-            var handle = Win32WindowByTitle(app.Process.Id, "reviewing a draft");
-            return handle == IntPtr.Zero ? null : AutomationElement.FromHandle(handle);
-        });
-
-        ((InvokePattern)ByName(review, ControlType.Button, "Approve")
-            .GetCurrentPattern(InvokePattern.Pattern)).Invoke();
+        ApproveGateB(app);
 
         // Approval unlocks the gated actions on the main window.
         var export = ByName(app.Window, ControlType.Button, "Export…");
@@ -264,14 +301,7 @@ public sealed partial class HeadedUiaWalkTests
         ((InvokePattern)ByName(app.Window, ControlType.Button, "Review and approve…")
             .GetCurrentPattern(InvokePattern.Pattern)).Invoke();
 
-        var review = WaitFor(() =>
-        {
-            var handle = Win32WindowByTitle(app.Process.Id, "reviewing a draft");
-            return handle == IntPtr.Zero ? null : AutomationElement.FromHandle(handle);
-        });
-
-        ((InvokePattern)ByName(review, ControlType.Button, "Approve")
-            .GetCurrentPattern(InvokePattern.Pattern)).Invoke();
+        ApproveGateB(app);
 
         var export = ByName(app.Window, ControlType.Button, "Export…");
         WaitFor(() => export.Current.IsEnabled ? export : null);

@@ -36,6 +36,7 @@ public static class BoardToBriefBuilder
     {
         ArgumentNullException.ThrowIfNull(lines);
         ArgumentNullException.ThrowIfNull(lockedFields);
+        LanguageTag.RequireValid(language, nameof(language));
 
         var issues = new List<ValidationIssue>();
 

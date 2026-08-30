@@ -31,6 +31,7 @@ public static class LessonLoomBuilder
         ArgumentNullException.ThrowIfNull(phases);
         ArgumentNullException.ThrowIfNull(materials);
         ArgumentNullException.ThrowIfNull(accessRoutes);
+        LanguageTag.RequireValid(language, nameof(language));
 
         var issues = new List<ValidationIssue>();
 

@@ -32,7 +32,48 @@ public sealed partial class HeadedUiaWalkTests
 
     /// <summary>Gate B arrives as its own window; approving it is the teacher's signature.</summary>
     private static void ApproveGateB(HeadedApp app)
-        => InvokeButton(DialogByTitle(app, "reviewing a draft"), "Approve");
+    {
+        var dialog = DialogByTitle(app, "reviewing a draft");
+        var acknowledgement = dialog.FindFirst(
+            TreeScope.Descendants,
+            new AndCondition(
+                new PropertyCondition(AutomationElement.ControlTypeProperty, ControlType.CheckBox),
+                new PropertyCondition(
+                    AutomationElement.NameProperty,
+                    "I have reviewed the non-dismissable warnings")));
+        if (acknowledgement is not null)
+        {
+            var toggle = (TogglePattern)acknowledgement.GetCurrentPattern(TogglePattern.Pattern);
+            if (toggle.Current.ToggleState == ToggleState.Off)
+            {
+                toggle.Toggle();
+            }
+        }
+
+        InvokeButton(dialog, "Approve");
+    }
+
+    private static void CompleteLoadedProjectPreflight(HeadedApp app)
+    {
+        var preflight = DialogByTitle(app, "reopened project data-lane preflight");
+        var exactDocument = ByName(preflight, ControlType.Edit, "Exact loaded semantic document");
+        var exactValue = (ValuePattern)exactDocument.GetCurrentPattern(ValuePattern.Pattern);
+        Assert.True(exactValue.Current.IsReadOnly);
+        Assert.Contains("Exact semantic document SHA-256", exactValue.Current.Value, StringComparison.Ordinal);
+
+        foreach (var statement in new[]
+        {
+            "This exact project's content is generic, teacher-created, staged, openly licensed, public-domain, or otherwise authorized for this use.",
+            "It contains no student work, handwriting, faces, voices, identifying or linkable learner information, or personalized family communication.",
+            "It contains no IEP/504, diagnosis, medical, counseling, behavioral, disciplinary, custody, private schedule, individualized AAC or communication, safety-disclosure, or recipient-list material.",
+        })
+        {
+            ((TogglePattern)ByName(preflight, ControlType.CheckBox, statement)
+                .GetCurrentPattern(TogglePattern.Pattern)).Toggle();
+        }
+
+        InvokeButton(preflight, "Continue to exact review");
+    }
 
     /// <summary>The speaking status line: waits until it says what the rehearsal expects.</summary>
     private static void AwaitStatus(AutomationElement window, string prefix)
@@ -45,9 +86,10 @@ public sealed partial class HeadedUiaWalkTests
     [HeadedFact]
     public void PilotDay_dress_rehearsal_cold_start_to_reopened_booklet_and_low_ink_over_real_uia()
     {
-        var library = Path.Combine(
+        var rehearsalRoot = Path.Combine(
             Path.GetTempPath(),
             "ocf-rehearsal-" + Guid.NewGuid().ToString("N", System.Globalization.CultureInfo.InvariantCulture));
+        var library = Path.Combine(rehearsalRoot, Domain.EngineIdentity.EngineVersion, "prepared-library");
         Directory.CreateDirectory(library);
         try
         {
@@ -57,7 +99,7 @@ public sealed partial class HeadedUiaWalkTests
         {
             try
             {
-                Directory.Delete(library, recursive: true);
+                Directory.Delete(rehearsalRoot, recursive: true);
             }
             catch (IOException)
             {
@@ -70,7 +112,7 @@ public sealed partial class HeadedUiaWalkTests
     {
         var booklet = Path.Combine(library, "rehearsal-booklet.pdf");
         using var app = new HeadedApp(
-            $"pressroom {App.WinForms.UiaHarness.LibraryRootSwitch} \"{library}\""
+            $"pressroom {App.WinForms.ProjectLibraryRootConfiguration.Switch} \"{library}\""
             + $" {App.WinForms.UiaHarness.ExportToSwitch} \"{booklet}\"");
 
         // Cold start: the front door says its name, the status line speaks,
@@ -113,6 +155,7 @@ public sealed partial class HeadedUiaWalkTests
         // is not what this rehearsal guards.
         Assert.EndsWith(".ocfproj", project, StringComparison.Ordinal);
         InvokeButton(app.Window, "Open from library…");
+        CompleteLoadedProjectPreflight(app);
         ApproveGateB(app);
         AwaitStatus(app.Window, "Approved —");
 

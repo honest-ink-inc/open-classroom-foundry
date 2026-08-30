@@ -29,7 +29,7 @@ public class CaptureFlowTests
         }
 
         using var stream = new MemoryStream();
-        bitmap.Save(stream, ImageFormat.Png);
+        GdiPlusImageEncoder.Save(bitmap, stream, ImageFormat.Png);
         return stream.ToArray();
     }
 
@@ -73,7 +73,7 @@ public class CaptureFlowTests
             capture.Machine.Transition(state);
         }
 
-        var review = new ReviewSession(draft, capture.Machine, new DefaultArtifactValidator(), new DomainApprovalGate());
+        var review = new ReviewSession(draft, capture.Machine, new DefaultArtifactValidator());
         var approved = review.Approve("teacher@example.org", SomeInstant);
 
         store.PurgeAll();
@@ -140,7 +140,7 @@ public class SymbolPreflightTests
             }
 
             using var stream = new MemoryStream();
-            bitmap.Save(stream, ImageFormat.Jpeg);
+            GdiPlusImageEncoder.Save(bitmap, stream, ImageFormat.Jpeg);
             plain = stream.ToArray();
         }
 

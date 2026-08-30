@@ -97,8 +97,32 @@ public class FamilyBridgeTests
 
         var status = result.Document.Nodes.OfType<TeacherOnlyNotice>()
             .Single(n => n.Text.Contains("Translation status", StringComparison.Ordinal));
+        Assert.Contains("Working glossary 2026-fall.2", status.Text, StringComparison.Ordinal);
+        Assert.Contains("not approved by this application", status.Text, StringComparison.Ordinal);
         Assert.Contains("NOT yet language-reviewed", status.Text, StringComparison.Ordinal);
         Assert.DoesNotContain("machine", status.Text, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public void Caller_text_cannot_self_attest_a_language_review()
+    {
+        var error = Assert.Throws<ArgumentException>(() => FamilyBridgeBuilder.Build(
+            "Trip", Letter(), "Sign the slip.", "Ms. Rivera", SchoolGlossary, [],
+            targetLocale: "es", reviewedBy: "M. Alvarez, bilingual liaison"));
+
+        Assert.Equal("reviewedBy", error.ParamName);
+        Assert.Contains("cannot be self-attested", error.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Keyboard_language_tags_fail_clearly_before_a_family_letter_is_built()
+    {
+        var error = Assert.Throws<ArgumentException>(() => FamilyBridgeBuilder.Build(
+            "Trip", Letter(), "Sign the slip.", "Ms. Rivera", SchoolGlossary, [],
+            sourceLocale: "en", targetLocale: "not_a_tag"));
+
+        Assert.Equal("targetLocale", error.ParamName);
+        Assert.Contains("structurally valid language tag", error.Message, StringComparison.Ordinal);
     }
 
     [Fact]

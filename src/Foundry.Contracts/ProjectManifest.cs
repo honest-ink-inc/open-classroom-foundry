@@ -19,4 +19,5 @@ public sealed record ProjectManifest(
     string? OutputLocale,
     string EngineVersion,
     string ArtifactPath,
-    IReadOnlyList<string> AssetIds);
+    IReadOnlyList<string> AssetIds,
+    ArtifactPurpose Purpose = ArtifactPurpose.Unknown);

@@ -31,4 +31,49 @@ public class SinkContractTests
     {
         Assert.Empty(typeof(ApprovedArtifact).GetConstructors(BindingFlags.Public | BindingFlags.Instance));
     }
+
+    [Fact]
+    public void Unapproved_preview_capability_is_confined_to_the_review_surface()
+    {
+        var appRoot = Path.Combine(RepoRoot(), "src", "Foundry.App.WinForms");
+        var callers = Directory.EnumerateFiles(appRoot, "*.cs", SearchOption.AllDirectories)
+            .Where(path => !path.Contains(
+                    $"{Path.DirectorySeparatorChar}obj{Path.DirectorySeparatorChar}",
+                    StringComparison.Ordinal)
+                && !path.Contains(
+                    $"{Path.DirectorySeparatorChar}bin{Path.DirectorySeparatorChar}",
+                    StringComparison.Ordinal)
+                && File.ReadAllText(path).Contains(
+                    "UnapprovedDraftPreviewFactory",
+                    StringComparison.Ordinal))
+            .Select(path => Path.GetFileName(path) ?? string.Empty)
+            .Order(StringComparer.Ordinal)
+            .ToArray();
+
+        Assert.Equal(["ReviewForm.cs"], callers);
+        Assert.DoesNotContain(
+            Directory.EnumerateFiles(appRoot, "*.cs", SearchOption.AllDirectories)
+                .Where(path => !path.Contains(
+                    $"{Path.DirectorySeparatorChar}obj{Path.DirectorySeparatorChar}",
+                    StringComparison.Ordinal)
+                    && !path.Contains(
+                        $"{Path.DirectorySeparatorChar}bin{Path.DirectorySeparatorChar}",
+                        StringComparison.Ordinal)),
+            path => File.ReadAllText(path).Contains(
+                "RenderSemanticDerivative",
+                StringComparison.Ordinal));
+    }
+
+    private static string RepoRoot()
+    {
+        var directory = new DirectoryInfo(AppContext.BaseDirectory);
+        while (directory is not null
+            && !File.Exists(Path.Combine(directory.FullName, "OpenClassroomFoundry.slnx")))
+        {
+            directory = directory.Parent;
+        }
+
+        return directory?.FullName
+            ?? throw new InvalidOperationException();
+    }
 }

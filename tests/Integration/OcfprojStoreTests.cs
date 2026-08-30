@@ -57,7 +57,10 @@ public class OcfprojStoreTests : IDisposable
             _catalog);
 
         return ApprovalGate.Approve(
-            DraftArtifact.New(document, DataLane.Green), "teacher@example.org", [], SomeInstant);
+            DraftArtifact.New(document, DataLane.Green, ArtifactPurpose.ClassroomSupport),
+            "teacher@example.org",
+            [],
+            SomeInstant);
     }
 
     private static ProjectSaveRequest Request(string hint) => new(
@@ -77,6 +80,7 @@ public class OcfprojStoreTests : IDisposable
 
         Assert.Equal("all-aboard.task-strip", loaded.Manifest.RecipeId);
         Assert.Equal(DataLane.Green, loaded.Manifest.DataLane);
+        Assert.Equal(ArtifactPurpose.ClassroomSupport, loaded.Manifest.Purpose);
         Assert.Equal(["agency.help.v1", "agency.finished.v1"], loaded.Manifest.AssetIds);
     }
 
@@ -98,6 +102,244 @@ public class OcfprojStoreTests : IDisposable
         var snapshot = reader.ReadToEnd();
         Assert.Contains("Watering the class plants", snapshot, StringComparison.Ordinal);
         Assert.Contains("<ol class=\"steps\">", snapshot, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task A_contextual_save_writes_exact_validation_and_uses_the_bound_render_profile()
+    {
+        var document = new ArtifactDocument(
+        [
+            new Heading(1, "Synthetic contextual project"),
+            new TeacherOnlyNotice("Synthetic teacher-only proof"),
+        ], "en");
+        var warning = ValidationIssue.Warning("synthetic.notice", "Synthetic reviewed notice.");
+        var artifact = ApprovalGate.Approve(
+            DraftArtifact.New(document, DataLane.Green, ArtifactPurpose.ClassroomSupport),
+            "teacher@example.org",
+            [warning],
+            SomeInstant);
+        var validation = ProjectValidationEnvelope.Exact(
+            artifact,
+            "all-aboard.task-strip",
+            "0.1.0");
+        var profile = ProjectRenderProfile.For(
+            artifact,
+            RenderAudience.Teacher,
+            175,
+            targetLanguageFirst: true);
+        var request = Request("contextual") with
+        {
+            Validation = validation,
+            RenderProfile = profile,
+        };
+
+        await _store.SaveGreenProjectAsync(artifact, request, CancellationToken.None);
+
+        using (var archive = ZipFile.OpenRead(_store.PathFor("contextual")))
+        {
+            Assert.NotNull(archive.GetEntry("validation.json"));
+            Assert.NotNull(archive.GetEntry("render-profile.json"));
+            using var snapshotReader = new StreamReader(archive.GetEntry("snapshot.html")!.Open(), Encoding.UTF8);
+            var snapshot = snapshotReader.ReadToEnd();
+            Assert.Contains("body { font-size: 175%; }", snapshot, StringComparison.Ordinal);
+            Assert.DoesNotContain("Synthetic teacher-only proof", snapshot, StringComparison.Ordinal);
+            Assert.DoesNotContain("teacher@example.org", snapshot, StringComparison.Ordinal);
+        }
+
+        var loaded = await _store.LoadProjectAsync("contextual", CancellationToken.None);
+        Assert.NotNull(loaded.Validation);
+        Assert.Equal(validation.SchemaVersion, loaded.Validation.SchemaVersion);
+        Assert.Equal(validation.Kind, loaded.Validation.Kind);
+        Assert.Equal(validation.RecipeId, loaded.Validation.RecipeId);
+        Assert.Equal(validation.RecipeVersion, loaded.Validation.RecipeVersion);
+        Assert.Equal(validation.Lane, loaded.Validation.Lane);
+        Assert.Equal(validation.Purpose, loaded.Validation.Purpose);
+        Assert.Equal(validation.ArtifactSha256, loaded.Validation.ArtifactSha256);
+        Assert.Equal(validation.UntrustedNoticeCodes, loaded.Validation.UntrustedNoticeCodes);
+        Assert.Equal(profile, loaded.RenderProfile);
+        Assert.Equal(["synthetic.notice"], loaded.Validation.UntrustedNoticeCodes);
+    }
+
+    [Fact]
+    public async Task Save_context_is_all_or_nothing_and_must_bind_to_the_exact_artifact()
+    {
+        var artifact = ApprovedStrip();
+        var validation = ProjectValidationEnvelope.Exact(
+            artifact,
+            "all-aboard.task-strip",
+            "0.1.0");
+        var profile = ProjectRenderProfile.For(artifact);
+
+        await Assert.ThrowsAsync<InvalidOperationException>(() => _store.SaveGreenProjectAsync(
+            artifact,
+            Request("half-context") with { Validation = validation },
+            CancellationToken.None));
+        await Assert.ThrowsAsync<InvalidOperationException>(() => _store.SaveGreenProjectAsync(
+            artifact,
+            Request("wrong-recipe") with
+            {
+                Validation = validation with { RecipeId = "different.recipe" },
+                RenderProfile = profile,
+            },
+            CancellationToken.None));
+
+        Assert.False(File.Exists(_store.PathFor("half-context")));
+        Assert.False(File.Exists(_store.PathFor("wrong-recipe")));
+    }
+
+    [Fact]
+    public void Snapshot_validation_accepts_inline_vector_markup_and_literal_url_text()
+    {
+        var snapshot =
+            """
+            <!DOCTYPE html>
+            <html lang="en"><head><meta charset="utf-8"><title>Vector</title>
+            <style>body { font-family: system-ui, sans-serif; }</style></head>
+            <body><p>Read https://example.invalid and the literal text src= before class.</p>
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 10 10" width="10mm" height="10mm">
+            <rect x="0" y="0" width="10" height="10" fill="none" stroke="#000"/>
+            <text x="5" y="5">https://example.invalid is inert text</text></svg></body></html>
+            """;
+
+        OcfprojPackageValidator.ValidateSnapshotBytes(Encoding.UTF8.GetBytes(snapshot));
+    }
+
+    [Theory]
+    [InlineData("<p src=\"https://example.invalid/pixel\">external source</p>")]
+    [InlineData("<p onclick=\"alert(1)\">event handler</p>")]
+    [InlineData("<p style=\"background: red\">inline style</p>")]
+    [InlineData("<p href=\"https://example.invalid\">external link</p>")]
+    [InlineData("<svg xmlns=\"http://www.w3.org/2000/svg\"><rect fill=\"url(https://example.invalid/a.svg)\"/></svg>")]
+    [InlineData("<style>body { background: url(https://example.invalid/a.png); }</style>")]
+    [InlineData("<meta http-equiv=\"refresh\" content=\"0; url=https://example.invalid\">")]
+    [InlineData("<iframe title=\"active\"></iframe>")]
+    public void Snapshot_validation_rejects_active_tags_external_attributes_and_style_sources(string payload)
+    {
+        var snapshot = $"<!DOCTYPE html><html><head><meta charset=\"utf-8\"><title>Hostile</title></head><body>{payload}</body></html>";
+
+        Assert.ThrowsAny<InvalidOperationException>(
+            () => OcfprojPackageValidator.ValidateSnapshotBytes(Encoding.UTF8.GetBytes(snapshot)));
+    }
+
+    [Fact]
+    public async Task A_safe_but_unrelated_snapshot_is_refused_by_exact_semantic_correspondence()
+    {
+        await _store.SaveGreenProjectAsync(ApprovedStrip(), Request("snapshot-substitution"), CancellationToken.None);
+        var unrelated =
+            "<!DOCTYPE html>\n<html lang=\"en\">\n<head>\n<meta charset=\"utf-8\">\n<title>Unrelated</title>\n<style>body { font-family: system-ui; }</style>\n</head>\n<body>\n<h1>A different safe artifact</h1>\n</body>\n</html>\n";
+        var unrelatedBytes = Encoding.UTF8.GetBytes(unrelated);
+        OcfprojPackageValidator.ValidateSnapshotBytes(unrelatedBytes);
+
+        var path = _store.PathFor("snapshot-substitution");
+        using (var stream = new FileStream(path, FileMode.Open, FileAccess.ReadWrite, FileShare.None))
+        using (var archive = new ZipArchive(stream, ZipArchiveMode.Update))
+        {
+            archive.GetEntry("snapshot.html")!.Delete();
+            var replacement = archive.CreateEntry("snapshot.html", CompressionLevel.Optimal);
+            replacement.LastWriteTime = SomeInstant;
+            await using var entry = replacement.Open();
+            await entry.WriteAsync(unrelatedBytes);
+        }
+
+        var exception = await Assert.ThrowsAsync<InvalidOperationException>(
+            () => _store.LoadProjectAsync("snapshot-substitution", CancellationToken.None));
+        Assert.Contains("does not correspond exactly", exception.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task An_unknown_snapshot_renderer_version_is_refused_instead_of_guessed()
+    {
+        await _store.SaveGreenProjectAsync(ApprovedStrip(), Request("unknown-renderer"), CancellationToken.None);
+        var path = _store.PathFor("unknown-renderer");
+        using (var stream = new FileStream(path, FileMode.Open, FileAccess.ReadWrite, FileShare.None))
+        using (var archive = new ZipArchive(stream, ZipArchiveMode.Update))
+        {
+            var manifestEntry = archive.GetEntry("manifest.json")!;
+            string manifest;
+            using (var reader = new StreamReader(manifestEntry.Open(), Encoding.UTF8))
+            {
+                manifest = reader.ReadToEnd();
+            }
+
+            var changed = manifest.Replace(
+                $"\"engineVersion\": \"{EngineIdentity.EngineVersion}\"",
+                "\"engineVersion\": \"unadmitted-synthetic-version\"",
+                StringComparison.Ordinal);
+            Assert.NotEqual(manifest, changed);
+            manifestEntry.Delete();
+            var replacement = archive.CreateEntry("manifest.json", CompressionLevel.Optimal);
+            replacement.LastWriteTime = SomeInstant;
+            await using var output = replacement.Open();
+            await output.WriteAsync(Encoding.UTF8.GetBytes(changed));
+        }
+
+        var exception = await Assert.ThrowsAsync<InvalidOperationException>(
+            () => _store.LoadProjectAsync("unknown-renderer", CancellationToken.None));
+        Assert.Contains("no admitted exact renderer version", exception.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task A_failed_staged_candidate_cannot_damage_the_prior_valid_package()
+    {
+        await _store.SaveGreenProjectAsync(ApprovedStrip(), Request("atomic-survival"), CancellationToken.None);
+        var path = _store.PathFor("atomic-survival");
+        var priorBytes = await File.ReadAllBytesAsync(path);
+        var replacement = ApprovalGate.Approve(
+            DraftArtifact.New(
+                new ArtifactDocument([new Heading(1, "Replacement that must not land")], "en"),
+                DataLane.Green,
+                ArtifactPurpose.ClassroomSupport),
+            "teacher@example.org",
+            [],
+            SomeInstant);
+        var invalidCandidateStore = new OcfprojProjectStore(
+            _root,
+            new SafeButUnrelatedSnapshotRenderer(),
+            _catalog);
+
+        var exception = await Assert.ThrowsAnyAsync<InvalidOperationException>(
+            () => invalidCandidateStore.SaveGreenProjectAsync(
+                replacement,
+                Request("atomic-survival"),
+                CancellationToken.None));
+
+        Assert.Contains("does not correspond exactly", exception.Message, StringComparison.Ordinal);
+        Assert.Equal(priorBytes, await File.ReadAllBytesAsync(path));
+        Assert.Empty(Directory.EnumerateFiles(_root, "*.stage", SearchOption.TopDirectoryOnly));
+        var reopened = await _store.LoadProjectAsync("atomic-survival", CancellationToken.None);
+        Assert.Equal("Watering the class plants", Assert.IsType<Heading>(reopened.Document.Nodes[0]).Text);
+    }
+
+    [Fact]
+    public async Task A_canceled_staged_save_cannot_damage_the_prior_valid_package()
+    {
+        await _store.SaveGreenProjectAsync(ApprovedStrip(), Request("atomic-cancellation"), CancellationToken.None);
+        var path = _store.PathFor("atomic-cancellation");
+        var priorBytes = await File.ReadAllBytesAsync(path);
+        var replacement = ApprovalGate.Approve(
+            DraftArtifact.New(
+                new ArtifactDocument([new Heading(1, "Canceled replacement")], "en"),
+                DataLane.Green,
+                ArtifactPurpose.ClassroomSupport),
+            "teacher@example.org",
+            [],
+            SomeInstant);
+        using var cancellation = new CancellationTokenSource();
+        var canceledStore = new OcfprojProjectStore(
+            _root,
+            new CancelAfterRenderingRenderer(cancellation),
+            _catalog);
+
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(
+            () => canceledStore.SaveGreenProjectAsync(
+                replacement,
+                Request("atomic-cancellation"),
+                cancellation.Token));
+
+        Assert.Equal(priorBytes, await File.ReadAllBytesAsync(path));
+        Assert.Empty(Directory.EnumerateFiles(_root, "*.stage", SearchOption.TopDirectoryOnly));
+        var reopened = await _store.LoadProjectAsync("atomic-cancellation", CancellationToken.None);
+        Assert.Equal("Watering the class plants", Assert.IsType<Heading>(reopened.Document.Nodes[0]).Text);
     }
 
     [Fact]
@@ -151,10 +393,10 @@ public class OcfprojStoreTests : IDisposable
     }
 
     [Fact]
-    public async Task Hostile_entry_names_are_inert_because_nothing_is_ever_extracted()
+    public async Task Hostile_entry_names_are_refused_and_nothing_is_ever_extracted()
     {
-        // A package with a zip-slip entry beside valid content: loading reads the
-        // known entries by exact name and extracts nothing to disk.
+        // A package with a zip-slip entry beside valid content is rejected by
+        // the exact topology validator before anything can be extracted.
         var artifact = ApprovedStrip();
         await _store.SaveGreenProjectAsync(artifact, Request("host"), CancellationToken.None);
 
@@ -169,9 +411,10 @@ public class OcfprojStoreTests : IDisposable
         }
 
         var escapeTarget = Path.GetFullPath(Path.Combine(_root, "..", "evil.txt"));
-        var loaded = await _store.LoadProjectAsync("hostile", CancellationToken.None);
+        var exception = await Assert.ThrowsAsync<InvalidOperationException>(
+            () => _store.LoadProjectAsync("hostile", CancellationToken.None));
 
-        Assert.Equal(DataLane.Green, loaded.Manifest.DataLane);
+        Assert.Contains("unsafe", exception.Message, StringComparison.Ordinal);
         Assert.False(File.Exists(escapeTarget));
     }
 
@@ -260,7 +503,10 @@ public class OcfprojStoreTests : IDisposable
             DraftArtifact.New(new ArtifactDocument([new Heading(1, "Undated")]), DataLane.Green),
             "teacher@example.org", [], SomeInstant);
 
-        await _store.SaveGreenProjectAsync(artifact, new ProjectSaveRequest("undated"), CancellationToken.None);
+        await _store.SaveGreenProjectAsync(
+            artifact,
+            Request("undated") with { SavedAtUtc = default },
+            CancellationToken.None);
 
         using var archive = ZipFile.OpenRead(_store.PathFor("undated"));
         Assert.Equal(new DateTime(1980, 1, 1, 0, 0, 0, DateTimeKind.Unspecified), archive.Entries[0].LastWriteTime.DateTime);
@@ -272,5 +518,38 @@ public class OcfprojStoreTests : IDisposable
         Assert.EndsWith("watering-plants.ocfproj", _store.PathFor("..\\..\\watering-plants"), StringComparison.Ordinal);
         Assert.DoesNotContain("..", Path.GetFileName(_store.PathFor("..\\evil")), StringComparison.Ordinal);
         Assert.Throws<ArgumentException>(() => _store.PathFor("..."));
+    }
+
+    private sealed class SafeButUnrelatedSnapshotRenderer : IRenderer
+    {
+        public Task<RenderedOutput> RenderAsync(
+            ApprovedArtifact artifact,
+            RenderRequest request,
+            CancellationToken cancellationToken)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            const string unrelated =
+                "<!DOCTYPE html>\n<html lang=\"en\"><head><meta charset=\"utf-8\"><title>Safe</title><style>body { font-family: system-ui; }</style></head><body><h1>Safe but unrelated</h1></body></html>\n";
+            return Task.FromResult(new RenderedOutput(
+                request.Target,
+                Encoding.UTF8.GetBytes(unrelated),
+                "text/html"));
+        }
+    }
+
+    private sealed class CancelAfterRenderingRenderer(CancellationTokenSource cancellation) : IRenderer
+    {
+        public async Task<RenderedOutput> RenderAsync(
+            ApprovedArtifact artifact,
+            RenderRequest request,
+            CancellationToken cancellationToken)
+        {
+            var output = await new AccessibleHtmlRenderer().RenderAsync(
+                artifact,
+                request,
+                cancellationToken);
+            await cancellation.CancelAsync();
+            return output;
+        }
     }
 }

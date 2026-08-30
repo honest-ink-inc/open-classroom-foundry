@@ -3,6 +3,7 @@ using System.Diagnostics;
 using System.IO;
 using System.Windows.Automation;
 using Foundry.App.WinForms;
+using Foundry.Domain;
 
 namespace Foundry.Tests.UiAutomation;
 
@@ -90,8 +91,14 @@ public class PseudoLocaleTests
             using var capture = UiaHarness.CreateCaptureForm();
             using var pressRoom = new PressRoomForm(_ => null);
             using var allAboard = new AllAboardForm(new AppServices.NoAssetsCatalog(), _ => null);
+            using var modules = new ModuleStudioForm(_ => null);
+            using var nodeEditor = new NodeEditorForm(new BilingualPair(
+                "Synthetic source",
+                "Synthetic target",
+                "en",
+                "es"));
 
-            foreach (var form in new Form[] { review, capture, pressRoom, allAboard })
+            foreach (var form in new Form[] { review, capture, pressRoom, allAboard, modules, nodeEditor })
             {
                 form.Show();
 

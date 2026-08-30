@@ -14,7 +14,10 @@ namespace Foundry.Tests.UiAutomation;
 public class PressRoomContractTests
 {
     private static ApprovedArtifact AutoApprove(ReviewSession session)
-        => session.Approve(Environment.UserName, DateTimeOffset.UtcNow);
+    {
+        session.SetRequiredIssuesAcknowledged(acknowledged: true);
+        return session.Approve(Environment.UserName, DateTimeOffset.UtcNow);
+    }
 
     private static void WithPressRoom(Func<ReviewSession, ApprovedArtifact?> runner, Action<PressRoomForm> assert)
         => Sta.Run(() =>
@@ -62,6 +65,40 @@ public class PressRoomContractTests
             Assert.False(ReviewSurfaceContractTests.ByName(form, "Open print view").Enabled);
             Assert.False(ReviewSurfaceContractTests.ByName(form, "Export…").Enabled);
             Assert.False(ReviewSurfaceContractTests.ByName(form, "Save to library").Enabled);
+        });
+
+    [Fact]
+    public void Changing_a_press_input_revokes_the_exact_approval_and_every_sink()
+        => WithPressRoom(AutoApprove, form =>
+        {
+            SelectPress(form, "graph-paper");
+            ((Button)ReviewSurfaceContractTests.ByName(form, "Review and approve…")).PerformClick();
+            Assert.NotNull(form.ApprovedResult);
+
+            ((NumericUpDown)Input(form, "Square size (mm)")).Value += 1;
+
+            Assert.Null(form.ApprovedResult);
+            Assert.Contains("fresh review", form.StatusText, StringComparison.Ordinal);
+            Assert.False(ReviewSurfaceContractTests.ByName(form, "Print").Enabled);
+            Assert.False(ReviewSurfaceContractTests.ByName(form, "Open print view").Enabled);
+            Assert.False(ReviewSurfaceContractTests.ByName(form, "Export…").Enabled);
+            Assert.False(ReviewSurfaceContractTests.ByName(form, "Save to library").Enabled);
+        });
+
+    [Fact]
+    public void A_press_review_runner_cannot_substitute_another_revision()
+        => WithPressRoom(_ =>
+        {
+            var other = AppServices.SessionOverGreen(
+                new ArtifactDocument([new Heading(1, "Different synthetic sheet")]));
+            return AutoApprove(other);
+        }, form =>
+        {
+            ((Button)ReviewSurfaceContractTests.ByName(form, "Review and approve…")).PerformClick();
+
+            Assert.Null(form.ApprovedResult);
+            Assert.Contains("without approval", form.StatusText, StringComparison.Ordinal);
+            Assert.False(ReviewSurfaceContractTests.ByName(form, "Export…").Enabled);
         });
 
     [Fact]

@@ -11,4 +11,12 @@
     <Nullable>enable</Nullable>
   </PropertyGroup>
 
+  <ItemGroup>
+    <!-- The trusted desktop host may bind an explicit teacher intended-use
+         classification to an otherwise provenance-free build outcome. -->
+    <AssemblyAttribute Include="System.Runtime.CompilerServices.InternalsVisibleToAttribute">
+      <_Parameter1>Foundry.App.WinForms</_Parameter1>
+    </AssemblyAttribute>
+  </ItemGroup>
+
 </Project>

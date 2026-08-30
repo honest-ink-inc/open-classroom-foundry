@@ -34,6 +34,9 @@ public sealed class AllAboardForm : Form
     private readonly Button _export;
     private readonly Button _save;
     private readonly Label _status;
+    private bool _loadingMode;
+    private bool _reviewPending;
+    private long _stateGeneration;
     private RecipeManifest _approvedRecipe = AllAboardRecipes.TaskStrip;
 
     public AllAboardForm(IAssetCatalog catalog, Func<ReviewSession, ApprovedArtifact?>? reviewRunner = null)
@@ -123,8 +126,9 @@ public sealed class AllAboardForm : Form
 
     private void LoadMode()
     {
-        ApprovedResult = null;
-        UpdateGatedButtons();
+        _stateGeneration++;
+        _loadingMode = true;
+        ClearApproval();
 
         _grid.SuspendLayout();
         _grid.Controls.Clear();
@@ -136,10 +140,15 @@ public sealed class AllAboardForm : Form
         switch (_mode.SelectedIndex)
         {
             case 1:
-                AddCardRows(UiStrings.Localize("First"), UiStrings.Localize("Then"));
+                AddCardRows(
+                    UiStrings.Localize(UiCatalogIds.AllAboardFirstCard, "First"),
+                    UiStrings.Localize(UiCatalogIds.AllAboardThenCard, "Then"));
                 break;
             case 2:
-                AddCardRows(UiStrings.Localize("Now"), UiStrings.Localize("Next"), UiStrings.Localize("Done"));
+                AddCardRows(
+                    UiStrings.Localize(UiCatalogIds.AllAboardNowCard, "Now"),
+                    UiStrings.Localize(UiCatalogIds.AllAboardNextCard, "Next"),
+                    UiStrings.Localize(UiCatalogIds.AllAboardDoneCard, "Done"));
                 break;
             case 3:
                 AddAgencyRows();
@@ -150,6 +159,7 @@ public sealed class AllAboardForm : Form
         }
 
         _grid.ResumeLayout();
+        _loadingMode = false;
         SetStatus(UiStrings.StatusReady);
     }
 
@@ -198,6 +208,8 @@ public sealed class AllAboardForm : Form
             _grid.RowStyles.Add(new RowStyle(SizeType.AutoSize));
             _grid.Controls.Add(include, 0, row);
             _grid.Controls.Add(overrideBox, 1, row);
+            TrackInput(include);
+            TrackInput(overrideBox);
             _agency.Add((include, overrideBox));
         }
     }
@@ -221,6 +233,23 @@ public sealed class AllAboardForm : Form
         _grid.RowStyles.Add(new RowStyle(SizeType.AutoSize));
         _grid.Controls.Add(new Label { Text = label, AutoSize = true, Anchor = AnchorStyles.Left }, 0, row);
         _grid.Controls.Add(control, 1, row);
+        TrackInput(control);
+    }
+
+    private void TrackInput(Control control)
+    {
+        switch (control)
+        {
+            case TextBox box:
+                box.TextChanged += (_, _) => InputChanged();
+                break;
+            case ComboBox combo:
+                combo.SelectedIndexChanged += (_, _) => InputChanged();
+                break;
+            case CheckBox check:
+                check.CheckedChanged += (_, _) => InputChanged();
+                break;
+        }
     }
 
     private AssetId? SymbolAt(int index)
@@ -231,28 +260,24 @@ public sealed class AllAboardForm : Form
 
     private void ReviewAndApprove()
     {
-        ApprovedResult = null;
-        UpdateGatedButtons();
+        ClearApproval();
 
-        ArtifactDocument document;
-        RecipeManifest recipe;
+        AllAboardBuildOutcome outcome;
         try
         {
             switch (_mode.SelectedIndex)
             {
                 case 1:
-                    document = AllAboardBuilders.FirstThen(CardAt(0), CardAt(1), _catalog);
-                    recipe = AllAboardRecipes.FirstThen;
+                    outcome = AllAboardBuilders.BuildFirstThen(CardAt(0), CardAt(1), _catalog);
                     break;
 
                 case 2:
-                    document = AllAboardBuilders.NowNextDone(CardAt(0), CardAt(1), CardAt(2), _catalog);
-                    recipe = AllAboardRecipes.NowNextDone;
+                    outcome = AllAboardBuilders.BuildNowNextDone(CardAt(0), CardAt(1), CardAt(2), _catalog);
                     break;
 
                 case 3:
                     var chosen = _agency.Select((row, i) => (row, i)).Where(pair => pair.row.Include.Checked).ToList();
-                    document = AllAboardBuilders.AgencyCards(
+                    outcome = AllAboardBuilders.BuildAgencyCards(
                         [.. chosen.Select(pair => _catalog.All[pair.i].Id)],
                         _catalog,
                         labels: chosen.Any(pair => !string.IsNullOrWhiteSpace(pair.row.Override.Text))
@@ -260,7 +285,6 @@ public sealed class AllAboardForm : Form
                                 ? _catalog.All[pair.i].IntendedMeaning
                                 : pair.row.Override.Text)]
                             : null);
-                    recipe = AllAboardRecipes.AgencyCards;
                     break;
 
                 default:
@@ -269,8 +293,7 @@ public sealed class AllAboardForm : Form
                         .Select(s => new StepSpec(s.Text.Text,
                             s.Symbol.SelectedIndex > 0 ? _catalog.All[s.Symbol.SelectedIndex - 1].Id : null))
                         .ToList();
-                    document = AllAboardBuilders.TaskStrip(_title!.Text, steps, _catalog);
-                    recipe = AllAboardRecipes.TaskStrip;
+                    outcome = AllAboardBuilders.BuildTaskStrip(_title!.Text, steps, _catalog);
                     break;
             }
         }
@@ -280,31 +303,45 @@ public sealed class AllAboardForm : Form
             return;
         }
 
-        var session = AppServices.SessionOver(document);
+        var session = AppServices.SessionOverRecipe(
+            outcome.CreateDraft(),
+            new DefaultArtifactValidator(),
+            outcome.Recipe);
+        var generation = _stateGeneration;
+        BeginPendingReview();
         if (_modalReview)
         {
             // Deferred one message-loop beat (harness finding, 29 Aug 2026).
-            BeginInvoke(() => CompleteReview(recipe, session));
+            BeginInvoke(() => CompleteReview(outcome.Recipe, session, generation));
         }
         else
         {
-            CompleteReview(recipe, session);
+            CompleteReview(outcome.Recipe, session, generation);
         }
     }
 
-    private void CompleteReview(RecipeManifest recipe, ReviewSession session)
+    private void CompleteReview(RecipeManifest recipe, ReviewSession session, long generation)
     {
-        var approved = _reviewRunner(session);
-        if (approved is null)
+        try
         {
-            SetStatus(UiStrings.StatusNotApproved);
-            return;
-        }
+            var approved = _reviewRunner(session);
+            if (approved is null
+                || generation != _stateGeneration
+                || !AppServices.IsExactApproval(session, approved))
+            {
+                SetStatus(UiStrings.StatusNotApproved);
+                return;
+            }
 
-        ApprovedResult = approved;
-        _approvedRecipe = recipe;
-        UpdateGatedButtons();
-        SetStatus(UiStrings.StatusApproved);
+            ApprovedResult = approved;
+            _approvedRecipe = recipe;
+            UpdateGatedButtons();
+            SetStatus(UiStrings.StatusApproved);
+        }
+        finally
+        {
+            EndPendingReview();
+        }
     }
 
     private static ApprovedArtifact? RunModalReview(ReviewSession session)
@@ -341,10 +378,46 @@ public sealed class AllAboardForm : Form
     private void UpdateGatedButtons()
     {
         // The structural gate, visible: nothing unlocks before typed approval.
-        _print.Enabled = ApprovedResult is not null;
-        _printView.Enabled = ApprovedResult is not null;
-        _export.Enabled = ApprovedResult is not null;
-        _save.Enabled = ApprovedResult is not null;
+        var enabled = !_reviewPending && ApprovedResult is not null;
+        _review.Enabled = !_reviewPending;
+        _print.Enabled = enabled;
+        _printView.Enabled = enabled;
+        _export.Enabled = enabled;
+        _save.Enabled = enabled;
+    }
+
+    private void InputChanged()
+    {
+        if (_loadingMode)
+        {
+            return;
+        }
+
+        _stateGeneration++;
+        ClearApproval();
+        SetStatus(UiStrings.StatusModuleChanged);
+    }
+
+    private void ClearApproval()
+    {
+        ApprovedResult = null;
+        UpdateGatedButtons();
+    }
+
+    private void BeginPendingReview()
+    {
+        _reviewPending = true;
+        _mode.Enabled = false;
+        _grid.Enabled = false;
+        UpdateGatedButtons();
+    }
+
+    private void EndPendingReview()
+    {
+        _reviewPending = false;
+        _mode.Enabled = true;
+        _grid.Enabled = true;
+        UpdateGatedButtons();
     }
 
     private void SetStatus(string text) => _status.Text = text;

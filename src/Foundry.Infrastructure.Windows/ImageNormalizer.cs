@@ -58,7 +58,7 @@ public sealed class ImageNormalizer(ISessionByteStore store) : IDocumentNormaliz
         using var final = Crop(working, request.Crop);
 
         using var output = new MemoryStream();
-        final.Save(output, ImageFormat.Png);
+        GdiPlusImageEncoder.Save(final, output, ImageFormat.Png);
 
         var reference = store.Put(output.ToArray());
 

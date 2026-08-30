@@ -13,7 +13,6 @@ public class EngineRegistrationTests
             .AddFoundryEngine()
             .BuildServiceProvider(new ServiceProviderOptions { ValidateOnBuild = true, ValidateScopes = true });
 
-        Assert.NotNull(services.GetRequiredService<IApprovalGate>());
         Assert.NotNull(services.GetRequiredService<IDataPolicyEvaluator>());
         Assert.NotNull(services.GetRequiredService<IArtifactValidator>());
         Assert.IsType<InMemoryDiagnosticsSink>(services.GetRequiredService<IDiagnosticsSink>());
@@ -30,7 +29,15 @@ public class EngineRegistrationTests
         using var services = collection.BuildServiceProvider();
 
         Assert.Single(collection, d => d.ServiceType == typeof(IDiagnosticsSink));
-        Assert.Single(collection, d => d.ServiceType == typeof(IApprovalGate));
+        Assert.DoesNotContain(collection, d => d.ServiceType == typeof(IApprovalGate));
         Assert.NotNull(services.GetRequiredService<IDiagnosticsSink>());
+    }
+
+    [Fact]
+    public void The_composition_root_does_not_expose_a_bypass_approval_capability()
+    {
+        var collection = new ServiceCollection().AddFoundryEngine();
+
+        Assert.DoesNotContain(collection, descriptor => descriptor.ServiceType == typeof(IApprovalGate));
     }
 }

@@ -32,6 +32,7 @@ public static class ScaffoldSmithBuilder
         ArgumentNullException.ThrowIfNull(target);
         ArgumentNullException.ThrowIfNull(successCriteria);
         ArgumentNullException.ThrowIfNull(scaffolds);
+        LanguageTag.RequireValid(language, nameof(language));
 
         var issues = new List<ValidationIssue>();
 
@@ -128,6 +129,7 @@ public static class ScaffoldSmithBuilder
         ArgumentNullException.ThrowIfNull(materials);
         ArgumentNullException.ThrowIfNull(chunks);
         ArgumentNullException.ThrowIfNull(helpRoutes);
+        LanguageTag.RequireValid(language, nameof(language));
 
         var issues = new List<ValidationIssue>();
 

@@ -129,7 +129,9 @@ public class BellToBellTests
         Assert.Equal(["9:13", "8", "Share out", "1"], table.Rows[3]);
 
         // The closure holds the last three minutes before the 9:25 bell.
-        Assert.Equal(["9:22", "3", "Pack up, reflect, and reset", ""], table.Rows[4]);
+        Assert.Equal(
+            ["9:22", "3", "Pack up, reflect, and reset", BellToBell.NoTransitionAfterClosure],
+            table.Rows[4]);
 
         Assert.Contains(document.Nodes.OfType<Paragraph>(),
             p => p.Text == "55 of 55 minutes planned; the bell at 9:25 is met exactly.");

@@ -1,0 +1,169 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Honest Ink UI catalog review packet",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "languageTag",
+    "direction",
+    "review",
+    "provenance",
+    "neutralStrings",
+    "strings"
+  ],
+  "properties": {
+    "schemaVersion": {
+      "const": 1
+    },
+    "languageTag": {
+      "type": "string",
+      "minLength": 2
+    },
+    "direction": {
+      "enum": [
+        "ltr",
+        "rtl"
+      ]
+    },
+    "review": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "status",
+        "reviewerName",
+        "reviewerRole",
+        "reviewedAtUtc",
+        "sourceDigestSha256"
+      ],
+      "properties": {
+        "status": {
+          "enum": [
+            "draft",
+            "reviewed"
+          ]
+        },
+        "reviewerName": {
+          "type": "string"
+        },
+        "reviewerRole": {
+          "const": "multilingual-educator-or-family-liaison"
+        },
+        "reviewedAtUtc": {
+          "type": "string"
+        },
+        "sourceDigestSha256": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        }
+      }
+    },
+    "provenance": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "catalogId",
+        "creator",
+        "source",
+        "license",
+        "modificationHistory"
+      ],
+      "properties": {
+        "catalogId": {
+          "type": "string"
+        },
+        "creator": {
+          "type": "string"
+        },
+        "source": {
+          "type": "string"
+        },
+        "license": {
+          "type": "string"
+        },
+        "modificationHistory": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "neutralStrings": {
+      "$ref": "#/$defs/stringTable"
+    },
+    "strings": {
+      "$ref": "#/$defs/stringTable"
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "review": {
+            "properties": {
+              "status": {
+                "const": "reviewed"
+              }
+            }
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "languageTag": {
+            "not": {
+              "const": "und"
+            }
+          },
+          "review": {
+            "properties": {
+              "reviewerName": {
+                "minLength": 1,
+                "pattern": "^\\S(?:.*\\S)?$"
+              },
+              "reviewedAtUtc": {
+                "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z$"
+              }
+            }
+          },
+          "provenance": {
+            "properties": {
+              "catalogId": {
+                "minLength": 1,
+                "pattern": "^\\S(?:.*\\S)?$"
+              },
+              "creator": {
+                "minLength": 1,
+                "pattern": "^\\S(?:.*\\S)?$"
+              },
+              "source": {
+                "minLength": 1,
+                "pattern": "^\\S(?:.*\\S)?$"
+              },
+              "license": {
+                "minLength": 1,
+                "pattern": "^\\S(?:.*\\S)?$"
+              },
+              "modificationHistory": {
+                "minItems": 1,
+                "items": {
+                  "minLength": 1,
+                  "pattern": "^\\S(?:.*\\S)?$"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  ],
+  "$defs": {
+    "stringTable": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "string"
+      }
+    }
+  }
+}

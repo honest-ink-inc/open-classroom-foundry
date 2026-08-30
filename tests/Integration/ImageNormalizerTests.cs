@@ -19,7 +19,7 @@ public class ImageNormalizerTests
         paint?.Invoke(bitmap);
 
         using var stream = new MemoryStream();
-        bitmap.Save(stream, ImageFormat.Png);
+        GdiPlusImageEncoder.Save(bitmap, stream, ImageFormat.Png);
         return stream.ToArray();
     }
 
@@ -35,7 +35,7 @@ public class ImageNormalizerTests
             }
 
             using var stream = new MemoryStream();
-            bitmap.Save(stream, ImageFormat.Jpeg);
+            GdiPlusImageEncoder.Save(bitmap, stream, ImageFormat.Jpeg);
             plain = stream.ToArray();
         }
 
@@ -157,5 +157,20 @@ public class ImageNormalizerTests
 
         await Assert.ThrowsAsync<InvalidOperationException>(
             () => normalizer.NormalizeAsync(envelope, new NormalizationRequest(), CancellationToken.None));
+    }
+
+    [Fact]
+    public void Explicit_encoder_resolution_is_safe_during_simultaneous_first_saves()
+    {
+        Parallel.For(0, 64, index =>
+        {
+            using var bitmap = new Bitmap(8, 8, PixelFormat.Format24bppRgb);
+            using var stream = new MemoryStream();
+            var format = index % 2 == 0 ? ImageFormat.Png : ImageFormat.Jpeg;
+
+            GdiPlusImageEncoder.Save(bitmap, stream, format);
+
+            Assert.True(stream.Length > 0);
+        });
     }
 }

@@ -18,9 +18,9 @@ public sealed record DuetResult(ArtifactDocument Document, IReadOnlyList<Validat
 
 /// <summary>
 /// Directions Duet (plan §10.5): line-aligned bilingual microsteps with locked
-/// facts verified on BOTH sides, glossary consistency checked per step, and the
-/// translation status stamped honestly — "language-reviewed" exists only with a
-/// recorded human reviewer.
+/// facts verified on BOTH sides, working-glossary consistency checked per step,
+/// and a translation status that remains unreviewed until an authenticated review
+/// capability exists outside this builder.
 /// </summary>
 public static class DirectionsDuetBuilder
 {
@@ -38,6 +38,15 @@ public static class DirectionsDuetBuilder
         ArgumentNullException.ThrowIfNull(steps);
         ArgumentNullException.ThrowIfNull(glossary);
         ArgumentNullException.ThrowIfNull(lockedFields);
+        LanguageTag.RequireValid(sourceLocale, nameof(sourceLocale));
+        LanguageTag.RequireValid(targetLocale, nameof(targetLocale));
+
+        if (!string.IsNullOrWhiteSpace(reviewedBy))
+        {
+            throw new ArgumentException(
+                "Language-review status cannot be self-attested. This build has no authenticated review capability.",
+                nameof(reviewedBy));
+        }
 
         var issues = new List<ValidationIssue>();
 
@@ -63,7 +72,7 @@ public static class DirectionsDuetBuilder
                 {
                     issues.Add(ValidationIssue.Blocking(
                         "duet.glossary",
-                        $"Step {i + 1} uses '{entry.SourceTerm}' but its translation lacks the approved '{entry.TargetTerm}' (glossary {glossary.Version})."));
+                        $"Step {i + 1} uses '{entry.SourceTerm}' but its translation lacks working glossary term '{entry.TargetTerm}' (working glossary {glossary.Version}, not approved by this application)."));
                 }
             }
         }
@@ -90,12 +99,11 @@ public static class DirectionsDuetBuilder
 
         // The status speaks only to review, never to origin (RC-6): a teacher-typed
         // translation is not "machine-drafted," and a tool named Honest Ink does not
-        // guess where words came from.
+        // guess where words came from. This builder cannot authenticate a reviewer,
+        // so text supplied by a caller can never change the review status.
         nodes.Add(new TeacherOnlyNotice(
-            $"Glossary {glossary.Version}. Translation status: " +
-            (string.IsNullOrWhiteSpace(reviewedBy)
-                ? "drafted - NOT yet language-reviewed by a qualified reviewer."
-                : $"language-reviewed by {reviewedBy}.")));
+            $"Working glossary {glossary.Version} (not approved by this application). " +
+            "Translation status: drafted - NOT yet language-reviewed by a qualified reviewer."));
 
         var document = new ArtifactDocument(nodes, sourceLocale);
         issues.AddRange(DocumentValidator.Validate(document));
@@ -111,11 +119,11 @@ public static class DirectionsDuetBuilder
         InstructionalPurpose: "Turn confirmed classroom directions into line-aligned bilingual microsteps with locked facts intact in both languages.",
         ProhibitedPurposes:
         [
-            "certified-translation claims without a recorded human reviewer",
+            "certified-translation or language-reviewed claims; this build has no authenticated review capability",
             "safety, legal, emergency, disciplinary, or consequential directions without approved source language and qualified review",
             "altered action count, order, conditions, or deadlines",
         ],
-        AllowedInputKinds: ["teacher-entered-text", "approved-glossary"],
+        AllowedInputKinds: ["teacher-entered-text", "teacher-entered-working-glossary"],
         MaximumLane: DataLane.Green,
         RequiredProviderCapabilities: [],
         OutputSchemaId: "schema.directions-duet.v1",
@@ -123,6 +131,10 @@ public static class DirectionsDuetBuilder
         EditorId: "editor.review-session",
         RendererId: "renderer.accessible-html",
         SupportedExports: [RenderTarget.AccessibleHtml, RenderTarget.PrintHtml],
-        Warnings: ["The source language remains visible and authoritative beside every translation."],
+        Warnings:
+        [
+            "The source language remains visible and authoritative beside every translation.",
+            "Working glossary entries are not approved by this application; translations remain unreviewed.",
+        ],
         EvaluationSuiteVersion: "0.1");
 }

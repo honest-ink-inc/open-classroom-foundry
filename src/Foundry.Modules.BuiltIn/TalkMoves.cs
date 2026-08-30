@@ -34,6 +34,7 @@ public static class TalkMovesBuilder
         ArgumentException.ThrowIfNullOrWhiteSpace(topic);
         ArgumentNullException.ThrowIfNull(questions);
         ArgumentNullException.ThrowIfNull(participationModes);
+        LanguageTag.RequireValid(language, nameof(language));
 
         var issues = new List<ValidationIssue>();
 

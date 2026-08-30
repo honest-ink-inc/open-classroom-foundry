@@ -37,6 +37,18 @@ public static class FamilyBridgeBuilder
         ArgumentNullException.ThrowIfNull(paragraphs);
         ArgumentNullException.ThrowIfNull(glossary);
         ArgumentNullException.ThrowIfNull(lockedFields);
+        LanguageTag.RequireValid(sourceLocale, nameof(sourceLocale));
+        if (targetLocale is not null)
+        {
+            LanguageTag.RequireValid(targetLocale, nameof(targetLocale));
+        }
+
+        if (!string.IsNullOrWhiteSpace(reviewedBy))
+        {
+            throw new ArgumentException(
+                "Language-review status cannot be self-attested. This build has no authenticated review capability.",
+                nameof(reviewedBy));
+        }
 
         var issues = new List<ValidationIssue>();
 
@@ -87,7 +99,7 @@ public static class FamilyBridgeBuilder
                         && !paragraphs[i].TargetText!.Contains(entry.TargetTerm, StringComparison.OrdinalIgnoreCase))
                     {
                         issues.Add(ValidationIssue.Blocking("bridge.glossary",
-                            $"Paragraph {i + 1} uses '{entry.SourceTerm}' but its translation lacks the approved '{entry.TargetTerm}' (glossary {glossary.Version})."));
+                            $"Paragraph {i + 1} uses '{entry.SourceTerm}' but its translation lacks working glossary term '{entry.TargetTerm}' (working glossary {glossary.Version}, not approved by this application)."));
                     }
                 }
             }
@@ -136,10 +148,8 @@ public static class FamilyBridgeBuilder
         if (targetLocale is not null)
         {
             nodes.Add(new TeacherOnlyNotice(
-                $"Glossary {glossary.Version}. Translation status: " +
-                (string.IsNullOrWhiteSpace(reviewedBy)
-                    ? "drafted - NOT yet language-reviewed by a qualified reviewer."
-                    : $"language-reviewed by {reviewedBy}.")));
+                $"Working glossary {glossary.Version} (not approved by this application). " +
+                "Translation status: drafted - NOT yet language-reviewed by a qualified reviewer."));
         }
 
         nodes.Add(new TeacherOnlyNotice(
@@ -179,10 +189,10 @@ public static class FamilyBridgeBuilder
             "recipient lists, addressing, or automated distribution of any kind",
             "learner-specific progress, grades, attendance, behavior, IEP/504, discipline, health, custody, immigration, or legal content",
             "invented policies, promises, resources, or deadlines",
-            "certified-translation claims without a recorded human reviewer",
+            "certified-translation or language-reviewed claims; this build has no authenticated review capability",
             "family-deficit assumptions",
         ],
-        AllowedInputKinds: ["teacher-entered-text", "approved-glossary", "locked-district-text"],
+        AllowedInputKinds: ["teacher-entered-text", "teacher-entered-working-glossary", "locked-district-text"],
         MaximumLane: DataLane.Green,
         RequiredProviderCapabilities: [],
         OutputSchemaId: "schema.family-bridge.v1",
@@ -190,6 +200,10 @@ public static class FamilyBridgeBuilder
         EditorId: "editor.review-session",
         RendererId: "renderer.accessible-html",
         SupportedExports: [RenderTarget.AccessibleHtml, RenderTarget.PrintHtml],
-        Warnings: ["One requested action per communication; the interpreter is a person, never this software."],
+        Warnings:
+        [
+            "One requested action per communication; the interpreter is a person, never this software.",
+            "Working glossary entries are not approved by this application; translations remain unreviewed.",
+        ],
         EvaluationSuiteVersion: "0.1");
 }

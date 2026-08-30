@@ -50,6 +50,23 @@ public class AllAboardBuilderTests
     }
 
     [Fact]
+    public void The_typed_build_outcome_owns_lane_purpose_recipe_and_draft_creation()
+    {
+        var outcome = AllAboardBuilders.BuildTaskStrip(
+            "Synthetic routine",
+            [new StepSpec("First"), new StepSpec("Second"), new StepSpec("Third")],
+            Catalog);
+
+        Assert.Equal(AllAboardRecipes.TaskStrip, outcome.Recipe);
+        Assert.Equal(DataLane.Green, outcome.Lane);
+        Assert.Equal(ArtifactPurpose.ClassroomSupport, outcome.Purpose);
+        var draft = outcome.CreateDraft();
+        Assert.Same(outcome.Document, draft.Revision.Document);
+        Assert.Equal(outcome.Lane, draft.Revision.Lane);
+        Assert.Equal(outcome.Purpose, draft.Revision.Purpose);
+    }
+
+    [Fact]
     public void A_bilingual_strip_requires_every_step_translated_and_emits_aligned_pairs()
     {
         var document = AllAboardBuilders.TaskStrip(
@@ -105,8 +122,16 @@ public class AllAboardBuilderTests
 
         Assert.Collection(
             firstThen.Nodes.OfType<Card>(),
-            card => Assert.Equal("First: Math journal", card.Title),
-            card => Assert.Equal("Then: Blocks", card.Title));
+            card =>
+            {
+                Assert.Equal("First: Math journal", card.Title);
+                Assert.Equal("Math journal", card.Body);
+            },
+            card =>
+            {
+                Assert.Equal("Then: Blocks", card.Title);
+                Assert.Equal("Blocks", card.Body);
+            });
 
         var nowNextDone = AllAboardBuilders.NowNextDone(
             new CardSpec("Circle time"), new CardSpec("Centers"), new CardSpec("Snack"), Catalog);
@@ -125,8 +150,9 @@ public class AllAboardBuilderTests
         Assert.Contains(deck.Nodes.OfType<Card>(), c => c.Title == "Stop");
         Assert.Contains(deck.Nodes.OfType<Card>(), c => c.Title == "Help");
 
-        // RC-1: the learner card body is clean; the curator's ambiguity note is teacher craft.
-        Assert.All(deck.Nodes.OfType<Card>(), c => Assert.Equal(string.Empty, c.Body));
+        // RC-1: the learner card repeats only its own action; the curator's
+        // ambiguity note remains separate teacher craft.
+        Assert.All(deck.Nodes.OfType<Card>(), card => Assert.Equal(card.Title, card.Body));
         var note = Assert.Single(deck.Nodes.OfType<TeacherOnlyNotice>());
         Assert.Contains("generic polygon", note.Text, StringComparison.Ordinal);
     }

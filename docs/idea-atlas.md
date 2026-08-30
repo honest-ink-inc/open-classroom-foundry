@@ -4,6 +4,8 @@
 
 **Atlas version:** 2.0 — regenerated 29 August 2026, applying The Master's Review 1.0 (findings F1–F5, F12–F13; addendum entries 201–227; build order harmonized with implementation plan 2.0)
 
+**Selection status (30 August 2026):** This atlas is a possibility register, not an engineering queue. After the standing forge work, the next entry or newly possible composition must come from a real, needs-first educator-council session using the [Atlas 2.0 priority-session packet](council/atlas-priority-session.md), followed by a separate feasibility record and written product-owner disposition. Atlas order, rehearsal personas, and generator-created menus do not substitute for that human record.
+
 Working vision: **GNU GPL-3.0-or-later software, local-first by instinct, district-governable when cloud inference is used, bounded in purpose, editable by the teacher, and capable of turning the physical classroom into useful instructional artifacts.**
 
 The central discovery is that Writer's Kiosk is not merely one application. It establishes a reusable educational grammar:

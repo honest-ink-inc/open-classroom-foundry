@@ -6,4 +6,19 @@
     <Nullable>enable</Nullable>
   </PropertyGroup>
 
+  <ItemGroup>
+    <InternalsVisibleTo Include="Foundry.Application" />
+    <InternalsVisibleTo Include="Foundry.App.WinForms" />
+    <InternalsVisibleTo Include="Foundry.Modules.BuiltIn" />
+    <InternalsVisibleTo Include="Foundry.Tools.SampleGenerator" />
+    <InternalsVisibleTo Include="Foundry.Tools.SiteGenerator" />
+    <InternalsVisibleTo Include="Foundry.Tests.Accessibility" />
+    <InternalsVisibleTo Include="Foundry.Tests.Contract" />
+    <InternalsVisibleTo Include="Foundry.Tests.InstructionalEvals" />
+    <InternalsVisibleTo Include="Foundry.Tests.Integration" />
+    <InternalsVisibleTo Include="Foundry.Tests.Rendering" />
+    <InternalsVisibleTo Include="Foundry.Tests.UiAutomation" />
+    <InternalsVisibleTo Include="Foundry.Tests.Unit" />
+  </ItemGroup>
+
 </Project>

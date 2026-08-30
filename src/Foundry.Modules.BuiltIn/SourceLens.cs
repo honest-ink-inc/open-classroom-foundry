@@ -38,6 +38,8 @@ public static class SourceLensBuilder
 {
     public const string Unknown = "unknown";
     public const string NotRecorded = "not recorded";
+    public const string ObservationPrompt = "Record an exact observation.";
+    public const string InferencePrompt = "Record an inference and explain what supports it.";
 
     public static SourceLensResult Build(
         SourceMetadata metadata,
@@ -49,6 +51,7 @@ public static class SourceLensBuilder
     {
         ArgumentNullException.ThrowIfNull(metadata);
         ArgumentNullException.ThrowIfNull(prompts);
+        LanguageTag.RequireValid(language, nameof(language));
 
         var issues = new List<ValidationIssue>();
 
@@ -122,7 +125,8 @@ public static class SourceLensBuilder
         nodes.Add(new Heading(2, "Observe, then infer"));
         nodes.Add(new TableNode(
             ["What I observe (I can point to it)", "What I infer (my thinking, and why)"],
-            [.. Enumerable.Range(0, Math.Max(1, observationRows)).Select(IReadOnlyList<string> (_) => [" ", " "])]));
+            [.. Enumerable.Range(0, Math.Max(1, observationRows)).Select(
+                IReadOnlyList<string> (_) => [ObservationPrompt, InferencePrompt])]));
 
         nodes.Add(new TeacherOnlyNotice(
             "A primary source is evidence, not transparent truth. Separate the source's perspective from its limitations, its context from our present interpretation; harmful language is discussed, never silently sanitized."));

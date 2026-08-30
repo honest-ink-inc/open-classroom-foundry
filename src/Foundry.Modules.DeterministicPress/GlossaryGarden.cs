@@ -71,8 +71,8 @@ public static class GlossaryGarden
             throw new ArgumentException("Between two and forty entries.", nameof(entries));
         }
 
-        RequireLanguageTag(sourceLocale, nameof(sourceLocale));
-        RequireLanguageTag(targetLocale, nameof(targetLocale));
+        LanguageTag.RequireValid(sourceLocale, nameof(sourceLocale));
+        LanguageTag.RequireValid(targetLocale, nameof(targetLocale));
 
         var nodes = new List<DocumentNode> { new Heading(1, title) };
         foreach (var entry in entries)
@@ -88,14 +88,5 @@ public static class GlossaryGarden
         }
 
         return new ArtifactDocument(nodes, sourceLocale);
-    }
-
-    private static void RequireLanguageTag(string locale, string parameterName)
-    {
-        if (string.IsNullOrWhiteSpace(locale) || locale.Length > 12
-            || !locale.All(c => char.IsAsciiLetterOrDigit(c) || c == '-'))
-        {
-            throw new ArgumentException($"'{locale}' is not a language tag; write it like en or es-MX.", parameterName);
-        }
     }
 }

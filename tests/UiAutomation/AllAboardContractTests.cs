@@ -25,7 +25,10 @@ public class AllAboardContractTests
     }
 
     private static ApprovedArtifact? GateRespectingApprove(ReviewSession session)
-        => session.CanApprove ? session.Approve(Environment.UserName, DateTimeOffset.UtcNow) : null;
+    {
+        session.SetRequiredIssuesAcknowledged(acknowledged: true);
+        return session.CanApprove ? session.Approve(Environment.UserName, DateTimeOffset.UtcNow) : null;
+    }
 
     private static void WithForm(Action<AllAboardForm> assert)
         => Sta.Run(() =>
@@ -66,6 +69,53 @@ public class AllAboardContractTests
             Assert.Equal("Watering the class plants", Assert.IsType<Heading>(nodes[0]).Text);
             Assert.Equal(4, nodes.OfType<StepRow>().Count());
             Assert.True(ReviewSurfaceContractTests.ByName(form, "Export…").Enabled);
+        });
+
+    [Fact]
+    public void Editing_an_All_Aboard_input_revokes_approval_and_every_sink()
+        => WithForm(form =>
+        {
+            Title(form).Text = "Synthetic cleanup routine";
+            Step(form, 1).Text = "Place the sample cards in the tray.";
+            Step(form, 2).Text = "Return the sample marker to the bin.";
+            Step(form, 3).Text = "Check the synthetic table.";
+            ((Button)ReviewSurfaceContractTests.ByName(form, "Review and approve…")).PerformClick();
+            Assert.NotNull(form.ApprovedResult);
+
+            Title(form).AppendText(" revised");
+
+            Assert.Null(form.ApprovedResult);
+            Assert.Contains("fresh review", form.StatusText, StringComparison.Ordinal);
+            Assert.False(ReviewSurfaceContractTests.ByName(form, "Print").Enabled);
+            Assert.False(ReviewSurfaceContractTests.ByName(form, "Open print view").Enabled);
+            Assert.False(ReviewSurfaceContractTests.ByName(form, "Export…").Enabled);
+            Assert.False(ReviewSurfaceContractTests.ByName(form, "Save to library").Enabled);
+        });
+
+    [Fact]
+    public void An_All_Aboard_review_runner_cannot_substitute_another_revision()
+        => Sta.Run(() =>
+        {
+            static ApprovedArtifact? Substitute(ReviewSession _)
+            {
+                var other = AppServices.SessionOverGreen(
+                    new ArtifactDocument([new Heading(1, "Different synthetic strip")]),
+                    ArtifactPurpose.ClassroomSupport);
+                return GateRespectingApprove(other);
+            }
+
+            using var form = new AllAboardForm(Catalog(), Substitute);
+            form.Show();
+            Title(form).Text = "Synthetic cleanup routine";
+            Step(form, 1).Text = "Place the sample cards in the tray.";
+            Step(form, 2).Text = "Return the sample marker to the bin.";
+            Step(form, 3).Text = "Check the synthetic table.";
+
+            ((Button)ReviewSurfaceContractTests.ByName(form, "Review and approve…")).PerformClick();
+
+            Assert.Null(form.ApprovedResult);
+            Assert.Contains("without approval", form.StatusText, StringComparison.Ordinal);
+            Assert.False(ReviewSurfaceContractTests.ByName(form, "Export…").Enabled);
         });
 
     [Fact]

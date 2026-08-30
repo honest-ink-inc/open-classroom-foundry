@@ -17,7 +17,6 @@ public static class FoundryEngineServiceCollectionExtensions
     {
         ArgumentNullException.ThrowIfNull(services);
 
-        services.TryAddSingleton<IApprovalGate, DomainApprovalGate>();
         services.TryAddSingleton<IDataPolicyEvaluator, DefaultDataPolicyEvaluator>();
         services.TryAddSingleton<IArtifactValidator, DefaultArtifactValidator>();
         services.TryAddSingleton<IDiagnosticsSink, InMemoryDiagnosticsSink>();

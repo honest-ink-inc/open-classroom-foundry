@@ -4,7 +4,7 @@
 
 **Plan version:** 2.0 — regenerated 29 August 2026, applying The Master's Review 1.0 (amendments 1–7; findings F2, F5–F11 incorporated)  
 **Date:** 29 August 2026  
-**Status:** Ready for architecture decision records, co-design recruitment, and foundation work  
+**Status (30 August 2026):** Foundation, the deterministic press, All Aboard, and the reachable Green built-in studios are implemented; protected-seat review, pilot evidence, packaging, release, and the remaining roadmap stay open. See the [forge closeout](handover/2026-08-30-forge-closeout.md).
 **License intention:** Application code and first-party recipes under GNU GPL-3.0-or-later; other content and assets governed by explicit, compatible licenses  
 **Initial operating environment:** .NET 10 on managed Windows 10/11 devices, local-first authoring, optional district-governed Azure OpenAI inference  
 

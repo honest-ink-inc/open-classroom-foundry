@@ -16,6 +16,11 @@
     <Content Include="..\..\assets\symbols\**\*" LinkBase="assets\symbols" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
+  <ItemGroup>
+    <InternalsVisibleTo Include="Foundry.Tests.UiAutomation" />
+    <InternalsVisibleTo Include="Foundry.Tests.Accessibility" />
+  </ItemGroup>
+
   <PropertyGroup>
     <OutputType>WinExe</OutputType>
     <TargetFramework>net10.0-windows10.0.19041.0</TargetFramework>

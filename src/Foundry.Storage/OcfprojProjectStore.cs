@@ -9,7 +9,11 @@ using Foundry.Domain;
 
 namespace Foundry.Storage;
 
-public sealed record LoadedProject(ProjectManifest Manifest, ArtifactDocument Document);
+public sealed record LoadedProject(
+    ProjectManifest Manifest,
+    ArtifactDocument Document,
+    ProjectValidationEnvelope? Validation,
+    ProjectRenderProfile? RenderProfile);
 
 /// <summary>
 /// The real .ocfproj store (plan §6.5, ADR-003): a ZIP/JSON package holding
@@ -24,7 +28,7 @@ public sealed class OcfprojProjectStore(string rootDirectory, IRenderer renderer
     public const string Extension = ".ocfproj";
 
     /// <summary>R2-3: a generous ceiling for classroom artifacts, a wall for decompression bombs. The full hostile-package suite remains scheduled (plan §7).</summary>
-    public const long MaxEntryBytes = 64L * 1024 * 1024;
+    public const long MaxEntryBytes = OcfprojPackageValidator.MaxJsonEntryBytes;
 
     /// <summary>Zip records DOS timestamps, which begin in 1980 and end in 2107; the save instant is clamped into that window.</summary>
     private static readonly DateTimeOffset ZipEpoch = new(1980, 1, 1, 0, 0, 0, TimeSpan.Zero);
@@ -44,6 +48,12 @@ public sealed class OcfprojProjectStore(string rootDirectory, IRenderer renderer
         {
             throw new InvalidOperationException(
                 $"Only Green-lane products may be saved to the project library; this artifact is {artifact.Revision.Lane}.");
+        }
+
+        if ((request.Validation is null) != (request.RenderProfile is null))
+        {
+            throw new InvalidOperationException(
+                "A saved validation context and render profile must be written together.");
         }
 
         var document = artifact.Revision.Document;
@@ -86,31 +96,80 @@ public sealed class OcfprojProjectStore(string rootDirectory, IRenderer renderer
             OutputLocale: null,
             EngineVersion: EngineIdentity.EngineVersion,
             ArtifactPath: "artifact.json",
-            AssetIds: [.. assetIds.Select(a => a.Value)]);
+            AssetIds: [.. assetIds.Select(a => a.Value)],
+            Purpose: artifact.Revision.Purpose);
 
+        if (request.Validation is not null && request.RenderProfile is not null)
+        {
+            ValidateSaveContext(artifact, request, request.Validation, request.RenderProfile);
+        }
+
+        // A portable project is shareable: retain the reviewed scale and
+        // language order, but its durable snapshot is always learner-audience
+        // and therefore carries neither teacher-only material nor approval PII.
+        var snapshotRequest = OcfprojPackageValidator.SnapshotRenderRequest(request.RenderProfile);
         var snapshot = await renderer.RenderAsync(
-            artifact, new RenderRequest(RenderTarget.AccessibleHtml, RenderAudience.Learner), cancellationToken).ConfigureAwait(false);
+            artifact, snapshotRequest, cancellationToken).ConfigureAwait(false);
 
         Directory.CreateDirectory(rootDirectory);
         var path = PathFor(request.DestinationHint);
-
-        using var stream = new FileStream(path, FileMode.Create, FileAccess.Write);
-        using var archive = new ZipArchive(stream, ZipArchiveMode.Create);
-        var stamp = ZipStamp(request.SavedAtUtc);
-
-        await WriteEntryAsync(archive, "manifest.json", JsonSerializer.SerializeToUtf8Bytes(manifest, StorageJson.Options), stamp, cancellationToken).ConfigureAwait(false);
-        await WriteEntryAsync(archive, "artifact.json", JsonSerializer.SerializeToUtf8Bytes(document, StorageJson.Options), stamp, cancellationToken).ConfigureAwait(false);
-        await WriteEntryAsync(archive, "snapshot.html", snapshot.Content.ToArray(), stamp, cancellationToken).ConfigureAwait(false);
-
-        foreach (var (provenance, content) in resolved)
+        var stagingPath = UniqueStagingPath(path);
+        try
         {
-            await WriteEntryAsync(archive, $"assets/{provenance.FileName}", content.ToArray(), stamp, cancellationToken).ConfigureAwait(false);
-            await WriteEntryAsync(
-                archive,
-                $"provenance/{provenance.Id.Value}.json",
-                JsonSerializer.SerializeToUtf8Bytes(provenance, StorageJson.Options),
-                stamp,
-                cancellationToken).ConfigureAwait(false);
+            await using (var stream = new FileStream(
+                stagingPath,
+                FileMode.CreateNew,
+                FileAccess.Write,
+                FileShare.None,
+                bufferSize: 128 * 1024,
+                FileOptions.Asynchronous | FileOptions.SequentialScan | FileOptions.WriteThrough))
+            {
+                using (var archive = new ZipArchive(stream, ZipArchiveMode.Create, leaveOpen: true))
+                {
+                    var stamp = ZipStamp(request.SavedAtUtc);
+
+                    await WriteEntryAsync(archive, "manifest.json", JsonSerializer.SerializeToUtf8Bytes(manifest, StorageJson.Options), stamp, cancellationToken).ConfigureAwait(false);
+                    await WriteEntryAsync(archive, "artifact.json", JsonSerializer.SerializeToUtf8Bytes(document, StorageJson.Options), stamp, cancellationToken).ConfigureAwait(false);
+                    await WriteEntryAsync(archive, "snapshot.html", snapshot.Content.ToArray(), stamp, cancellationToken).ConfigureAwait(false);
+                    if (request.Validation is not null && request.RenderProfile is not null)
+                    {
+                        await WriteEntryAsync(
+                            archive,
+                            "validation.json",
+                            JsonSerializer.SerializeToUtf8Bytes(request.Validation, StorageJson.Options),
+                            stamp,
+                            cancellationToken).ConfigureAwait(false);
+                        await WriteEntryAsync(
+                            archive,
+                            "render-profile.json",
+                            JsonSerializer.SerializeToUtf8Bytes(request.RenderProfile, StorageJson.Options),
+                            stamp,
+                            cancellationToken).ConfigureAwait(false);
+                    }
+
+                    foreach (var (provenance, content) in resolved)
+                    {
+                        await WriteEntryAsync(archive, $"assets/{provenance.FileName}", content.ToArray(), stamp, cancellationToken).ConfigureAwait(false);
+                        await WriteEntryAsync(
+                            archive,
+                            $"provenance/{provenance.Id.Value}.json",
+                            JsonSerializer.SerializeToUtf8Bytes(provenance, StorageJson.Options),
+                            stamp,
+                            cancellationToken).ConfigureAwait(false);
+                    }
+                }
+
+                await stream.FlushAsync(cancellationToken).ConfigureAwait(false);
+                stream.Flush(flushToDisk: true);
+            }
+
+            await ValidateStagedPackageAsync(stagingPath, cancellationToken).ConfigureAwait(false);
+            cancellationToken.ThrowIfCancellationRequested();
+            CommitStagedPackage(stagingPath, path);
+        }
+        finally
+        {
+            TryDeleteStage(stagingPath);
         }
     }
 
@@ -123,55 +182,87 @@ public sealed class OcfprojProjectStore(string rootDirectory, IRenderer renderer
     /// package's own contents is tampering or corruption — refused loudly.
     /// </summary>
     public Task<LoadedProject> LoadProjectAsync(string destinationHint, CancellationToken cancellationToken)
+        => LoadProjectFileAsync(PathFor(destinationHint), cancellationToken);
+
+    /// <summary>
+    /// Reads a package from an exact path. This is the compatibility boundary
+    /// used by managed-upgrade preparation: callers can validate a frozen input
+    /// without copying it into the live project library first.
+    /// </summary>
+    public static async Task<LoadedProject> LoadProjectFileAsync(string path, CancellationToken cancellationToken)
     {
+        ArgumentException.ThrowIfNullOrWhiteSpace(path);
         cancellationToken.ThrowIfCancellationRequested();
 
-        using var archive = ZipFile.OpenRead(PathFor(destinationHint));
-
-        var collision = archive.Entries
-            .GroupBy(e => e.FullName, StringComparer.OrdinalIgnoreCase)
-            .FirstOrDefault(g => g.Count() > 1);
-        if (collision is not null)
+        try
         {
-            throw new InvalidOperationException(
-                $"The package holds {collision.Count()} entries named '{collision.Key}'; colliding names are refused outright.");
+            await using var stream = new FileStream(
+                path,
+                FileMode.Open,
+                FileAccess.Read,
+                FileShare.Read,
+                bufferSize: 128 * 1024,
+                FileOptions.Asynchronous | FileOptions.SequentialScan);
+            return await OcfprojPackageValidator.ValidateAsync(stream, cancellationToken).ConfigureAwait(false);
         }
-
-        var manifest = ReadEntry<ProjectManifest>(archive, "manifest.json");
-        var document = ReadEntry<ArtifactDocument>(archive, "artifact.json");
-
-        if (manifest.SchemaVersion != EngineIdentity.ProjectSchemaVersion)
+        catch (OcfprojPackageException exception)
         {
-            throw new InvalidOperationException(
-                $"The manifest declares schema version '{manifest.SchemaVersion}'; this engine reads version '{EngineIdentity.ProjectSchemaVersion}' and refuses what it does not understand.");
+            // Preserve the exact public exception contract while keeping the
+            // validator's code available to the upgrade boundary internally.
+            throw new InvalidOperationException(exception.Message, exception);
         }
+    }
 
-        if (manifest.DataLane != DataLane.Green)
+    /// <summary>
+    /// Reads the manifest only after validating the complete package. Version
+    /// routing inside an upgrade uses the held-stream validator directly so it
+    /// cannot reopen a retargetable path.
+    /// </summary>
+    public static ProjectManifest ReadManifestFile(string path)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(path);
+        try
         {
-            throw new InvalidOperationException(
-                $"This is the Green project library and the manifest claims {manifest.DataLane}; a lane above Green never persists, so the package is tampered or misplaced.");
+            using var stream = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.Read);
+            return OcfprojPackageValidator.ValidateAsync(stream, CancellationToken.None).GetAwaiter().GetResult().Manifest;
         }
-
-        foreach (var assetId in manifest.AssetIds)
+        catch (OcfprojPackageException exception)
         {
-            if (archive.GetEntry($"provenance/{assetId}.json") is null)
-            {
-                throw new InvalidOperationException(
-                    $"The manifest declares asset '{assetId}' but the package carries no provenance record for it; manifest and contents disagree.");
-            }
+            throw new InvalidOperationException(exception.Message, exception);
         }
-
-        var issues = DocumentValidator.Validate(document);
-        if (DocumentValidator.HasBlockingIssues(issues))
-        {
-            throw new InvalidOperationException(
-                "The artifact entry fails structural validation; an approved artifact never does, so the package is tampered or corrupt.");
-        }
-
-        return Task.FromResult(new LoadedProject(manifest, document));
     }
 
     public string PathFor(string destinationHint) => Path.Combine(rootDirectory, Sanitize(destinationHint) + Extension);
+
+    private static void ValidateSaveContext(
+        ApprovedArtifact artifact,
+        ProjectSaveRequest request,
+        ProjectValidationEnvelope validation,
+        ProjectRenderProfile renderProfile)
+    {
+        var digest = ArtifactDocumentFingerprint.Compute(artifact.Revision.Document);
+        if (validation.SchemaVersion != ProjectValidationEnvelope.CurrentSchemaVersion
+            || !string.Equals(validation.Kind, ProjectValidationEnvelope.ExactApprovedDocumentKind, StringComparison.Ordinal)
+            || !string.Equals(validation.RecipeId, request.RecipeId, StringComparison.Ordinal)
+            || !string.Equals(validation.RecipeVersion, request.RecipeVersion, StringComparison.Ordinal)
+            || validation.Lane != artifact.Revision.Lane
+            || validation.Purpose != artifact.Revision.Purpose
+            || !string.Equals(validation.ArtifactSha256, digest, StringComparison.OrdinalIgnoreCase)
+            || validation.UntrustedNoticeCodes is null
+            || validation.UntrustedNoticeCodes.Count > 128
+            || validation.UntrustedNoticeCodes.Any(code => !ProjectValidationEnvelope.IsStableNoticeCode(code))
+            || validation.UntrustedNoticeCodes.Distinct(StringComparer.Ordinal).Count()
+                != validation.UntrustedNoticeCodes.Count
+            || renderProfile.SchemaVersion != ProjectRenderProfile.CurrentSchemaVersion
+            || !string.Equals(renderProfile.ArtifactSha256, digest, StringComparison.OrdinalIgnoreCase)
+            || !Enum.IsDefined(renderProfile.Audience)
+            || !double.IsFinite(renderProfile.TextScalePercent)
+            || renderProfile.TextScalePercent is < 100 or > 200)
+        {
+            throw new InvalidOperationException(
+                "The saved validation context or render profile does not bind to this exact approved artifact.");
+        }
+    }
 
     private static string Sanitize(string hint)
     {
@@ -232,19 +323,51 @@ public sealed class OcfprojProjectStore(string rootDirectory, IRenderer renderer
         await entryStream.WriteAsync(content, cancellationToken).ConfigureAwait(false);
     }
 
-    private static T ReadEntry<T>(ZipArchive archive, string name)
+    private static string UniqueStagingPath(string destinationPath)
     {
-        var entry = archive.GetEntry(name)
-            ?? throw new InvalidOperationException($"The package has no '{name}' entry.");
+        var directory = Path.GetDirectoryName(destinationPath)
+            ?? throw new InvalidOperationException("The project destination has no parent directory.");
+        return Path.Combine(
+            directory,
+            $".{Path.GetFileName(destinationPath)}.{Guid.NewGuid():N}.stage");
+    }
 
-        if (entry.Length > MaxEntryBytes)
+    private static async Task ValidateStagedPackageAsync(
+        string stagingPath,
+        CancellationToken cancellationToken)
+    {
+        await using var stream = new FileStream(
+            stagingPath,
+            FileMode.Open,
+            FileAccess.Read,
+            FileShare.Read,
+            bufferSize: 128 * 1024,
+            FileOptions.Asynchronous | FileOptions.SequentialScan);
+        _ = await OcfprojPackageValidator.ValidateAsync(stream, cancellationToken).ConfigureAwait(false);
+    }
+
+    private static void CommitStagedPackage(string stagingPath, string destinationPath)
+    {
+        if (File.Exists(destinationPath))
         {
-            throw new InvalidOperationException(
-                $"Entry '{name}' declares {entry.Length} bytes, over the {MaxEntryBytes}-byte ceiling; refusing to read it.");
+            File.Replace(stagingPath, destinationPath, destinationBackupFileName: null, ignoreMetadataErrors: true);
+            return;
         }
 
-        using var reader = new StreamReader(entry.Open(), Encoding.UTF8);
-        return JsonSerializer.Deserialize<T>(reader.ReadToEnd(), StorageJson.Options)
-            ?? throw new InvalidOperationException($"The '{name}' entry is empty.");
+        File.Move(stagingPath, destinationPath);
     }
+
+    private static void TryDeleteStage(string stagingPath)
+    {
+        try
+        {
+            File.Delete(stagingPath);
+        }
+        catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
+        {
+            // Never mask the save/validation failure. The unique sibling is the
+            // only cleanup target; an existing valid destination is untouched.
+        }
+    }
+
 }
