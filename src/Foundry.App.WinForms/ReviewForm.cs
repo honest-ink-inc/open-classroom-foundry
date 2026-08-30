@@ -101,7 +101,7 @@ public sealed class ReviewForm : Form
         {
             AutoSize = true,
             Text = UiStrings.ReviewWarningsAcknowledgement,
-            AccessibleName = UiStrings.ReviewWarningsAcknowledgement,
+            AccessibleName = UiStrings.WithoutMnemonic(UiStrings.ReviewWarningsAcknowledgement),
             AccessibleDescription = UiStrings.ReviewWarningsAcknowledgementDescription,
         };
         _acknowledgeWarnings.CheckedChanged += (_, _) => AcknowledgementChanged();
@@ -224,7 +224,7 @@ public sealed class ReviewForm : Form
         => new()
         {
             Text = text,
-            AccessibleName = text.Replace("&", string.Empty, StringComparison.Ordinal),
+            AccessibleName = UiStrings.WithoutMnemonic(text),
             UseVisualStyleBackColor = true,
         };
 

@@ -573,6 +573,10 @@ public class ReviewSurfaceContractTests
             Assert.True(detail.WordWrap);
             Assert.Contains(completeMessage, detail.Text, StringComparison.Ordinal);
             Assert.True(acknowledge.Visible);
+            Assert.Equal('w', Mnemonic(acknowledge.Text));
+            Assert.Equal(
+                "I have reviewed the non-dismissable warnings",
+                acknowledge.AccessibilityObject.Name);
             Assert.False(approve.Enabled);
         });
 
@@ -602,8 +606,16 @@ public class ReviewSurfaceContractTests
         {
             using var review = UiaHarness.CreateReviewForm();
             using var capture = UiaHarness.CreateCaptureForm();
+            using var pressRoom = new PressRoomForm(
+                reviewRunner: _ => null,
+                libraryPicker: () => null,
+                loadedProjectPreflight: _ => null);
+            using var allAboard = new AllAboardForm(new AppServices.NoAssetsCatalog(), _ => null);
+            using var modules = new ModuleStudioForm(reviewRunner: _ => null);
+            using var editor = new NodeEditorForm(new Paragraph("Synthetic editor content."));
+            using var tile = new TileForm();
 
-            foreach (var form in new Form[] { review, capture })
+            foreach (var form in new Form[] { review, capture, pressRoom, allAboard, modules, editor, tile })
             {
                 var mnemonics = Flatten(form)
                     .OfType<ButtonBase>().Cast<Control>()

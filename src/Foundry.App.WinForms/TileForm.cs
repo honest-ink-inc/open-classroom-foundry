@@ -9,7 +9,7 @@ public sealed class TileForm : Form
 
     public TileForm()
     {
-        Text = UiStrings.TileForWall.Replace("&", "", StringComparison.Ordinal).TrimEnd('…');
+        Text = UiStrings.WithoutMnemonic(UiStrings.TileForWall).TrimEnd('…');
         FormBorderStyle = FormBorderStyle.FixedDialog;
         MinimizeBox = false;
         MaximizeBox = false;

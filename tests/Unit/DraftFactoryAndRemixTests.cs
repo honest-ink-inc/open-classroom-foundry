@@ -1,3 +1,4 @@
+using System.Reflection;
 using Foundry.Application;
 using Foundry.Domain;
 using Foundry.Modules.BuiltIn.AccessRemix;
@@ -51,6 +52,15 @@ public class AccessRemixTests
         new Heading(1, "Cleaning the paint station"),
         .. Enumerable.Range(1, steps).Select(DocumentNode (i) => new StepRow($"Step {i}.")),
     ]);
+
+    [Fact]
+    public void The_held_remixer_is_not_a_shipped_public_API()
+    {
+        Assert.True(typeof(AccessRemixer).IsNotPublic);
+        Assert.Empty(typeof(AccessRemixer).GetMethods(
+            BindingFlags.Public | BindingFlags.Static | BindingFlags.DeclaredOnly));
+        Assert.True(typeof(RemixResult).IsNotPublic);
+    }
 
     [Fact]
     public void Chunking_inserts_page_breaks_between_groups_and_changes_no_text()

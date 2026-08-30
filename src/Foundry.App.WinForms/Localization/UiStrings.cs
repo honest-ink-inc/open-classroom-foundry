@@ -230,6 +230,8 @@ public static class UiStrings
 
     public static string StatusApproved => T("Approved — print view, export, and save to library are unlocked.");
 
+    public static string StatusAllAboardApprovedAccessHeld => T("Approved for All Aboard outputs. Access Remix remains held until the protected specialist purpose authority is designed and reviewed; typed content cannot waive that hold.");
+
     public static string StatusNotApproved => T("Review ended without approval; nothing is unlocked.");
 
     public static string StatusSaved => T("Saved to the library as {0}.");
@@ -348,10 +350,6 @@ public static class UiStrings
 
     public static string ModuleLaneConfirmation => T("Data lane confirmation");
 
-    public static string ModuleClassroomSupportPurpose => T("This artifact is classroom support, not a formal or high-stakes assessment.");
-
-    public static string ModulePurposeClassification => T("Intended-use classification");
-
     public static string GreenInputAttestation => T("I confirm these inputs are staged, generic, teacher-created, or openly licensed — &Green");
 
     public static string ModuleNotes => T("Module notes and safeguards");
@@ -368,19 +366,11 @@ public static class UiStrings
 
     public static string TargetLanguageFirst => T("Target-&language first");
 
-    public static string ChooseApprovedProject => T("&Choose approved project…");
-
-    public static string NoApprovedProject => T("No approved project selected");
-
-    public static string ApprovedProjectSelected => T("Approved project selected: {0}");
-
-    public static string CurrentApprovedArtifactSelected => T("Current exact approval selected");
+    public static string AccessPurposeAuthorityAbsent => T("Protected purpose authority is not available in this application");
 
     public static string ModuleLaneAndRecipe => T("Lane: {0}. Recipe: {1}, version {2}.");
 
     public static string ModuleSyntheticStarter => T("The starter values are synthetic and contain no learner data.");
-
-    public static string ModuleApprovedInputRequired => T("This mode starts only from a Green project that passes a fresh named review.");
 
     public static string ModuleSensitiveInput => T("This field can hold governed material. Follow the displayed lane and district safeguards.");
 
@@ -390,13 +380,7 @@ public static class UiStrings
 
     public static string StatusModuleGreenRequired => T("Green confirmation is required. Unknown or learner-linked inputs remain Amber and cannot enter this studio.");
 
-    public static string StatusModulePurposeRequired => T("Classify the intended use before review.");
-
     public static string StatusModuleUnavailable => T("Unavailable: {0}");
-
-    public static string StatusModuleProjectApproved => T("The source project passed a fresh named review.");
-
-    public static string StatusModuleProjectNotApproved => T("The source project was not approved; Access Remix remains locked.");
 
     public static string StatusModuleBuiltWithIssues => T("The draft has {0} blocking issue(s); review announces them and approval remains unavailable.");
 
@@ -525,7 +509,7 @@ public static class UiStrings
 
     public static string ApproveDescription => T("Records your named approval of this exact revision; only approved artifacts can print, save, or export.");
 
-    public static string ReviewWarningsAcknowledgement => T("I have reviewed the non-dismissable warnings");
+    public static string ReviewWarningsAcknowledgement => T("I have reviewed the non-dismissable &warnings");
 
     public static string ReviewWarningsAcknowledgementDescription => T("Required warnings must be acknowledged before approval.");
 
@@ -790,6 +774,8 @@ public static class UiStrings
 
     public static string CatalogInvalidJson => T("The UI catalog is not strict JSON near line {0}, byte {1}.");
 
+    public static string CatalogInvalidUnicode => T("The UI catalog contains a malformed Unicode string.");
+
     public static string CatalogUnsupportedSchema => T("The UI catalog schema version is unsupported: {0}.");
 
     public static string CatalogDraftRefused => T("This UI catalog is a draft. A named multilingual-seat review is required before activation.");
@@ -846,6 +832,28 @@ public static class UiStrings
 
     public static string Format(string template, params object?[] arguments)
         => string.Format(System.Globalization.CultureInfo.InvariantCulture, template, arguments);
+
+    public static string WithoutMnemonic(string text)
+    {
+        ArgumentNullException.ThrowIfNull(text);
+        var result = new StringBuilder(text.Length);
+        for (var index = 0; index < text.Length; index++)
+        {
+            if (text[index] != '&')
+            {
+                result.Append(text[index]);
+                continue;
+            }
+
+            if (index + 1 < text.Length && text[index + 1] == '&')
+            {
+                result.Append('&');
+                index++;
+            }
+        }
+
+        return result.ToString();
+    }
 
     internal static IReadOnlyDictionary<string, string> NeutralChrome
     {

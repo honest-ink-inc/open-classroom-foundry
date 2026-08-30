@@ -694,6 +694,7 @@ Individualized accommodation plans, student mastery tracking, diagnosis-linked r
 
 **Invariants**
 
+- The production MVP requires purpose authority established through protected specialist review and not grantable by typed content. The current build deliberately issues no such authority: All Aboard content remains purpose `Unknown`, the Access catalog mode has no build delegate, and the remixer is not a public API
 - Preserve every prompt, condition, datum, reference, and criterion
 - Do not alter item difficulty or cue the answer
 - Keep indispensable graphics with their prompt
@@ -709,6 +710,7 @@ Individualized accommodation plans, student mastery tracking, diagnosis-linked r
 - Pagination never separates a prompt from indispensable evidence
 - Construct-change warnings are visible and non-dismissable — acknowledged, never hidden
 - A refusal fixture verifies that a formal assessment disguised as a worksheet is refused
+- Adversarial fixtures verify that assessment-shaped typed content in English and Spanish, keyboard declarations, generic approvals, edited artifacts, and reopened packages cannot acquire Access authority; no document enters the current held MVP
 - No answer-key leakage
 
 **Defer**

@@ -56,11 +56,10 @@ public sealed record ModuleFieldDefinition(
     ModuleFieldCondition? Condition = null,
     bool IsSensitive = false);
 
-/// <summary>Whether a mode has a safe synthetic starter, needs an approved input, or is unavailable.</summary>
+/// <summary>Whether a mode has a safe synthetic starter or is visibly unavailable.</summary>
 public enum ModuleDefaultKind
 {
     Synthetic,
-    RequiresApprovedArtifact,
     Unavailable,
 }
 
@@ -120,32 +119,6 @@ public sealed class ModuleBuildOutcome
             ? DraftArtifact.New(Document, Lane)
             : DraftArtifact.NewClassified(Document, Lane, _purposeEvidence);
 
-    /// <summary>
-    /// Binds the trusted desktop host's explicit intended-use classification to
-    /// this exact build. Catalog builders themselves cannot infer purpose from
-    /// arbitrary teacher-authored prose and therefore return Unknown.
-    /// </summary>
-    internal ModuleBuildOutcome ClassifyAsClassroomSupport()
-    {
-        if (Purpose != ArtifactPurpose.Unknown)
-        {
-            throw new InvalidOperationException(
-                "Only an unknown-purpose module build can receive a classroom-support classification.");
-        }
-
-        return new ModuleBuildOutcome(
-            Document,
-            Recipe,
-            Lane,
-            ArtifactPurposeEvidence.ClassroomSupport(
-                Document,
-                Lane,
-                ArtifactPurposeAuthority.DesktopExplicitIntendedUse),
-            Issues,
-            Validator,
-            TransformationReport,
-            Notes);
-    }
 }
 
 public sealed record ModuleModeDefinition(
@@ -299,21 +272,26 @@ public sealed class ModuleInputValues
 }
 
 /// <summary>
-/// The UI-independent inventory of the ten built-in module doors. The two Amber
-/// districts remain visible but have no build delegate: authorization cannot be
-/// represented, much less waived, by a submitted field or a keyboard gesture.
+/// The UI-independent inventory of the ten built-in module doors. Human-held
+/// modes remain visible but have no build delegate: authority cannot be
+/// represented, much less waived, by a submitted field or keyboard gesture.
 /// </summary>
 public static class ModuleStudioCatalog
 {
     public const string DistrictAuthorizationRequiredId = "modules.authorization.district-required";
+    public const string AccessPurposeAuthorityRequiredId = "modules.authorization.access-purpose-required";
     public const string AccessOperationChunk = "chunk";
     public const string AccessOperationOneStepPerPanel = "one-step-per-panel";
 
     private const string DistrictAuthorizationFallback =
         "Written district authorization is required. Authorization cannot be granted from this application.";
+    private const string AccessPurposeAuthorityFallback =
+        "Access Remix is held until protected specialist review establishes a non-keyboard purpose authority. Typed content cannot grant it.";
 
     private static readonly ModuleDisplayText DistrictAuthorizationRequired =
         Display(DistrictAuthorizationRequiredId, DistrictAuthorizationFallback);
+    private static readonly ModuleDisplayText AccessPurposeAuthorityRequired =
+        Display(AccessPurposeAuthorityRequiredId, AccessPurposeAuthorityFallback);
 
     public static IReadOnlyList<ModuleDoorDefinition> All { get; } =
     [
@@ -381,20 +359,19 @@ public static class ModuleStudioCatalog
             (AccessOperationOneStepPerPanel, "One step per panel"));
 
         return Door("access-remix", "Access Remix",
-            Mode(
+            UnavailableMode(
                 "access-remix",
                 "Layout remix",
                 AccessRemixer.Recipe,
                 DataLane.Green,
-                ModuleDefaultKind.RequiresApprovedArtifact,
-                BuildAccess,
                 [
-                    ApprovedField("artifact", "Approved Green artifact", "access-remix"),
+                    ApprovedField("artifact", "Protected source artifact - not available", "access-remix"),
                     ChoiceField("operation", "Layout operation", AccessOperationChunk, "access-remix", operationChoices),
                     IntegerField("chunk-size", "Steps per chunk", 3, 1, 99, "access-remix",
                         new ModuleFieldCondition("operation", AccessOperationChunk)),
                     Notice("layout-only", "Access Remix changes layout only; it never changes artifact text.", "access-remix"),
-                ]));
+                ],
+                AccessPurposeAuthorityRequired));
     }
 
     private static ModuleDoorDefinition DirectionsDoor()
@@ -661,42 +638,6 @@ public static class ModuleStudioCatalog
             document => ValidateBoard(document, locked));
     }
 
-    private static ModuleBuildOutcome BuildAccess(ModuleInputValues inputs)
-    {
-        var approved = inputs.ApprovedArtifact("artifact");
-        if (approved.Revision.Lane != DataLane.Green)
-        {
-            throw new InvalidOperationException("Access Remix accepts only an ApprovedArtifact whose inherited lane is Green.");
-        }
-
-        if (!approved.Revision.HasAuthenticatedPurpose(ArtifactPurpose.ClassroomSupport))
-        {
-            throw new InvalidOperationException(
-                "Access Remix requires an approved classroom-support purpose backed by authenticated in-memory evidence for this exact document and lane. Unknown, package-declared, and formal or high-stakes assessment purposes fail closed.");
-        }
-
-        var source = approved.Revision.Document;
-        var operation = inputs.Choice("operation", [AccessOperationChunk, AccessOperationOneStepPerPanel]);
-        var result = operation switch
-        {
-            AccessOperationChunk => AccessRemixer.Chunk(source, inputs.Integer("chunk-size", 1, 99)),
-            AccessOperationOneStepPerPanel => AccessRemixer.OneStepPerPanel(source),
-            _ => throw new InvalidOperationException("The validated access operation has no builder."),
-        };
-
-        return Outcome(
-            result.Document,
-            AccessRemixer.Recipe,
-            approved.Revision.Lane,
-            DocumentValidator.Validate(result.Document),
-            document => ValidateAccessParity(document, source),
-            result.TransformationReport,
-            approved.Revision.PurposeEvidence!.Derive(
-                result.Document,
-                approved.Revision.Lane,
-                ArtifactPurposeAuthority.AccessRemixDerivative));
-    }
-
     private static ModuleBuildOutcome BuildDirections(ModuleInputValues inputs)
     {
         var steps = inputs.Records("steps", 2).Select(row => new DuetStep(row[0], row[1])).ToList();
@@ -893,13 +834,6 @@ public static class ModuleStudioCatalog
 
         issues.AddRange(LockedFieldValidator.Validate(document, locked));
         return issues;
-    }
-
-    private static IReadOnlyList<ValidationIssue> ValidateAccessParity(ArtifactDocument document, ArtifactDocument source)
-    {
-        return DocumentText.CollectStrings(source).SequenceEqual(DocumentText.CollectStrings(document), StringComparer.Ordinal)
-            ? []
-            : [ValidationIssue.Blocking("remix.item-parity", "Access Remix review changed source text; layout-only parity is broken.")];
     }
 
     private static List<ValidationIssue> ValidateBilingual(
@@ -1192,8 +1126,17 @@ public static class ModuleStudioCatalog
         string fallback,
         RecipeManifest recipe,
         DataLane lane,
-        IReadOnlyList<ModuleFieldDefinition> fields)
-        => new(key, Display($"modules.{key}.mode", fallback), recipe, lane, fields, ModuleDefaultKind.Unavailable, null, DistrictAuthorizationRequired);
+        IReadOnlyList<ModuleFieldDefinition> fields,
+        ModuleDisplayText? unavailableReason = null)
+        => new(
+            key,
+            Display($"modules.{key}.mode", fallback),
+            recipe,
+            lane,
+            fields,
+            ModuleDefaultKind.Unavailable,
+            null,
+            unavailableReason ?? DistrictAuthorizationRequired);
 
     private static ModuleDisplayText Display(string id, string fallback) => new(id, fallback);
 

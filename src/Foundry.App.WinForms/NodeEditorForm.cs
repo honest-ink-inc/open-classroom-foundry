@@ -596,6 +596,7 @@ public sealed class NodeEditorForm : Form
             Dock = DockStyle.Fill,
             MultiSelect = false,
             RowHeadersVisible = true,
+            RowHeadersWidthSizeMode = DataGridViewRowHeadersWidthSizeMode.AutoSizeToAllHeaders,
             SelectionMode = DataGridViewSelectionMode.CellSelect,
         };
 
@@ -815,7 +816,10 @@ public sealed class NodeEditorForm : Form
         }
 
         var row = _primitiveFields.RowCount++;
-        _primitiveFields.RowStyles.Add(new RowStyle(SizeType.Absolute, 32));
+        // Primitive labels are substantially longer than their numeric fields
+        // (and grow again in translated chrome). Let the row honor the label's
+        // real preferred height instead of cutting a wrapped caption at 32 px.
+        _primitiveFields.RowStyles.Add(new RowStyle(SizeType.AutoSize));
         _primitiveFields.Controls.Add(new Label
         {
             AutoSize = true,

@@ -35,9 +35,9 @@ Stop the upgrade immediately if any of these is true:
 - the exact candidate root has not been approved for the candidate build's
   `--project-library-root` switch, does not already exist, crosses a reparse
   point, or lacks one literal path segment equal to that build's engine version;
-- the strict operator plan has not been reviewed with
-  `Foundry.Tools.ProjectUpgradeHost review`, or the exact SHA-256 it reports is
-  not supplied unchanged to the later `prepare` invocation;
+- the strict operator plan has not been reviewed with the host's source-tree
+  `review` operation described below, or the exact SHA-256 it reports is not
+  supplied unchanged to the later `prepare` invocation;
 - the canonical source and candidate roots are not explicit, distinct,
   non-overlapping, and confined against link or path escape, or the candidate
   root is not empty before the batch begins;
@@ -96,11 +96,18 @@ inventory may map devices to paths under its own access and retention controls.
    globs, absolute item paths, unaddressed source packages, and unaddressed
    candidate entries. Keep a real inventory only in District IT's approved
    system; do not paste it into repository diagnostics or logs.
-5. Run `Foundry.Tools.ProjectUpgradeHost review --plan <absolute-plan-file>`.
-   It performs no preparation and prints only schema, target engine, closed
-   project count, and the exact plan SHA-256. Compare those fields with the
-   approved inventory. Then run `Foundry.Tools.ProjectUpgradeHost prepare
-   --plan <the-same-absolute-plan-file> --confirm-plan-sha256 <reviewed-SHA-256>`.
+5. No separately authorized operator package exists yet, and `tools/publish.ps1`
+   publishes only the WinForms application. For source-tree evaluation, run:
+
+   ```powershell
+   dotnet run --project tools/ProjectUpgradeHost/Foundry.Tools.ProjectUpgradeHost.csproj -- review --plan <absolute-plan-file>
+   dotnet run --project tools/ProjectUpgradeHost/Foundry.Tools.ProjectUpgradeHost.csproj -- prepare --plan <the-same-absolute-plan-file> --confirm-plan-sha256 <reviewed-SHA-256>
+   ```
+
+   Do not copy these development commands into a managed deployment or describe
+   them as an installed tool. `review` performs no preparation and prints only
+   schema, target engine, closed project count, and the exact plan SHA-256.
+   Compare those fields with the approved inventory before invoking `prepare`.
    The host rereads the exact bytes, refuses a changed digest, and invokes
    `OcfprojUpgradeService.PrepareCompatibleBatchAsync` exactly once. Its batch
    lock serializes preparation and it processes inventory items sequentially.

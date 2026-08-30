@@ -17,16 +17,13 @@ namespace Foundry.App.WinForms;
 public sealed class ModuleStudioForm : Form
 {
     private readonly Func<ReviewSession, ApprovedArtifact?> _reviewRunner;
-    private readonly Func<string?> _libraryPicker;
     private readonly Func<ExportChoice?>? _exportPicker;
-    private readonly Func<Storage.LoadedProject, LoadedProjectGreenConfirmation?> _loadedProjectPreflight;
     private readonly bool _modalReview;
     private readonly ListBox _doorList;
     private readonly ComboBox _modeList;
     private readonly FlowLayoutPanel _parameterPanel;
     private readonly ListBox _notes;
     private readonly CheckBox _greenInput;
-    private readonly CheckBox _classroomSupportPurpose;
     private readonly ComboBox _audience;
     private readonly NumericUpDown _textScale;
     private readonly CheckBox _targetLanguageFirst;
@@ -38,14 +35,12 @@ public sealed class ModuleStudioForm : Form
     private readonly Label _status;
     private readonly Dictionary<string, Func<object?>> _valueReaders = new(StringComparer.Ordinal);
     private readonly Dictionary<string, Control> _fieldContainers = new(StringComparer.Ordinal);
-    private readonly Dictionary<string, ApprovedArtifact> _approvedInputs = new(StringComparer.Ordinal);
     private bool _loadingFields;
     private bool _reviewPending;
     private long _stateGeneration;
     private ApprovedContext? _context;
     private ProjectValidationEnvelope? _validationEnvelope;
     private ProjectRenderProfile? _renderProfile;
-    private ApprovedArtifact? _trustedCurrentClassroomSupport;
 
     private sealed record DisplayItem<T>(T Value, string Text)
     {
@@ -63,15 +58,11 @@ public sealed class ModuleStudioForm : Form
 
     public ModuleStudioForm(
         Func<ReviewSession, ApprovedArtifact?>? reviewRunner = null,
-        Func<string?>? libraryPicker = null,
-        Func<ExportChoice?>? exportPicker = null,
-        Func<Storage.LoadedProject, LoadedProjectGreenConfirmation?>? loadedProjectPreflight = null)
+        Func<ExportChoice?>? exportPicker = null)
     {
         _modalReview = reviewRunner is null;
         _reviewRunner = reviewRunner ?? RunModalReview;
-        _libraryPicker = libraryPicker ?? PickFromLibraryDialog;
         _exportPicker = exportPicker;
-        _loadedProjectPreflight = loadedProjectPreflight ?? RunLoadedProjectPreflight;
 
         Text = UiStrings.ModuleStudioWindowTitle;
         // Keep the ordinary 1180 x 720 design surface, but leave enough
@@ -121,13 +112,6 @@ public sealed class ModuleStudioForm : Form
             AutoSize = true,
             Text = UiStrings.GreenInputAttestation,
             AccessibleName = UiStrings.GreenInputAttestation,
-        };
-
-        _classroomSupportPurpose = new CheckBox
-        {
-            AutoSize = true,
-            Text = UiStrings.ModuleClassroomSupportPurpose,
-            AccessibleName = UiStrings.ModuleClassroomSupportPurpose,
         };
 
         _audience = new ComboBox
@@ -189,15 +173,6 @@ public sealed class ModuleStudioForm : Form
         };
         laneGroup.Controls.Add(_greenInput);
 
-        var purposeGroup = new GroupBox
-        {
-            Dock = DockStyle.Fill,
-            AutoSize = true,
-            Text = UiStrings.ModulePurposeClassification,
-            AccessibleName = UiStrings.ModulePurposeClassification,
-        };
-        purposeGroup.Controls.Add(_classroomSupportPurpose);
-
         var outputOptions = new FlowLayoutPanel
         {
             Dock = DockStyle.Fill,
@@ -231,10 +206,9 @@ public sealed class ModuleStudioForm : Form
         {
             Dock = DockStyle.Fill,
             ColumnCount = 1,
-            RowCount = 7,
+            RowCount = 6,
             AutoScroll = true,
         };
-        right.RowStyles.Add(new RowStyle(SizeType.AutoSize));
         right.RowStyles.Add(new RowStyle(SizeType.AutoSize));
         right.RowStyles.Add(new RowStyle(SizeType.AutoSize));
         right.RowStyles.Add(new RowStyle(SizeType.Percent, 68));
@@ -243,11 +217,10 @@ public sealed class ModuleStudioForm : Form
         right.RowStyles.Add(new RowStyle(SizeType.AutoSize));
         right.Controls.Add(modeRow, 0, 0);
         right.Controls.Add(laneGroup, 0, 1);
-        right.Controls.Add(purposeGroup, 0, 2);
-        right.Controls.Add(_parameterPanel, 0, 3);
-        right.Controls.Add(_notes, 0, 4);
-        right.Controls.Add(outputGroup, 0, 5);
-        right.Controls.Add(buttons, 0, 6);
+        right.Controls.Add(_parameterPanel, 0, 2);
+        right.Controls.Add(_notes, 0, 3);
+        right.Controls.Add(outputGroup, 0, 4);
+        right.Controls.Add(buttons, 0, 5);
 
         var layout = new TableLayoutPanel
         {
@@ -267,7 +240,6 @@ public sealed class ModuleStudioForm : Form
         _doorList.SelectedIndexChanged += (_, _) => LoadDoor();
         _modeList.SelectedIndexChanged += (_, _) => LoadMode();
         _greenInput.CheckedChanged += (_, _) => GreenConfirmationChanged();
-        _classroomSupportPurpose.CheckedChanged += (_, _) => PurposeClassificationChanged();
         _audience.SelectedIndexChanged += (_, _) => OutputOptionChanged();
         _textScale.ValueChanged += (_, _) => OutputOptionChanged();
         _targetLanguageFirst.CheckedChanged += (_, _) => OutputOptionChanged();
@@ -326,7 +298,6 @@ public sealed class ModuleStudioForm : Form
         _stateGeneration++;
         _loadingFields = true;
         ClearApproval();
-        _approvedInputs.Clear();
         _parameterPanel.SuspendLayout();
         _parameterPanel.Controls.Clear();
         _valueReaders.Clear();
@@ -342,9 +313,6 @@ public sealed class ModuleStudioForm : Form
         // lane but must never certify teacher-entered prose as Green.
         _greenInput.Checked = mode.DefaultsAreSynthetic;
         _greenInput.Enabled = mode.IsBuildAvailable;
-        _classroomSupportPurpose.Checked = mode.DefaultsAreSynthetic;
-        _classroomSupportPurpose.Enabled = mode.IsBuildAvailable
-            && mode.DefaultKind != ModuleDefaultKind.RequiresApprovedArtifact;
         _parameterPanel.Enabled = mode.IsBuildAvailable;
         _parameterPanel.ResumeLayout();
         PopulateNotes(mode, []);
@@ -512,31 +480,17 @@ public sealed class ModuleStudioForm : Form
         return grid;
     }
 
-    private TableLayoutPanel ApprovedArtifactInput(ModuleFieldDefinition field)
+    private TextBox ApprovedArtifactInput(ModuleFieldDefinition field)
     {
-        var panel = new TableLayoutPanel { ColumnCount = 2, Dock = DockStyle.Fill };
-        panel.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
-        panel.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
         var selected = new TextBox
         {
             ReadOnly = true,
-            Text = UiStrings.NoApprovedProject,
+            Text = UiStrings.AccessPurposeAuthorityAbsent,
             AccessibleName = Display(field.Display),
             Dock = DockStyle.Fill,
         };
-        if (_trustedCurrentClassroomSupport is not null)
-        {
-            _approvedInputs[field.Key] = _trustedCurrentClassroomSupport;
-            selected.Text = UiStrings.CurrentApprovedArtifactSelected;
-        }
-
-        var choose = MakeButton(
-            UiStrings.ChooseApprovedProject,
-            (_, _) => BeginInvoke(() => ChooseApprovedArtifact(field, selected)));
-        panel.Controls.Add(selected, 0, 0);
-        panel.Controls.Add(choose, 1, 0);
-        _valueReaders[field.Key] = () => _approvedInputs.GetValueOrDefault(field.Key);
-        return panel;
+        _valueReaders[field.Key] = () => null;
+        return selected;
     }
 
     private static Label Notice(ModuleFieldDefinition field)
@@ -546,95 +500,6 @@ public sealed class ModuleStudioForm : Form
             Text = Display(field.Display),
             AccessibleName = Display(field.Display),
         };
-
-    private void ChooseApprovedArtifact(ModuleFieldDefinition field, TextBox selected)
-    {
-        var path = _libraryPicker();
-        if (path is null)
-        {
-            return;
-        }
-
-        Storage.LoadedProject loaded;
-        try
-        {
-            loaded = AppServices.OpenFromLibrary(path);
-        }
-        catch (Exception refusal) when (refusal is InvalidOperationException or IOException or InvalidDataException)
-        {
-            SetStatus(UiStrings.Format(UiStrings.StatusRefused, refusal.Message));
-            return;
-        }
-
-        ReviewSession session;
-        try
-        {
-            var laneConfirmation = _loadedProjectPreflight(loaded);
-            if (laneConfirmation is null)
-            {
-                _approvedInputs.Remove(field.Key);
-                selected.Text = UiStrings.NoApprovedProject;
-                ClearApproval();
-                SetStatus(UiStrings.StatusLoadedProjectPreflightNotConfirmed);
-                return;
-            }
-
-            session = AppServices.SessionOverLoadedProject(loaded, laneConfirmation);
-        }
-        catch (InvalidOperationException refusal)
-        {
-            SetStatus(UiStrings.Format(UiStrings.StatusRefused, refusal.Message));
-            return;
-        }
-        var generation = _stateGeneration;
-        BeginPendingReview();
-        ApprovedArtifact? approved;
-        try
-        {
-            approved = _reviewRunner(session);
-        }
-        finally
-        {
-            EndPendingReview();
-        }
-
-        if (approved is null)
-        {
-            _approvedInputs.Remove(field.Key);
-            selected.Text = UiStrings.NoApprovedProject;
-            ClearApproval();
-            SetStatus(UiStrings.StatusModuleProjectNotApproved);
-            return;
-        }
-
-        if (generation != _stateGeneration || !AppServices.IsExactApproval(session, approved))
-        {
-            _approvedInputs.Remove(field.Key);
-            selected.Text = UiStrings.NoApprovedProject;
-            ClearApproval();
-            SetStatus(UiStrings.StatusModuleProjectNotApproved);
-            return;
-        }
-
-        _stateGeneration++;
-        _approvedInputs[field.Key] = approved;
-        selected.Text = UiStrings.Format(UiStrings.ApprovedProjectSelected, Path.GetFileNameWithoutExtension(path));
-        _loadingFields = true;
-        _greenInput.Checked = true;
-        _loadingFields = false;
-        ClearApproval();
-        SetStatus(UiStrings.StatusModuleProjectApproved);
-        UpdateGatedButtons();
-    }
-
-    private LoadedProjectGreenConfirmation? RunLoadedProjectPreflight(
-        Storage.LoadedProject loaded)
-    {
-        using var preflight = new LoadedProjectPreflightForm(loaded);
-        return preflight.ShowDialog(this) == DialogResult.OK
-            ? preflight.Confirmation
-            : null;
-    }
 
     private void ReviewAndApprove()
     {
@@ -649,23 +514,12 @@ public sealed class ModuleStudioForm : Form
             return;
         }
 
-        var purposeIsInherited = mode.DefaultKind == ModuleDefaultKind.RequiresApprovedArtifact;
-        if (!purposeIsInherited && !_classroomSupportPurpose.Checked)
-        {
-            SetStatus(UiStrings.StatusModulePurposeRequired);
-            return;
-        }
-
         ClearApproval();
         ModuleBuildOutcome outcome;
         try
         {
             outcome = mode.Build(new ModuleInputValues(
                 _valueReaders.ToDictionary(pair => pair.Key, pair => pair.Value(), StringComparer.Ordinal)));
-            if (!purposeIsInherited)
-            {
-                outcome = outcome.ClassifyAsClassroomSupport();
-            }
         }
         catch (Exception refusal) when (refusal is ArgumentException or InvalidOperationException)
         {
@@ -730,15 +584,6 @@ public sealed class ModuleStudioForm : Form
             }
 
             ApprovedResult = approved;
-            if (approved.Revision.Purpose == ArtifactPurpose.ClassroomSupport)
-            {
-                // Only an exact artifact produced and approved in this running
-                // typed studio carries purpose across the Access boundary.
-                // A mutable package can assert the same enum but cannot mint
-                // this in-memory provenance.
-                _trustedCurrentClassroomSupport = approved;
-            }
-
             _context = context;
             _validationEnvelope = ProjectValidationEnvelope.Exact(
                 approved,
@@ -778,8 +623,6 @@ public sealed class ModuleStudioForm : Form
         _modeList.Enabled = enabled && (SelectedDoor?.Modes.Count ?? 0) > 1;
         _parameterPanel.Enabled = enabled && SelectedMode is { IsBuildAvailable: true };
         _greenInput.Enabled = enabled && SelectedMode is { IsBuildAvailable: true };
-        _classroomSupportPurpose.Enabled = enabled
-            && SelectedMode is { IsBuildAvailable: true, DefaultKind: not ModuleDefaultKind.RequiresApprovedArtifact };
         _audience.Enabled = enabled;
         _textScale.Enabled = enabled;
         _targetLanguageFirst.Enabled = enabled;
@@ -927,11 +770,6 @@ public sealed class ModuleStudioForm : Form
             _notes.Items.Add(UiStrings.ModuleSyntheticStarter);
         }
 
-        if (mode.DefaultKind == ModuleDefaultKind.RequiresApprovedArtifact)
-        {
-            _notes.Items.Add(UiStrings.ModuleApprovedInputRequired);
-        }
-
         if (mode.UnavailableReason is not null)
         {
             _notes.Items.Add(Display(mode.UnavailableReason));
@@ -961,7 +799,6 @@ public sealed class ModuleStudioForm : Form
         _stateGeneration++;
         _loadingFields = true;
         _greenInput.Checked = false;
-        _classroomSupportPurpose.Checked = false;
         _loadingFields = false;
         ClearApproval();
         UpdateConditions();
@@ -1020,34 +857,6 @@ public sealed class ModuleStudioForm : Form
         UpdateGatedButtons();
     }
 
-    private void PurposeClassificationChanged()
-    {
-        if (_loadingFields)
-        {
-            return;
-        }
-
-        _stateGeneration++;
-        if (SelectedMode is { IsBuildAvailable: false, UnavailableReason: { } reason })
-        {
-            _loadingFields = true;
-            _classroomSupportPurpose.Checked = false;
-            _loadingFields = false;
-            ClearApproval();
-            SetStatus(UiStrings.Format(UiStrings.StatusModuleUnavailable, Display(reason)));
-            UpdateGatedButtons();
-            return;
-        }
-
-        ClearApproval();
-        SetStatus(!_greenInput.Checked
-            ? UiStrings.StatusModuleGreenRequired
-            : _classroomSupportPurpose.Checked
-                ? UiStrings.StatusModuleReady
-                : UiStrings.StatusModulePurposeRequired);
-        UpdateGatedButtons();
-    }
-
     private void UpdateConditions()
     {
         if (SelectedMode is not { } mode)
@@ -1075,18 +884,12 @@ public sealed class ModuleStudioForm : Form
         UpdateGatedButtons();
     }
 
-    private bool IsInputReady()
-        => _greenInput.Checked
-            && (SelectedMode?.DefaultKind == ModuleDefaultKind.RequiresApprovedArtifact
-                || _classroomSupportPurpose.Checked);
+    private bool IsInputReady() => _greenInput.Checked;
 
     private string ReadinessStatus()
         => !_greenInput.Checked
             ? UiStrings.StatusModuleGreenRequired
-            : SelectedMode?.DefaultKind != ModuleDefaultKind.RequiresApprovedArtifact
-                && !_classroomSupportPurpose.Checked
-                    ? UiStrings.StatusModulePurposeRequired
-                    : UiStrings.StatusModuleReady;
+            : UiStrings.StatusModuleReady;
 
     private void UpdateGatedButtons()
     {
@@ -1099,17 +902,6 @@ public sealed class ModuleStudioForm : Form
         _printView.Enabled = approved && supported.Contains(RenderTarget.PrintHtml);
         _export.Enabled = approved && supported.Count > 0;
         _save.Enabled = approved;
-    }
-
-    private static string? PickFromLibraryDialog()
-    {
-        Directory.CreateDirectory(AppServices.LibraryRoot);
-        using var dialog = new OpenFileDialog
-        {
-            InitialDirectory = AppServices.LibraryRoot,
-            Filter = $"*{Storage.OcfprojProjectStore.Extension}|*{Storage.OcfprojProjectStore.Extension}",
-        };
-        return dialog.ShowDialog() == DialogResult.OK ? dialog.FileName : null;
     }
 
     private void SetStatus(string text)

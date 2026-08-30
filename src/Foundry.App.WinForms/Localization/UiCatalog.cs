@@ -366,6 +366,15 @@ internal static class UiCatalogLoader
         {
             throw Refusal(UiStrings.CatalogInvalidJson, failure.LineNumber, failure.BytePositionInLine);
         }
+        catch (Exception failure) when (failure is InvalidOperationException or ArgumentException)
+        {
+            // System.Text.Json accepts escaped lone UTF-16 surrogates into the
+            // token stream, then refuses them when a string value or property
+            // name is materialized. Normalize that hostile-input case to this
+            // boundary's controlled InvalidData refusal instead of leaking a
+            // startup-crashing framework exception.
+            throw Refusal(UiStrings.CatalogInvalidUnicode);
+        }
     }
 
     private static ReviewedUiCatalog Parse(JsonElement root)
@@ -465,7 +474,7 @@ internal static class UiCatalogLoader
                 throw Refusal(UiStrings.CatalogPlaceholderMismatch, pair.Key);
             }
 
-            if (MnemonicCount(pair.Value) != MnemonicCount(translation))
+            if (MnemonicCount(pair.Value, pair.Key) != MnemonicCount(translation, pair.Key))
             {
                 throw Refusal(UiStrings.CatalogMnemonicMismatch, pair.Key);
             }
@@ -669,22 +678,44 @@ internal static class UiCatalogLoader
         return tokens;
     }
 
-    private static int MnemonicCount(string text)
+    private static int MnemonicCount(string text, string localizationId)
     {
+        // Only the static chrome namespace is rendered by controls that honor
+        // WinForms '&' mnemonic markers. Dynamic press/module labels are list,
+        // combo-box, or document-facing text where an ampersand is literal
+        // (for example, "Calibration & proof sheet"). Treating those values as
+        // mnemonic markup would reject valid language rather than protect a
+        // keyboard contract.
+        if (!localizationId.StartsWith("chrome.", StringComparison.Ordinal))
+        {
+            return 0;
+        }
+
         var count = 0;
         for (var index = 0; index < text.Length; index++)
         {
-            if (text[index] != '&' || index + 1 >= text.Length)
+            if (text[index] != '&')
             {
                 continue;
+            }
+
+            if (index + 1 >= text.Length)
+            {
+                throw Refusal(UiStrings.CatalogMnemonicMismatch, localizationId);
             }
 
             if (text[index + 1] == '&')
             {
                 index++;
             }
-            else if (!char.IsWhiteSpace(text[index + 1]))
+            else
             {
+                var mnemonic = Rune.GetRuneAt(text, index + 1);
+                if (!Rune.IsLetterOrDigit(mnemonic))
+                {
+                    throw Refusal(UiStrings.CatalogMnemonicMismatch, localizationId);
+                }
+
                 count++;
             }
         }

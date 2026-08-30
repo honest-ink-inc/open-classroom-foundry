@@ -4,7 +4,7 @@ using Foundry.Domain;
 
 namespace Foundry.Modules.BuiltIn.AccessRemix;
 
-public sealed record RemixResult(ArtifactDocument Document, IReadOnlyList<string> TransformationReport);
+internal sealed record RemixResult(ArtifactDocument Document, IReadOnlyList<string> TransformationReport);
 
 /// <summary>
 /// Access Remix (plan §10.4), first deterministic transforms: chunking and
@@ -15,9 +15,9 @@ public sealed record RemixResult(ArtifactDocument Document, IReadOnlyList<string
 /// Large print is a render option (RenderRequest.TextScalePercent), not a
 /// content change — reported here so the teacher sees the whole remix.
 /// </summary>
-public static class AccessRemixer
+internal static class AccessRemixer
 {
-    public static RemixResult Chunk(ArtifactDocument document, int chunkSize)
+    internal static RemixResult Chunk(ArtifactDocument document, int chunkSize)
     {
         ArgumentNullException.ThrowIfNull(document);
         if (chunkSize < 1)
@@ -52,7 +52,7 @@ public static class AccessRemixer
             [$"Chunked steps into groups of {chunkSize}; numbering preserved across pages."]);
     }
 
-    public static RemixResult OneStepPerPanel(ArtifactDocument document)
+    internal static RemixResult OneStepPerPanel(ArtifactDocument document)
     {
         ArgumentNullException.ThrowIfNull(document);
 
@@ -84,7 +84,7 @@ public static class AccessRemixer
         return new RemixResult(remixed, report);
     }
 
-    public static RecipeManifest Recipe { get; } = new(
+    internal static RecipeManifest Recipe { get; } = new(
         Id: "access-remix",
         Version: "0.1.0",
         License: "GPL-3.0-or-later",
@@ -107,7 +107,7 @@ public static class AccessRemixer
         SupportedExports: [RenderTarget.AccessibleHtml, RenderTarget.PrintHtml],
         Warnings:
         [
-            "Formal or high-stakes assessment conversion is prohibited. Access Remix accepts only an exact in-memory artifact explicitly classified for classroom support; it does not detect assessment content disguised as a worksheet.",
+            "Formal or high-stakes assessment conversion is prohibited. The production Access Remix door remains held until protected specialist review establishes a non-keyboard purpose authority; typed content, generic approvals, and saved packages cannot grant it.",
         ],
         EvaluationSuiteVersion: "0.1");
 }

@@ -15,31 +15,23 @@ public sealed record StepSpec(string Text, AssetId? Symbol = null, string? Targe
 public sealed record CardSpec(string Label, string Body = "", AssetId? Symbol = null, string? SymbolAltText = null);
 
 /// <summary>
-/// A typed All Aboard build result. The module, not a generic form or package,
-/// owns the in-memory classroom-support classification consumed by Access.
+/// A typed All Aboard build result. Teacher-entered content remains purpose
+/// Unknown: the engine cannot infer that content is classroom support rather
+/// than an assessment from arbitrary prose, in every language, without the
+/// protected specialist authority that governs that distinction.
 /// </summary>
 public sealed class AllAboardBuildOutcome
 {
-    private readonly ArtifactPurposeEvidence _purposeEvidence;
-
     internal AllAboardBuildOutcome(
         ArtifactDocument document,
         RecipeManifest recipe,
-        DataLane lane,
-        ArtifactPurposeEvidence purposeEvidence)
+        DataLane lane)
     {
         ArgumentNullException.ThrowIfNull(document);
-        ArgumentNullException.ThrowIfNull(purposeEvidence);
-        if (!purposeEvidence.AppliesTo(document, lane))
-        {
-            throw new InvalidOperationException(
-                "An All Aboard outcome cannot carry purpose evidence for another document or lane.");
-        }
-
         Document = document;
         Recipe = recipe;
         Lane = lane;
-        _purposeEvidence = purposeEvidence;
+        Purpose = ArtifactPurpose.Unknown;
     }
 
     public ArtifactDocument Document { get; }
@@ -48,9 +40,9 @@ public sealed class AllAboardBuildOutcome
 
     public DataLane Lane { get; }
 
-    public ArtifactPurpose Purpose => _purposeEvidence.Purpose;
+    public ArtifactPurpose Purpose { get; }
 
-    public DraftArtifact CreateDraft() => DraftArtifact.NewClassified(Document, Lane, _purposeEvidence);
+    public DraftArtifact CreateDraft() => DraftArtifact.New(Document, Lane);
 }
 
 public static class AllAboardBuilders
@@ -240,14 +232,7 @@ public static class AllAboardBuilders
     private static AllAboardBuildOutcome Outcome(
         ArtifactDocument document,
         RecipeManifest recipe)
-        => new(
-            document,
-            recipe,
-            DataLane.Green,
-            ArtifactPurposeEvidence.ClassroomSupport(
-                document,
-                DataLane.Green,
-                ArtifactPurposeAuthority.BuiltInAllAboard));
+        => new(document, recipe, DataLane.Green);
 }
 
 /// <summary>The thin slice's recipe identities (plan §6.6). Data only; Green lane; no model required.</summary>

@@ -1,6 +1,6 @@
 # Atlas 2.0 council priority session
 
-**Status:** READY TEMPLATE — **UNRUN** as of 30 August 2026. This file is not a council finding, a roadmap decision, an ADR, or permission to build. When a real session is scheduled, copy it to `atlas-priority-session-YYYY-MM-DD.md`; that copy remains unrun until the session occurs and its participants review the record. Keep this template unchanged.
+**Status:** READY TEMPLATE — **UNRUN** as of 30 August 2026. This file is not a council finding, a roadmap decision, an ADR, or permission to build. When a real session is scheduled, copy it to `atlas-priority-session-YYYY-MM-DD.md`. Keep this template unchanged. The dated copy moves through `UNRUN` → `SESSION HELD — REVIEW PENDING` → `COUNCIL RECORD FROZEN` only when those events actually occur; feasibility and product-owner disposition follow the frozen council record.
 
 The [idea atlas](../idea-atlas.md) is a register of possibilities, not a queue. This session lets practicing educators state the work that matters before anyone maps that work to an atlas entry or a newly possible composition. The product owner still owns module priorities. Every specialist keeps their own gate, and no absent or longer-delayed seat is treated as having agreed.
 
@@ -14,6 +14,7 @@ The [idea atlas](../idea-atlas.md) is a register of possibilities, not a queue. 
 - A member may speak from their own practice, not for an unfilled seat. Silence or absence means **not reviewed**, never assent.
 - A candidate touching AAC, accessibility/AT, multilingual/family communication, district, privacy/legal/records, safeguarding, curriculum, or rights territory stays held for every applicable seat that was absent. One role cannot waive another role's critical gate.
 - A session recommendation authorizes nothing. Engineering begins only after a separate feasibility record and a written product-owner disposition. Any architectural change still follows the ADR process.
+- The first cohort must enact a decision procedure and quorum rule before an ordering is recorded as a council recommendation. If those terms are not yet in force, the session may capture and map needs, but its output remains an unranked consultation record.
 
 ## Prepare without pre-ranking
 
@@ -36,7 +37,11 @@ The facilitator prepares these items before the session:
 | Seats present (seat + count, no names by default) | `[not run]` |
 | Seats absent | `[not run]` |
 | Materials actually inspected | `[not run]` |
-| Note-taking and public-credit choices confirmed | `[not run]` |
+| Withdrawal right confirmed | `[not run]` |
+| Compensation terms confirmed | `[not run]` |
+| Note-taking choice confirmed | `[not run]` |
+| Public-credit choice confirmed | `[not run]` |
+| Decision procedure and quorum rule applied (exact governing record) | `[not enacted / not run]` |
 
 ## Sixty-minute needs-first agenda
 
@@ -91,6 +96,18 @@ Also record:
 
 “Consensus” means only that the members present stated no unresolved objection to this recommendation. It never implies consent from an absent seat or satisfaction of a later gate.
 
+## Participant review and council-record freeze
+
+Do not begin feasibility while any field below is incomplete. A session having occurred is not evidence that its record was reviewed or frozen.
+
+| Field | Record |
+|---|---|
+| Session occurred; dated copy status changed from `UNRUN` | `[not run]` |
+| Participant read-back/review completed (seat + count, no names by default) | `[not run]` |
+| Corrections and dissent incorporated without facilitator rewriting | `[not run]` |
+| Applicable absent-seat holds rechecked and retained | `[not run]` |
+| Council record frozen (date, repository path, commit, and record version) | `[not run]` |
+
 ## Separate feasibility appendix — completed after the council record is frozen
 
 The maintainer may add facts without rewriting the council's record:
@@ -116,6 +133,6 @@ For each recommendation, the product owner records **adopt for a proposed forge 
 
 ## Completion check
 
-A real session record is complete only when it contains the session header, original need cards, mapping, recommendation (including dissent), read-back corrections, seat holds, the separate feasibility appendix, and the product-owner disposition. Until then, the honest Atlas 2.0 status is:
+A real session record is complete only when it contains the session header, original need cards, mapping, recommendation (including dissent), read-back corrections, seat holds, participant review and freeze evidence, the separate feasibility appendix, and the product-owner disposition. Until then, the honest Atlas 2.0 status is:
 
 > **No next atlas priority has been selected. Awaiting real council input and the product owner's recorded disposition.**

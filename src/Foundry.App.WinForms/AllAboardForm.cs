@@ -336,7 +336,7 @@ public sealed class AllAboardForm : Form
             ApprovedResult = approved;
             _approvedRecipe = recipe;
             UpdateGatedButtons();
-            SetStatus(UiStrings.StatusApproved);
+            SetStatus(UiStrings.StatusAllAboardApprovedAccessHeld);
         }
         finally
         {

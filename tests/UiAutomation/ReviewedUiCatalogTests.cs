@@ -5,6 +5,7 @@ using System.Text;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using Foundry.App.WinForms;
+using Foundry.Domain;
 using Foundry.Modules.BuiltIn;
 using Foundry.Modules.DeterministicPress;
 
@@ -178,6 +179,66 @@ public class ReviewedUiCatalogTests
         AssertCatalogRefused(root => root["strings"]![placeholderId] = "Saved {0,not-an-alignment}.", placeholderId);
         AssertCatalogRefused(root => root["strings"]![placeholderId] = "Saved {0}.\n", placeholderId);
         AssertCatalogRefused(root => root["strings"]![mnemonicId] = "Apply edit", mnemonicId);
+        AssertCatalogRefused(root => root["strings"]![mnemonicId] = "Apply edit&", mnemonicId);
+        AssertCatalogRefused(root => root["strings"]![mnemonicId] = "Apply & edit", mnemonicId);
+        AssertCatalogRefused(root => root["strings"]![mnemonicId] = "Apply &…edit", mnemonicId);
+    }
+
+    [Fact]
+    public void Catalog_accepts_a_unicode_mnemonic_and_an_escaped_ampersand()
+    {
+        var id = UiCatalogIds.Chrome(nameof(UiStrings.ApplyEdit));
+        using var file = ReviewedCatalog(root =>
+            root["strings"]![id] = "&تطبيق && تأكيد");
+
+        var catalog = UiCatalogLoader.LoadReviewed(file.Path);
+
+        Assert.Equal("&تطبيق && تأكيد", catalog.Translate(id, UiStrings.ApplyEdit));
+    }
+
+    [Fact]
+    public void Escaped_ampersands_survive_as_literals_in_review_accessible_names_and_window_titles()
+    {
+        using var file = ReviewedCatalog(root =>
+        {
+            root["strings"]![UiCatalogIds.Chrome(nameof(UiStrings.ReviewElementsTab))] = "A&&B &C";
+            root["strings"]![UiCatalogIds.Chrome(nameof(UiStrings.TileForWall))] = "A&&B &C…";
+        });
+
+        try
+        {
+            ConfigureApprovedForTest([file], [UiLocale.CatalogSwitch, file.Path]);
+            Sta.Run(() =>
+            {
+                using var review = new ReviewForm(ReviewSurfaceContractTests.SessionOver(
+                    new Heading(1, "Synthetic review")));
+                var elements = review.Controls.OfType<TabControl>().Single().TabPages[0];
+                using var tile = new TileForm();
+
+                Assert.Equal("A&&B &C", elements.Text);
+                Assert.Equal("A&B C", elements.AccessibilityObject.Name);
+                Assert.Equal("A&B C", tile.Text);
+            });
+        }
+        finally
+        {
+            UiLocale.Set(UiLocaleMode.Neutral);
+        }
+    }
+
+    [Fact]
+    public void Catalog_preserves_literal_ampersands_in_dynamic_non_mnemonic_text()
+    {
+        var id = UiCatalogIds.PressTitle("calibration-proof");
+        Assert.Equal("Calibration & proof sheet", UiCatalogInventory.NeutralStrings[id]);
+        using var file = ReviewedCatalog(root =>
+            root["strings"]![id] = "Calibration & hoja de prueba");
+
+        var catalog = UiCatalogLoader.LoadReviewed(file.Path);
+
+        Assert.Equal(
+            "Calibration & hoja de prueba",
+            catalog.Translate(id, UiCatalogInventory.NeutralStrings[id]));
     }
 
     [Fact]
@@ -219,6 +280,24 @@ public class ReviewedUiCatalogTests
 
         var trailing = template.Insert(template.LastIndexOf('}'), ",");
         AssertRawCatalogRefused(trailing, "strict JSON");
+    }
+
+    [Theory]
+    [InlineData("\\uD800")]
+    [InlineData("\\uDC00")]
+    public void Catalog_refuses_lone_utf16_surrogates_as_controlled_invalid_data(string escapedSurrogate)
+    {
+        using var reviewed = ReviewedCatalog();
+        var template = File.ReadAllText(reviewed.Path);
+        var stringsStart = template.IndexOf("\"strings\": {", StringComparison.Ordinal);
+        var propertyMarker = $"\"{UiCatalogIds.Chrome(nameof(UiStrings.PressList))}\": ";
+        var valueStart = template.IndexOf(propertyMarker, stringsStart, StringComparison.Ordinal)
+            + propertyMarker.Length;
+        var valueEnd = template.IndexOf(',', valueStart);
+        Assert.True(stringsStart >= 0 && valueStart >= propertyMarker.Length && valueEnd > valueStart);
+        var hostile = template[..valueStart] + $"\"{escapedSurrogate}\"" + template[valueEnd..];
+
+        AssertRawCatalogRefused(hostile, "malformed Unicode");
     }
 
     [Fact]

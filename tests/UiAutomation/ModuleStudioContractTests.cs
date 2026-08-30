@@ -5,14 +5,14 @@ using Foundry.Application;
 using Foundry.Contracts;
 using Foundry.Domain;
 using Foundry.Modules.BuiltIn;
-using Foundry.Storage;
+using Foundry.Modules.BuiltIn.AllAboard;
 
 namespace Foundry.Tests.UiAutomation;
 
 /// <summary>
 /// In-process contract for the one generated surface behind all built-in
-/// module doors. Fixtures are synthetic; Access Remix exercises a real Green
-/// project save/reopen and a fresh Gate B pass without any learner material.
+/// module doors. Fixtures are synthetic; Access Remix remains visibly held
+/// with no build delegate or keyboard authority path.
 /// </summary>
 [Collection(ProjectLibraryRootTestGroup.Name)]
 public sealed class ModuleStudioContractTests : IDisposable
@@ -126,7 +126,7 @@ public sealed class ModuleStudioContractTests : IDisposable
                 Assert.NotNull(form.ApprovedResult);
                 Assert.IsType<ApprovedArtifact>(form.ApprovedResult);
                 Assert.Equal(DataLane.Green, form.ApprovedResult.Revision.Lane);
-                Assert.Equal(ArtifactPurpose.ClassroomSupport, form.ApprovedResult.Revision.Purpose);
+                Assert.Equal(ArtifactPurpose.Unknown, form.ApprovedResult.Revision.Purpose);
                 Assert.Contains("Approved", form.StatusText, StringComparison.Ordinal);
                 AssertSinks(form, enabled: true);
             }
@@ -169,7 +169,7 @@ public sealed class ModuleStudioContractTests : IDisposable
         });
 
     [Fact]
-    public void Free_text_edits_clear_both_lane_and_intended_use_until_the_teacher_reclassifies_them()
+    public void Free_text_edits_clear_the_lane_until_the_teacher_reclassifies_them()
         => WithForm(GateRespectingApprove, form =>
         {
             SelectMode(form, "source-lens");
@@ -177,19 +177,15 @@ public sealed class ModuleStudioContractTests : IDisposable
             excerpt.AppendText(" Synthetic teacher-authored addition.");
 
             var confirmation = GreenConfirmation(form);
-            var purpose = PurposeClassification(form);
             Assert.False(confirmation.Checked);
-            Assert.False(purpose.Checked);
             Assert.False(ReviewButton(form).Enabled);
             Assert.Contains("remain Amber", form.StatusText, StringComparison.Ordinal);
 
             confirmation.Checked = true;
-            Assert.False(ReviewButton(form).Enabled);
-            Assert.Contains("intended use", form.StatusText, StringComparison.OrdinalIgnoreCase);
-            purpose.Checked = true;
             Assert.True(ReviewButton(form).Enabled);
             ReviewButton(form).PerformClick();
             Assert.NotNull(form.ApprovedResult);
+            Assert.Equal(ArtifactPurpose.Unknown, form.ApprovedResult.Revision.Purpose);
         });
 
     [Fact]
@@ -228,7 +224,6 @@ public sealed class ModuleStudioContractTests : IDisposable
             SelectMode(form, "directions-duet");
             ((TextBox)FieldControl(form, "Source language")).Text = "e n";
             GreenConfirmation(form).Checked = true;
-            PurposeClassification(form).Checked = true;
 
             Assert.True(ReviewButton(form).Enabled);
             ReviewButton(form).PerformClick();
@@ -269,134 +264,79 @@ public sealed class ModuleStudioContractTests : IDisposable
         });
 
     [Fact]
-    public void A_saved_package_is_reclassified_and_freshly_reviewed_but_its_purpose_remains_unknown_to_Access()
-    {
-        var saved = SaveSyntheticGreenProject();
-        Sta.Run(() =>
-        {
-            var reviewDrafts = new List<ArtifactId>();
-            ApprovedArtifact? Review(ReviewSession session)
-            {
-                reviewDrafts.Add(session.Draft.Revision.Id);
-                return GateRespectingApprove(session);
-            }
-
-            using var form = new ModuleStudioForm(
-                Review,
-                () => saved.Path,
-                loadedProjectPreflight: ConfirmSyntheticLoadedProject);
-            form.Show();
-            SelectMode(form, "access-remix");
-
-            Assert.False(ReviewButton(form).Enabled);
-            Assert.Null(form.ApprovedResult);
-            Assert.Contains("Green confirmation", form.StatusText, StringComparison.Ordinal);
-            AssertSinks(form, enabled: false);
-
-            ClickAndDrain(ActionButton(form, "Choose approved project…"));
-            Assert.Single(reviewDrafts);
-            Assert.NotEqual(saved.Artifact.Revision.Id, reviewDrafts[0]);
-            Assert.Contains("fresh named review", form.StatusText, StringComparison.Ordinal);
-            Assert.Null(form.ApprovedResult);
-
-            var operation = Assert.IsType<ComboBox>(FieldControl(form, "Layout operation"));
-            Assert.Equal(["Chunk steps", "One step per panel"],
-                operation.Items.Cast<object>().Select(item => item.ToString()));
-            operation.SelectedIndex = operation.Items.Cast<object>().ToList()
-                .FindIndex(item => string.Equals(item.ToString(), "One step per panel", StringComparison.Ordinal));
-
-            ReviewButton(form).PerformClick();
-
-            Assert.Single(reviewDrafts);
-            Assert.Null(form.ApprovedResult);
-            Assert.Contains("requires an approved classroom-support purpose", form.StatusText, StringComparison.Ordinal);
-            AssertSinks(form, enabled: false);
-        });
-    }
-
-    [Fact]
-    public void Access_accepts_only_the_current_exact_in_memory_classroom_support_approval()
+    public void Access_is_visible_but_has_no_build_delegate_or_keyboard_authority_path()
         => Sta.Run(() =>
         {
-            using var form = new ModuleStudioForm(GateRespectingApprove);
+            var reviews = 0;
+            using var form = new ModuleStudioForm(session =>
+            {
+                reviews++;
+                return GateRespectingApprove(session);
+            });
             form.Show();
-
-            SelectMode(form, "board-to-brief");
-            ApproveAndAssertSinks(form);
-            var trustedSource = form.ApprovedResult;
-
             SelectMode(form, "access-remix");
-            Assert.Equal(
-                "Current exact approval selected",
-                ReviewSurfaceContractTests.Flatten(form).OfType<TextBox>().Single(text => text.ReadOnly).Text);
-            GreenConfirmation(form).Checked = true;
 
-            var operation = Assert.IsType<ComboBox>(FieldControl(form, "Layout operation"));
-            operation.SelectedIndex = operation.Items.Cast<object>().ToList()
-                .FindIndex(item => string.Equals(item.ToString(), "One step per panel", StringComparison.Ordinal));
+            var mode = Assert.IsType<ModuleModeDefinition>(form.SelectedMode);
+            Assert.False(mode.IsBuildAvailable);
+            Assert.Null(mode.Build);
+            Assert.Equal(ModuleDefaultKind.Unavailable, mode.DefaultKind);
+            Assert.Equal(
+                ModuleStudioCatalog.AccessPurposeAuthorityRequiredId,
+                mode.UnavailableReason?.LocalizationId);
+
+            Assert.False(((FlowLayoutPanel)ReviewSurfaceContractTests.ByName(form, "Module inputs")).Enabled);
+            Assert.Equal(
+                "Protected purpose authority is not available in this application",
+                Assert.IsType<TextBox>(FieldControl(form, "Protected source artifact - not available")).Text);
+
+            var green = GreenConfirmation(form);
+            Assert.False(green.Enabled);
+            Assert.False(green.Checked);
+            green.Checked = true;
+            Assert.False(green.Checked);
+            Assert.False(ReviewButton(form).Enabled);
             ReviewButton(form).PerformClick();
 
-            Assert.NotNull(trustedSource);
-            Assert.NotNull(form.ApprovedResult);
-            Assert.NotSame(trustedSource, form.ApprovedResult);
-            Assert.Equal(ArtifactPurpose.ClassroomSupport, form.ApprovedResult.Revision.Purpose);
-            AssertSinks(form, enabled: true);
-        });
-
-    [Fact]
-    public void A_declined_fresh_source_review_leaves_Access_locked()
-    {
-        var saved = SaveSyntheticGreenProject();
-        Sta.Run(() =>
-        {
-            var reviewCalls = 0;
-            using var form = new ModuleStudioForm(
-                _ =>
-                {
-                    reviewCalls++;
-                    return null;
-                },
-                () => saved.Path,
-                loadedProjectPreflight: ConfirmSyntheticLoadedProject);
-            form.Show();
-            SelectMode(form, "access-remix");
-
-            ClickAndDrain(ActionButton(form, "Choose approved project…"));
-
-            Assert.Equal(1, reviewCalls);
+            Assert.Equal(0, reviews);
             Assert.Null(form.ApprovedResult);
-            Assert.Contains("not approved", form.StatusText, StringComparison.Ordinal);
-            Assert.Contains("remains locked", form.StatusText, StringComparison.Ordinal);
-            Assert.Equal("No approved project selected",
-                ReviewSurfaceContractTests.Flatten(form).OfType<TextBox>().Single(text => text.ReadOnly).Text);
+            Assert.Contains("protected specialist review", form.StatusText, StringComparison.Ordinal);
+            Assert.Contains("Typed content cannot grant it", form.StatusText, StringComparison.Ordinal);
+            Assert.DoesNotContain(
+                ReviewSurfaceContractTests.Flatten(form).OfType<CheckBox>(),
+                check => check.AccessibilityObject.Name ==
+                    "This artifact is classroom support, not a formal or high-stakes assessment.");
+            Assert.DoesNotContain(
+                ReviewSurfaceContractTests.Flatten(form).OfType<Button>(),
+                button => WithoutMnemonic(button.Text) == "Choose approved project…");
             AssertSinks(form, enabled: false);
         });
-    }
 
     [Theory]
-    [InlineData(ArtifactPurpose.Unknown)]
-    [InlineData(ArtifactPurpose.FormalOrHighStakesAssessment)]
-    public void Access_cannot_promote_an_unknown_or_assessment_project_from_the_keyboard(ArtifactPurpose purpose)
+    [InlineData("Formal assessment worksheet", "Choose the correct answer.", "Record the score.", "Submit the test.", "en")]
+    [InlineData("Examen formal", "Elige la respuesta correcta.", "Registra la puntuación.", "Entrega la evaluación.", "es")]
+    public void Typed_All_Aboard_content_never_mints_Access_purpose_authority(
+        string title,
+        string first,
+        string second,
+        string third,
+        string language)
     {
-        var saved = SaveSyntheticGreenProject(purpose);
-        Sta.Run(() =>
-        {
-            using var form = new ModuleStudioForm(
-                GateRespectingApprove,
-                () => saved.Path,
-                loadedProjectPreflight: ConfirmSyntheticLoadedProject);
-            form.Show();
-            SelectMode(form, "access-remix");
+        var outcome = AllAboardBuilders.BuildTaskStrip(
+            title,
+            [new StepSpec(first), new StepSpec(second), new StepSpec(third)],
+            AppServices.SymbolCatalog(),
+            language);
+        var session = AppServices.SessionOverRecipe(
+            outcome.CreateDraft(),
+            new DefaultArtifactValidator(),
+            outcome.Recipe);
+        var approved = Assert.IsType<ApprovedArtifact>(GateRespectingApprove(session));
+        var access = ModuleStudioCatalog.ByModeKey("access-remix");
 
-            ClickAndDrain(ActionButton(form, "Choose approved project…"));
-            Assert.True(GreenConfirmation(form).Checked);
-
-            ReviewButton(form).PerformClick();
-
-            Assert.Null(form.ApprovedResult);
-            Assert.Contains("requires an approved classroom-support purpose", form.StatusText, StringComparison.Ordinal);
-            AssertSinks(form, enabled: false);
-        });
+        Assert.Equal(ArtifactPurpose.Unknown, outcome.Purpose);
+        Assert.Equal(ArtifactPurpose.Unknown, approved.Revision.Purpose);
+        Assert.False(access.IsBuildAvailable);
+        Assert.Null(access.Build);
     }
 
     [Fact]
@@ -496,14 +436,6 @@ public sealed class ModuleStudioContractTests : IDisposable
             : null;
     }
 
-    private static LoadedProjectGreenConfirmation ConfirmSyntheticLoadedProject(LoadedProject loaded)
-        => AppServices.ConfirmLoadedProjectGreen(
-            loaded,
-            new LoadedProjectGreenChecklist(
-                IsGreenQualifyingContent: true,
-                HasNoLearnerLinkedContent: true,
-                HasNoRestrictedContent: true));
-
     private static void WithForm(Func<ReviewSession, ApprovedArtifact?> review, Action<ModuleStudioForm> assert)
         => Sta.Run(() =>
         {
@@ -577,11 +509,6 @@ public sealed class ModuleStudioContractTests : IDisposable
         => ReviewSurfaceContractTests.Flatten(form).OfType<Button>()
             .Single(button => WithoutMnemonic(button.Text) == visibleText);
 
-    private static CheckBox PurposeClassification(ModuleStudioForm form)
-        => ReviewSurfaceContractTests.Flatten(form).OfType<CheckBox>()
-            .Single(check => check.AccessibilityObject.Name ==
-                "This artifact is classroom support, not a formal or high-stakes assessment.");
-
     private static string WithoutMnemonic(string text)
         => text.Replace("&&", "", StringComparison.Ordinal).Replace("&", "", StringComparison.Ordinal);
 
@@ -627,32 +554,4 @@ public sealed class ModuleStudioContractTests : IDisposable
         System.Windows.Forms.Application.DoEvents();
     }
 
-    private (string Path, ApprovedArtifact Artifact) SaveSyntheticGreenProject(
-        ArtifactPurpose purpose = ArtifactPurpose.ClassroomSupport)
-    {
-        Directory.CreateDirectory(_temporaryDirectory);
-        var document = new ArtifactDocument(
-        [
-            new Heading(1, "Synthetic cleanup routine"),
-            new StepRow("Place the practice cards in the tray."),
-            new StepRow("Return the synthetic marker to the bin."),
-            new StepRow("Check the sample table."),
-        ],
-        "en");
-        var artifact = ApprovalGate.Approve(
-            DraftArtifact.New(document, DataLane.Green, purpose),
-            "Synthetic test teacher",
-            DocumentValidator.Validate(document),
-            ApprovalInstant);
-
-        AppServices.SaveToLibrary(
-            artifact,
-            "synthetic-access-source",
-            "synthetic-test",
-            "synthetic.access-source",
-            "0.1.0",
-            new AppServices.NoAssetsCatalog());
-
-        return (Assert.Single(Directory.GetFiles(_temporaryDirectory, $"*{OcfprojProjectStore.Extension}")), artifact);
-    }
 }

@@ -187,87 +187,22 @@ public class ModuleStudioCatalogTests
         Assert.Equal(new ModuleFieldCondition("operation", ModuleStudioCatalog.AccessOperationChunk), chunkSize.Condition);
     }
 
-    [Theory]
-    [InlineData(ModuleStudioCatalog.AccessOperationChunk)]
-    [InlineData(ModuleStudioCatalog.AccessOperationOneStepPerPanel)]
-    public void Access_requires_an_approved_Green_artifact_and_preserves_text_parity(string operation)
-    {
-        var source = SyntheticStrip();
-        var mode = ModuleStudioCatalog.ByModeKey("access-remix");
-        var values = ModuleStudioCatalog.Defaults(mode);
-        values["artifact"] = Approved(source, DataLane.Green, ArtifactPurpose.ClassroomSupport);
-        values["operation"] = operation;
-
-        var outcome = RequiredBuild(mode)(new ModuleInputValues(values));
-
-        Assert.Equal(DocumentText.CollectStrings(source), DocumentText.CollectStrings(outcome.Document));
-        Assert.Equal(DataLane.Green, outcome.Lane);
-        Assert.Equal(ArtifactPurpose.ClassroomSupport, outcome.Purpose);
-        Assert.NotEmpty(outcome.TransformationReport);
-        Assert.False(DocumentValidator.HasBlockingIssues(outcome.Issues));
-    }
-
     [Fact]
-    public void Access_refuses_missing_raw_draft_and_non_Green_inputs()
+    public void Access_is_visible_but_has_no_catalog_build_or_submitted_authority_path()
     {
         var mode = ModuleStudioCatalog.ByModeKey("access-remix");
-        var build = RequiredBuild(mode);
 
-        Assert.Throws<ArgumentException>(() => build(new ModuleInputValues(ModuleStudioCatalog.Defaults(mode))));
-
-        var raw = ModuleStudioCatalog.Defaults(mode);
-        raw["artifact"] = SyntheticStrip();
-        Assert.Throws<ArgumentException>(() => build(new ModuleInputValues(raw)));
-
-        var draft = ModuleStudioCatalog.Defaults(mode);
-        draft["artifact"] = DraftArtifact.New(SyntheticStrip(), DataLane.Green);
-        Assert.Throws<ArgumentException>(() => build(new ModuleInputValues(draft)));
-
-        var amber = ModuleStudioCatalog.Defaults(mode);
-        amber["artifact"] = Approved(
-            SyntheticStrip(),
-            DataLane.Amber,
-            ArtifactPurpose.ClassroomSupport);
-        Assert.Throws<InvalidOperationException>(() => build(new ModuleInputValues(amber)));
-
-        var unknown = ModuleStudioCatalog.Defaults(mode);
-        unknown["artifact"] = Approved(SyntheticStrip(), DataLane.Green, ArtifactPurpose.Unknown);
-        Assert.Throws<InvalidOperationException>(() => build(new ModuleInputValues(unknown)));
-
-        var disguisedAssessment = new ArtifactDocument(
-            [new Heading(1, "Worksheet"), new StepRow("Choose one response.")],
-            "en");
-        var assessment = ModuleStudioCatalog.Defaults(mode);
-        assessment["artifact"] = Approved(
-            disguisedAssessment,
-            DataLane.Green,
-            ArtifactPurpose.FormalOrHighStakesAssessment);
-        Assert.Throws<InvalidOperationException>(() => build(new ModuleInputValues(assessment)));
-    }
-
-    [Fact]
-    public void Access_refuses_a_generic_edit_because_purpose_evidence_bound_the_pre_edit_document()
-    {
-        var source = SyntheticStrip();
-        var classified = DraftArtifact.New(source, DataLane.Green, ArtifactPurpose.ClassroomSupport);
-        var editedDocument = new ArtifactDocument(
-            [.. source.Nodes, new TeacherOnlyNotice("Synthetic reviewed edit")],
-            source.Language);
-        var edited = classified.WithEditedDocument(editedDocument);
-        var approved = ApprovalGate.Approve(
-            edited,
-            "Synthetic teacher",
-            DocumentValidator.Validate(editedDocument),
-            DateTimeOffset.UnixEpoch);
-        var mode = ModuleStudioCatalog.ByModeKey("access-remix");
-        var values = ModuleStudioCatalog.Defaults(mode);
-        values["artifact"] = approved;
-
-        var error = Assert.Throws<InvalidOperationException>(() =>
-            RequiredBuild(mode)(new ModuleInputValues(values)));
-
-        Assert.Equal(ArtifactPurpose.Unknown, approved.Revision.Purpose);
-        Assert.Contains("authenticated in-memory evidence", error.Message, StringComparison.Ordinal);
+        Assert.Equal(DataLane.Green, mode.Lane);
+        Assert.Equal(ModuleDefaultKind.Unavailable, mode.DefaultKind);
+        Assert.False(mode.IsBuildAvailable);
+        Assert.Null(mode.Build);
+        Assert.Equal(
+            ModuleStudioCatalog.AccessPurposeAuthorityRequiredId,
+            mode.UnavailableReason?.LocalizationId);
+        Assert.Contains("Typed content cannot grant it", mode.UnavailableReason?.Fallback, StringComparison.Ordinal);
+        Assert.DoesNotContain(mode.Fields, field =>
+            field.Key.Contains("authoriz", StringComparison.OrdinalIgnoreCase)
+            || field.Key.Contains("purpose", StringComparison.OrdinalIgnoreCase));
     }
 
     [Fact]
@@ -343,19 +278,6 @@ public class ModuleStudioCatalogTests
         Assert.Contains(duet.Validator.Validate(new ArtifactDocument(duetNodes, duet.Document.Language)),
             issue => issue.Code == "duet.glossary" && issue.Severity == ValidationSeverity.Blocking);
 
-        var accessMode = ModuleStudioCatalog.ByModeKey("access-remix");
-        var accessValues = ModuleStudioCatalog.Defaults(accessMode);
-        accessValues["artifact"] = Approved(
-            SyntheticStrip(),
-            DataLane.Green,
-            ArtifactPurpose.ClassroomSupport);
-        var access = RequiredBuild(accessMode)(new ModuleInputValues(accessValues));
-        var changedAccess = new ArtifactDocument(
-            [new Heading(1, "Changed title"), .. access.Document.Nodes.Skip(1)],
-            access.Document.Language);
-        Assert.Contains(access.Validator.Validate(changedAccess),
-            issue => issue.Code == "remix.item-parity" && issue.Severity == ValidationSeverity.Blocking);
-
         var scaffold = BuildDefaults("scaffold-smith.packet");
         var withoutNotices = new ArtifactDocument(
             [.. scaffold.Document.Nodes.Where(node => node is not TeacherOnlyNotice)],
@@ -409,21 +331,4 @@ public class ModuleStudioCatalogTests
     private static Func<ModuleInputValues, ModuleBuildOutcome> RequiredBuild(ModuleModeDefinition mode)
         => mode.Build ?? throw new Xunit.Sdk.XunitException($"Mode '{mode.Key}' has no builder.");
 
-    private static ArtifactDocument SyntheticStrip() => new(
-    [
-        new Heading(1, "Synthetic cleanup routine"),
-        new StepRow("Place the practice cards in the tray."),
-        new StepRow("Return the synthetic marker to the bin."),
-        new StepRow("Check the sample table."),
-    ],
-    "en");
-
-    private static ApprovedArtifact Approved(
-        ArtifactDocument document,
-        DataLane lane,
-        ArtifactPurpose purpose = ArtifactPurpose.Unknown)
-    {
-        var draft = DraftArtifact.New(document, lane, purpose);
-        return ApprovalGate.Approve(draft, "Synthetic teacher", DocumentValidator.Validate(document), DateTimeOffset.UnixEpoch);
-    }
 }

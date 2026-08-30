@@ -17,6 +17,31 @@ namespace Foundry.Tests.Accessibility;
 public sealed class MinimumHardwareFloorTests
 {
     private static readonly Rectangle FloorWorkingArea = new(0, 0, 1366, 728);
+    private static readonly Type[] DirectSurfaceFloorTypes =
+    [
+        typeof(ReviewForm),
+        typeof(CaptureForm),
+        typeof(PressRoomForm),
+        typeof(AllAboardForm),
+        typeof(ModuleStudioForm),
+        typeof(LoadedProjectPreflightForm),
+        typeof(TileForm),
+    ];
+    private static readonly Type[] SpecializedSurfaceFloorTypes = [typeof(NodeEditorForm)];
+
+    [Fact]
+    public void Every_shipped_form_type_has_a_deliberate_floor_scenario()
+    {
+        var shipped = typeof(PressRoomForm).Assembly.GetTypes()
+            .Where(type => !type.IsAbstract && typeof(Form).IsAssignableFrom(type))
+            .OrderBy(TypeName, StringComparer.Ordinal)
+            .ToArray();
+        var covered = DirectSurfaceFloorTypes.Concat(SpecializedSurfaceFloorTypes)
+            .OrderBy(TypeName, StringComparer.Ordinal)
+            .ToArray();
+
+        Assert.Equal(shipped, covered);
+    }
 
     [Theory]
     [InlineData(UiLocaleMode.Neutral, 1.0f)]
@@ -36,10 +61,7 @@ public sealed class MinimumHardwareFloorTests
                     libraryPicker: () => null,
                     loadedProjectPreflight: _ => null);
                 using var allAboard = new AllAboardForm(AppServices.SymbolCatalog(), _ => null);
-                using var modules = new ModuleStudioForm(
-                    reviewRunner: _ => null,
-                    libraryPicker: () => null,
-                    loadedProjectPreflight: _ => null);
+                using var modules = new ModuleStudioForm(reviewRunner: _ => null);
                 using var preflight = new LoadedProjectPreflightForm(SyntheticLoadedProject());
                 using var tile = new TileForm();
 
@@ -53,6 +75,9 @@ public sealed class MinimumHardwareFloorTests
                     preflight,
                     tile,
                 };
+                Assert.Equal(
+                    DirectSurfaceFloorTypes.OrderBy(TypeName, StringComparer.Ordinal),
+                    surfaces.Select(surface => surface.GetType()).OrderBy(TypeName, StringComparer.Ordinal));
 
                 var floorHosts = new Dictionary<Form, FloorHost>();
                 try
@@ -64,6 +89,7 @@ public sealed class MinimumHardwareFloorTests
                         AssertFloor(floor);
                     }
 
+                    ExerciseEveryReviewTabAtFloor(floorHosts[review]);
                     ExerciseEveryPressAtFloor(floorHosts[pressRoom]);
                     ExerciseEveryAllAboardModeAtFloor(floorHosts[allAboard]);
                     ExerciseEveryModuleModeAtFloor(floorHosts[modules]);
@@ -121,6 +147,201 @@ public sealed class MinimumHardwareFloorTests
             var scrollFailure = Assert.ThrowsAny<Xunit.Sdk.XunitException>(() => AssertFloor(scrollHost));
             Assert.Contains("Synthetic scroll-owned control", scrollFailure.Message, StringComparison.Ordinal);
         });
+
+    [Fact]
+    public void Floor_assertion_requires_a_real_scroll_path_and_accepts_one_that_exposes_the_control()
+        => RunSta(() =>
+        {
+            using (var scrollableForm = new Form { Size = new Size(400, 300) })
+            {
+                var scrollable = new Panel
+                {
+                    AutoScroll = true,
+                    Location = new Point(20, 20),
+                    Size = new Size(160, 100),
+                };
+                scrollable.Controls.Add(new Button
+                {
+                    AccessibleName = "Synthetic reachable scrolled control",
+                    Location = new Point(250, 20),
+                    Size = new Size(120, 30),
+                    Text = "Synthetic reachable",
+                });
+                scrollableForm.Controls.Add(scrollable);
+                using var scrollableHost = PrepareAtFloor(scrollableForm, 1.0f, maximize: false);
+                var originalScroll = scrollable.AutoScrollPosition;
+
+                AssertFloor(scrollableHost);
+                Assert.Equal(originalScroll, scrollable.AutoScrollPosition);
+            }
+
+            using var unreachableForm = new Form { Size = new Size(400, 300) };
+            var oneWayScroller = new Panel
+            {
+                AutoScroll = true,
+                AutoScrollMinSize = new Size(400, 100),
+                Location = new Point(20, 20),
+                Size = new Size(160, 100),
+            };
+            oneWayScroller.Controls.Add(new Button
+            {
+                AccessibleName = "Synthetic unreachable scrolled control",
+                Location = new Point(-200, 20),
+                Size = new Size(120, 30),
+                Text = "Synthetic unreachable",
+            });
+            unreachableForm.Controls.Add(oneWayScroller);
+            using var unreachableHost = PrepareAtFloor(unreachableForm, 1.0f, maximize: false);
+
+            var failure = Assert.ThrowsAny<Xunit.Sdk.XunitException>(() => AssertFloor(unreachableHost));
+            Assert.Contains("Synthetic unreachable scrolled control", failure.Message, StringComparison.Ordinal);
+        });
+
+    [Fact]
+    public void Floor_assertion_catches_clipped_noninteractive_chrome()
+        => RunSta(() =>
+        {
+            using (var labelForm = SyntheticChromeForm())
+            {
+                labelForm.Controls.Add(new Label
+                {
+                    AutoSize = false,
+                    Location = new Point(20, 20),
+                    Size = new Size(120, 14),
+                    Text = "Synthetic label that needs more than one visible line",
+                });
+                using var labelHost = PrepareAtFloor(labelForm, 1.0f, maximize: false);
+                var failure = Assert.ThrowsAny<Xunit.Sdk.XunitException>(() => AssertFloor(labelHost));
+                Assert.Contains("Synthetic label", failure.Message, StringComparison.Ordinal);
+            }
+
+            using (var groupForm = SyntheticChromeForm())
+            {
+                groupForm.Controls.Add(new GroupBox
+                {
+                    AccessibleName = "Synthetic clipped group",
+                    Location = new Point(20, 20),
+                    Size = new Size(90, 80),
+                    Text = "Synthetic clipped group caption",
+                });
+                using var groupHost = PrepareAtFloor(groupForm, 1.0f, maximize: false);
+                var failure = Assert.ThrowsAny<Xunit.Sdk.XunitException>(() => AssertFloor(groupHost));
+                Assert.Contains("Synthetic clipped group caption", failure.Message, StringComparison.Ordinal);
+            }
+
+            using (var tabForm = SyntheticChromeForm())
+            {
+                var tabs = new TabControl
+                {
+                    AccessibleName = "Synthetic tabs",
+                    Location = new Point(20, 20),
+                    Size = new Size(150, 100),
+                };
+                tabs.TabPages.AddRange(
+                [
+                    new TabPage("Synthetic first tab caption that cannot fit"),
+                    new TabPage("Synthetic second tab caption that cannot fit"),
+                ]);
+                tabForm.Controls.Add(tabs);
+                using var tabHost = PrepareAtFloor(tabForm, 1.0f, maximize: false);
+                var failure = Assert.ThrowsAny<Xunit.Sdk.XunitException>(() => AssertFloor(tabHost));
+                Assert.Contains("Synthetic first tab caption", failure.Message, StringComparison.Ordinal);
+            }
+
+            using (var gridForm = SyntheticChromeForm())
+            {
+                var grid = new DataGridView
+                {
+                    AccessibleName = "Synthetic grid",
+                    AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.Fill,
+                    ColumnHeadersHeight = 20,
+                    ColumnHeadersHeightSizeMode = DataGridViewColumnHeadersHeightSizeMode.DisableResizing,
+                    Location = new Point(20, 20),
+                    Size = new Size(180, 100),
+                };
+                grid.ColumnHeadersDefaultCellStyle.WrapMode = DataGridViewTriState.True;
+                grid.Columns.Add(new DataGridViewTextBoxColumn
+                {
+                    HeaderText = "Synthetic grid header that needs several lines",
+                });
+                gridForm.Controls.Add(grid);
+                using var gridHost = PrepareAtFloor(gridForm, 1.0f, maximize: false);
+                var failure = Assert.ThrowsAny<Xunit.Sdk.XunitException>(() => AssertFloor(gridHost));
+                Assert.Contains("Synthetic grid header", failure.Message, StringComparison.Ordinal);
+            }
+
+            using (var rowHeaderForm = SyntheticChromeForm())
+            {
+                var grid = new DataGridView
+                {
+                    AccessibleName = "Synthetic row-header grid",
+                    AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.Fill,
+                    Location = new Point(20, 20),
+                    RowHeadersWidth = 42,
+                    RowHeadersWidthSizeMode = DataGridViewRowHeadersWidthSizeMode.DisableResizing,
+                    Size = new Size(180, 100),
+                };
+                grid.RowHeadersDefaultCellStyle.WrapMode = DataGridViewTriState.True;
+                grid.Columns.Add(new DataGridViewTextBoxColumn { HeaderText = "Value" });
+                var row = grid.Rows[grid.Rows.Add("Synthetic value")];
+                row.HeaderCell.Value = "Synthetic row header that cannot fit";
+                row.Height = 22;
+                rowHeaderForm.Controls.Add(grid);
+                using var rowHeaderHost = PrepareAtFloor(rowHeaderForm, 1.0f, maximize: false);
+                var failure = Assert.ThrowsAny<Xunit.Sdk.XunitException>(() => AssertFloor(rowHeaderHost));
+                Assert.Contains("Synthetic row header", failure.Message, StringComparison.Ordinal);
+            }
+        });
+
+    [Fact]
+    public void Floor_assertion_allows_intentional_wrapping_and_ellipsis()
+        => RunSta(() =>
+        {
+            using var form = SyntheticChromeForm();
+            form.Controls.Add(new Label
+            {
+                AutoSize = false,
+                Location = new Point(20, 20),
+                Size = new Size(150, 70),
+                Text = "Synthetic label that intentionally wraps onto enough visible lines",
+            });
+            form.Controls.Add(new Label
+            {
+                AutoEllipsis = true,
+                AutoSize = false,
+                Location = new Point(20, 100),
+                Size = new Size(80, 24),
+                Text = "Synthetic deliberately ellipsized label",
+            });
+            var grid = new DataGridView
+            {
+                AccessibleName = "Synthetic ellipsized grid",
+                AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.Fill,
+                Location = new Point(190, 20),
+                Size = new Size(170, 105),
+            };
+            grid.ColumnHeadersDefaultCellStyle.WrapMode = DataGridViewTriState.False;
+            grid.Columns.Add(new DataGridViewTextBoxColumn
+            {
+                HeaderText = "Synthetic deliberately ellipsized grid header",
+            });
+            form.Controls.Add(grid);
+
+            using var host = PrepareAtFloor(form, 1.0f, maximize: false);
+            AssertFloor(host);
+        });
+
+    private static void ExerciseEveryReviewTabAtFloor(FloorHost floor)
+    {
+        var tabs = Descendants(floor.ClientCanvas).OfType<TabControl>().Single();
+        Assert.Equal(3, tabs.TabPages.Count);
+        for (var index = 0; index < tabs.TabPages.Count; index++)
+        {
+            tabs.SelectedIndex = index;
+            FlushLayout(floor.ClientCanvas);
+            AssertFloor(floor);
+        }
+    }
 
     private static void ExerciseEveryPressAtFloor(FloorHost floor)
     {
@@ -346,14 +567,30 @@ public sealed class MinimumHardwareFloorTests
                 BoundsTrace(control));
         }
 
-        foreach (var status in Descendants(floor.ClientCanvas).OfType<Label>()
-                     .Where(label => label.Visible && label.Dock == DockStyle.Bottom && label.Text.Length > 0))
+        foreach (var chrome in Descendants(floor.ClientCanvas)
+                     .Where(control => control.Visible && IsNoninteractiveChrome(control)))
         {
-            var preferred = status.GetPreferredSize(new Size(status.ClientSize.Width, 0));
             Assert.True(
-                preferred.Height <= status.ClientSize.Height,
-                $"{form.GetType().Name}: status '{status.Text}' requires {preferred.Height}px " +
-                $"but its non-scrollable status line is {status.ClientSize.Height}px high.");
+                IsFullyVisibleOrScrollable(chrome, floor.ClientCanvas),
+                $"{form.GetType().Name}: noninteractive {chrome.GetType().Name} chrome is clipped " +
+                "inside a non-scrollable viewport at the 1366 x 768 floor. " +
+                BoundsTrace(chrome));
+
+            switch (chrome)
+            {
+                case Label label:
+                    AssertLabelTextFits(form, label);
+                    break;
+                case GroupBox group:
+                    AssertGroupCaptionFits(form, group);
+                    break;
+                case TabControl tabs:
+                    AssertTabHeadersFit(form, tabs);
+                    break;
+                case DataGridView grid:
+                    AssertGridHeadersFit(form, grid);
+                    break;
+            }
         }
     }
 
@@ -362,25 +599,188 @@ public sealed class MinimumHardwareFloorTests
             || control is ButtonBase or ComboBox or ListBox or TextBoxBase or NumericUpDown
             || control.AccessibilityObject.Role == AccessibleRole.StatusBar;
 
+    private static bool IsNoninteractiveChrome(Control control)
+        => control is Label or GroupBox or TabControl or DataGridView;
+
+    private static void AssertLabelTextFits(Form form, Label label)
+    {
+        if (label.Text.Length == 0 || label.AutoEllipsis)
+        {
+            return;
+        }
+
+        var proposedWidth = Math.Max(1, label.ClientSize.Width);
+        var preferred = label.GetPreferredSize(new Size(proposedWidth, 0));
+        Assert.True(
+            preferred.Height <= label.ClientSize.Height,
+            $"{form.GetType().Name}: label '{label.Text}' requires {preferred.Height}px when wrapped " +
+            $"to its {proposedWidth}px client width, but only {label.ClientSize.Height}px is visible.");
+    }
+
+    private static void AssertGroupCaptionFits(Form form, GroupBox group)
+    {
+        if (group.Text.Length == 0)
+        {
+            return;
+        }
+
+        var caption = WithoutMnemonics(group.Text);
+        var required = TextRenderer.MeasureText(
+            caption,
+            group.Font,
+            Size.Empty,
+            TextFormatFlags.SingleLine | TextFormatFlags.NoPadding);
+        var availableWidth = Math.Max(0, group.ClientSize.Width - 16);
+        Assert.True(
+            required.Width <= availableWidth,
+            $"{form.GetType().Name}: group caption '{caption}' requires {required.Width}px, " +
+            $"but only {availableWidth}px is available without clipping.");
+    }
+
+    private static void AssertTabHeadersFit(Form form, TabControl tabs)
+    {
+        for (var index = 0; index < tabs.TabPages.Count; index++)
+        {
+            var page = tabs.TabPages[index];
+            var header = tabs.GetTabRect(index);
+            Assert.True(
+                tabs.ClientRectangle.Contains(header),
+                $"{form.GetType().Name}: tab header '{WithoutMnemonics(page.Text)}' is outside " +
+                $"the visible tab strip: header={header},client={tabs.ClientRectangle}.");
+
+            var caption = WithoutMnemonics(page.Text);
+            var required = TextRenderer.MeasureText(
+                caption,
+                tabs.Font,
+                Size.Empty,
+                TextFormatFlags.SingleLine | TextFormatFlags.NoPadding);
+            var availableWidth = Math.Max(0, header.Width - (tabs.Padding.X * 2));
+            Assert.True(
+                required.Width <= availableWidth,
+                $"{form.GetType().Name}: tab header '{caption}' requires {required.Width}px, " +
+                $"but its visible header offers {availableWidth}px.");
+        }
+    }
+
+    private static void AssertGridHeadersFit(Form form, DataGridView grid)
+    {
+        if (grid.ColumnHeadersVisible)
+        {
+            foreach (DataGridViewColumn column in grid.Columns)
+            {
+                if (!column.Visible || string.IsNullOrEmpty(column.HeaderText))
+                {
+                    continue;
+                }
+
+                AssertGridHeaderTextFits(
+                    form,
+                    grid,
+                    column.HeaderText,
+                    column.HeaderCell.InheritedStyle,
+                    grid.GetCellDisplayRectangle(column.Index, -1, cutOverflow: false),
+                    "column");
+            }
+        }
+
+        if (!grid.RowHeadersVisible)
+        {
+            return;
+        }
+
+        foreach (DataGridViewRow row in grid.Rows)
+        {
+            var text = Convert.ToString(
+                row.HeaderCell.Value,
+                System.Globalization.CultureInfo.InvariantCulture);
+            if (!row.Visible || string.IsNullOrEmpty(text))
+            {
+                continue;
+            }
+
+            AssertGridHeaderTextFits(
+                form,
+                grid,
+                text,
+                row.HeaderCell.InheritedStyle,
+                grid.GetCellDisplayRectangle(-1, row.Index, cutOverflow: false),
+                "row");
+        }
+    }
+
+    private static void AssertGridHeaderTextFits(
+        Form form,
+        DataGridView grid,
+        string text,
+        DataGridViewCellStyle style,
+        Rectangle header,
+        string kind)
+    {
+        // A no-wrap header explicitly opts into the grid's native ellipsis.
+        // Wrapped headers, by contrast, must have enough header height for
+        // every line; otherwise the grid silently cuts off its own label.
+        if (style.WrapMode == DataGridViewTriState.False)
+        {
+            return;
+        }
+
+        var available = new Size(
+            Math.Max(1, header.Width - style.Padding.Horizontal - 8),
+            Math.Max(0, header.Height - style.Padding.Vertical - 4));
+        var required = TextRenderer.MeasureText(
+            text,
+            style.Font ?? grid.Font,
+            new Size(available.Width, int.MaxValue),
+            TextFormatFlags.WordBreak | TextFormatFlags.NoPadding);
+        Assert.True(
+            required.Height <= available.Height,
+            $"{form.GetType().Name}: grid {kind} header '{text}' requires {required.Height}px " +
+            $"when wrapped to {available.Width}px, but its visible header offers {available.Height}px.");
+    }
+
+    private static string WithoutMnemonics(string text)
+    {
+        var value = new System.Text.StringBuilder(text.Length);
+        for (var index = 0; index < text.Length; index++)
+        {
+            if (text[index] != '&')
+            {
+                value.Append(text[index]);
+                continue;
+            }
+
+            if (index + 1 < text.Length && text[index + 1] == '&')
+            {
+                value.Append('&');
+                index++;
+            }
+        }
+
+        return value.ToString();
+    }
+
     private static bool IsFullyVisibleOrScrollable(Control control, Control root)
     {
         var rectangle = control.RectangleToScreen(control.ClientRectangle);
+        var scrollTarget = control;
         for (Control? parent = control.Parent; parent is not null; parent = parent.Parent)
         {
             var viewport = parent.RectangleToScreen(parent.ClientRectangle);
             if (!viewport.Contains(rectangle))
             {
-                if (parent is not ScrollableControl { AutoScroll: true }
+                if (parent is not ScrollableControl { AutoScroll: true } scrollable
                     || viewport.Width <= 0
-                    || viewport.Height <= 0)
+                    || viewport.Height <= 0
+                    || !CanScrollIntoView(scrollable, scrollTarget))
                 {
                     return false;
                 }
 
-                // The control can be brought into this owning viewport, but
-                // that viewport must itself remain reachable through every
-                // outer non-scrollable ancestor.
+                // ScrollControlIntoView proved the target can be exposed in
+                // this owning viewport. The viewport itself must still remain
+                // reachable through every outer non-scrollable ancestor.
                 rectangle = viewport;
+                scrollTarget = parent;
             }
 
             if (ReferenceEquals(parent, root))
@@ -391,6 +791,44 @@ public sealed class MinimumHardwareFloorTests
 
         return false;
     }
+
+    private static bool CanScrollIntoView(ScrollableControl owner, Control target)
+    {
+        var original = owner.AutoScrollPosition;
+        try
+        {
+            owner.ScrollControlIntoView(target);
+            owner.PerformLayout();
+            var viewport = owner.RectangleToScreen(owner.ClientRectangle);
+            var exposed = target.RectangleToScreen(target.ClientRectangle);
+            return exposed.Width > 0
+                && exposed.Height > 0
+                && AxisIsExposed(exposed.Left, exposed.Width, viewport.Left, viewport.Width)
+                && AxisIsExposed(exposed.Top, exposed.Height, viewport.Top, viewport.Height);
+        }
+        finally
+        {
+            // Reachability inspection must not leave one candidate scrolled
+            // into view at the expense of the candidates asserted after it.
+            owner.AutoScrollPosition = new Point(-original.X, -original.Y);
+            owner.PerformLayout();
+        }
+    }
+
+    private static bool AxisIsExposed(
+        int targetStart,
+        int targetLength,
+        int viewportStart,
+        int viewportLength)
+    {
+        var targetEnd = (long)targetStart + targetLength;
+        var viewportEnd = (long)viewportStart + viewportLength;
+        return targetLength <= viewportLength
+            ? targetStart >= viewportStart && targetEnd <= viewportEnd
+            : targetStart < viewportEnd && targetEnd > viewportStart;
+    }
+
+    private static string TypeName(Type type) => type.FullName ?? type.Name;
 
     private static string BoundsTrace(Control control)
     {
@@ -428,6 +866,19 @@ public sealed class MinimumHardwareFloorTests
                 yield return descendant;
             }
         }
+    }
+
+    private static Form SyntheticChromeForm()
+    {
+        var form = new Form { Size = new Size(400, 300) };
+        form.Controls.Add(new Button
+        {
+            AccessibleName = "Synthetic reachable sentinel",
+            Location = new Point(20, 220),
+            Size = new Size(120, 30),
+            Text = "Synthetic sentinel",
+        });
+        return form;
     }
 
     private sealed class FloorHost(Form surface, Panel clientCanvas, Rectangle outerBounds) : IDisposable

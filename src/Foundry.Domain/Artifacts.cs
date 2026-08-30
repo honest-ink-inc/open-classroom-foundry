@@ -7,11 +7,12 @@ public readonly record struct ArtifactId(Guid Value)
 }
 
 /// <summary>
-/// A narrow in-process use classification. The enum is not provenance: trusted
-/// built-in workflows control where a non-Unknown value is accepted, and data
-/// loaded from mutable packages is downgraded. Unknown fails closed at consumers
-/// such as Access Remix. Formal/high-stakes assessment remains a distinct
-/// refused class even when its visible title says only "worksheet."
+/// A narrow in-process use classification. The enum is not provenance: raw
+/// values loaded from mutable packages do not rehydrate engine authority. The
+/// current production build issues no purpose authority and exposes no Access
+/// consumer; these non-Unknown values remain reserved for authenticated
+/// workflow evidence and compatibility tests until protected review establishes
+/// a consumer that can enforce them.
 /// </summary>
 public enum ArtifactPurpose
 {
@@ -27,9 +28,6 @@ public enum ArtifactPurpose
 /// </summary>
 internal enum ArtifactPurposeAuthority
 {
-    BuiltInAllAboard,
-    DesktopExplicitIntendedUse,
-    AccessRemixDerivative,
     TrustedLayoutDerivative,
     TestFixture,
 }

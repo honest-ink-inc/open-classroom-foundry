@@ -22,7 +22,7 @@ This document records how decisions are made in Open Classroom Foundry. It exist
 
 ## Council formation status (updated 29 August 2026)
 
-**The tabling has ended: formation is underway.** The product owner has sent seven invitations covering every seat in the recruiting table; two educators have already accepted. Procedural terms (cadence, voting, term limits, recognition/compensation) are enacted with this first cohort, per the original tabling decision. The tripwires stand satisfied in progress: think-aloud capacity is forming ahead of the release-evidence studies, and the AAC/SLP seat is among the invitations — All Aboard co-design still waits for that specific acceptance.
+**The tabling has ended: formation is underway.** The product owner has sent seven invitations covering every seat in the recruiting table; two educators have already accepted. The ratified compensation policy exists, but this repository does not yet record the first cohort's cadence, voting or decision rule, quorum, or term limits. Those terms must be enacted with the cohort before a council recommendation is treated as a council decision; they must not be inferred by a facilitator or automation. The tripwires stand satisfied in progress: think-aloud capacity is forming ahead of the release-evidence studies, and the AAC/SLP seat is among the invitations — All Aboard co-design still waits for that specific acceptance.
 
 *Original tabling record (29 August 2026), retained for history:* Council formation was tabled by the product owner while the Days 16–30 engineering block proceeded — that work (dependency wiring, state machine, schemas, synthetic provider, CI) touches no council gate, so tabling costs nothing. Two tripwires end the tabling automatically:
 

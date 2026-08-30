@@ -50,7 +50,7 @@ public class AllAboardBuilderTests
     }
 
     [Fact]
-    public void The_typed_build_outcome_owns_lane_purpose_recipe_and_draft_creation()
+    public void The_typed_build_outcome_owns_lane_recipe_and_a_fail_closed_unknown_purpose()
     {
         var outcome = AllAboardBuilders.BuildTaskStrip(
             "Synthetic routine",
@@ -59,7 +59,7 @@ public class AllAboardBuilderTests
 
         Assert.Equal(AllAboardRecipes.TaskStrip, outcome.Recipe);
         Assert.Equal(DataLane.Green, outcome.Lane);
-        Assert.Equal(ArtifactPurpose.ClassroomSupport, outcome.Purpose);
+        Assert.Equal(ArtifactPurpose.Unknown, outcome.Purpose);
         var draft = outcome.CreateDraft();
         Assert.Same(outcome.Document, draft.Revision.Document);
         Assert.Equal(outcome.Lane, draft.Revision.Lane);
