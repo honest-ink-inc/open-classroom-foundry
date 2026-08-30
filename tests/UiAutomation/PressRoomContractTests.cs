@@ -111,6 +111,54 @@ public class PressRoomContractTests
         });
 
     [Fact]
+    public void Print_view_failure_is_announced_instead_of_escaping_the_UI_event()
+        => Sta.Run(() =>
+        {
+            using var form = new PressRoomForm(
+                AutoApprove,
+                printViewOpener: (_, _, _, _, _, _) =>
+                    throw new IOException("synthetic print-view refusal"));
+            form.Show();
+            SelectPress(form, "graph-paper");
+            ((Button)ReviewSurfaceContractTests.ByName(form, "Review and approve…")).PerformClick();
+
+            ((Button)ReviewSurfaceContractTests.ByName(form, "Open print view")).PerformClick();
+
+            Assert.Equal(
+                UiStrings.WithoutMnemonic(UiStrings.StatusPrintViewRefused),
+                form.StatusText);
+            Assert.NotNull(form.ApprovedResult);
+            Assert.True(ReviewSurfaceContractTests.ByName(form, "Open print view").Enabled);
+        });
+
+    [Fact]
+    public void Print_view_handoff_keeps_the_press_room_responsive_and_gated_until_response_write()
+        => Sta.Run(() =>
+        {
+            var release = new TaskCompletionSource<bool>(
+                TaskCreationOptions.RunContinuationsAsynchronously);
+            using var form = new PressRoomForm(
+                AutoApprove,
+                printViewOpener: (_, _, _, _, _, _) => release.Task);
+            form.Show();
+            SelectPress(form, "graph-paper");
+            ((Button)ReviewSurfaceContractTests.ByName(form, "Review and approve…")).PerformClick();
+
+            var printView = (Button)ReviewSurfaceContractTests.ByName(form, "Open print view");
+            printView.PerformClick();
+
+            Assert.Equal(
+                UiStrings.WithoutMnemonic(UiStrings.StatusPrintViewOpening),
+                form.StatusText);
+            Assert.False(printView.Enabled);
+            Assert.False(ReviewSurfaceContractTests.ByName(form, "Presses").Enabled);
+
+            release.TrySetResult(true);
+            PumpUntil(() => printView.Enabled
+                && form.StatusText == UiStrings.WithoutMnemonic(UiStrings.StatusPrintView));
+        });
+
+    [Fact]
     public void Pdf_export_gates_mutation_announces_progress_and_remains_keyboard_cancellable()
         => Sta.Run(() =>
         {

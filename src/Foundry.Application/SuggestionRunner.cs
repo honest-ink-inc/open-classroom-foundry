@@ -20,6 +20,12 @@ public sealed class SuggestionRunner(IInferenceProvider provider)
         return EgressGate.Preview(request, capabilities);
     }
 
-    public Task<InferenceResult> RunAsync(PreviewedRequest request, CancellationToken cancellationToken)
-        => provider.CompleteAsync(request, cancellationToken);
+    public async Task<InferenceResult> RunAsync(PreviewedRequest request, CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+
+        var capabilities = await provider.GetCapabilitiesAsync(cancellationToken).ConfigureAwait(false);
+        EgressGate.EnsureProviderMatches(request, capabilities);
+        return await provider.CompleteAsync(request, cancellationToken).ConfigureAwait(false);
+    }
 }

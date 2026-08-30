@@ -9,11 +9,12 @@ namespace Foundry.Storage;
 
 /// <summary>
 /// The teacher's own symbol shelf: teachers add symbols to meet the individual
-/// needs of those they work with, with full provenance recorded at submission.
-/// Teacher-added symbols are local by default — Redistributable only when the
-/// teacher explicitly declares a known open license — so a personal photograph
-/// can serve one classroom without ever drifting into a public pack (Symbol
-/// Commons invariant: local assets cannot enter open export).
+/// needs of those they work with, with bounded core provenance recorded at
+/// submission. Teacher-added symbols are local by default. A known open license
+/// may record redistributable license posture, but the open-pack boundary still
+/// requires separately reviewed attribution and modification dispositions, which
+/// this shelf does not fabricate. A personal photograph can therefore serve one
+/// classroom without drifting into a public pack (Symbol Commons invariant).
 /// </summary>
 public sealed class LocalSymbolStore : IAssetCatalog
 {

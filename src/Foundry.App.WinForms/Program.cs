@@ -9,9 +9,16 @@ internal static class Program
     [STAThread]
     private static void Main(string[] args)
     {
+        if (AppServices.TryRunPrintViewHandoff(args))
+        {
+            return;
+        }
+
         // To customize application configuration such as set high DPI settings or default font,
         // see https://aka.ms/applicationconfiguration.
         ApplicationConfiguration.Initialize();
+        var temporaryRoot = Path.GetTempPath();
+        AppServices.CleanupPrintViewJobs(temporaryRoot, TimeSpan.Zero);
         Form? harnessForm;
         try
         {
@@ -42,6 +49,14 @@ internal static class Program
 
         // Fully qualified: the Foundry.Application engine namespace shadows
         // System.Windows.Forms.Application inside the Foundry.* namespace tree.
-        System.Windows.Forms.Application.Run(harnessForm ?? new PressRoomForm());
+        try
+        {
+            System.Windows.Forms.Application.Run(harnessForm ?? new PressRoomForm());
+        }
+        finally
+        {
+            AppServices.ReleaseAllPrintViewLeases();
+            AppServices.CleanupPrintViewJobs(temporaryRoot, TimeSpan.Zero);
+        }
     }
 }

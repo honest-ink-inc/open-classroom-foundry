@@ -18,6 +18,8 @@ public sealed class ModuleStudioForm : Form
 {
     private readonly Func<ReviewSession, ApprovedArtifact?> _reviewRunner;
     private readonly Func<ExportChoice?>? _exportPicker;
+    private readonly Func<string, ReadOnlyMemory<byte>, CancellationToken, Task> _exportWriter;
+    private readonly Func<ApprovedArtifact, string, RenderAudience, double, bool, IAssetCatalog?, Task> _printViewOpener;
     private readonly bool _modalReview;
     private readonly ListBox _doorList;
     private readonly ComboBox _modeList;
@@ -31,12 +33,21 @@ public sealed class ModuleStudioForm : Form
     private readonly Button _print;
     private readonly Button _printView;
     private readonly Button _export;
+    private readonly Button _cancelExport;
     private readonly Button _save;
     private readonly Label _status;
     private readonly Dictionary<string, Func<object?>> _valueReaders = new(StringComparer.Ordinal);
     private readonly Dictionary<string, Control> _fieldContainers = new(StringComparer.Ordinal);
     private bool _loadingFields;
     private bool _reviewPending;
+    private bool _exportInProgress;
+    private bool _exportDispatchPending;
+    private bool _printViewInProgress;
+    private bool _formClosing;
+    private readonly Lock _exportCancellationSync = new();
+    private CancellationTokenSource? _exportCancellation;
+    private Task? _exportCancellationWork;
+    private Task? _activeExportWork;
     private long _stateGeneration;
     private ApprovedContext? _context;
     private ProjectValidationEnvelope? _validationEnvelope;
@@ -58,11 +69,17 @@ public sealed class ModuleStudioForm : Form
 
     public ModuleStudioForm(
         Func<ReviewSession, ApprovedArtifact?>? reviewRunner = null,
-        Func<ExportChoice?>? exportPicker = null)
+        Func<ExportChoice?>? exportPicker = null,
+        Func<string, ReadOnlyMemory<byte>, CancellationToken, Task>? exportWriter = null,
+        Func<ApprovedArtifact, string, RenderAudience, double, bool, IAssetCatalog?, Task>? printViewOpener = null)
     {
         _modalReview = reviewRunner is null;
         _reviewRunner = reviewRunner ?? RunModalReview;
         _exportPicker = exportPicker;
+        _exportWriter = exportWriter
+            ?? ((destination, content, cancellationToken) =>
+                AppServices.WriteExportBytesAsync(destination, content, cancellationToken));
+        _printViewOpener = printViewOpener ?? AppServices.OpenPrintViewAsync;
 
         Text = UiStrings.WithoutMnemonic(UiStrings.ModuleStudioWindowTitle);
         // Keep the ordinary 1180 x 720 design surface, but leave enough
@@ -153,8 +170,9 @@ public sealed class ModuleStudioForm : Form
 
         _review = MakeButton(UiStrings.ReviewAndApprove, (_, _) => ReviewAndApprove());
         _print = MakeButton(UiStrings.PrintButton, (_, _) => PrintApproved());
-        _printView = MakeButton(UiStrings.OpenPrintView, (_, _) => OpenPrintView());
-        _export = MakeButton(UiStrings.ExportEllipsis, (_, _) => BeginInvoke(Export));
+        _printView = MakeButton(UiStrings.OpenPrintView, async (_, _) => await OpenPrintViewAsync());
+        _export = MakeButton(UiStrings.ExportEllipsis, (_, _) => QueueExport());
+        _cancelExport = MakeButton(UiStrings.CancelExport, (_, _) => _ = RequestExportCancellation());
         _save = MakeButton(UiStrings.SaveToLibrary, (_, _) => SaveToLibrary());
 
         _status = new Label { Dock = DockStyle.Bottom, AutoSize = false, Height = 34, UseMnemonic = false };
@@ -208,7 +226,7 @@ public sealed class ModuleStudioForm : Form
             AutoSize = true,
             WrapContents = true,
         };
-        buttons.Controls.AddRange([_review, _print, _printView, _export, _save]);
+        buttons.Controls.AddRange([_review, _print, _printView, _export, _cancelExport, _save]);
 
         var right = new TableLayoutPanel
         {
@@ -661,20 +679,38 @@ public sealed class ModuleStudioForm : Form
         return review.ShowDialog(this) == DialogResult.OK ? review.Result : null;
     }
 
-    private void OpenPrintView()
+    private async Task OpenPrintViewAsync()
     {
-        if (ApprovedResult is null || _context is null)
+        var approved = ApprovedResult;
+        var context = _context;
+        if (_printViewInProgress || approved is null || context is null)
         {
             return;
         }
 
-        AppServices.OpenPrintView(
-            ApprovedResult,
-            _context.Mode.Key,
-            SelectedAudience(),
-            (double)_textScale.Value,
-            _targetLanguageFirst.Checked);
-        SetStatus(UiStrings.StatusPrintView);
+        _printViewInProgress = true;
+        UpdateGatedButtons();
+        SetStatus(UiStrings.StatusPrintViewOpening);
+        try
+        {
+            await _printViewOpener(
+                approved,
+                context.Mode.Key,
+                SelectedAudience(),
+                (double)_textScale.Value,
+                _targetLanguageFirst.Checked,
+                null);
+            SetStatus(UiStrings.StatusPrintView);
+        }
+        catch (Exception failure) when (IsExpectedPrintViewFailure(failure))
+        {
+            SetStatus(UiStrings.StatusPrintViewRefused);
+        }
+        finally
+        {
+            _printViewInProgress = false;
+            UpdateGatedButtons();
+        }
     }
 
     private void PrintApproved()
@@ -699,40 +735,147 @@ public sealed class ModuleStudioForm : Form
         }
     }
 
-    private void Export()
+    private async Task ExportAsync()
     {
-        if (ApprovedResult is null || _context is null)
+        if (_exportInProgress)
         {
             return;
         }
 
-        var choice = _exportPicker is null
-            ? PickExportDialog(_context.Mode)
-            : _exportPicker();
-        if (choice is null)
+        var approved = ApprovedResult;
+        var context = _context;
+        if (approved is null || context is null)
         {
             return;
         }
 
-        if (!SupportedExportTargets(_context.Mode).Contains(choice.Target))
+        var exportCancellation = new CancellationTokenSource();
+        lock (_exportCancellationSync)
         {
-            SetStatus(UiStrings.StatusRefused, choice.Target.ToString());
-            return;
+            _exportCancellation = exportCancellation;
+            _exportCancellationWork = null;
         }
 
+        var exportToken = exportCancellation.Token;
+        _exportInProgress = true;
+        UpdateGatedButtons();
+
+        ExportChoice? choice = null;
         try
         {
+            choice = _exportPicker is null
+                ? PickExportDialog(context.Mode)
+                : _exportPicker();
+            exportToken.ThrowIfCancellationRequested();
+            if (_formClosing || IsDisposed || Disposing)
+            {
+                throw new OperationCanceledException(exportToken);
+            }
+
+            if (choice is null)
+            {
+                return;
+            }
+
+            if (!SupportedExportTargets(context.Mode).Contains(choice.Target))
+            {
+                SetStatus(UiStrings.StatusRefused, choice.Target.ToString());
+                return;
+            }
+
+            SetStatus(UiStrings.StatusExporting, Path.GetFileName(choice.Path));
+
             var request = new RenderRequest(
                 choice.Target,
                 SelectedAudience(),
                 (double)_textScale.Value,
                 _targetLanguageFirst.Checked);
-            File.WriteAllBytes(choice.Path, AppServices.Render(ApprovedResult, request));
-            SetStatus(UiStrings.StatusExported, Path.GetFileName(choice.Path));
+            var bytes = await Task.Run(
+                () => AppServices.Render(approved, request, cancellationToken: exportToken),
+                exportToken);
+            exportToken.ThrowIfCancellationRequested();
+            if (_formClosing || IsDisposed || Disposing)
+            {
+                throw new OperationCanceledException(exportToken);
+            }
+
+            // Run the sink outside the WinForms synchronization context and
+            // retain the operation itself. Dispose can then cancel and drain
+            // the writer's stage cleanup without deadlocking on a continuation
+            // that needs the UI thread.
+            var exportWork = Task.Run(
+                () => _exportWriter(choice.Path, bytes, exportToken),
+                CancellationToken.None);
+            Volatile.Write(ref _activeExportWork, exportWork);
+            try
+            {
+                await exportWork;
+            }
+            finally
+            {
+                _ = Interlocked.CompareExchange(ref _activeExportWork, null, exportWork);
+            }
         }
-        catch (Exception refusal) when (refusal is InvalidOperationException or IOException or NotSupportedException)
+        catch (OperationCanceledException)
+        {
+            SetStatus(UiStrings.StatusExportCancelled);
+            return;
+        }
+        catch (Exception refusal) when (refusal is InvalidOperationException
+            or IOException
+            or UnauthorizedAccessException
+            or NotSupportedException
+            or ArgumentException)
         {
             SetStatus(UiStrings.StatusRefused, refusal.Message);
+            return;
+        }
+        finally
+        {
+            ReleaseExportCancellation(exportCancellation);
+            _exportInProgress = false;
+            UpdateGatedButtons();
+        }
+
+        SetStatus(UiStrings.StatusExported, Path.GetFileName(choice.Path));
+    }
+
+    private void QueueExport()
+    {
+        if (_formClosing
+            || _exportDispatchPending
+            || _exportInProgress
+            || ApprovedResult is null
+            || _context is null)
+        {
+            return;
+        }
+
+        _exportDispatchPending = true;
+        UpdateGatedButtons();
+        try
+        {
+            BeginInvoke(new Action(async () =>
+            {
+                try
+                {
+                    if (!IsDisposed)
+                    {
+                        await ExportAsync();
+                    }
+                }
+                finally
+                {
+                    _exportDispatchPending = false;
+                    UpdateGatedButtons();
+                }
+            }));
+        }
+        catch (InvalidOperationException failure)
+        {
+            _exportDispatchPending = false;
+            UpdateGatedButtons();
+            SetStatus(UiStrings.StatusRefused, failure.Message);
         }
     }
 
@@ -920,21 +1063,167 @@ public sealed class ModuleStudioForm : Form
 
     private void UpdateGatedButtons()
     {
-        var approved = !_reviewPending && ApprovedResult is not null && _context is not null;
+        if (IsDisposed)
+        {
+            return;
+        }
+
+        var idle = !_reviewPending
+            && !_exportDispatchPending
+            && !_exportInProgress
+            && !_printViewInProgress;
+        var approved = idle && ApprovedResult is not null && _context is not null;
         var supported = _context is null ? [] : SupportedExportTargets(_context.Mode);
-        _review.Enabled = !_reviewPending
+        SetMutableControlsEnabled(idle);
+        _review.Enabled = idle
             && SelectedMode is { IsBuildAvailable: true }
             && IsInputReady();
         _print.Enabled = approved && supported.Contains(RenderTarget.PrintHtml);
         _printView.Enabled = approved && supported.Contains(RenderTarget.PrintHtml);
         _export.Enabled = approved && supported.Count > 0;
+        _cancelExport.Enabled = _exportInProgress;
         _save.Enabled = approved;
     }
 
     private void SetStatus(string template, params object?[] arguments)
     {
+        if (IsDisposed)
+        {
+            return;
+        }
+
         var text = UiStrings.FormatWithoutMnemonic(template, arguments);
         _status.Text = text;
         _status.AccessibleName = text;
+    }
+
+    private static bool IsExpectedPrintViewFailure(Exception failure)
+        => failure is InvalidOperationException
+            or IOException
+            or UnauthorizedAccessException
+            or NotSupportedException
+            or ArgumentException
+            or System.ComponentModel.Win32Exception;
+
+    private Task RequestExportCancellation()
+    {
+        lock (_exportCancellationSync)
+        {
+            if (_exportCancellationWork is not null)
+            {
+                return _exportCancellationWork;
+            }
+
+            if (_exportCancellation is null)
+            {
+                return Task.CompletedTask;
+            }
+
+            // CancelAsync marks the token before returning but runs registered
+            // callbacks away from this WinForms call stack. Retain and observe
+            // that work: a callback may be slow, may fault, or may outlive the
+            // surface, but none of those conditions may seize the UI thread.
+            _exportCancellationWork = _exportCancellation.CancelAsync();
+            ObserveFault(_exportCancellationWork);
+            return _exportCancellationWork;
+        }
+    }
+
+    private void ReleaseExportCancellation(CancellationTokenSource cancellation)
+    {
+        Task? cancellationWork;
+        lock (_exportCancellationSync)
+        {
+            if (!ReferenceEquals(_exportCancellation, cancellation))
+            {
+                return;
+            }
+
+            cancellationWork = _exportCancellationWork;
+            _exportCancellation = null;
+            _exportCancellationWork = null;
+        }
+
+        if (cancellationWork is { IsCompleted: false })
+        {
+            var deferredDispose = cancellationWork.ContinueWith(
+                static (_, state) => ((CancellationTokenSource)state!).Dispose(),
+                cancellation,
+                CancellationToken.None,
+                TaskContinuationOptions.ExecuteSynchronously,
+                TaskScheduler.Default);
+            ObserveFault(deferredDispose);
+            return;
+        }
+
+        cancellation.Dispose();
+    }
+
+    private static void ObserveFault(Task work)
+        => _ = work.ContinueWith(
+            static completed => _ = completed.Exception,
+            CancellationToken.None,
+            TaskContinuationOptions.OnlyOnFaulted | TaskContinuationOptions.ExecuteSynchronously,
+            TaskScheduler.Default);
+
+    private static void DrainExportShutdown(Task cancellationWork, Task? exportWork)
+    {
+        var shutdown = exportWork is null
+            ? cancellationWork
+            : Task.WhenAll(cancellationWork, exportWork);
+        ObserveFault(shutdown);
+
+        try
+        {
+            // One ceiling covers both callback dispatch and the active writer.
+            // Cooperative storage drains here. A stalled callback or storage
+            // operation may truthfully continue after the form is gone.
+            _ = shutdown.Wait(TimeSpan.FromSeconds(2));
+        }
+        catch (AggregateException)
+        {
+            // Wait observed the terminal fault/cancellation. Cancellation
+            // callback failures belong to teardown evidence, not the UI stack.
+        }
+    }
+
+    protected override void OnFormClosing(FormClosingEventArgs e)
+    {
+        _formClosing = true;
+        _ = RequestExportCancellation();
+        base.OnFormClosing(e);
+        if (e.Cancel)
+        {
+            _formClosing = false;
+        }
+    }
+
+    protected override void Dispose(bool disposing)
+    {
+        try
+        {
+            if (disposing && !IsDisposed)
+            {
+                // Dispose() does not raise FormClosing. Treat it as the same
+                // terminal boundary without running untrusted token callbacks
+                // on the WinForms thread. Cooperative writers finish their
+                // owned stage cleanup; stalled work remains bounded.
+                _formClosing = true;
+                var cancellationWork = RequestExportCancellation();
+                var exportWork = Volatile.Read(ref _activeExportWork);
+                if (exportWork is not null)
+                {
+                    ObserveFault(exportWork);
+                }
+
+                DrainExportShutdown(cancellationWork, exportWork);
+            }
+        }
+        finally
+        {
+            // A throwing callback is represented by the retained task and can
+            // never prevent the actual WinForms surface from being disposed.
+            base.Dispose(disposing);
+        }
     }
 }

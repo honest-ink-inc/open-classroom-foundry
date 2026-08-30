@@ -13,8 +13,10 @@ namespace Foundry.Storage;
 /// cannot enter an open pack. Not filtered out silently: the export refuses
 /// entirely, so the person exporting learns the boundary instead of shipping a
 /// hole in it. Packaging is deterministic (sorted by id) and emits a bounded
-/// attribution draft from the catalog; rights-seat completeness and
-/// license-specific obligations remain outside this mechanical proof.
+/// attribution draft from the catalog. Export requires explicit attribution
+/// and modification dispositions rather than interpreting missing values as
+/// "none"; rights-seat completeness and license-specific obligations remain
+/// outside this mechanical proof.
 /// </summary>
 public static class SymbolPackExporter
 {
@@ -188,6 +190,12 @@ public static class SymbolPackExporter
                 throw new InvalidOperationException($"'{id.Value}' has incomplete required provenance.");
             }
 
+            if (!AssetRightsPolicy.HasExplicitExportDispositions(provenance))
+            {
+                throw new InvalidOperationException(
+                    $"'{id.Value}' has no explicit attribution and modification dispositions; open export was refused.");
+            }
+
             if (!AssetFileSafety.TryResolveLeaf(destination, provenance.FileName, out _))
             {
                 throw new InvalidOperationException($"'{id.Value}' has an unsafe asset filename.");
@@ -265,47 +273,25 @@ public static class SymbolPackExporter
 
     private static string BuildAttributions(List<AssetProvenance> records)
     {
-        var attributions = new StringBuilder("# Attributions\n\n");
+        // Keep every author-controlled value in one fenced literal block.
+        // Required metadata cannot contain a line break, so no value can place
+        // a closing fence at the beginning of a new line. GFM performs neither
+        // inline markup nor extended autolinking inside a fenced code block.
+        var attributions = new StringBuilder("# Attributions\n\n```text\n");
         foreach (var record in records)
         {
-            attributions.Append("- ").Append(MarkdownPlainText(record.Id.Value)).Append(": \"")
-                .Append(MarkdownPlainText(record.IntendedMeaning)).Append("\" — ")
-                .Append(MarkdownPlainText(record.Creator)).Append(", ")
-                .Append(MarkdownPlainText(record.License));
-            if (!string.IsNullOrWhiteSpace(record.RequiredAttribution))
-            {
-                attributions.Append(". ").Append(MarkdownPlainText(record.RequiredAttribution));
-            }
-
+            attributions.Append("- ").Append(record.Id.Value).Append(": \"")
+                .Append(record.IntendedMeaning).Append("\" — ")
+                .Append("Creator: ").Append(record.Creator)
+                .Append(". Source: ").Append(record.Source)
+                .Append(". License: ").Append(record.License)
+                .Append(". Modifications: ").Append(record.Modifications)
+                .Append(". Attribution: ").Append(record.RequiredAttribution);
             attributions.Append('\n');
         }
 
+        attributions.Append("```\n");
         return attributions.ToString();
-    }
-
-    /// <summary>
-    /// Emit provenance as display text, never as author-controlled Markdown.
-    /// Character references are resolved only after Markdown tokenization, so
-    /// links, images, HTML, headings, and list escapes cannot become active.
-    /// </summary>
-    private static string MarkdownPlainText(string value)
-    {
-        var encoded = new StringBuilder(value.Length);
-        foreach (var rune in value.EnumerateRunes())
-        {
-            if (Rune.IsLetterOrDigit(rune)
-                || Rune.IsWhiteSpace(rune)
-                || rune.Value is '.' or '-')
-            {
-                encoded.Append(rune.ToString());
-            }
-            else
-            {
-                encoded.Append("&#").Append(rune.Value).Append(';');
-            }
-        }
-
-        return encoded.ToString();
     }
 
     private sealed record PreparedAsset(AssetProvenance Provenance, byte[] Content);

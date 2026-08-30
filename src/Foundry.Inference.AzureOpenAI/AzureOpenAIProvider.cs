@@ -17,7 +17,7 @@ namespace Foundry.Inference.AzureOpenAI;
 /// schema registry lands; until then json_object mode plus the engine's strict
 /// parsers carry the contract.
 /// </summary>
-public sealed class AzureOpenAIProvider : IInferenceProvider
+public sealed class AzureOpenAIProvider : IInferenceProvider, IDisposable
 {
     private readonly HttpClient _http;
     private readonly Uri _endpoint;
@@ -25,9 +25,32 @@ public sealed class AzureOpenAIProvider : IInferenceProvider
     private readonly string _apiVersion;
     private readonly Func<CancellationToken, Task<string>> _bearerTokenFactory;
     private readonly IOutputSchemaRegistry? _schemaRegistry;
+    private readonly ProviderCapabilities _capabilities;
 
     public AzureOpenAIProvider(
-        HttpClient http,
+        Uri endpoint,
+        string deploymentId,
+        IReadOnlyCollection<string> allowedEndpoints,
+        Func<CancellationToken, Task<string>> bearerTokenFactory,
+        string apiVersion = "2024-10-21",
+        IOutputSchemaRegistry? schemaRegistry = null)
+        : this(
+            new SocketsHttpHandler { AllowAutoRedirect = false },
+            endpoint,
+            deploymentId,
+            allowedEndpoints,
+            bearerTokenFactory,
+            apiVersion,
+            schemaRegistry)
+    {
+    }
+
+    /// <summary>
+    /// Contract-test seam. Production always owns a no-redirect
+    /// <see cref="SocketsHttpHandler"/> created by the public constructor.
+    /// </summary>
+    internal AzureOpenAIProvider(
+        HttpMessageHandler transport,
         Uri endpoint,
         string deploymentId,
         IReadOnlyCollection<string> allowedEndpoints,
@@ -35,16 +58,16 @@ public sealed class AzureOpenAIProvider : IInferenceProvider
         string apiVersion = "2024-10-21",
         IOutputSchemaRegistry? schemaRegistry = null)
     {
-        ArgumentNullException.ThrowIfNull(http);
+        ArgumentNullException.ThrowIfNull(transport);
         ArgumentNullException.ThrowIfNull(endpoint);
         ArgumentException.ThrowIfNullOrWhiteSpace(deploymentId);
         ArgumentNullException.ThrowIfNull(allowedEndpoints);
         ArgumentNullException.ThrowIfNull(bearerTokenFactory);
 
-        var origin = Origin(endpoint);
+        var origin = InferenceEndpointOrigin.Normalize(endpoint);
         var allowed = allowedEndpoints
-            .Select(e => Uri.TryCreate(e, UriKind.Absolute, out var uri) ? Origin(uri) : null)
-            .Any(o => o is not null && string.Equals(o, origin, StringComparison.OrdinalIgnoreCase));
+            .Select(e => InferenceEndpointOrigin.TryNormalize(e, out var normalized) ? normalized : null)
+            .Any(o => string.Equals(o, origin, StringComparison.Ordinal));
 
         if (!allowed)
         {
@@ -52,25 +75,32 @@ public sealed class AzureOpenAIProvider : IInferenceProvider
                 $"'{origin}' is not on the district endpoint allowlist; this provider cannot be constructed (R2-12).");
         }
 
-        _http = http;
+        DisableAutomaticRedirects(transport);
+        _http = new HttpClient(transport, disposeHandler: true);
         _endpoint = endpoint;
         _deploymentId = deploymentId;
         _apiVersion = apiVersion;
         _bearerTokenFactory = bearerTokenFactory;
         _schemaRegistry = schemaRegistry;
+        _capabilities = new ProviderCapabilities(
+            "azure-openai", deploymentId, PinnedModelVersion: null,
+            SupportsImageInput: true, SupportsStructuredOutput: true,
+            EndpointOrigin: origin);
     }
 
     public Task<ProviderCapabilities> GetCapabilitiesAsync(CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
-        return Task.FromResult(new ProviderCapabilities(
-            "azure-openai", _deploymentId, PinnedModelVersion: null,
-            SupportsImageInput: true, SupportsStructuredOutput: true));
+        return Task.FromResult(_capabilities);
     }
+
+    public void Dispose() => _http.Dispose();
 
     public async Task<InferenceResult> CompleteAsync(PreviewedRequest request, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(request);
+        cancellationToken.ThrowIfCancellationRequested();
+        EgressGate.EnsureProviderMatches(request, _capabilities);
 
         using var message = new HttpRequestMessage(
             HttpMethod.Post,
@@ -103,6 +133,14 @@ public sealed class AzureOpenAIProvider : IInferenceProvider
 
     private static InferenceResult Map(HttpStatusCode status, string body)
     {
+        if ((int)status is >= 300 and < 400)
+        {
+            // Gate A confirms one exact origin. Even a same-origin redirect is
+            // a different dispatch request and must be previewed afresh rather
+            // than replaying the approved POST automatically.
+            return InferenceResult.Failure(InferenceOutcome.PolicyRefused);
+        }
+
         switch (status)
         {
             case HttpStatusCode.Unauthorized or HttpStatusCode.Forbidden:
@@ -150,6 +188,19 @@ public sealed class AzureOpenAIProvider : IInferenceProvider
         catch (Exception exception) when (exception is JsonException or KeyNotFoundException or IndexOutOfRangeException or InvalidOperationException)
         {
             return InferenceResult.Failure(InferenceOutcome.MalformedOutput);
+        }
+    }
+
+    private static void DisableAutomaticRedirects(HttpMessageHandler transport)
+    {
+        switch (transport)
+        {
+            case SocketsHttpHandler sockets:
+                sockets.AllowAutoRedirect = false;
+                break;
+            case HttpClientHandler client:
+                client.AllowAutoRedirect = false;
+                break;
         }
     }
 
@@ -222,6 +273,4 @@ public sealed class AzureOpenAIProvider : IInferenceProvider
 
         return Encoding.UTF8.GetString(stream.ToArray());
     }
-
-    private static string Origin(Uri uri) => uri.GetLeftPart(UriPartial.Authority);
 }

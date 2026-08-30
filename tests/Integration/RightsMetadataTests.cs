@@ -25,7 +25,7 @@ public class RightsMetadataTests
     }
 
     [Fact]
-    public void Every_shipped_asset_carries_complete_rights_metadata()
+    public void Every_shipped_asset_carries_core_rights_metadata()
     {
         var catalog = new JsonAssetCatalog(AssetsRoot());
 

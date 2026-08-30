@@ -84,6 +84,62 @@ public class AllAboardContractTests
         });
 
     [Fact]
+    public void Print_view_failure_is_announced_instead_of_escaping_the_UI_event()
+        => Sta.Run(() =>
+        {
+            using var form = new AllAboardForm(
+                Catalog(),
+                GateRespectingApprove,
+                printViewOpener: (_, _, _, _, _, _) =>
+                    throw new IOException("synthetic print-view refusal"));
+            form.Show();
+            Title(form).Text = "Synthetic print view";
+            Step(form, 1).Text = "Place the synthetic card.";
+            Step(form, 2).Text = "Read the synthetic card.";
+            Step(form, 3).Text = "Return the synthetic card.";
+            ((Button)ReviewSurfaceContractTests.ByName(form, "Review and approve…")).PerformClick();
+
+            ((Button)ReviewSurfaceContractTests.ByName(form, "Open print view")).PerformClick();
+
+            Assert.Equal(
+                UiStrings.WithoutMnemonic(UiStrings.StatusPrintViewRefused),
+                form.StatusText);
+            Assert.NotNull(form.ApprovedResult);
+            Assert.True(ReviewSurfaceContractTests.ByName(form, "Open print view").Enabled);
+        });
+
+    [Fact]
+    public void Print_view_handoff_keeps_All_Aboard_responsive_and_gated_until_response_write()
+        => Sta.Run(() =>
+        {
+            var release = new TaskCompletionSource<bool>(
+                TaskCreationOptions.RunContinuationsAsynchronously);
+            using var form = new AllAboardForm(
+                Catalog(),
+                GateRespectingApprove,
+                printViewOpener: (_, _, _, _, _, _) => release.Task);
+            form.Show();
+            Title(form).Text = "Synthetic print-view routine";
+            Step(form, 1).Text = "Place the synthetic card.";
+            Step(form, 2).Text = "Read the synthetic card.";
+            Step(form, 3).Text = "Return the synthetic card.";
+            ((Button)ReviewSurfaceContractTests.ByName(form, "Review and approve…")).PerformClick();
+
+            var printView = (Button)ReviewSurfaceContractTests.ByName(form, "Open print view");
+            printView.PerformClick();
+
+            Assert.Equal(
+                UiStrings.WithoutMnemonic(UiStrings.StatusPrintViewOpening),
+                form.StatusText);
+            Assert.False(printView.Enabled);
+            Assert.False(Input(form, "Output mode").Enabled);
+
+            release.TrySetResult(true);
+            PumpUntil(() => printView.Enabled
+                && form.StatusText == UiStrings.WithoutMnemonic(UiStrings.StatusPrintView));
+        });
+
+    [Fact]
     public void Editing_an_All_Aboard_input_revokes_approval_and_every_sink()
         => WithForm(form =>
         {

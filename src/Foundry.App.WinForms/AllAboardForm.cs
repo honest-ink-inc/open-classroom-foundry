@@ -38,11 +38,13 @@ public sealed class AllAboardForm : Form
     private bool _loadingMode;
     private bool _reviewPending;
     private bool _exportInProgress;
+    private bool _printViewInProgress;
     private CancellationTokenSource? _exportCancellation;
     private long _stateGeneration;
     private RecipeManifest _approvedRecipe = AllAboardRecipes.TaskStrip;
     private readonly Func<ExportChoice?> _exportPicker;
     private readonly Func<ApprovedArtifact, string, IAssetCatalog?, CancellationToken, Task> _pdfExporter;
+    private readonly Func<ApprovedArtifact, string, RenderAudience, double, bool, IAssetCatalog?, Task> _printViewOpener;
 
     public sealed record ExportChoice(string Path, int FilterIndex);
 
@@ -50,7 +52,8 @@ public sealed class AllAboardForm : Form
         IAssetCatalog catalog,
         Func<ReviewSession, ApprovedArtifact?>? reviewRunner = null,
         Func<ExportChoice?>? exportPicker = null,
-        Func<ApprovedArtifact, string, IAssetCatalog?, CancellationToken, Task>? pdfExporter = null)
+        Func<ApprovedArtifact, string, IAssetCatalog?, CancellationToken, Task>? pdfExporter = null,
+        Func<ApprovedArtifact, string, RenderAudience, double, bool, IAssetCatalog?, Task>? printViewOpener = null)
     {
         _catalog = catalog ?? throw new ArgumentNullException(nameof(catalog));
         _modalReview = reviewRunner is null;
@@ -62,6 +65,7 @@ public sealed class AllAboardForm : Form
                 destination,
                 assets,
                 cancellationToken: cancellationToken));
+        _printViewOpener = printViewOpener ?? AppServices.OpenPrintViewAsync;
 
         // The pack may hold two symbols with one meaning (it ships two Help
         // variants): meaning stays the name, and only duplicates append their
@@ -106,11 +110,9 @@ public sealed class AllAboardForm : Form
                 SetStatus(UiStrings.StatusRefused, failure.Message);
             }
         }));
-        _printView = MakeButton(UiStrings.OpenPrintView, (_, _) => WithApproved(a =>
-        {
-            AppServices.OpenPrintView(a, "all-aboard", assetCatalog: _catalog);
-            SetStatus(UiStrings.StatusPrintView);
-        }));
+        _printView = MakeButton(
+            UiStrings.OpenPrintView,
+            async (_, _) => await WithApprovedAsync(OpenPrintViewAsync));
         _export = MakeButton(UiStrings.ExportEllipsis, async (_, _) => await WithApprovedAsync(ExportAsync));
         _cancelExport = MakeButton(UiStrings.CancelExport, (_, _) => _exportCancellation?.Cancel());
         _save = MakeButton(UiStrings.SaveToLibrary, (_, _) => WithApproved(a =>
@@ -418,6 +420,38 @@ public sealed class AllAboardForm : Form
         }
     }
 
+    private async Task OpenPrintViewAsync(ApprovedArtifact approved)
+    {
+        if (_printViewInProgress)
+        {
+            return;
+        }
+
+        _printViewInProgress = true;
+        UpdateGatedButtons();
+        SetStatus(UiStrings.StatusPrintViewOpening);
+        try
+        {
+            await _printViewOpener(
+                approved,
+                "all-aboard",
+                RenderAudience.Learner,
+                100,
+                false,
+                _catalog);
+            SetStatus(UiStrings.StatusPrintView);
+        }
+        catch (Exception failure) when (IsExpectedPrintViewFailure(failure))
+        {
+            SetStatus(UiStrings.StatusPrintViewRefused);
+        }
+        finally
+        {
+            _printViewInProgress = false;
+            UpdateGatedButtons();
+        }
+    }
+
     private ExportChoice? PickExportDialog()
     {
         using var dialog = new SaveFileDialog
@@ -509,7 +543,7 @@ public sealed class AllAboardForm : Form
         }
 
         // The structural gate, visible: nothing unlocks before typed approval.
-        var idle = !_reviewPending && !_exportInProgress;
+        var idle = !_reviewPending && !_exportInProgress && !_printViewInProgress;
         var enabled = idle && ApprovedResult is not null;
         _review.Enabled = idle;
         _print.Enabled = enabled;
@@ -566,6 +600,14 @@ public sealed class AllAboardForm : Form
         _status.Text = text;
         _status.AccessibleName = text;
     }
+
+    private static bool IsExpectedPrintViewFailure(Exception failure)
+        => failure is InvalidOperationException
+            or IOException
+            or UnauthorizedAccessException
+            or NotSupportedException
+            or ArgumentException
+            or System.ComponentModel.Win32Exception;
 
     protected override void OnFormClosed(FormClosedEventArgs e)
     {

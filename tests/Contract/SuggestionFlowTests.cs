@@ -30,6 +30,23 @@ public class SuggestionFlowTests
         }
     }
 
+    private sealed class RecordingProvider(ProviderCapabilities capabilities) : IInferenceProvider
+    {
+        public bool CompleteWasCalled { get; private set; }
+
+        public Task<ProviderCapabilities> GetCapabilitiesAsync(CancellationToken cancellationToken)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            return Task.FromResult(capabilities);
+        }
+
+        public Task<InferenceResult> CompleteAsync(PreviewedRequest request, CancellationToken cancellationToken)
+        {
+            CompleteWasCalled = true;
+            return Task.FromResult(InferenceResult.Success("{}"));
+        }
+    }
+
     private static InferenceRequest IntentRequest() => new(
         RecipeId: "all-aboard.task-strip",
         RecipeVersion: "0.1.0",
@@ -97,6 +114,28 @@ public class SuggestionFlowTests
 
         Assert.False(result.IsSuccess);
         Assert.Null(result.StructuredJson);
+    }
+
+    [Fact]
+    public async Task The_runner_rejects_a_confirmation_for_another_provider_before_dispatch()
+    {
+        var provider = new RecordingProvider(
+            SyntheticInferenceProvider.DefaultCapabilities with
+            {
+                ProviderId = "other-provider",
+                DeploymentId = "other-deployment",
+            });
+        var runner = new SuggestionRunner(provider);
+        var confirmed = EgressGate.Confirm(
+            EgressGate.Preview(IntentRequest(), SyntheticInferenceProvider.DefaultCapabilities),
+            "teacher@example.org",
+            SomeInstant);
+
+        var exception = await Assert.ThrowsAsync<InvalidOperationException>(
+            () => runner.RunAsync(confirmed, CancellationToken.None));
+
+        Assert.Contains("other-provider", exception.Message, StringComparison.Ordinal);
+        Assert.False(provider.CompleteWasCalled);
     }
 
     [Fact]

@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
+using System.Diagnostics;
 using System.IO;
 using Foundry.App.WinForms;
 using Foundry.Application;
@@ -428,6 +429,373 @@ public sealed class ModuleStudioContractTests : IDisposable
             Assert.Contains(nameof(RenderTarget.Png), form.StatusText, StringComparison.Ordinal);
         });
 
+    [Fact]
+    public void Export_gates_mutation_announces_progress_and_preserves_the_destination_on_cancel()
+        => Sta.Run(() =>
+        {
+            var destination = Path.Combine(_temporaryDirectory, "existing-cancelled.html");
+            File.WriteAllText(destination, "original exact bytes");
+            var started = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+            var pickerCalls = 0;
+            var writerCalls = 0;
+            using var form = new ModuleStudioForm(
+                GateRespectingApprove,
+                exportPicker: () =>
+                {
+                    pickerCalls++;
+                    return new ModuleStudioForm.ExportChoice(destination, RenderTarget.AccessibleHtml);
+                },
+                exportWriter: async (_, content, cancellationToken) =>
+                {
+                    writerCalls++;
+                    Assert.False(content.IsEmpty);
+                    started.TrySetResult(true);
+                    await Task.Delay(Timeout.InfiniteTimeSpan, cancellationToken);
+                });
+            form.Show();
+            SelectMode(form, "directions-duet");
+            ReviewButton(form).PerformClick();
+
+            var export = ExportButton(form);
+            var cancel = ActionButton(form, "Cancel export");
+            export.PerformClick();
+            export.PerformClick();
+            PumpUntil(() => started.Task.IsCompleted);
+
+            Assert.Equal(1, pickerCalls);
+            Assert.Equal(1, writerCalls);
+            Assert.False(export.Enabled);
+            Assert.True(cancel.Enabled);
+            Assert.Contains("Exporting", form.StatusText, StringComparison.Ordinal);
+            Assert.False(DoorList(form).Enabled);
+            Assert.False(OutputAudience(form).Enabled);
+            Assert.False(ReviewButton(form).Enabled);
+            AssertSinks(form, enabled: false);
+
+            cancel.PerformClick();
+            PumpUntil(() => form.StatusText.Contains("cancelled", StringComparison.OrdinalIgnoreCase)
+                && export.Enabled
+                && !cancel.Enabled);
+
+            Assert.Equal("original exact bytes", File.ReadAllText(destination));
+            Assert.Empty(Directory.EnumerateFiles(_temporaryDirectory, ".honest-ink-*.stage"));
+        });
+
+    [Fact]
+    public void Export_preserves_an_existing_destination_and_removes_its_stage_when_promotion_fails()
+        => Sta.Run(() =>
+        {
+            var destination = Path.Combine(_temporaryDirectory, "existing-locked.html");
+            File.WriteAllText(destination, "original exact bytes");
+            using var form = new ModuleStudioForm(
+                GateRespectingApprove,
+                exportPicker: () => new ModuleStudioForm.ExportChoice(
+                    destination,
+                    RenderTarget.AccessibleHtml));
+            form.Show();
+            SelectMode(form, "directions-duet");
+            ReviewButton(form).PerformClick();
+
+            using (var destinationLock = new FileStream(
+                destination,
+                FileMode.Open,
+                FileAccess.Read,
+                FileShare.None))
+            {
+                ExportButton(form).PerformClick();
+                PumpUntil(() => form.StatusText.Contains("refused", StringComparison.OrdinalIgnoreCase)
+                    && ExportButton(form).Enabled);
+            }
+
+            Assert.Equal("original exact bytes", File.ReadAllText(destination));
+            Assert.Empty(Directory.EnumerateFiles(_temporaryDirectory, ".honest-ink-*.stage"));
+        });
+
+    [Fact]
+    public void Closing_from_the_export_picker_cancels_before_render_or_write()
+        => Sta.Run(() =>
+        {
+            var destination = Path.Combine(_temporaryDirectory, "must-not-exist.html");
+            var writerCalls = 0;
+            ModuleStudioForm? form = null;
+            form = new ModuleStudioForm(
+                GateRespectingApprove,
+                exportPicker: () =>
+                {
+                    form!.Close();
+                    return new ModuleStudioForm.ExportChoice(
+                        destination,
+                        RenderTarget.AccessibleHtml);
+                },
+                exportWriter: (_, _, _) =>
+                {
+                    writerCalls++;
+                    return Task.CompletedTask;
+                });
+            using (form)
+            {
+                form.Show();
+                SelectMode(form, "directions-duet");
+                ReviewButton(form).PerformClick();
+
+                ExportButton(form).PerformClick();
+                PumpUntil(() => form.IsDisposed);
+            }
+
+            Assert.Equal(0, writerCalls);
+            Assert.False(File.Exists(destination));
+            Assert.Empty(Directory.EnumerateFiles(_temporaryDirectory, ".honest-ink-*.stage"));
+        });
+
+    [Fact]
+    public void Direct_disposal_cancels_an_in_flight_export_writer()
+        => Sta.Run(() =>
+        {
+            var destination = Path.Combine(_temporaryDirectory, "disposed-must-not-exist.html");
+            var stage = Path.Combine(_temporaryDirectory, ".honest-ink-disposal.stage");
+            var started = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+            var cancelled = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+            var cleaned = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+            var form = new ModuleStudioForm(
+                GateRespectingApprove,
+                exportPicker: () => new ModuleStudioForm.ExportChoice(
+                    destination,
+                    RenderTarget.AccessibleHtml),
+                exportWriter: async (_, content, cancellationToken) =>
+                {
+                    await File.WriteAllBytesAsync(stage, content, cancellationToken).ConfigureAwait(false);
+                    started.TrySetResult(true);
+                    try
+                    {
+                        await Task.Delay(Timeout.InfiniteTimeSpan, cancellationToken).ConfigureAwait(false);
+                    }
+                    catch (OperationCanceledException)
+                    {
+                        cancelled.TrySetResult(true);
+                        throw;
+                    }
+                    finally
+                    {
+                        File.Delete(stage);
+                        cleaned.TrySetResult(true);
+                    }
+                });
+
+            form.Show();
+            SelectMode(form, "directions-duet");
+            ReviewButton(form).PerformClick();
+            ExportButton(form).PerformClick();
+            PumpUntil(() => started.Task.IsCompleted);
+
+            form.Dispose();
+
+            Assert.True(form.IsDisposed);
+            Assert.True(cancelled.Task.IsCompleted);
+            Assert.True(cleaned.Task.IsCompleted);
+            Assert.False(File.Exists(destination));
+            Assert.False(File.Exists(stage));
+            Assert.Empty(Directory.EnumerateFiles(_temporaryDirectory, ".honest-ink-*.stage"));
+        });
+
+    [Fact]
+    public void Blocking_cancellation_callback_cannot_hold_disposal_past_the_shared_bound()
+        => Sta.Run(() =>
+        {
+            var destination = Path.Combine(_temporaryDirectory, "blocking-callback-must-not-exist.html");
+            using var callbackRelease = new ManualResetEventSlim();
+            using var callbackEntered = new ManualResetEventSlim();
+            using var callbackExited = new ManualResetEventSlim();
+            var writerStarted = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+            var writerFinished = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+            var form = new ModuleStudioForm(
+                GateRespectingApprove,
+                exportPicker: () => new ModuleStudioForm.ExportChoice(
+                    destination,
+                    RenderTarget.AccessibleHtml),
+                exportWriter: async (_, _, cancellationToken) =>
+                {
+                    _ = cancellationToken.Register(() =>
+                    {
+                        callbackEntered.Set();
+                        try
+                        {
+                            _ = callbackRelease.Wait(TimeSpan.FromSeconds(10));
+                        }
+                        finally
+                        {
+                            callbackExited.Set();
+                        }
+                    });
+                    writerStarted.TrySetResult(true);
+                    try
+                    {
+                        await Task.Delay(Timeout.InfiniteTimeSpan, cancellationToken).ConfigureAwait(false);
+                    }
+                    finally
+                    {
+                        writerFinished.TrySetResult(true);
+                    }
+                });
+
+            try
+            {
+                form.Show();
+                SelectMode(form, "directions-duet");
+                ReviewButton(form).PerformClick();
+                ExportButton(form).PerformClick();
+                PumpUntil(() => writerStarted.Task.IsCompleted);
+
+                var elapsed = Stopwatch.StartNew();
+                form.Dispose();
+                elapsed.Stop();
+
+                Assert.True(form.IsDisposed);
+                Assert.True(callbackEntered.IsSet, "The synthetic blocking cancellation callback never started.");
+                Assert.False(callbackExited.IsSet, "Dispose waited for the deliberately stalled callback without a bound.");
+                Assert.True(
+                    elapsed.Elapsed < TimeSpan.FromSeconds(4),
+                    $"Dispose took {elapsed.Elapsed.TotalMilliseconds:F0} ms across the two-second shutdown bound.");
+            }
+            finally
+            {
+                callbackRelease.Set();
+                if (!form.IsDisposed)
+                {
+                    form.Dispose();
+                }
+            }
+
+            PumpUntil(() => callbackExited.IsSet && writerFinished.Task.IsCompleted);
+            Assert.False(File.Exists(destination));
+        });
+
+    [Fact]
+    public void Throwing_cancellation_callback_is_observed_and_cannot_prevent_base_disposal()
+    {
+        var unobservedCallbackFailure = 0;
+        void unobserved(object? _, UnobservedTaskExceptionEventArgs args)
+        {
+            if (ContainsSyntheticCancellationCallbackFailure(args.Exception))
+            {
+                Interlocked.Exchange(ref unobservedCallbackFailure, 1);
+                args.SetObserved();
+            }
+        }
+        TaskScheduler.UnobservedTaskException += unobserved;
+
+        try
+        {
+            Sta.Run(() =>
+            {
+                var destination = Path.Combine(_temporaryDirectory, "throwing-callback-must-not-exist.html");
+                var writerStarted = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+                var callbackInvoked = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+                var writerFinished = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+                var form = new ModuleStudioForm(
+                    GateRespectingApprove,
+                    exportPicker: () => new ModuleStudioForm.ExportChoice(
+                        destination,
+                        RenderTarget.AccessibleHtml),
+                    exportWriter: async (_, _, cancellationToken) =>
+                    {
+                        _ = cancellationToken.Register(() =>
+                        {
+                            callbackInvoked.TrySetResult(true);
+                            throw new SyntheticCancellationCallbackException();
+                        });
+                        writerStarted.TrySetResult(true);
+                        try
+                        {
+                            await Task.Delay(Timeout.InfiniteTimeSpan, cancellationToken).ConfigureAwait(false);
+                        }
+                        finally
+                        {
+                            writerFinished.TrySetResult(true);
+                        }
+                    });
+
+                form.Show();
+                SelectMode(form, "directions-duet");
+                ReviewButton(form).PerformClick();
+                ExportButton(form).PerformClick();
+                PumpUntil(() => writerStarted.Task.IsCompleted);
+
+                form.Dispose();
+
+                Assert.True(form.IsDisposed);
+                Assert.True(callbackInvoked.Task.IsCompleted);
+                Assert.True(writerFinished.Task.IsCompleted);
+                Assert.False(File.Exists(destination));
+
+                // Let ExportAsync retire its cancellation source and release
+                // the observed callback task before the collection check.
+                System.Windows.Forms.Application.DoEvents();
+            });
+
+            for (var pass = 0; pass < 3; pass++)
+            {
+                GC.Collect();
+                GC.WaitForPendingFinalizers();
+                GC.Collect();
+            }
+
+            Assert.Equal(0, Volatile.Read(ref unobservedCallbackFailure));
+        }
+        finally
+        {
+            TaskScheduler.UnobservedTaskException -= unobserved;
+        }
+    }
+
+    [Fact]
+    public void Print_view_failure_is_announced_instead_of_escaping_the_UI_event()
+        => Sta.Run(() =>
+        {
+            using var form = new ModuleStudioForm(
+                GateRespectingApprove,
+                printViewOpener: (_, _, _, _, _, _) =>
+                    throw new IOException("synthetic print-view refusal"));
+            form.Show();
+            SelectMode(form, "directions-duet");
+            ReviewButton(form).PerformClick();
+
+            ActionButton(form, "Open print view").PerformClick();
+
+            Assert.Equal(
+                UiStrings.WithoutMnemonic(UiStrings.StatusPrintViewRefused),
+                form.StatusText);
+            Assert.NotNull(form.ApprovedResult);
+            Assert.True(ActionButton(form, "Open print view").Enabled);
+        });
+
+    [Fact]
+    public void Print_view_handoff_keeps_Module_Studio_responsive_and_gated_until_response_write()
+        => Sta.Run(() =>
+        {
+            var release = new TaskCompletionSource<bool>(
+                TaskCreationOptions.RunContinuationsAsynchronously);
+            using var form = new ModuleStudioForm(
+                GateRespectingApprove,
+                printViewOpener: (_, _, _, _, _, _) => release.Task);
+            form.Show();
+            SelectMode(form, "directions-duet");
+            ReviewButton(form).PerformClick();
+
+            var printView = ActionButton(form, "Open print view");
+            printView.PerformClick();
+
+            Assert.Equal(
+                UiStrings.WithoutMnemonic(UiStrings.StatusPrintViewOpening),
+                form.StatusText);
+            Assert.False(printView.Enabled);
+            Assert.False(DoorList(form).Enabled);
+            Assert.False(OutputAudience(form).Enabled);
+
+            release.TrySetResult(true);
+            PumpUntil(() => printView.Enabled
+                && form.StatusText == UiStrings.WithoutMnemonic(UiStrings.StatusPrintView));
+        });
+
     private static ApprovedArtifact? GateRespectingApprove(ReviewSession session)
     {
         session.SetRequiredIssuesAcknowledged(acknowledged: true);
@@ -551,7 +919,30 @@ public sealed class ModuleStudioContractTests : IDisposable
     private static void ClickAndDrain(Button button)
     {
         button.PerformClick();
-        System.Windows.Forms.Application.DoEvents();
+        PumpUntil(() => button.Enabled);
+    }
+
+    private static void PumpUntil(Func<bool> condition)
+    {
+        var deadline = DateTime.UtcNow.AddSeconds(5);
+        while (!condition() && DateTime.UtcNow < deadline)
+        {
+            System.Windows.Forms.Application.DoEvents();
+            Thread.Sleep(10);
+        }
+
+        Assert.True(condition(), "The asynchronous Module Studio operation did not reach its expected state.");
+    }
+
+    private static bool ContainsSyntheticCancellationCallbackFailure(Exception failure)
+        => failure is SyntheticCancellationCallbackException
+            || (failure is AggregateException aggregate
+                && aggregate.Flatten().InnerExceptions.Any(ContainsSyntheticCancellationCallbackFailure))
+            || (failure.InnerException is not null
+                && ContainsSyntheticCancellationCallbackFailure(failure.InnerException));
+
+    private sealed class SyntheticCancellationCallbackException : Exception
+    {
     }
 
 }

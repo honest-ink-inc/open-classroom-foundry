@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 using System.Buffers.Binary;
+using System.IO.Compression;
 using System.Net;
 using System.Security.Cryptography;
 using System.Text;
@@ -33,6 +34,8 @@ public sealed class AccessibleHtmlRenderer : IRenderer
     private const long MaxRenderedOutputCharacters = 32L * 1024 * 1024;
     private const int MaxRasterDimension = 16384;
     private const long MaxRasterPixels = 25_000_000;
+    private const long MaxCumulativeRasterPixels = 100_000_000;
+    private const long MaxDecodedRasterBytes = 128L * 1024 * 1024;
     private const int MaxRasterStructureItems = 4096;
     private const int MaxSvgXmlNodes = 8192;
     private const int MaxSvgAttributes = 16384;
@@ -650,8 +653,12 @@ public sealed class AccessibleHtmlRenderer : IRenderer
         }
     }
 
-    private static EmbeddedImageSource ResolveEmbeddedImageSource(AssetId id, IAssetCatalog assetCatalog)
+    private static EmbeddedImageSource ResolveEmbeddedImageSource(
+        AssetId id,
+        IAssetCatalog assetCatalog,
+        CancellationToken cancellationToken)
     {
+        cancellationToken.ThrowIfCancellationRequested();
         var provenance = assetCatalog.Find(id)
             ?? throw new InvalidOperationException(
                 $"Asset '{id.Value}' has no provenance; rendering refused.");
@@ -661,6 +668,7 @@ public sealed class AccessibleHtmlRenderer : IRenderer
                 $"Asset '{id.Value}' has no retrievable content; rendering refused.");
         }
 
+        cancellationToken.ThrowIfCancellationRequested();
         if (!string.Equals(mimeType, provenance.MimeType, StringComparison.Ordinal)
             || content.IsEmpty
             || content.Length > MaxEmbeddedAssetBytes)
@@ -673,15 +681,17 @@ public sealed class AccessibleHtmlRenderer : IRenderer
         // guarantee. Own the admitted bytes before hashing so a mutable custom
         // catalog cannot change them between validation and Base64 encoding.
         var ownedContent = content.ToArray();
+        cancellationToken.ThrowIfCancellationRequested();
         var actualHash = Convert.ToHexString(SHA256.HashData(ownedContent));
+        cancellationToken.ThrowIfCancellationRequested();
         if (!actualHash.Equals(provenance.Sha256, StringComparison.OrdinalIgnoreCase))
         {
             throw new InvalidOperationException(
                 $"Asset '{id.Value}' does not match its recorded SHA-256; rendering refused.");
         }
 
-        ValidateImageContent(ownedContent, mimeType, id);
-        return new EmbeddedImageSource(mimeType, ownedContent);
+        ValidateImageContent(ownedContent, mimeType, id, cancellationToken);
+        return new EmbeddedImageSource(mimeType, ownedContent, MeasureRasterPixels(ownedContent, mimeType));
     }
 
     private static string RenderAssetSheetSvg(
@@ -1243,10 +1253,11 @@ public sealed class AccessibleHtmlRenderer : IRenderer
 
             var sources = new Dictionary<AssetId, EmbeddedImageSource>(occurrences.Count);
             long derivativeCharacters = 0;
+            long rasterPixels = 0;
             foreach (var (id, count) in occurrences)
             {
                 cancellationToken.ThrowIfCancellationRequested();
-                var source = ResolveEmbeddedImageSource(id, assetCatalog);
+                var source = ResolveEmbeddedImageSource(id, assetCatalog, cancellationToken);
                 var base64Characters = ((long)source.Content.Length + 2) / 3 * 4;
                 var perReferenceCharacters = checked(base64Characters + source.MimeType.Length + 13);
                 derivativeCharacters = checked(derivativeCharacters + (perReferenceCharacters * count));
@@ -1254,6 +1265,13 @@ public sealed class AccessibleHtmlRenderer : IRenderer
                 {
                     throw new InvalidOperationException(
                         "Rendering refused because repeated image references exceed the cumulative embedded-derivative budget.");
+                }
+
+                rasterPixels = checked(rasterPixels + (source.RasterPixels * count));
+                if (rasterPixels > MaxCumulativeRasterPixels)
+                {
+                    throw new InvalidOperationException(
+                        "Rendering refused because image references exceed the cumulative raster-decode budget.");
                 }
 
                 sources.Add(id, source);
@@ -1280,9 +1298,13 @@ public sealed class AccessibleHtmlRenderer : IRenderer
                     $"Asset '{id.Value}' was not admitted by the bounded rendering preflight.");
     }
 
-    private static void ValidateImageContent(ReadOnlySpan<byte> content, string mimeType, AssetId id)
+    private static void ValidateImageContent(
+        ReadOnlySpan<byte> content,
+        string mimeType,
+        AssetId id,
+        CancellationToken cancellationToken)
     {
-        if (!IsSupportedSelfContainedImage(content, mimeType))
+        if (!IsSupportedSelfContainedImage(content, mimeType, cancellationToken))
         {
             throw new InvalidOperationException(
                 $"Asset '{id.Value}' is not a supported, self-contained image; rendering refused.");
@@ -1297,7 +1319,19 @@ public sealed class AccessibleHtmlRenderer : IRenderer
     /// dimension, and pixel bounds before a browser or decoder sees them.
     /// </summary>
     public static bool IsSupportedSelfContainedImage(ReadOnlySpan<byte> content, string mimeType)
+        => IsSupportedSelfContainedImage(content, mimeType, CancellationToken.None);
+
+    /// <summary>
+    /// Performs the same bounded image admission while allowing callers that
+    /// are already inside a cancellable package or rendering operation to stop
+    /// the structural walk promptly.
+    /// </summary>
+    public static bool IsSupportedSelfContainedImage(
+        ReadOnlySpan<byte> content,
+        string mimeType,
+        CancellationToken cancellationToken)
     {
+        cancellationToken.ThrowIfCancellationRequested();
         if (content.IsEmpty || content.Length > MaxEmbeddedAssetBytes)
         {
             return false;
@@ -1305,14 +1339,16 @@ public sealed class AccessibleHtmlRenderer : IRenderer
 
         return mimeType switch
         {
-            "image/png" => IsStructurallyValidPng(content),
-            "image/jpeg" => IsStructurallyValidJpeg(content),
-            "image/svg+xml" => IsSafeSvg(content),
+            "image/png" => IsStructurallyValidPng(content, cancellationToken),
+            "image/jpeg" => IsStructurallyValidJpeg(content, cancellationToken),
+            "image/svg+xml" => IsSafeSvg(content, cancellationToken),
             _ => false,
         };
     }
 
-    private static bool IsStructurallyValidPng(ReadOnlySpan<byte> content)
+    private static bool IsStructurallyValidPng(
+        ReadOnlySpan<byte> content,
+        CancellationToken cancellationToken)
     {
         ReadOnlySpan<byte> signature = [0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A];
         if (content.Length < 8 || !content[..8].SequenceEqual(signature))
@@ -1324,12 +1360,23 @@ public sealed class AccessibleHtmlRenderer : IRenderer
         var structureItems = 0;
         var sawHeader = false;
         var sawPalette = false;
+        var sawSrgb = false;
+        var sawGamma = false;
+        var sawPhysicalDimensions = false;
+        var sawTransparency = false;
         var sawImageData = false;
         var endedImageData = false;
+        var paletteEntries = 0;
         long imageDataBytes = 0;
+        uint width = 0;
+        uint height = 0;
+        byte bitDepth = 0;
         byte colorType = 0;
+        byte interlaceMethod = 0;
+        using var compressedImageData = new MemoryStream();
         while (position < content.Length)
         {
+            cancellationToken.ThrowIfCancellationRequested();
             if (++structureItems > MaxRasterStructureItems || content.Length - position < 12)
             {
                 return false;
@@ -1352,7 +1399,7 @@ public sealed class AccessibleHtmlRenderer : IRenderer
             var recordedCrc = BinaryPrimitives.ReadUInt32BigEndian(
                 content.Slice(position + 8 + dataLength, 4));
             if (!IsPngChunkType(chunkType)
-                || ComputePngCrc(chunkType, chunkData) != recordedCrc)
+                || ComputePngCrc(chunkType, chunkData, cancellationToken) != recordedCrc)
             {
                 return false;
             }
@@ -1373,15 +1420,16 @@ public sealed class AccessibleHtmlRenderer : IRenderer
                     return false;
                 }
 
-                var width = BinaryPrimitives.ReadUInt32BigEndian(chunkData[..4]);
-                var height = BinaryPrimitives.ReadUInt32BigEndian(chunkData.Slice(4, 4));
-                var bitDepth = chunkData[8];
+                width = BinaryPrimitives.ReadUInt32BigEndian(chunkData[..4]);
+                height = BinaryPrimitives.ReadUInt32BigEndian(chunkData.Slice(4, 4));
+                bitDepth = chunkData[8];
                 colorType = chunkData[9];
+                interlaceMethod = chunkData[12];
                 if (!IsBoundedRasterDimensions(width, height)
                     || !IsSupportedPngBitDepth(bitDepth, colorType)
                     || chunkData[10] != 0
                     || chunkData[11] != 0
-                    || chunkData[12] > 1)
+                    || interlaceMethod > 1)
                 {
                     return false;
                 }
@@ -1391,9 +1439,17 @@ public sealed class AccessibleHtmlRenderer : IRenderer
             else if (isPalette)
             {
                 if (sawPalette
+                    || sawTransparency
                     || sawImageData
+                    || colorType is 0 or 4
                     || dataLength is < 3 or > 768
                     || dataLength % 3 != 0)
+                {
+                    return false;
+                }
+
+                paletteEntries = dataLength / 3;
+                if (colorType == 3 && paletteEntries > 1 << bitDepth)
                 {
                     return false;
                 }
@@ -1413,6 +1469,9 @@ public sealed class AccessibleHtmlRenderer : IRenderer
                 {
                     return false;
                 }
+
+                cancellationToken.ThrowIfCancellationRequested();
+                compressedImageData.Write(chunkData);
             }
             else
             {
@@ -1423,18 +1482,77 @@ public sealed class AccessibleHtmlRenderer : IRenderer
                         && sawHeader
                         && sawImageData
                         && imageDataBytes > 0
-                        && position + 12 == content.Length;
+                        && position + 12 == content.Length
+                        && HasValidPngScanlines(
+                            compressedImageData,
+                            width,
+                            height,
+                            bitDepth,
+                            colorType,
+                            interlaceMethod,
+                            cancellationToken);
                 }
 
-                // Unknown critical chunks change the decoding contract. APNG's
-                // animation chunks are ancillary but can multiply decoded
-                // frames, so this single-frame admission boundary refuses them.
-                if (char.IsAsciiLetterUpper((char)chunkType[0])
-                    && !chunkType.SequenceEqual("PLTE"u8)
-                    || chunkType.SequenceEqual("acTL"u8)
-                    || chunkType.SequenceEqual("fcTL"u8)
-                    || chunkType.SequenceEqual("fdAT"u8))
+                if (chunkType.SequenceEqual("sRGB"u8))
                 {
+                    if (sawSrgb
+                        || sawPalette
+                        || sawImageData
+                        || dataLength != 1
+                        || chunkData[0] > 3)
+                    {
+                        return false;
+                    }
+
+                    sawSrgb = true;
+                }
+                else if (chunkType.SequenceEqual("gAMA"u8))
+                {
+                    if (sawGamma
+                        || sawPalette
+                        || sawImageData
+                        || dataLength != 4
+                        || BinaryPrimitives.ReadUInt32BigEndian(chunkData) == 0)
+                    {
+                        return false;
+                    }
+
+                    sawGamma = true;
+                }
+                else if (chunkType.SequenceEqual("pHYs"u8))
+                {
+                    if (sawPhysicalDimensions
+                        || sawImageData
+                        || dataLength != 9
+                        || chunkData[8] > 1)
+                    {
+                        return false;
+                    }
+
+                    sawPhysicalDimensions = true;
+                }
+                else if (chunkType.SequenceEqual("tRNS"u8))
+                {
+                    if (sawTransparency
+                        || sawImageData
+                        || !IsValidPngTransparency(
+                            chunkData,
+                            bitDepth,
+                            colorType,
+                            sawPalette,
+                            paletteEntries))
+                    {
+                        return false;
+                    }
+
+                    sawTransparency = true;
+                }
+                else
+                {
+                    // Ancillary data is metadata or an alternate decoding
+                    // contract unless this boundary has validated it above.
+                    // That fail-closed allowlist rejects compressed text/color
+                    // profiles, APNG frame multiplication, and future chunks.
                     return false;
                 }
             }
@@ -1445,8 +1563,166 @@ public sealed class AccessibleHtmlRenderer : IRenderer
         return false;
     }
 
-    private static bool IsStructurallyValidJpeg(ReadOnlySpan<byte> content)
+    private static bool HasValidPngScanlines(
+        MemoryStream compressedImageData,
+        uint width,
+        uint height,
+        byte bitDepth,
+        byte colorType,
+        byte interlaceMethod,
+        CancellationToken cancellationToken)
     {
+        cancellationToken.ThrowIfCancellationRequested();
+        var channelCount = colorType switch
+        {
+            0 or 3 => 1,
+            2 => 3,
+            4 => 2,
+            6 => 4,
+            _ => 0,
+        };
+        if (channelCount == 0)
+        {
+            return false;
+        }
+
+        var passes = interlaceMethod == 0
+            ? new[] { new PngPass(0, 0, 1, 1) }
+            :
+            [
+                new PngPass(0, 0, 8, 8),
+                new PngPass(4, 0, 8, 8),
+                new PngPass(0, 4, 4, 8),
+                new PngPass(2, 0, 4, 4),
+                new PngPass(0, 2, 2, 4),
+                new PngPass(1, 0, 2, 2),
+                new PngPass(0, 1, 1, 2),
+            ];
+
+        long decodedBytes = 0;
+        var maximumScanlineBytes = 0;
+        foreach (var pass in passes)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            var passWidth = PngPassExtent(width, pass.XStart, pass.XStep);
+            var passHeight = PngPassExtent(height, pass.YStart, pass.YStep);
+            if (passWidth == 0 || passHeight == 0)
+            {
+                continue;
+            }
+
+            var scanlineBytes = checked((int)((passWidth * channelCount * bitDepth + 7) / 8));
+            decodedBytes = checked(decodedBytes + ((scanlineBytes + 1) * passHeight));
+            maximumScanlineBytes = Math.Max(maximumScanlineBytes, scanlineBytes);
+        }
+
+        if (decodedBytes is <= 0 or > MaxDecodedRasterBytes)
+        {
+            return false;
+        }
+
+        var scanline = new byte[maximumScanlineBytes + 1];
+        compressedImageData.Position = 0;
+        try
+        {
+            using var inflater = new ZLibStream(
+                compressedImageData,
+                CompressionMode.Decompress,
+                leaveOpen: true);
+            foreach (var pass in passes)
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                var passWidth = PngPassExtent(width, pass.XStart, pass.XStep);
+                var passHeight = PngPassExtent(height, pass.YStart, pass.YStep);
+                if (passWidth == 0 || passHeight == 0)
+                {
+                    continue;
+                }
+
+                var scanlineLength = checked((int)((passWidth * channelCount * bitDepth + 7) / 8)) + 1;
+                for (var row = 0U; row < passHeight; row++)
+                {
+                    cancellationToken.ThrowIfCancellationRequested();
+                    if (!ReadExactly(
+                            inflater,
+                            scanline.AsSpan(0, scanlineLength),
+                            cancellationToken)
+                        || scanline[0] > 4)
+                    {
+                        return false;
+                    }
+                }
+            }
+
+            cancellationToken.ThrowIfCancellationRequested();
+            return inflater.ReadByte() == -1;
+        }
+        catch (InvalidDataException)
+        {
+            return false;
+        }
+        catch (IOException)
+        {
+            return false;
+        }
+    }
+
+    private static uint PngPassExtent(uint fullExtent, int start, int step)
+        => fullExtent <= (uint)start
+            ? 0
+            : (uint)((fullExtent - start + step - 1) / step);
+
+    private static bool ReadExactly(
+        Stream stream,
+        Span<byte> buffer,
+        CancellationToken cancellationToken)
+    {
+        var totalRead = 0;
+        while (totalRead < buffer.Length)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            var read = stream.Read(buffer[totalRead..]);
+            if (read == 0)
+            {
+                return false;
+            }
+
+            totalRead += read;
+        }
+
+        return true;
+    }
+
+    private static bool IsValidPngTransparency(
+        ReadOnlySpan<byte> chunkData,
+        byte bitDepth,
+        byte colorType,
+        bool sawPalette,
+        int paletteEntries)
+    {
+        var maximumSample = bitDepth == 16
+            ? ushort.MaxValue
+            : (1U << bitDepth) - 1;
+        return colorType switch
+        {
+            0 => chunkData.Length == 2
+                && BinaryPrimitives.ReadUInt16BigEndian(chunkData) <= maximumSample,
+            2 => chunkData.Length == 6
+                && BinaryPrimitives.ReadUInt16BigEndian(chunkData[..2]) <= maximumSample
+                && BinaryPrimitives.ReadUInt16BigEndian(chunkData.Slice(2, 2)) <= maximumSample
+                && BinaryPrimitives.ReadUInt16BigEndian(chunkData.Slice(4, 2)) <= maximumSample,
+            3 => sawPalette
+                && chunkData.Length is > 0
+                && chunkData.Length <= paletteEntries,
+            _ => false,
+        };
+    }
+
+    private static bool IsStructurallyValidJpeg(
+        ReadOnlySpan<byte> content,
+        CancellationToken cancellationToken)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
         if (content.Length < 4 || content[0] != 0xFF || content[1] != 0xD8)
         {
             return false;
@@ -1457,11 +1733,15 @@ public sealed class AccessibleHtmlRenderer : IRenderer
         var sawFrame = false;
         var sawScan = false;
         var sawEntropy = false;
-        var sawQuantizationTable = false;
-        var sawHuffmanTable = false;
+        byte frameMarker = 0;
         var frameComponents = new HashSet<byte>();
+        var scannedFrameComponents = new HashSet<byte>();
+        var componentQuantizationTables = new Dictionary<byte, byte>();
+        var quantizationTables = new Dictionary<byte, byte>();
+        var huffmanTables = new HashSet<byte>();
         while (position < content.Length)
         {
+            cancellationToken.ThrowIfCancellationRequested();
             if (++structureItems > MaxRasterStructureItems || content[position] != 0xFF)
             {
                 return false;
@@ -1489,8 +1769,8 @@ public sealed class AccessibleHtmlRenderer : IRenderer
                     && sawFrame
                     && sawScan
                     && sawEntropy
-                    && sawQuantizationTable
-                    && sawHuffmanTable;
+                    && scannedFrameComponents.SetEquals(frameComponents)
+                    && componentQuantizationTables.Values.All(quantizationTables.ContainsKey);
             }
 
             if (position + 2 > content.Length)
@@ -1510,6 +1790,7 @@ public sealed class AccessibleHtmlRenderer : IRenderer
             {
                 if (marker is not (0xC0 or 0xC1 or 0xC2)
                     || sawFrame
+                    || sawScan
                     || payload.Length < 9
                     || payload[0] != 8)
                 {
@@ -1531,28 +1812,44 @@ public sealed class AccessibleHtmlRenderer : IRenderer
                     var componentOffset = 6 + (index * 3);
                     var componentId = payload[componentOffset];
                     var sampling = payload[componentOffset + 1];
+                    var quantizationTable = payload[componentOffset + 2];
                     if (!frameComponents.Add(componentId)
                         || (sampling >> 4) is < 1 or > 4
                         || (sampling & 0x0F) is < 1 or > 4
-                        || payload[componentOffset + 2] > 3)
+                        || quantizationTable > 3)
                     {
                         return false;
                     }
+
+                    componentQuantizationTables.Add(componentId, quantizationTable);
                 }
 
+                frameMarker = marker;
                 sawFrame = true;
             }
             else if (marker == 0xDB)
             {
-                sawQuantizationTable = payload.Length >= 65;
+                if (!TryReadJpegQuantizationTables(
+                        payload,
+                        quantizationTables,
+                        cancellationToken))
+                {
+                    return false;
+                }
             }
             else if (marker == 0xC4)
             {
-                sawHuffmanTable = payload.Length >= 17;
+                if (!TryReadJpegHuffmanTables(
+                        payload,
+                        huffmanTables,
+                        cancellationToken))
+                {
+                    return false;
+                }
             }
             else if (marker == 0xDA)
             {
-                if (!sawFrame || !sawQuantizationTable || !sawHuffmanTable || payload.Length < 6)
+                if (!sawFrame || payload.Length < 6)
                 {
                     return false;
                 }
@@ -1564,17 +1861,46 @@ public sealed class AccessibleHtmlRenderer : IRenderer
                     return false;
                 }
 
+                var spectralStart = payload[^3];
+                var spectralEnd = payload[^2];
+                var successiveApproximation = payload[^1];
+                if (!IsValidJpegScanParameters(
+                        frameMarker,
+                        scanComponentCount,
+                        spectralStart,
+                        spectralEnd,
+                        successiveApproximation))
+                {
+                    return false;
+                }
+
                 var scanComponents = new HashSet<byte>();
                 for (var index = 0; index < scanComponentCount; index++)
                 {
                     var componentOffset = 1 + (index * 2);
-                    if (!frameComponents.Contains(payload[componentOffset])
-                        || !scanComponents.Add(payload[componentOffset])
-                        || (payload[componentOffset + 1] >> 4) > 3
-                        || (payload[componentOffset + 1] & 0x0F) > 3)
+                    var componentId = payload[componentOffset];
+                    var tableSelectors = payload[componentOffset + 1];
+                    var dcTable = (byte)(tableSelectors >> 4);
+                    var acTable = (byte)(tableSelectors & 0x0F);
+                    if (!frameComponents.Contains(componentId)
+                        || !scanComponents.Add(componentId)
+                        || dcTable > 3
+                        || acTable > 3
+                        || !componentQuantizationTables.TryGetValue(componentId, out var quantizationTable)
+                        || !quantizationTables.TryGetValue(quantizationTable, out var quantizationPrecision)
+                        || (frameMarker == 0xC0 && quantizationPrecision != 0)
+                        || !ReferencesValidJpegHuffmanTables(
+                            frameMarker,
+                            spectralStart,
+                            successiveApproximation,
+                            dcTable,
+                            acTable,
+                            huffmanTables))
                     {
                         return false;
                     }
+
+                    scannedFrameComponents.Add(componentId);
                 }
 
                 sawScan = true;
@@ -1582,6 +1908,7 @@ public sealed class AccessibleHtmlRenderer : IRenderer
                 var markerStart = -1;
                 while (position < content.Length)
                 {
+                    cancellationToken.ThrowIfCancellationRequested();
                     if (content[position] != 0xFF)
                     {
                         scanHasEntropy = true;
@@ -1630,6 +1957,156 @@ public sealed class AccessibleHtmlRenderer : IRenderer
         return false;
     }
 
+    private static bool TryReadJpegQuantizationTables(
+        ReadOnlySpan<byte> payload,
+        Dictionary<byte, byte> quantizationTables,
+        CancellationToken cancellationToken)
+    {
+        var position = 0;
+        while (position < payload.Length)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            var tableSelector = payload[position++];
+            var precision = tableSelector >> 4;
+            var tableId = (byte)(tableSelector & 0x0F);
+            if (precision > 1 || tableId > 3)
+            {
+                return false;
+            }
+
+            var valueBytes = precision == 0 ? 1 : 2;
+            var tableBytes = 64 * valueBytes;
+            if (tableBytes > payload.Length - position)
+            {
+                return false;
+            }
+
+            for (var index = 0; index < 64; index++)
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                var value = valueBytes == 1
+                    ? payload[position + index]
+                    : BinaryPrimitives.ReadUInt16BigEndian(payload.Slice(position + (index * 2), 2));
+                if (value == 0)
+                {
+                    return false;
+                }
+            }
+
+            position += tableBytes;
+            quantizationTables[tableId] = (byte)precision;
+        }
+
+        return position > 0;
+    }
+
+    private static bool TryReadJpegHuffmanTables(
+        ReadOnlySpan<byte> payload,
+        HashSet<byte> huffmanTables,
+        CancellationToken cancellationToken)
+    {
+        var position = 0;
+        while (position < payload.Length)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            if (payload.Length - position < 17)
+            {
+                return false;
+            }
+
+            var tableSelector = payload[position++];
+            var tableClass = tableSelector >> 4;
+            var tableId = (byte)(tableSelector & 0x0F);
+            if (tableClass > 1 || tableId > 3)
+            {
+                return false;
+            }
+
+            var symbolCount = 0;
+            var availableCodes = 1;
+            for (var codeLength = 0; codeLength < 16; codeLength++)
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                availableCodes <<= 1;
+                var count = payload[position + codeLength];
+                if (count > availableCodes)
+                {
+                    return false;
+                }
+
+                availableCodes -= count;
+                symbolCount += count;
+            }
+
+            position += 16;
+            if (availableCodes == 0
+                || symbolCount is <= 0 or > 256
+                || symbolCount > payload.Length - position)
+            {
+                return false;
+            }
+
+            position += symbolCount;
+            huffmanTables.Add((byte)((tableClass << 4) | tableId));
+        }
+
+        return position > 0;
+    }
+
+    private static bool IsValidJpegScanParameters(
+        byte frameMarker,
+        byte componentCount,
+        byte spectralStart,
+        byte spectralEnd,
+        byte successiveApproximation)
+    {
+        var approximationHigh = successiveApproximation >> 4;
+        var approximationLow = successiveApproximation & 0x0F;
+        if (frameMarker is 0xC0 or 0xC1)
+        {
+            return spectralStart == 0
+                && spectralEnd == 63
+                && approximationHigh == 0
+                && approximationLow == 0;
+        }
+
+        return frameMarker == 0xC2
+            && spectralStart <= spectralEnd
+            && spectralEnd <= 63
+            && (spectralStart != 0 || spectralEnd == 0)
+            && (spectralStart == 0 || componentCount == 1)
+            && approximationHigh <= 13
+            && approximationLow <= 13
+            && (approximationHigh == 0 || approximationHigh == approximationLow + 1);
+    }
+
+    private static bool ReferencesValidJpegHuffmanTables(
+        byte frameMarker,
+        byte spectralStart,
+        byte successiveApproximation,
+        byte dcTable,
+        byte acTable,
+        HashSet<byte> huffmanTables)
+    {
+        if (frameMarker is 0xC0 or 0xC1)
+        {
+            return huffmanTables.Contains(dcTable)
+                && huffmanTables.Contains((byte)(0x10 | acTable));
+        }
+
+        var approximationHigh = successiveApproximation >> 4;
+        if (spectralStart == 0)
+        {
+            return acTable == 0
+                && (approximationHigh == 0
+                    ? huffmanTables.Contains(dcTable)
+                    : dcTable == 0);
+        }
+
+        return dcTable == 0
+            && huffmanTables.Contains((byte)(0x10 | acTable));
+    }
+
     private static bool IsPngChunkType(ReadOnlySpan<byte> chunkType)
         => chunkType.Length == 4
             && chunkType.ToArray().All(value => char.IsAsciiLetter((char)value));
@@ -1652,19 +2129,73 @@ public sealed class AccessibleHtmlRenderer : IRenderer
             && height is > 0 and <= MaxRasterDimension
             && width <= MaxRasterPixels / height;
 
-    private static uint ComputePngCrc(ReadOnlySpan<byte> chunkType, ReadOnlySpan<byte> chunkData)
+    private static long MeasureRasterPixels(ReadOnlySpan<byte> content, string mimeType)
     {
+        if (mimeType == "image/png")
+        {
+            // Structural admission has already proved the signature, first IHDR
+            // placement, lengths, and bounded nonzero dimensions.
+            var width = BinaryPrimitives.ReadUInt32BigEndian(content.Slice(16, 4));
+            var height = BinaryPrimitives.ReadUInt32BigEndian(content.Slice(20, 4));
+            return checked((long)width * height);
+        }
+
+        if (mimeType != "image/jpeg")
+        {
+            return 0;
+        }
+
+        // A structurally admitted JPEG has exactly one supported SOF before its
+        // first scan. Walk only the already-bounded segment envelope to recover
+        // the dimensions for the cumulative browser-decode budget.
+        var position = 2;
+        while (position < content.Length)
+        {
+            while (position < content.Length && content[position] == 0xFF)
+            {
+                position++;
+            }
+
+            var marker = content[position++];
+            var segmentLength = BinaryPrimitives.ReadUInt16BigEndian(content.Slice(position, 2));
+            var payload = content.Slice(position + 2, segmentLength - 2);
+            if (IsJpegStartOfFrame(marker))
+            {
+                var height = BinaryPrimitives.ReadUInt16BigEndian(payload.Slice(1, 2));
+                var width = BinaryPrimitives.ReadUInt16BigEndian(payload.Slice(3, 2));
+                return checked((long)width * height);
+            }
+
+            position += segmentLength;
+        }
+
+        throw new InvalidOperationException("A structurally admitted JPEG had no measurable frame.");
+    }
+
+    private static uint ComputePngCrc(
+        ReadOnlySpan<byte> chunkType,
+        ReadOnlySpan<byte> chunkData,
+        CancellationToken cancellationToken)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
         var crc = uint.MaxValue;
         foreach (var value in chunkType)
         {
             crc = PngCrcTable[(crc ^ value) & 0xFF] ^ (crc >> 8);
         }
 
-        foreach (var value in chunkData)
+        for (var index = 0; index < chunkData.Length; index++)
         {
+            if ((index & 0xFFF) == 0)
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+            }
+
+            var value = chunkData[index];
             crc = PngCrcTable[(crc ^ value) & 0xFF] ^ (crc >> 8);
         }
 
+        cancellationToken.ThrowIfCancellationRequested();
         return ~crc;
     }
 
@@ -1687,19 +2218,23 @@ public sealed class AccessibleHtmlRenderer : IRenderer
         return table;
     }
 
-    private static bool IsSafeSvg(ReadOnlySpan<byte> content)
+    private static bool IsSafeSvg(ReadOnlySpan<byte> content, CancellationToken cancellationToken)
     {
         try
         {
+            cancellationToken.ThrowIfCancellationRequested();
             var ownedContent = content.ToArray();
-            if (!HasBoundedSvgStructure(ownedContent))
+            cancellationToken.ThrowIfCancellationRequested();
+            if (!HasBoundedSvgStructure(ownedContent, cancellationToken))
             {
                 return false;
             }
 
+            cancellationToken.ThrowIfCancellationRequested();
             using var stream = new MemoryStream(ownedContent, writable: false);
             using var reader = XmlReader.Create(stream, SvgReaderSettings());
             var document = XDocument.Load(reader, LoadOptions.None);
+            cancellationToken.ThrowIfCancellationRequested();
             if (document.Root is null
                 || document.Root.Name.NamespaceName != "http://www.w3.org/2000/svg"
                 || document.Root.Name.LocalName != "svg"
@@ -1711,6 +2246,7 @@ public sealed class AccessibleHtmlRenderer : IRenderer
 
             foreach (var element in document.Root.DescendantsAndSelf())
             {
+                cancellationToken.ThrowIfCancellationRequested();
                 if (element.Name.NamespaceName != "http://www.w3.org/2000/svg"
                     || !SafeSvgElements.Contains(element.Name.LocalName))
                 {
@@ -1719,6 +2255,7 @@ public sealed class AccessibleHtmlRenderer : IRenderer
 
                 foreach (var attribute in element.Attributes())
                 {
+                    cancellationToken.ThrowIfCancellationRequested();
                     if (attribute.IsNamespaceDeclaration)
                     {
                         if (attribute.Name.LocalName != "xmlns"
@@ -1747,7 +2284,7 @@ public sealed class AccessibleHtmlRenderer : IRenderer
         }
     }
 
-    private static bool HasBoundedSvgStructure(byte[] content)
+    private static bool HasBoundedSvgStructure(byte[] content, CancellationToken cancellationToken)
     {
         using var stream = new MemoryStream(content, writable: false);
         using var reader = XmlReader.Create(stream, SvgReaderSettings());
@@ -1755,6 +2292,7 @@ public sealed class AccessibleHtmlRenderer : IRenderer
         var attributeCount = 0;
         while (reader.Read())
         {
+            cancellationToken.ThrowIfCancellationRequested();
             if (reader.Depth + 1 > MaxSvgNestingDepth)
             {
                 return false;
@@ -1956,7 +2494,9 @@ public sealed class AccessibleHtmlRenderer : IRenderer
 
     private sealed record EmbeddedImage(string MimeType, string Base64);
 
-    private sealed record EmbeddedImageSource(string MimeType, ReadOnlyMemory<byte> Content);
+    private readonly record struct PngPass(int XStart, int YStart, int XStep, int YStep);
+
+    private sealed record EmbeddedImageSource(string MimeType, ReadOnlyMemory<byte> Content, long RasterPixels);
 
     private sealed record AssetSheetText(string Text, string? Locale);
 

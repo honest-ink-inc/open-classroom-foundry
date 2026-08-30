@@ -90,6 +90,56 @@ public class SyntheticProviderTests
 
         Assert.False(capabilities.SupportsStructuredOutput);
         Assert.Equal("synthetic", capabilities.ProviderId);
+        Assert.Equal(SyntheticInferenceProvider.EndpointOrigin, capabilities.EndpointOrigin);
+    }
+
+    [Fact]
+    public async Task A_confirmation_for_another_deployment_is_rejected_before_the_script_is_consumed()
+    {
+        var capabilities = SyntheticInferenceProvider.DefaultCapabilities with { DeploymentId = "synthetic-2" };
+        var provider = new SyntheticInferenceProvider(
+            capabilities,
+            SyntheticStep.Outcome(InferenceOutcome.Refusal));
+
+        var exception = await Assert.ThrowsAsync<InvalidOperationException>(
+            () => provider.CompleteAsync(Previewed(), CancellationToken.None));
+
+        Assert.Contains("synthetic-1", exception.Message, StringComparison.Ordinal);
+        Assert.Contains("synthetic-2", exception.Message, StringComparison.Ordinal);
+
+        var matchingRequest = EgressGate.Confirm(
+            EgressGate.Preview(SomeRequest(), capabilities),
+            "teacher@example.org",
+            new DateTimeOffset(2026, 8, 29, 12, 0, 0, TimeSpan.Zero));
+        Assert.Equal(
+            InferenceOutcome.Refusal,
+            (await provider.CompleteAsync(matchingRequest, CancellationToken.None)).Outcome);
+    }
+
+    [Fact]
+    public async Task A_confirmation_for_another_pinned_model_is_rejected_before_the_script_is_consumed()
+    {
+        var capabilities = SyntheticInferenceProvider.DefaultCapabilities with
+        {
+            PinnedModelVersion = "synthetic-2.0",
+        };
+        var provider = new SyntheticInferenceProvider(
+            capabilities,
+            SyntheticStep.Outcome(InferenceOutcome.Refusal));
+
+        var exception = await Assert.ThrowsAsync<InvalidOperationException>(
+            () => provider.CompleteAsync(Previewed(), CancellationToken.None));
+
+        Assert.Contains("synthetic-1.0", exception.Message, StringComparison.Ordinal);
+        Assert.Contains("synthetic-2.0", exception.Message, StringComparison.Ordinal);
+
+        var matchingRequest = EgressGate.Confirm(
+            EgressGate.Preview(SomeRequest(), capabilities),
+            "teacher@example.org",
+            new DateTimeOffset(2026, 8, 29, 12, 0, 0, TimeSpan.Zero));
+        Assert.Equal(
+            InferenceOutcome.Refusal,
+            (await provider.CompleteAsync(matchingRequest, CancellationToken.None)).Outcome);
     }
 
     [Fact]

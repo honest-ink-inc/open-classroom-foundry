@@ -56,7 +56,7 @@ public class LocalSymbolStoreTests : IDisposable
     }
 
     [Fact]
-    public void An_explicit_open_license_makes_a_symbol_shareable()
+    public void An_explicit_open_license_records_posture_without_fabricating_export_dispositions()
     {
         var store = new LocalSymbolStore(_directory);
 
@@ -64,6 +64,8 @@ public class LocalSymbolStoreTests : IDisposable
 
         Assert.True(provenance.Redistributable);
         Assert.Equal("CC-BY-SA-4.0", provenance.License);
+        Assert.Null(provenance.RequiredAttribution);
+        Assert.Null(provenance.Modifications);
     }
 
     [Fact]

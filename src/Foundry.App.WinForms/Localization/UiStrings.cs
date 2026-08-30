@@ -310,9 +310,19 @@ public static class UiStrings
 
     public static string ExportDestinationNoParent => T("The export destination has no parent directory.");
 
+    public static string ExportStageResidueNotRemoved => T("The export did not complete and its staged residue could not be removed.");
+
+    public static string ExportStageRemainedAfterDeletion => T("The staged export remained after deletion.");
+
+    public static string ExportStageCouldNotBeRemoved => T("The staged export could not be removed.");
+
     public static string SymbolCatalogIntegrityFailed => T("The shipped symbol catalog failed integrity validation: {0}.");
 
-    public static string StatusPrintView => T("Print view opened in your browser — print at 100 percent scale.");
+    public static string StatusPrintViewOpening => T("Opening the approved print view safely…");
+
+    public static string StatusPrintView => T("Sent to your browser — verify the print view is visible, then print at 100 percent scale.");
+
+    public static string StatusPrintViewRefused => T("The print view could not be opened safely. Try again, or export the approved output instead.");
 
     public static string PrintButton => T("&Print");
 

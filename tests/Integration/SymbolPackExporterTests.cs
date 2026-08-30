@@ -40,34 +40,92 @@ public class SymbolPackExporterTests : IDisposable
     }
 
     [Fact]
-    public void An_exported_pack_reopens_as_a_verified_catalog_with_attributions()
+    public void A_complete_pack_reopens_as_a_verified_catalog_with_a_provenance_report()
     {
+        var bytes = Encoding.UTF8.GetBytes("<svg xmlns=\"http://www.w3.org/2000/svg\"/>");
+        var provenance = Provenance("complete.symbol.v1", "complete.svg", bytes);
         var target = Path.Combine(_work, "pack");
 
-        var exported = SymbolPackExporter.ExportPack(_pack, [.. _pack.All.Select(a => a.Id)], target);
+        var exported = SymbolPackExporter.ExportPack(
+            new MemoryCatalog(provenance, bytes), [provenance.Id], target);
 
-        Assert.Equal(13, exported.Count);
+        Assert.Single(exported);
 
         var reopened = new JsonAssetCatalog(target);
-        Assert.Equal(13, reopened.All.Count);
+        Assert.Single(reopened.All);
         Assert.Empty(reopened.VerifyIntegrity());
-        Assert.Contains("agency.stop.v1", File.ReadAllText(Path.Combine(target, SymbolPackExporter.AttributionsFileName)), StringComparison.Ordinal);
+        var report = File.ReadAllText(Path.Combine(target, SymbolPackExporter.AttributionsFileName));
+        Assert.Contains("complete.symbol.v1", report, StringComparison.Ordinal);
+        Assert.Contains("Source: synthetic-test", report, StringComparison.Ordinal);
+        Assert.Contains("Modifications: Original synthetic fixture", report, StringComparison.Ordinal);
+        Assert.Contains("Attribution: No attribution required for this synthetic fixture", report, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Contextual_joiners_in_non_Latin_provenance_remain_exportable()
+    {
+        var bytes = Encoding.UTF8.GetBytes("<svg xmlns=\"http://www.w3.org/2000/svg\"/>");
+        var provenance = Provenance("persian.symbol.v1", "persian.svg", bytes) with
+        {
+            Creator = "هنرمند‌مدرس",
+            IntendedMeaning = "نشانهٔ کمک",
+        };
+        var target = Path.Combine(_work, "persian-pack");
+
+        SymbolPackExporter.ExportPack(new MemoryCatalog(provenance, bytes), [provenance.Id], target);
+
+        var report = File.ReadAllText(Path.Combine(target, SymbolPackExporter.AttributionsFileName));
+        Assert.Contains("\u200C", report, StringComparison.Ordinal);
+        Assert.Empty(new JsonAssetCatalog(target).VerifyIntegrity());
+    }
+
+    [Fact]
+    public void Script_significant_format_marks_remain_valid_multilingual_provenance()
+    {
+        var bytes = Encoding.UTF8.GetBytes("<svg xmlns=\"http://www.w3.org/2000/svg\"/>");
+        var provenance = Provenance("syriac.symbol.v1", "syriac.svg", bytes) with
+        {
+            Creator = "ܐ\u070Fܒ",
+            IntendedMeaning = "نهاية\u06DDآية",
+        };
+        var target = Path.Combine(_work, "syriac-pack");
+
+        SymbolPackExporter.ExportPack(new MemoryCatalog(provenance, bytes), [provenance.Id], target);
+
+        var report = File.ReadAllText(Path.Combine(target, SymbolPackExporter.AttributionsFileName));
+        Assert.Contains("\u070F", report, StringComparison.Ordinal);
+        Assert.Contains("\u06DD", report, StringComparison.Ordinal);
+        Assert.Empty(new JsonAssetCatalog(target).VerifyIntegrity());
+    }
+
+    [Fact]
+    public void The_shipped_catalog_cannot_be_exported_until_rights_dispositions_are_reviewed()
+    {
+        var target = Path.Combine(_work, "unreviewed-pack");
+
+        var exception = Assert.Throws<InvalidOperationException>(() =>
+            SymbolPackExporter.ExportPack(_pack, [.. _pack.All.Select(asset => asset.Id)], target));
+
+        Assert.Contains("explicit attribution and modification dispositions", exception.Message, StringComparison.Ordinal);
+        Assert.False(Directory.Exists(target));
     }
 
     [Fact]
     public void A_teacher_local_symbol_is_provably_unexportable()
     {
+        var bytes = Encoding.UTF8.GetBytes("<svg xmlns=\"http://www.w3.org/2000/svg\"/>");
+        var open = Provenance("known.open.v1", "known-open.svg", bytes);
         var shelf = new LocalSymbolStore(Path.Combine(_work, "shelf"));
         var local = shelf.Add(new SymbolSubmission(
             new AssetId("teacher.my-cup.v1"), "My cup", "A blue cup",
             Encoding.UTF8.GetBytes("<svg xmlns=\"http://www.w3.org/2000/svg\"/>"),
             "image/svg+xml", "My own photograph"));
 
-        var composite = new CompositeAssetCatalog(_pack, shelf);
+        var composite = new CompositeAssetCatalog(new MemoryCatalog(open, bytes), shelf);
         var target = Path.Combine(_work, "pack");
 
         var exception = Assert.Throws<InvalidOperationException>(
-            () => SymbolPackExporter.ExportPack(composite, [new AssetId("agency.stop.v1"), local.Id], target));
+            () => SymbolPackExporter.ExportPack(composite, [open.Id, local.Id], target));
 
         // Refused entirely — not silently filtered — and nothing was written.
         Assert.Contains("open export", exception.Message, StringComparison.Ordinal);
@@ -75,7 +133,7 @@ public class SymbolPackExporterTests : IDisposable
     }
 
     [Fact]
-    public void An_explicitly_open_teacher_symbol_may_travel()
+    public void An_open_license_alone_cannot_substitute_for_export_dispositions()
     {
         var shelf = new LocalSymbolStore(Path.Combine(_work, "shelf"));
         var shared = shelf.Add(new SymbolSubmission(
@@ -84,10 +142,11 @@ public class SymbolPackExporterTests : IDisposable
             "image/svg+xml", "Drawn by me, shared freely", License: "CC-BY-4.0"));
 
         var target = Path.Combine(_work, "pack");
-        var exported = SymbolPackExporter.ExportPack(shelf, [shared.Id], target);
+        var exception = Assert.Throws<InvalidOperationException>(() =>
+            SymbolPackExporter.ExportPack(shelf, [shared.Id], target));
 
-        Assert.Single(exported);
-        Assert.Contains("CC-BY-4.0", File.ReadAllText(Path.Combine(target, SymbolPackExporter.AttributionsFileName)), StringComparison.Ordinal);
+        Assert.Contains("explicit attribution and modification dispositions", exception.Message, StringComparison.Ordinal);
+        Assert.False(Directory.Exists(target));
     }
 
     [Theory]
@@ -205,6 +264,8 @@ public class SymbolPackExporterTests : IDisposable
             baseline with { Creator = "" },
             baseline with { IntendedMeaning = "" },
             baseline with { AltText = "" },
+            baseline with { RequiredAttribution = "" },
+            baseline with { Modifications = "" },
         };
 
         foreach (var provenance in incomplete)
@@ -213,6 +274,37 @@ public class SymbolPackExporterTests : IDisposable
 
             Assert.Throws<InvalidOperationException>(() => SymbolPackExporter.ExportPack(
                 new MemoryCatalog(provenance, bytes), [provenance.Id], target));
+            Assert.False(Directory.Exists(target));
+        }
+    }
+
+    [Theory]
+    [InlineData("\u200B")]
+    [InlineData("\uFEFF")]
+    [InlineData("—")]
+    [InlineData("... !?")]
+    [InlineData("\u0301")]
+    [InlineData("\u115F")]
+    public void Format_or_punctuation_only_dispositions_are_refused_before_any_pack_file_is_written(
+        string emptyLookingDisposition)
+    {
+        var bytes = Encoding.UTF8.GetBytes("<svg xmlns=\"http://www.w3.org/2000/svg\"/>");
+        var baseline = Provenance("empty-looking.provenance.v1", "symbol.svg", bytes);
+
+        foreach (var provenance in new[]
+        {
+            baseline with { RequiredAttribution = emptyLookingDisposition },
+            baseline with { Modifications = emptyLookingDisposition },
+        })
+        {
+            var target = Path.Combine(_work, Guid.NewGuid().ToString("N"), "pack");
+
+            Assert.Throws<InvalidOperationException>(() =>
+                SymbolPackExporter.ExportPack(
+                    new MemoryCatalog(provenance, bytes),
+                    [provenance.Id],
+                    target));
+
             Assert.False(Directory.Exists(target));
         }
     }
@@ -251,23 +343,29 @@ public class SymbolPackExporterTests : IDisposable
         var provenance = Provenance("safe.markdown.v1", "safe.svg", bytes) with
         {
             IntendedMeaning = "![tracking image](https://evil.invalid/pixel)",
-            Creator = "<img src=https://evil.invalid/pixel>",
+            Creator = "<img src=https://evil.invalid/pixel> www.evil.invalid",
+            Source = "https://evil.invalid/source",
             RequiredAttribution = "[remote credit](https://evil.invalid/credit)",
+            Modifications = "![remote change](https://evil.invalid/change)",
         };
         var target = Path.Combine(_work, "plain-text-attribution-pack");
 
         SymbolPackExporter.ExportPack(new MemoryCatalog(provenance, bytes), [provenance.Id], target);
 
         var markdown = File.ReadAllText(Path.Combine(target, SymbolPackExporter.AttributionsFileName));
-        Assert.DoesNotContain("![", markdown, StringComparison.Ordinal);
-        Assert.DoesNotContain("https://", markdown, StringComparison.OrdinalIgnoreCase);
-        Assert.DoesNotContain("<img", markdown, StringComparison.OrdinalIgnoreCase);
-        Assert.Contains("&#33;&#91;", markdown, StringComparison.Ordinal);
-        Assert.Contains("https&#58;&#47;&#47;evil", markdown, StringComparison.Ordinal);
+        var lines = markdown.Replace("\r\n", "\n", StringComparison.Ordinal).Split('\n');
+        Assert.Equal("# Attributions", lines[0]);
+        Assert.Equal("```text", lines[2]);
+        Assert.Equal("```", lines[^2]);
+        Assert.Single(lines[3..^2]);
+        Assert.Contains("![tracking image](https://evil.invalid/pixel)", lines[3], StringComparison.Ordinal);
+        Assert.Contains("<img src=https://evil.invalid/pixel>", lines[3], StringComparison.Ordinal);
+        Assert.Contains("www.evil.invalid", lines[3], StringComparison.Ordinal);
+        Assert.Equal(2, lines.Count(line => line.StartsWith("```", StringComparison.Ordinal)));
     }
 
     [Fact]
-    public void Oversized_or_control_bearing_optional_provenance_is_refused_before_any_write()
+    public void Oversized_control_format_or_line_separator_bearing_provenance_is_refused_before_any_write()
     {
         var bytes = Encoding.UTF8.GetBytes("<svg xmlns=\"http://www.w3.org/2000/svg\"/>");
         var baseline = Provenance("unsafe.optional.v1", "unsafe.svg", bytes);
@@ -276,6 +374,19 @@ public class SymbolPackExporterTests : IDisposable
             baseline with { AmbiguityNotes = new string('a', 2049) },
             baseline with { RequiredAttribution = "credit\nsecond line" },
             baseline with { Modifications = "change\tchange" },
+            baseline with { Creator = "trusted\u202Etxt" },
+            baseline with { Source = "source\u2066spoof" },
+            baseline with { Creator = "trusted\u200Fspoof" },
+            baseline with { AmbiguityNotes = "note\u200Bhidden" },
+            baseline with { RequiredAttribution = "credit\u2028second line" },
+            baseline with { Modifications = "change\u2029second line" },
+            baseline with { Creator = "broken\uD800" },
+            baseline with { Creator = "\u200D" },
+            baseline with { Source = "\u200C\u200D" },
+            baseline with { IntendedMeaning = "\u200D" },
+            baseline with { AltText = "\u200C" },
+            baseline with { RequiredAttribution = "\u200D" },
+            baseline with { Modifications = "\u200C" },
         };
 
         foreach (var provenance in invalid)
@@ -345,7 +456,9 @@ public class SymbolPackExporterTests : IDisposable
             Sha256: Convert.ToHexString(SHA256.HashData(content)),
             IntendedMeaning: "Synthetic test symbol",
             AltText: "A synthetic geometric test mark",
-            Redistributable: true);
+            Redistributable: true,
+            RequiredAttribution: "No attribution required for this synthetic fixture",
+            Modifications: "Original synthetic fixture");
 
     private sealed class MemoryCatalog : IAssetCatalog
     {

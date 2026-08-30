@@ -4,13 +4,6 @@ using Foundry.Domain;
 namespace Foundry.Contracts;
 
 /// <summary>
-/// The complete provenance record of implementation plan §9 and the Symbol Commons
-/// kernel (§10.11): every shipped asset carries its source, creator, license,
-/// integrity hash, intended meaning, and known ambiguity. Unknown rights block
-/// distribution — a document referencing an asset absent from the catalog cannot
-/// be saved or exported.
-/// </summary>
-/// <summary>
 /// Proof that a teacher symbol has completed the binding R2-8 privacy preflight.
 /// Production callers can receive this capability from <c>SymbolPreflight</c>,
 /// but cannot mint one, replace its normalized bytes, or rewrite its provenance.
@@ -62,6 +55,13 @@ public sealed record SymbolSubmission
     public byte[] CopyContent() => [.. _content];
 }
 
+/// <summary>
+/// The schema-1 provenance record used by the Symbol Commons kernel (§10.11).
+/// It carries core source, creator, license, integrity, meaning, and ambiguity
+/// facts plus the two compatible export-disposition fields. It does not by itself
+/// complete implementation plan §9's future license-text, commercial-use, or
+/// consent/release ledger. Unknown or incomplete export rights block open-pack distribution.
+/// </summary>
 public sealed record AssetProvenance(
     AssetId Id,
     string ConceptId,

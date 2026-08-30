@@ -661,7 +661,7 @@ internal static class OcfprojPackageValidator
                     throw Invalid("package.asset-hash", "A project asset does not match its provenance hash.");
                 }
 
-                if (!AccessibleHtmlRenderer.IsSupportedSelfContainedImage(assetContent, provenance.MimeType))
+                if (!AccessibleHtmlRenderer.IsSupportedSelfContainedImage(assetContent, provenance.MimeType, cancellationToken))
                 {
                     throw Invalid("package.asset-content", "A project asset is not a supported, self-contained image.");
                 }
@@ -1162,7 +1162,7 @@ internal static class OcfprojPackageValidator
     private static async Task ValidatePngPreviewAsync(ZipArchiveEntry entry, CancellationToken cancellationToken)
     {
         var content = await ReadEntryBytesAsync(entry, MaxPreviewBytes, cancellationToken).ConfigureAwait(false);
-        if (!AccessibleHtmlRenderer.IsSupportedSelfContainedImage(content, "image/png"))
+        if (!AccessibleHtmlRenderer.IsSupportedSelfContainedImage(content, "image/png", cancellationToken))
         {
             throw Invalid("package.preview", "A project preview is not a bounded PNG image.");
         }

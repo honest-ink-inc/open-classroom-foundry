@@ -37,10 +37,12 @@ public sealed class PressRoomForm : Form
     private readonly Func<ExportChoice?> _exportPicker;
     private readonly Func<Storage.LoadedProject, LoadedProjectGreenConfirmation?> _loadedProjectPreflight;
     private readonly Func<ApprovedArtifact, string, IAssetCatalog?, CancellationToken, Task> _pdfExporter;
+    private readonly Func<ApprovedArtifact, string, RenderAudience, double, bool, IAssetCatalog?, Task> _printViewOpener;
     private bool _loadingParameters;
     private bool _reviewPending;
     private bool _exportInProgress;
     private bool _exportDispatchPending;
+    private bool _printViewInProgress;
     private CancellationTokenSource? _exportCancellation;
     private long _stateGeneration;
     private ApprovedContext? _context;
@@ -68,7 +70,8 @@ public sealed class PressRoomForm : Form
         Func<string?>? libraryPicker = null,
         Func<ExportChoice?>? exportPicker = null,
         Func<Storage.LoadedProject, LoadedProjectGreenConfirmation?>? loadedProjectPreflight = null,
-        Func<ApprovedArtifact, string, IAssetCatalog?, CancellationToken, Task>? pdfExporter = null)
+        Func<ApprovedArtifact, string, IAssetCatalog?, CancellationToken, Task>? pdfExporter = null,
+        Func<ApprovedArtifact, string, RenderAudience, double, bool, IAssetCatalog?, Task>? printViewOpener = null)
     {
         _modalReview = reviewRunner is null;
         _reviewRunner = reviewRunner ?? RunModalReview;
@@ -81,6 +84,7 @@ public sealed class PressRoomForm : Form
                 destination,
                 assets,
                 cancellationToken: cancellationToken));
+        _printViewOpener = printViewOpener ?? AppServices.OpenPrintViewAsync;
 
         Text = UiStrings.WithoutMnemonic(UiStrings.MainWindowTitle);
         MinimumSize = new Size(860, 560);
@@ -114,7 +118,7 @@ public sealed class PressRoomForm : Form
 
         _review = MakeButton(UiStrings.ReviewAndApprove, (_, _) => ReviewAndApprove());
         _print = MakeButton(UiStrings.PrintButton, (_, _) => PrintApproved());
-        _printView = MakeButton(UiStrings.OpenPrintView, (_, _) => OpenPrintView());
+        _printView = MakeButton(UiStrings.OpenPrintView, async (_, _) => await OpenPrintViewAsync());
         // Modal-openers defer one beat (harness finding, 29 Aug 2026) — Export
         // included, since the pilot dress rehearsal drives its save dialog.
         _export = MakeButton(UiStrings.ExportEllipsis, (_, _) => QueueExport());
@@ -395,16 +399,47 @@ public sealed class PressRoomForm : Form
         return review.ShowDialog(this) == DialogResult.OK ? review.Result : null;
     }
 
-    private void OpenPrintView()
+    private async Task OpenPrintViewAsync()
     {
-        if (ApprovedResult is null)
+        var approved = ApprovedResult;
+        var context = _context;
+        if (_printViewInProgress || approved is null || context is null)
         {
             return;
         }
 
-        AppServices.OpenPrintView(ApprovedResult, _context!.Name, assetCatalog: _context.AssetCatalog);
-        SetStatus(UiStrings.StatusPrintView);
+        _printViewInProgress = true;
+        UpdateGatedButtons();
+        SetStatus(UiStrings.StatusPrintViewOpening);
+        try
+        {
+            await _printViewOpener(
+                approved,
+                context.Name,
+                RenderAudience.Learner,
+                100,
+                false,
+                context.AssetCatalog);
+            SetStatus(UiStrings.StatusPrintView);
+        }
+        catch (Exception failure) when (IsExpectedPrintViewFailure(failure))
+        {
+            SetStatus(UiStrings.StatusPrintViewRefused);
+        }
+        finally
+        {
+            _printViewInProgress = false;
+            UpdateGatedButtons();
+        }
     }
+
+    private static bool IsExpectedPrintViewFailure(Exception failure)
+        => failure is InvalidOperationException
+            or IOException
+            or UnauthorizedAccessException
+            or NotSupportedException
+            or ArgumentException
+            or System.ComponentModel.Win32Exception;
 
     private void PrintApproved()
     {
@@ -716,7 +751,10 @@ public sealed class PressRoomForm : Form
         }
 
         // The structural gate, visible: these do nothing until a typed approval exists.
-        var idle = !_reviewPending && !_exportDispatchPending && !_exportInProgress;
+        var idle = !_reviewPending
+            && !_exportDispatchPending
+            && !_exportInProgress
+            && !_printViewInProgress;
         var approved = idle && ApprovedResult is not null;
         _review.Enabled = idle;
         _print.Enabled = approved;

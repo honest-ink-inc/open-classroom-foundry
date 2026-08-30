@@ -4,6 +4,10 @@
     <ProjectReference Include="..\Foundry.Inference.Abstractions\Foundry.Inference.Abstractions.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <InternalsVisibleTo Include="Foundry.Tests.Contract" />
+  </ItemGroup>
+
   <PropertyGroup>
     <TargetFramework>net10.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>

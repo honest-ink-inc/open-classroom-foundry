@@ -24,6 +24,7 @@ public sealed record SyntheticStep(InferenceResult Result, TimeSpan Delay)
 public sealed class SyntheticInferenceProvider : IInferenceProvider
 {
     public const string EmptyStructuredOutput = "{}";
+    public const string EndpointOrigin = "https://synthetic.invalid";
 
     private readonly Queue<SyntheticStep> _script;
     private readonly ProviderCapabilities _capabilities;
@@ -39,7 +40,8 @@ public sealed class SyntheticInferenceProvider : IInferenceProvider
         DeploymentId: "synthetic-1",
         PinnedModelVersion: "synthetic-1.0",
         SupportsImageInput: true,
-        SupportsStructuredOutput: true);
+        SupportsStructuredOutput: true,
+        EndpointOrigin: EndpointOrigin);
 
     public Task<ProviderCapabilities> GetCapabilitiesAsync(CancellationToken cancellationToken)
     {
@@ -51,6 +53,7 @@ public sealed class SyntheticInferenceProvider : IInferenceProvider
     {
         ArgumentNullException.ThrowIfNull(request);
         cancellationToken.ThrowIfCancellationRequested();
+        EgressGate.EnsureProviderMatches(request, _capabilities);
 
         // An exhausted or empty script answers with a benign structured object,
         // so simple tests need no scripting at all.

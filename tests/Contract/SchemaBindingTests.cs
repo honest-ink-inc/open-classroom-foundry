@@ -4,7 +4,6 @@ using System.Text.Json;
 using Foundry.Domain;
 using Foundry.Inference;
 using Foundry.Inference.AzureOpenAI;
-using Foundry.Inference.Synthetic;
 using Foundry.Modules.BuiltIn.AllAboard;
 
 namespace Foundry.Tests.Contract;
@@ -12,6 +11,13 @@ namespace Foundry.Tests.Contract;
 public class SchemaBindingTests
 {
     private static readonly DateTimeOffset SomeInstant = new(2026, 8, 29, 12, 0, 0, TimeSpan.Zero);
+    private static readonly ProviderCapabilities AzureCapabilities = new(
+        "azure-openai",
+        "district-gpt",
+        PinnedModelVersion: null,
+        SupportsImageInput: true,
+        SupportsStructuredOutput: true,
+        EndpointOrigin: "https://district.example");
 
     private sealed class CapturingHandler : HttpMessageHandler
     {
@@ -34,12 +40,12 @@ public class SchemaBindingTests
         var request = new InferenceRequest("all-aboard.task-strip", "0.1.0", schemaId,
             [new TextPart("Task: watering.")], DataLane.Green);
         return EgressGate.Confirm(
-            EgressGate.Preview(request, SyntheticInferenceProvider.DefaultCapabilities),
+            EgressGate.Preview(request, AzureCapabilities),
             "teacher@example.org", SomeInstant);
     }
 
     private static AzureOpenAIProvider Provider(CapturingHandler handler, IOutputSchemaRegistry? registry) => new(
-        new HttpClient(handler), new Uri("https://district.example/"), "district-gpt",
+        handler, new Uri("https://district.example/"), "district-gpt",
         ["https://district.example"], _ => Task.FromResult("token"), schemaRegistry: registry);
 
     [Fact]

@@ -66,7 +66,73 @@ public sealed record ProviderCapabilities(
     string DeploymentId,
     string? PinnedModelVersion,
     bool SupportsImageInput,
-    bool SupportsStructuredOutput);
+    bool SupportsStructuredOutput,
+    string? EndpointOrigin = null)
+{
+    /// <summary>Retains the original five-value deconstruction contract.</summary>
+    public void Deconstruct(
+        out string providerId,
+        out string deploymentId,
+        out string? pinnedModelVersion,
+        out bool supportsImageInput,
+        out bool supportsStructuredOutput)
+    {
+        providerId = ProviderId;
+        deploymentId = DeploymentId;
+        pinnedModelVersion = PinnedModelVersion;
+        supportsImageInput = SupportsImageInput;
+        supportsStructuredOutput = SupportsStructuredOutput;
+    }
+}
+
+/// <summary>
+/// Canonicalizes the HTTPS origin that identifies one provider endpoint.
+/// Paths, queries, fragments, host casing, internationalized host spelling,
+/// and default ports cannot create alternate spellings of the same authority.
+/// </summary>
+public static class InferenceEndpointOrigin
+{
+    public static string Normalize(Uri endpoint)
+    {
+        ArgumentNullException.ThrowIfNull(endpoint);
+
+        if (!endpoint.IsAbsoluteUri
+            || endpoint.Scheme != Uri.UriSchemeHttps
+            || string.IsNullOrWhiteSpace(endpoint.IdnHost)
+            || !string.IsNullOrEmpty(endpoint.UserInfo))
+        {
+            throw new ArgumentException(
+                "An inference endpoint must be an absolute HTTPS URI without user information.",
+                nameof(endpoint));
+        }
+
+        var host = endpoint.HostNameType == UriHostNameType.IPv6
+            ? $"[{endpoint.IdnHost}]"
+            : endpoint.IdnHost.ToLowerInvariant();
+        var port = endpoint.IsDefaultPort ? string.Empty : $":{endpoint.Port}";
+        return $"{endpoint.Scheme.ToLowerInvariant()}://{host}{port}";
+    }
+
+    public static bool TryNormalize(string? endpoint, out string normalizedOrigin)
+    {
+        normalizedOrigin = string.Empty;
+        if (string.IsNullOrWhiteSpace(endpoint)
+            || !Uri.TryCreate(endpoint.Trim(), UriKind.Absolute, out var uri))
+        {
+            return false;
+        }
+
+        try
+        {
+            normalizedOrigin = Normalize(uri);
+            return true;
+        }
+        catch (ArgumentException)
+        {
+            return false;
+        }
+    }
+}
 
 public interface IInferenceProvider
 {

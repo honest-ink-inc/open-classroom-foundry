@@ -8,10 +8,27 @@ namespace Foundry.Tests.Unit;
 /// else. Enforced as a source scan so a hard-coded literal fails the suite the
 /// moment it is written. Heuristic: a quoted literal containing a space is
 /// user-facing prose; identifiers, file extensions, mime types, and switch
-/// names are space-free and pass. Comments are stripped before scanning.
+/// names are space-free and pass. Exact machine-only IPC/HTTP grammar is
+/// separately inventoried below; comments are stripped before scanning.
 /// </summary>
 public class LocalizationRulesTests
 {
+    private static readonly HashSet<(string FileName, string Literal)> MachineProtocolLiterals =
+    [
+        ("AppServices.PrintViewHandoff.cs", "READY "),
+        ("AppServices.PrintViewHandoff.cs", "READY {url}"),
+        ("AppServices.PrintViewHandoff.cs", "GET /{token}/ HTTP/1.1"),
+        ("AppServices.PrintViewHandoff.cs", "HTTP/1.1 200 OK\\r\\n"),
+        ("AppServices.PrintViewHandoff.cs", "Content-Type: text/html; charset=utf-8\\r\\n"),
+        ("AppServices.PrintViewHandoff.cs", "Content-Length: {content.Length.ToString(CultureInfo.InvariantCulture)}\\r\\n"),
+        ("AppServices.PrintViewHandoff.cs", "Cache-Control: no-store\\r\\n"),
+        ("AppServices.PrintViewHandoff.cs", "Pragma: no-cache\\r\\n"),
+        ("AppServices.PrintViewHandoff.cs", "X-Content-Type-Options: nosniff\\r\\n"),
+        ("AppServices.PrintViewHandoff.cs", "Content-Security-Policy: default-src 'none'; img-src data:; style-src 'unsafe-inline'\\r\\n"),
+        ("AppServices.PrintViewHandoff.cs", "Connection: close\\r\\n\\r\\n"),
+        ("AppServices.PrintViewHandoff.cs", "HTTP/1.1 404 Not Found\\r\\nContent-Length: 0\\r\\nConnection: close\\r\\n\\r\\n"),
+    ];
+
     [Fact]
     public void The_winforms_app_carries_no_user_facing_string_outside_the_catalog()
     {
@@ -20,6 +37,7 @@ public class LocalizationRulesTests
         Assert.True(File.Exists(catalog), "The UiStrings catalog must exist.");
 
         var offenders = new List<string>();
+        var observedMachineProtocolLiterals = new HashSet<(string FileName, string Literal)>();
         var files = Directory.EnumerateFiles(appRoot, "*.cs", SearchOption.AllDirectories)
             .Where(f => !f.Contains($"{Path.DirectorySeparatorChar}obj{Path.DirectorySeparatorChar}", StringComparison.Ordinal)
                 && !f.Contains($"{Path.DirectorySeparatorChar}bin{Path.DirectorySeparatorChar}", StringComparison.Ordinal)
@@ -35,6 +53,7 @@ public class LocalizationRulesTests
 
         foreach (var file in files)
         {
+            var fileName = Path.GetFileName(file);
             var lineNumber = 0;
             foreach (var raw in File.ReadLines(file))
             {
@@ -43,7 +62,14 @@ public class LocalizationRulesTests
                 {
                     if (literal.Contains(' ', StringComparison.Ordinal))
                     {
-                        offenders.Add($"{Path.GetFileName(file)}:{lineNumber} \"{literal}\"");
+                        var protocolLiteral = (fileName, literal);
+                        if (MachineProtocolLiterals.Contains(protocolLiteral))
+                        {
+                            observedMachineProtocolLiterals.Add(protocolLiteral);
+                            continue;
+                        }
+
+                        offenders.Add($"{fileName}:{lineNumber} \"{literal}\"");
                     }
                 }
             }
@@ -51,6 +77,13 @@ public class LocalizationRulesTests
 
         Assert.True(offenders.Count == 0,
             "User-facing strings belong in UiStrings, not inline:\n" + string.Join('\n', offenders));
+        var staleProtocolLiterals = MachineProtocolLiterals
+            .Except(observedMachineProtocolLiterals)
+            .Select(item => $"{item.FileName} \"{item.Literal}\"")
+            .ToArray();
+        Assert.True(staleProtocolLiterals.Length == 0,
+            "Machine-protocol literal inventory no longer matches the source:\n"
+            + string.Join('\n', staleProtocolLiterals));
     }
 
     private static string RepoRoot()

@@ -57,8 +57,8 @@ Nothing Amber runs in any classroom until this is signed. Presented now so its e
 
 Both parties retain the signed instrument; the repository records only its existence and date.
 
-## 7. The ask, this month
+## 7. The ask, when review opens
 
 1. Name the three seats (IT, privacy, safeguarding) — governance holds a place for each.
-2. One review meeting against §5 in September 2026.
+2. One review meeting against §5, on a date named only after Maryland has answered and the required seats have confirmed availability.
 3. Staff-pilot awareness: the six-week pilot (opening date pending; we will confirm it with you before week 1) is **staff-only, synthetic-material, Green-lane, no student presence** — rungs 1–2 of our own gate ladder, and we welcome an observer.

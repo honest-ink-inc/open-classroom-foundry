@@ -1,10 +1,13 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 using System.IO;
+using System.Runtime.InteropServices;
+using System.Text;
+using System.Text.Json.Nodes;
 using Foundry.App.WinForms;
 using Foundry.Application;
 using Foundry.Contracts;
 using Foundry.Domain;
-using System.Text.Json.Nodes;
+using Microsoft.Win32.SafeHandles;
 
 namespace Foundry.Tests.UiAutomation;
 
@@ -85,6 +88,307 @@ public sealed class ReviewPreviewContractTests
         }
         finally
         {
+            Directory.Delete(directory, recursive: true);
+        }
+    }
+
+    [Fact]
+    public async Task Transactional_export_atomically_replaces_an_unlocked_destination()
+    {
+        var directory = Path.Combine(Path.GetTempPath(), "ocf-tests", Guid.NewGuid().ToString("N"));
+        var destination = Path.Combine(directory, "existing.pdf");
+        Directory.CreateDirectory(directory);
+        await File.WriteAllTextAsync(destination, "prior exact bytes");
+        try
+        {
+            await AppServices.WriteExportBytesAsync(
+                destination,
+                "approved exact bytes"u8.ToArray(),
+                CancellationToken.None);
+
+            Assert.Equal("approved exact bytes", await File.ReadAllTextAsync(destination));
+            Assert.Empty(Directory.EnumerateFiles(directory, ".honest-ink-*.stage"));
+        }
+        finally
+        {
+            Directory.Delete(directory, recursive: true);
+        }
+    }
+
+    [Fact]
+    public async Task Transactional_export_promotes_the_handle_owned_bytes_when_a_rewrite_is_attempted()
+    {
+        var directory = Path.Combine(Path.GetTempPath(), "ocf-tests", Guid.NewGuid().ToString("N"));
+        var destination = Path.Combine(directory, "rewritten.pdf");
+        Directory.CreateDirectory(directory);
+        try
+        {
+            await AppServices.WriteExportBytesAsync(
+                destination,
+                "approved exact bytes"u8.ToArray(),
+                CancellationToken.None,
+                stageReady: stage =>
+                {
+                    var failure = Record.Exception(() =>
+                        File.WriteAllBytes(stage, "substituted bytes"u8.ToArray()));
+                    Assert.True(
+                        failure is IOException or UnauthorizedAccessException,
+                        $"Expected the held stage to refuse a rewrite; received {failure?.GetType().FullName ?? "no exception"}.");
+                    return Task.CompletedTask;
+                });
+
+            Assert.Equal("approved exact bytes", await File.ReadAllTextAsync(destination));
+            Assert.Empty(Directory.EnumerateFiles(directory, ".honest-ink-*.stage"));
+        }
+        finally
+        {
+            Directory.Delete(directory, recursive: true);
+        }
+    }
+
+    [Fact]
+    public async Task Transactional_export_promotes_the_handle_owned_bytes_when_path_replacement_is_attempted()
+    {
+        var directory = Path.Combine(Path.GetTempPath(), "ocf-tests", Guid.NewGuid().ToString("N"));
+        var destination = Path.Combine(directory, "replaced.pdf");
+        var substitute = Path.Combine(directory, "substitute.stage");
+        Directory.CreateDirectory(directory);
+        try
+        {
+            await File.WriteAllTextAsync(substitute, "substituted bytes");
+            await AppServices.WriteExportBytesAsync(
+                destination,
+                "approved exact bytes"u8.ToArray(),
+                CancellationToken.None,
+                stageReady: stage =>
+                {
+                    var failure = Record.Exception(() => File.Move(substitute, stage, overwrite: true));
+                    Assert.True(
+                        failure is IOException or UnauthorizedAccessException,
+                        $"Expected the held stage to refuse path replacement; received {failure?.GetType().FullName ?? "no exception"}.");
+                    return Task.CompletedTask;
+                });
+
+            Assert.Equal("approved exact bytes", await File.ReadAllTextAsync(destination));
+            Assert.Equal("substituted bytes", await File.ReadAllTextAsync(substitute));
+            Assert.Empty(Directory.EnumerateFiles(directory, ".honest-ink-*.stage"));
+        }
+        finally
+        {
+            Directory.Delete(directory, recursive: true);
+        }
+    }
+
+    [Fact]
+    public async Task Transactional_export_holds_the_parent_against_junction_substitution()
+    {
+        var root = Path.Combine(Path.GetTempPath(), "ocf-tests", Guid.NewGuid().ToString("N"));
+        var directory = Path.Combine(root, "selected");
+        var displaced = Path.Combine(root, "displaced");
+        var displacedRoot = $"{root}-displaced";
+        var destination = Path.Combine(directory, "held-parent.pdf");
+        Directory.CreateDirectory(directory);
+        try
+        {
+            await AppServices.WriteExportBytesAsync(
+                destination,
+                "approved exact bytes"u8.ToArray(),
+                CancellationToken.None,
+                stageReady: _ =>
+                {
+                    // A junction substitution first has to rename or remove
+                    // the selected directory. The retained directory handle
+                    // withholds the delete sharing that operation requires.
+                    var failure = Record.Exception(() => Directory.Move(directory, displaced));
+                    Assert.True(
+                        failure is IOException or UnauthorizedAccessException,
+                        $"Expected the held parent to refuse displacement; received {failure?.GetType().FullName ?? "no exception"}.");
+                    Assert.True(Directory.Exists(directory));
+                    Assert.False(Directory.Exists(displaced));
+
+                    var ancestorFailure = Record.Exception(() => Directory.Move(root, displacedRoot));
+                    Assert.True(
+                        ancestorFailure is IOException or UnauthorizedAccessException,
+                        $"Expected the held namespace chain to refuse ancestor displacement; received {ancestorFailure?.GetType().FullName ?? "no exception"}.");
+                    Assert.True(Directory.Exists(root));
+                    Assert.False(Directory.Exists(displacedRoot));
+                    return Task.CompletedTask;
+                });
+
+            Assert.Equal("approved exact bytes", await File.ReadAllTextAsync(destination));
+            Assert.Empty(Directory.EnumerateFiles(directory, ".honest-ink-*.stage"));
+        }
+        finally
+        {
+            Directory.Delete(root, recursive: true);
+            if (Directory.Exists(displacedRoot))
+            {
+                Directory.Delete(displacedRoot, recursive: true);
+            }
+        }
+    }
+
+    [Fact]
+    public void Transactional_export_rename_contract_uses_only_a_leaf_and_a_null_root_handle()
+    {
+        const string destinationLeaf = "held-parent.pdf";
+        var renameInformation = AppServices.BuildExportRenameInformation(destinationLeaf);
+        var rootDirectoryOffset = IntPtr.Size == 8 ? 8 : 4;
+        var fileNameLengthOffset = rootDirectoryOffset + IntPtr.Size;
+        var fileNameOffset = fileNameLengthOffset + sizeof(uint);
+        var destinationBytes = Encoding.Unicode.GetBytes(destinationLeaf);
+
+        Assert.Equal(1, renameInformation[0]);
+        Assert.All(
+            renameInformation.AsSpan(rootDirectoryOffset, IntPtr.Size).ToArray(),
+            value => Assert.Equal(0, value));
+        Assert.Equal(
+            checked((uint)destinationBytes.Length),
+            BitConverter.ToUInt32(renameInformation, fileNameLengthOffset));
+        Assert.True(destinationBytes.SequenceEqual(
+            renameInformation.AsSpan(fileNameOffset, destinationBytes.Length)));
+        Assert.DoesNotContain(
+            Path.DirectorySeparatorChar,
+            Encoding.Unicode.GetString(renameInformation, fileNameOffset, destinationBytes.Length));
+    }
+
+    [Fact]
+    public void Transactional_export_failure_cleanup_contract_accepts_only_the_owned_stage_handle()
+    {
+        var cleanup = typeof(AppServices).GetMethod(
+            "TryMarkExportStageForDeletion",
+            System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static);
+
+        Assert.NotNull(cleanup);
+        var parameter = Assert.Single(cleanup.GetParameters());
+        Assert.Equal(typeof(SafeFileHandle), parameter.ParameterType);
+    }
+
+    [Fact]
+    public void Transactional_export_native_status_contract_matches_the_windows_pointer_abi()
+    {
+        var ioStatusBlock = typeof(AppServices).GetNestedType(
+            "IoStatusBlock",
+            System.Reflection.BindingFlags.NonPublic);
+        Assert.NotNull(ioStatusBlock);
+        Assert.Equal(IntPtr.Size * 2, Marshal.SizeOf(ioStatusBlock));
+        Assert.Equal(IntPtr.Zero, Marshal.OffsetOf(ioStatusBlock, "Status"));
+        Assert.Equal(new IntPtr(IntPtr.Size), Marshal.OffsetOf(ioStatusBlock, "Information"));
+
+        var mapStatus = typeof(AppServices).GetMethod(
+            "RtlNtStatusToDosError",
+            System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static);
+        Assert.NotNull(mapStatus);
+        const uint errorAccessDenied = 5;
+        var mapped = Assert.IsType<uint>(mapStatus.Invoke(
+            obj: null,
+            [unchecked((int)0xC0000022)]));
+        Assert.Equal(errorAccessDenied, mapped);
+    }
+
+    [Fact]
+    public async Task Transactional_export_rejects_an_alternate_data_stream_leaf_before_creating_a_stage()
+    {
+        var root = Path.Combine(Path.GetTempPath(), "ocf-tests", Guid.NewGuid().ToString("N"));
+        var directory = Path.Combine(root, "selected");
+        var destination = Path.Combine(directory, "report.pdf:redirected");
+        Directory.CreateDirectory(directory);
+        try
+        {
+            await Assert.ThrowsAsync<IOException>(() => AppServices.WriteExportBytesAsync(
+                destination,
+                "approved exact bytes"u8.ToArray(),
+                CancellationToken.None));
+
+            Assert.Empty(Directory.EnumerateFiles(directory));
+        }
+        finally
+        {
+            Directory.Delete(root, recursive: true);
+        }
+    }
+
+    [Fact]
+    public async Task Preexisting_cancellation_does_not_create_a_missing_destination_parent()
+    {
+        var root = Path.Combine(Path.GetTempPath(), "ocf-tests", Guid.NewGuid().ToString("N"));
+        var missingParent = Path.Combine(root, "missing-parent");
+        var destination = Path.Combine(missingParent, "cancelled.pdf");
+        using var cancellation = new CancellationTokenSource();
+        cancellation.Cancel();
+        try
+        {
+            await Assert.ThrowsAnyAsync<OperationCanceledException>(() => AppServices.WriteExportBytesAsync(
+                destination,
+                "replacement bytes"u8.ToArray(),
+                cancellation.Token));
+
+            Assert.False(Directory.Exists(missingParent));
+        }
+        finally
+        {
+            if (Directory.Exists(root))
+            {
+                Directory.Delete(root, recursive: true);
+            }
+        }
+    }
+
+    [Fact]
+    public async Task Transactional_export_reports_read_only_residue_without_losing_the_primary_cancellation()
+    {
+        var directory = Path.Combine(Path.GetTempPath(), "ocf-tests", Guid.NewGuid().ToString("N"));
+        var destination = Path.Combine(directory, "existing.pdf");
+        Directory.CreateDirectory(directory);
+        await File.WriteAllTextAsync(destination, "original exact bytes");
+        using var cancellation = new CancellationTokenSource();
+        FileStream? stageInspection = null;
+        try
+        {
+            var failure = await Assert.ThrowsAsync<IOException>(() => AppServices.WriteExportBytesAsync(
+                destination,
+                "replacement bytes"u8.ToArray(),
+                cancellation.Token,
+                stageReady: stage =>
+                {
+                    stageInspection = new FileStream(
+                        stage,
+                        FileMode.Open,
+                        FileAccess.Read,
+                        FileShare.ReadWrite | FileShare.Delete);
+                    // Share symmetry requires a peer opened alongside a
+                    // DELETE-capable writer to share delete access. A read-only
+                    // attribute gives the cleanup path a deterministic residue
+                    // without weakening the writer's held-handle contract.
+                    File.SetAttributes(stage, FileAttributes.ReadOnly);
+                    cancellation.Cancel();
+                    return Task.CompletedTask;
+                }));
+
+            Assert.Contains("staged residue", failure.Message, StringComparison.Ordinal);
+            var combined = Assert.IsType<AggregateException>(failure.InnerException);
+            Assert.Contains(combined.InnerExceptions, exception => exception is OperationCanceledException);
+            Assert.Contains(
+                combined.InnerExceptions,
+                exception => exception is IOException ioFailure
+                    && ioFailure.Message.Contains(
+                        "export.stage-delete-disposition-failed",
+                        StringComparison.Ordinal));
+            Assert.Equal("original exact bytes", await File.ReadAllTextAsync(destination));
+            Assert.Single(Directory.EnumerateFiles(directory, ".honest-ink-*.stage"));
+        }
+        finally
+        {
+            if (stageInspection is not null)
+            {
+                await stageInspection.DisposeAsync();
+            }
+
+            foreach (var stage in Directory.EnumerateFiles(directory, ".honest-ink-*.stage"))
+            {
+                File.SetAttributes(stage, FileAttributes.Normal);
+            }
+
             Directory.Delete(directory, recursive: true);
         }
     }
@@ -424,4 +728,5 @@ public sealed class ReviewPreviewContractTests
             yield return parent;
         }
     }
+
 }

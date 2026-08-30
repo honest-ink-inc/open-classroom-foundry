@@ -97,6 +97,7 @@ internal static class UiCatalogAccessKeyContexts
             nameof(UiStrings.PrintButton),
             nameof(UiStrings.OpenPrintView),
             nameof(UiStrings.ExportEllipsis),
+            nameof(UiStrings.CancelExport),
             nameof(UiStrings.SaveToLibrary)),
         Context("reopened-project-preflight",
             nameof(UiStrings.ContinueToExactReview),

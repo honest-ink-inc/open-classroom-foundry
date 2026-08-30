@@ -469,17 +469,53 @@ public class HtmlRendererTests
     }
 
     [Fact]
+    public async Task Raster_decode_budget_is_cumulative_and_reference_weighted()
+    {
+        var id = new AssetId("symbols.large-raster.v1");
+        var compressedLargeRaster = BuildPng(
+            5_000,
+            5_000,
+            includeEnd: true,
+            bitDepth: 1,
+            colorType: 0);
+        var withinBudget = new ArtifactDocument(
+            [.. Enumerable.Range(1, 4)
+                .Select(index => (DocumentNode)new ImageReference(id, $"Large raster {index}"))]);
+        var beyondBudget = new ArtifactDocument(
+            [.. Enumerable.Range(1, 5)
+                .Select(index => (DocumentNode)new ImageReference(id, $"Large raster {index}"))]);
+        var renderer = new AccessibleHtmlRenderer(
+            new OneAssetCatalog(id, compressedLargeRaster, "image/png"));
+
+        var admitted = await renderer.RenderAsync(
+            Approve(withinBudget),
+            new RenderRequest(RenderTarget.AccessibleHtml),
+            CancellationToken.None);
+        Assert.False(admitted.Content.IsEmpty);
+
+        var exception = await Assert.ThrowsAsync<InvalidOperationException>(() =>
+            renderer.RenderAsync(
+                Approve(beyondBudget),
+                new RenderRequest(RenderTarget.AccessibleHtml),
+                CancellationToken.None));
+        Assert.Contains("cumulative raster-decode budget", exception.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void Raster_admission_rejects_signature_only_truncation_and_oversized_dimensions()
     {
         byte[] pngSignature = [0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A];
         byte[] jpegMarkers = [0xFF, 0xD8, 0xFF, 0xD9];
         var completePng = BuildPng(1, 1, includeEnd: true);
         var missingEnd = BuildPng(1, 1, includeEnd: false);
-        var oversized = BuildPng(16_384, 16_384, includeEnd: true);
+        var oversized = BuildPng(
+            16_384,
+            16_384,
+            includeEnd: true,
+            completeImageData: false);
         var corruptCrc = completePng.ToArray();
         corruptCrc[^1] ^= 0x01;
-        var completeJpeg = Convert.FromBase64String(
-            "/9j/4AAQSkZJRgABAQEAYABgAAD/2wBDAAMCAgMCAgMDAwMEAwMEBQgFBQQEBQoHBwYIDAoMDAsKCwsNDhIQDQ4RDgsLEBYQERMUFRUVDA8XGBYUGBIUFRT/2wBDAQMEBAUEBQkFBQkUDQsNFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBT/wAARCAACAAIDASIAAhEBAxEB/8QAHwAAAQUBAQEBAQEAAAAAAAAAAAECAwQFBgcICQoL/8QAtRAAAgEDAwIEAwUFBAQAAAF9AQIDAAQRBRIhMUEGE1FhByJxFDKBkaEII0KxwRVS0fAkM2JyggkKFhcYGRolJicoKSo0NTY3ODk6Q0RFRkdISUpTVFVWV1hZWmNkZWZnaGlqc3R1dnd4eXqDhIWGh4iJipKTlJWWl5iZmqKjpKWmp6ipqrKztLW2t7i5usLDxMXGx8jJytLT1NXW19jZ2uHi4+Tl5ufo6erx8vP09fb3+Pn6/8QAHwEAAwEBAQEBAQEBAQAAAAAAAAECAwQFBgcICQoL/8QAtREAAgECBAQDBAcFBAQAAQJ3AAECAxEEBSExBhJBUQdhcRMiMoEIFEKRobHBCSMzUvAVYnLRChYkNOEl8RcYGRomJygpKjU2Nzg5OkNERUZHSElKU1RVVldYWVpjZGVmZ2hpanN0dXZ3eHl6goOEhYaHiImKkpOUlZaXmJmaoqOkpaanqKmqsrO0tba3uLm6wsPExcbHyMnK0tPU1dbX2Nna4uPk5ebn6Onq8vP09fb3+Pn6/9oADAMBAAIRAxEAPwD8qqKKKAP/2Q==");
+        var completeJpeg = BuildJpeg();
         var oversizedJpeg = completeJpeg.ToArray();
         ReadOnlySpan<byte> baselineFrameMarker = [0xFF, 0xC0];
         var frameMarker = oversizedJpeg.AsSpan().IndexOf(baselineFrameMarker);
@@ -497,6 +533,229 @@ public class HtmlRendererTests
         Assert.False(AccessibleHtmlRenderer.IsSupportedSelfContainedImage(oversized, "image/png"));
         Assert.False(AccessibleHtmlRenderer.IsSupportedSelfContainedImage(truncatedJpeg, "image/jpeg"));
         Assert.False(AccessibleHtmlRenderer.IsSupportedSelfContainedImage(oversizedJpeg, "image/jpeg"));
+    }
+
+    [Fact]
+    public void Png_admission_rejects_a_declared_extent_without_complete_decoded_scanlines()
+    {
+        var malformed = BuildPng(
+            5_000,
+            5_000,
+            includeEnd: true,
+            bitDepth: 1,
+            colorType: 0,
+            completeImageData: false);
+
+        Assert.False(AccessibleHtmlRenderer.IsSupportedSelfContainedImage(malformed, "image/png"));
+    }
+
+    [Fact]
+    public void GdiPlus_png_with_allowlisted_ancillary_chunks_is_admitted()
+    {
+        // Synthetic 2-by-2 bitmap encoded by the Windows GDI+ PNG codec. Its
+        // chunk order is IHDR, sRGB, gAMA, pHYs, IDAT, IEND.
+        var png = Convert.FromBase64String(
+            "iVBORw0KGgoAAAANSUhEUgAAAAIAAAACCAYAAABytg0kAAAAAXNSR0IArs4c6QAAAARnQU1BAACxjwv8YQUAAAAJcEhZcwAADsMAAA7DAcdvqGQAAAALSURBVBhXY2BABwAAEgABp3qZbgAAAABJRU5ErkJggg==");
+
+        Assert.True(AccessibleHtmlRenderer.IsSupportedSelfContainedImage(png, "image/png"));
+    }
+
+    [Theory]
+    [InlineData("iCCP")]
+    [InlineData("zTXt")]
+    [InlineData("iTXt")]
+    [InlineData("acTL")]
+    [InlineData("fcTL")]
+    [InlineData("fdAT")]
+    [InlineData("vpAg")]
+    public void Png_admission_rejects_compressed_active_and_unknown_ancillary_chunks(string chunkType)
+    {
+        var payload = chunkType switch
+        {
+            "acTL" => new byte[8],
+            "fcTL" => new byte[26],
+            "fdAT" => new byte[5],
+            _ => Encoding.ASCII.GetBytes("synthetic\0compressed"),
+        };
+        var hostile = InsertPngChunk(
+            BuildPng(1, 1, includeEnd: true),
+            chunkType,
+            payload,
+            beforeChunkType: "IDAT");
+
+        Assert.False(
+            AccessibleHtmlRenderer.IsSupportedSelfContainedImage(hostile, "image/png"),
+            $"PNG chunk {chunkType} must not cross the fail-closed ancillary allowlist.");
+    }
+
+    [Fact]
+    public void Png_admission_validates_profile_chunk_length_order_value_and_duplicates()
+    {
+        var plain = BuildPng(1, 1, includeEnd: true);
+        var truecolor = BuildPng(1, 1, includeEnd: true, colorType: 2);
+        byte[] gamma = [0x00, 0x00, 0xB1, 0x8F];
+        byte[] palette = [0x00, 0x00, 0x00];
+        byte[] physicalDimensions = [0x00, 0x00, 0x0E, 0xC3, 0x00, 0x00, 0x0E, 0xC3, 0x01];
+
+        var duplicateSrgb = InsertPngChunk(plain, "sRGB", [0], "IDAT");
+        duplicateSrgb = InsertPngChunk(duplicateSrgb, "sRGB", [0], "IDAT");
+        var duplicateGamma = InsertPngChunk(plain, "gAMA", gamma, "IDAT");
+        duplicateGamma = InsertPngChunk(duplicateGamma, "gAMA", gamma, "IDAT");
+        var duplicatePhysicalDimensions = InsertPngChunk(plain, "pHYs", physicalDimensions, "IDAT");
+        duplicatePhysicalDimensions = InsertPngChunk(
+            duplicatePhysicalDimensions,
+            "pHYs",
+            physicalDimensions,
+            "IDAT");
+        var srgbAfterPalette = InsertPngChunk(truecolor, "PLTE", palette, "IDAT");
+        srgbAfterPalette = InsertPngChunk(srgbAfterPalette, "sRGB", [0], "IDAT");
+        var gammaAfterPalette = InsertPngChunk(truecolor, "PLTE", palette, "IDAT");
+        gammaAfterPalette = InsertPngChunk(gammaAfterPalette, "gAMA", gamma, "IDAT");
+
+        (string Name, byte[] Content)[] rejected =
+        [
+            ("sRGB length", InsertPngChunk(plain, "sRGB", [0, 0], "IDAT")),
+            ("sRGB intent", InsertPngChunk(plain, "sRGB", [4], "IDAT")),
+            ("sRGB duplicate", duplicateSrgb),
+            ("sRGB order", srgbAfterPalette),
+            ("gAMA length", InsertPngChunk(plain, "gAMA", [0, 0, 1], "IDAT")),
+            ("gAMA zero", InsertPngChunk(plain, "gAMA", [0, 0, 0, 0], "IDAT")),
+            ("gAMA duplicate", duplicateGamma),
+            ("gAMA order", gammaAfterPalette),
+            ("pHYs length", InsertPngChunk(plain, "pHYs", new byte[8], "IDAT")),
+            ("pHYs unit", InsertPngChunk(plain, "pHYs", [0, 0, 0, 1, 0, 0, 0, 1, 2], "IDAT")),
+            ("pHYs duplicate", duplicatePhysicalDimensions),
+            ("pHYs order", InsertPngChunk(plain, "pHYs", physicalDimensions, "IEND")),
+        ];
+
+        foreach (var (name, content) in rejected)
+        {
+            Assert.False(
+                AccessibleHtmlRenderer.IsSupportedSelfContainedImage(content, "image/png"),
+                $"Malformed {name} chunk was admitted.");
+        }
+    }
+
+    [Fact]
+    public void Png_admission_validates_palette_and_transparency_order_length_and_duplicates()
+    {
+        byte[] palette = [0x00, 0x00, 0x00, 0xFF, 0xFF, 0xFF];
+        var indexed = BuildPng(1, 1, includeEnd: true, bitDepth: 1, colorType: 3);
+        var validIndexed = InsertPngChunk(indexed, "PLTE", palette, "IDAT");
+        validIndexed = InsertPngChunk(validIndexed, "tRNS", [0x00, 0xFF], "IDAT");
+        Assert.True(AccessibleHtmlRenderer.IsSupportedSelfContainedImage(validIndexed, "image/png"));
+
+        var duplicatePalette = InsertPngChunk(
+            BuildPng(1, 1, includeEnd: true, colorType: 2),
+            "PLTE",
+            palette,
+            "IDAT");
+        duplicatePalette = InsertPngChunk(duplicatePalette, "PLTE", palette, "IDAT");
+        var duplicateTransparency = InsertPngChunk(
+            BuildPng(1, 1, includeEnd: true, colorType: 0),
+            "tRNS",
+            [0, 0],
+            "IDAT");
+        duplicateTransparency = InsertPngChunk(
+            duplicateTransparency,
+            "tRNS",
+            [0, 0],
+            "IDAT");
+        var paletteAfterTransparency = InsertPngChunk(
+            BuildPng(1, 1, includeEnd: true, colorType: 2),
+            "tRNS",
+            new byte[6],
+            "IDAT");
+        paletteAfterTransparency = InsertPngChunk(
+            paletteAfterTransparency,
+            "PLTE",
+            palette,
+            "IDAT");
+
+        (string Name, byte[] Content)[] rejected =
+        [
+            ("missing indexed palette", indexed),
+            ("palette on grayscale", InsertPngChunk(BuildPng(1, 1, true, colorType: 0), "PLTE", palette, "IDAT")),
+            ("duplicate palette", duplicatePalette),
+            ("late palette", InsertPngChunk(BuildPng(1, 1, true, colorType: 2), "PLTE", palette, "IEND")),
+            ("too many indexed entries", InsertPngChunk(indexed, "PLTE", new byte[9], "IDAT")),
+            ("indexed transparency before palette", InsertPngChunk(indexed, "tRNS", [0], "IDAT")),
+            ("indexed transparency too long", InsertPngChunk(InsertPngChunk(indexed, "PLTE", palette, "IDAT"), "tRNS", [0, 1, 2], "IDAT")),
+            ("alpha transparency", InsertPngChunk(BuildPng(1, 1, true), "tRNS", [0, 0], "IDAT")),
+            ("duplicate transparency", duplicateTransparency),
+            ("palette after transparency", paletteAfterTransparency),
+            ("late transparency", InsertPngChunk(BuildPng(1, 1, true, colorType: 0), "tRNS", [0, 0], "IEND")),
+        ];
+
+        foreach (var (name, content) in rejected)
+        {
+            Assert.False(
+                AccessibleHtmlRenderer.IsSupportedSelfContainedImage(content, "image/png"),
+                $"Malformed {name} structure was admitted.");
+        }
+    }
+
+    [Fact]
+    public void Jpeg_admission_rejects_illegal_ff_selectors()
+    {
+        (string Name, byte Marker, int PayloadOffset)[] selectors =
+        [
+            ("DQT", 0xDB, 0),
+            ("DHT", 0xC4, 0),
+            ("SOF component quantization", 0xC0, 8),
+            ("SOS component Huffman", 0xDA, 2),
+        ];
+
+        foreach (var (name, marker, payloadOffset) in selectors)
+        {
+            var hostile = BuildJpeg();
+            var markerOffset = FindJpegMarker(hostile, marker);
+            hostile[markerOffset + 4 + payloadOffset] = 0xFF;
+
+            Assert.False(
+                AccessibleHtmlRenderer.IsSupportedSelfContainedImage(hostile, "image/jpeg"),
+                $"Illegal 0xFF {name} selector was admitted.");
+        }
+    }
+
+    [Fact]
+    public void Jpeg_admission_requires_well_formed_and_referenced_quantization_and_huffman_tables()
+    {
+        var malformedQuantizationPrecision = BuildJpeg();
+        var dqtOffset = FindJpegMarker(malformedQuantizationPrecision, 0xDB);
+        malformedQuantizationPrecision[dqtOffset + 4] = 0x10;
+
+        var zeroQuantizationValue = BuildJpeg();
+        dqtOffset = FindJpegMarker(zeroQuantizationValue, 0xDB);
+        zeroQuantizationValue[dqtOffset + 5] = 0;
+
+        var oversubscribedHuffmanTree = BuildJpeg();
+        var dhtOffset = FindJpegMarker(oversubscribedHuffmanTree, 0xC4);
+        oversubscribedHuffmanTree[dhtOffset + 5] = 3;
+
+        var missingQuantizationReference = BuildJpeg();
+        var frameOffset = FindJpegMarker(missingQuantizationReference, 0xC0);
+        missingQuantizationReference[frameOffset + 12] = 3;
+
+        var missingHuffmanReference = BuildJpeg();
+        var scanOffset = FindJpegMarker(missingHuffmanReference, 0xDA);
+        missingHuffmanReference[scanOffset + 6] = 0x22;
+
+        (string Name, byte[] Content)[] rejected =
+        [
+            ("truncated 16-bit DQT", malformedQuantizationPrecision),
+            ("zero DQT value", zeroQuantizationValue),
+            ("oversubscribed DHT", oversubscribedHuffmanTree),
+            ("missing DQT reference", missingQuantizationReference),
+            ("missing DHT reference", missingHuffmanReference),
+        ];
+
+        foreach (var (name, content) in rejected)
+        {
+            Assert.False(
+                AccessibleHtmlRenderer.IsSupportedSelfContainedImage(content, "image/jpeg"),
+                $"JPEG with {name} was admitted.");
+        }
     }
 
     [Fact]
@@ -558,21 +817,66 @@ public class HtmlRendererTests
             () => renderer.RenderAsync(artifact, new RenderRequest(RenderTarget.AccessibleHtml), cancelled.Token));
     }
 
-    private static byte[] BuildPng(int width, int height, bool includeEnd)
+    [Fact]
+    public async Task Png_admission_observes_cancellation_raised_during_asset_resolution()
+    {
+        var id = new AssetId("symbols.cancel-png.v1");
+        using var cancelled = new CancellationTokenSource();
+        var catalog = new OneAssetCatalog(
+            id,
+            BuildPng(1, 1, includeEnd: true),
+            "image/png",
+            onContentRead: cancelled.Cancel);
+        var artifact = Approve(new ArtifactDocument([new ImageReference(id, "Synthetic cancellation proof")]));
+
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() =>
+            new AccessibleHtmlRenderer(catalog).RenderAsync(
+                artifact,
+                new RenderRequest(RenderTarget.AccessibleHtml),
+                cancelled.Token));
+    }
+
+    private static byte[] BuildPng(
+        int width,
+        int height,
+        bool includeEnd,
+        byte bitDepth = 8,
+        byte colorType = 6,
+        bool completeImageData = true)
     {
         using var output = new MemoryStream();
         output.Write([0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A]);
         var header = new byte[13];
         BinaryPrimitives.WriteUInt32BigEndian(header.AsSpan(0, 4), (uint)width);
         BinaryPrimitives.WriteUInt32BigEndian(header.AsSpan(4, 4), (uint)height);
-        header[8] = 8;
-        header[9] = 6;
+        header[8] = bitDepth;
+        header[9] = colorType;
         WritePngChunk(output, "IHDR"u8, header);
 
         using var compressed = new MemoryStream();
         using (var zlib = new ZLibStream(compressed, CompressionLevel.SmallestSize, leaveOpen: true))
         {
-            zlib.Write([0, 0, 0, 0, 0]);
+            if (completeImageData)
+            {
+                var channels = colorType switch
+                {
+                    0 or 3 => 1,
+                    2 => 3,
+                    4 => 2,
+                    6 => 4,
+                    _ => throw new ArgumentOutOfRangeException(nameof(colorType)),
+                };
+                var rowBytes = checked((int)(((long)width * channels * bitDepth + 7) / 8));
+                var scanline = new byte[rowBytes + 1];
+                for (var row = 0; row < height; row++)
+                {
+                    zlib.Write(scanline);
+                }
+            }
+            else
+            {
+                zlib.Write([0, 0, 0, 0, 0]);
+            }
         }
 
         WritePngChunk(output, "IDAT"u8, compressed.ToArray());
@@ -582,6 +886,59 @@ public class HtmlRendererTests
         }
 
         return output.ToArray();
+    }
+
+    private static byte[] InsertPngChunk(
+        byte[] png,
+        string chunkType,
+        ReadOnlySpan<byte> chunkData,
+        string beforeChunkType)
+    {
+        if (chunkType.Length != 4 || beforeChunkType.Length != 4)
+        {
+            throw new ArgumentException("PNG test chunk names must contain exactly four characters.");
+        }
+
+        using var output = new MemoryStream();
+        output.Write(png.AsSpan(0, 8));
+        var position = 8;
+        var inserted = false;
+        while (position < png.Length)
+        {
+            var dataLength = checked((int)BinaryPrimitives.ReadUInt32BigEndian(png.AsSpan(position, 4)));
+            var existingType = Encoding.ASCII.GetString(png, position + 4, 4);
+            if (!inserted && string.Equals(existingType, beforeChunkType, StringComparison.Ordinal))
+            {
+                WritePngChunk(output, Encoding.ASCII.GetBytes(chunkType), chunkData);
+                inserted = true;
+            }
+
+            output.Write(png.AsSpan(position, 12 + dataLength));
+            position += 12 + dataLength;
+        }
+
+        if (!inserted)
+        {
+            throw new InvalidOperationException($"PNG test insertion point {beforeChunkType} was not found.");
+        }
+
+        return output.ToArray();
+    }
+
+    private static byte[] BuildJpeg()
+        => Convert.FromBase64String(
+            "/9j/4AAQSkZJRgABAQEAYABgAAD/2wBDAAMCAgMCAgMDAwMEAwMEBQgFBQQEBQoHBwYIDAoMDAsKCwsNDhIQDQ4RDgsLEBYQERMUFRUVDA8XGBYUGBIUFRT/2wBDAQMEBAUEBQkFBQkUDQsNFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBT/wAARCAACAAIDASIAAhEBAxEB/8QAHwAAAQUBAQEBAQEAAAAAAAAAAAECAwQFBgcICQoL/8QAtRAAAgEDAwIEAwUFBAQAAAF9AQIDAAQRBRIhMUEGE1FhByJxFDKBkaEII0KxwRVS0fAkM2JyggkKFhcYGRolJicoKSo0NTY3ODk6Q0RFRkdISUpTVFVWV1hZWmNkZWZnaGlqc3R1dnd4eXqDhIWGh4iJipKTlJWWl5iZmqKjpKWmp6ipqrKztLW2t7i5usLDxMXGx8jJytLT1NXW19jZ2uHi4+Tl5ufo6erx8vP09fb3+Pn6/8QAHwEAAwEBAQEBAQEBAQAAAAAAAAECAwQFBgcICQoL/8QAtREAAgECBAQDBAcFBAQAAQJ3AAECAxEEBSExBhJBUQdhcRMiMoEIFEKRobHBCSMzUvAVYnLRChYkNOEl8RcYGRomJygpKjU2Nzg5OkNERUZHSElKU1RVVldYWVpjZGVmZ2hpanN0dXZ3eHl6goOEhYaHiImKkpOUlZaXmJmaoqOkpaanqKmqsrO0tba3uLm6wsPExcbHyMnK0tPU1dbX2Nna4uPk5ebn6Onq8vP09fb3+Pn6/9oADAMBAAIRAxEAPwD8qqKKKAP/2Q==");
+
+    private static int FindJpegMarker(byte[] jpeg, byte marker)
+    {
+        ReadOnlySpan<byte> markerBytes = [0xFF, marker];
+        var offset = jpeg.AsSpan().IndexOf(markerBytes);
+        if (offset <= 0)
+        {
+            throw new InvalidOperationException($"Synthetic JPEG marker 0xFF{marker:X2} was not found.");
+        }
+
+        return offset;
     }
 
     private static void WritePngChunk(Stream output, ReadOnlySpan<byte> type, ReadOnlySpan<byte> data)
@@ -628,6 +985,7 @@ public class HtmlRendererTests
     private sealed class OneAssetCatalog : IAssetCatalog
     {
         private readonly ReadOnlyMemory<byte> _content;
+        private readonly Action? _onContentRead;
         private readonly AssetProvenance _provenance;
 
         internal int FindCalls { get; private set; }
@@ -638,9 +996,11 @@ public class HtmlRendererTests
             AssetId id,
             ReadOnlyMemory<byte> content,
             string mimeType,
-            ReadOnlyMemory<byte>? recordedContent = null)
+            ReadOnlyMemory<byte>? recordedContent = null,
+            Action? onContentRead = null)
         {
             _content = content;
+            _onContentRead = onContentRead;
             _provenance = new AssetProvenance(
                 id,
                 "concept.test",
@@ -669,6 +1029,7 @@ public class HtmlRendererTests
             ContentCalls++;
             if (id == _provenance.Id)
             {
+                _onContentRead?.Invoke();
                 content = _content;
                 mimeType = _provenance.MimeType;
                 return true;
