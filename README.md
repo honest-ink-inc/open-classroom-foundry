@@ -14,7 +14,11 @@ The machine never appears to be the master teacher. The teacher remains the acco
 
 ## Status
 
-**Pre-0.0 — charter phase (Days 1–15 of the implementation plan).** No application code exists yet. This repository currently holds the governing documents, architecture decision records, and the solution skeleton. The audited Writer's Kiosk baseline (commit `c2b670b`, 75 passing tests) lives at [Spacejunk-io/writers-kiosk-csharp](https://github.com/Spacejunk-io/writers-kiosk-csharp) and is refactored behind interfaces during Release 0.0, not copied here wholesale.
+**0.7.0-alpha — the software runs, and it is not 1.0.** A Windows desktop application builds from this repository and does real work offline: a **Press Room** of 56 deterministic printable engines across 23 recipes, and **All Aboard**, the visual-support studio, mode-complete. Every output passes a teacher's approve gate before anything renders, prints, exports, or is saved; projects save to the open `.ocfproj` format and reopen without the application that made them. **665 automated tests** run green across six suites, and CI gates warnings-as-errors, formatting, 93% core coverage, a secret scan, and byte-for-byte determinism — the sample outputs are generated twice on a machine nobody tuned and compared with no exclusions.
+
+**What is honestly not done.** Nine module builders — Board to Brief, Access Remix, Directions Duet, Scaffold Smith, Talk Moves Studio, Lesson Loom, Exit Lens, Rubric Relay, Source Lens — are written and tested but have **no door**: no teacher can reach them from the running application yet. The application's own chrome is English-only (the pseudo-locale proves every string is externalized; no second language is shipped). The build is **unsigned** — an unsigned zip is a build, not a release — and there is no installer. **No pilot has run.** The six-week staff pilot is prepared in full and its opening date is pending; see the [moved calendar](docs/handover/2026-08-29-the-moved-calendar.md). The second maintainer's seat is open, and the bus factor is one.
+
+The audited Writer's Kiosk baseline (commit `c2b670b`, 75 passing tests) lives at [Spacejunk-io/writers-kiosk-csharp](https://github.com/Spacejunk-io/writers-kiosk-csharp); its reusable components were refactored behind interfaces during Release 0.0 rather than copied here wholesale. Release-readiness is tracked honestly, item by item, in the [1.0 hardening checklist](docs/release/hardening-checklist.md) — every open human row there is a reason this is not 1.0.
 
 ## What gets built, in order
 
