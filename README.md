@@ -54,4 +54,4 @@ Three commitments beyond the code: a **paper-first guarantee** (every module's p
 
 ## Contributing
 
-See [CONTRIBUTING.md](CONTRIBUTING.md) and [GOVERNANCE.md](GOVERNANCE.md). One rule outranks all others: **no student work, student data, or identifying classroom material ever enters this repository** — not in code, fixtures, issues, or documentation. Security and privacy reports: [SECURITY.md](SECURITY.md).
+See [CONTRIBUTING.md](CONTRIBUTING.md) and [GOVERNANCE.md](GOVERNANCE.md); automated contributors also read [AGENTS.md](AGENTS.md). Three rules outrank all others — no credentials, no blind-study instruments, and above all **no student work, student data, or identifying classroom material ever enters this repository** — not in code, fixtures, issues, or documentation. Security and privacy reports: [SECURITY.md](SECURITY.md).

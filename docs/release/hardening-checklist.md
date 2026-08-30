@@ -17,6 +17,21 @@
 | District readiness (Gate 3) | **HUMAN — packet ready** | `docs/district/gate-3-readiness-packet.md` incl. the written-approval instrument; delivery target 4 Sep 2026 |
 | Second maintainer | **HUMAN** | The sustainability DoD item; recruitment plan in the coordination plan; still the bus factor's only cure |
 
+## Pre-publication check (run before anything becomes newly visible)
+
+**Added 30 Aug 2026, because its absence cost something.** The repository was made public on 29 August with the seeded-error study’s answer key inside it. Nothing was lost — no forks, no stars, no participant had the URL — but nothing had *prevented* it either. Every other rule in this project governs what **enters** the repository; that failure was a **visibility change**, and content that is harmless while private can be harmful the instant it is public.
+
+Run this before a visibility change, a release, a site publish, or a public filing. It is short on purpose.
+
+| # | Check | Why |
+|---|---|---|
+| 1 | **Scan the whole history, not the working tree.** `gitleaks git .` over full history, plus a manual pass for emails and deleted files (`git log --all --diff-filter=D --name-only`). | Publishing publishes every commit ever made. Removing a file today does not unpublish it tomorrow. |
+| 2 | **List what becomes readable that was not.** Ask of each: would this harm anyone, or invalidate anything, if a participant, a district, or a stranger read it? | The key was not a credential and no scanner would ever have flagged it. Only a person asking this question finds that class of thing. |
+| 3 | **Check the claims, not just the contents.** Does the README, the site index, and every status line say something true *today*? | The front page said "No application code exists yet" while 665 tests were passing. A false claim published is worse than an unpublished truth. |
+| 4 | **Name what the act cannot be undone.** Write down what becomes permanent — an indexed page, a public filing, an archived clone. | ADR-006 holds a counsel checkpoint in front of public use of the name; a USPTO filing is public and permanent in a way a website is not. |
+| 5 | **Confirm the gates are green by reading their conclusion**, not a wrapper’s exit code. | CI was twice reported green while red, because `gh run watch --exit-status` was trusted instead of the run’s own `conclusion`. |
+
+A finding at step 2 is not automatically a stop. The honest response to the study key was to publish anyway and **regenerate the instrument** — the protocol had anticipated exactly that, and the cost was one command. The point of the check is that the decision is *made*, not stumbled into.
 ## Rollback drill (documented procedure)
 
 1. Every release is a signed tag; `git checkout <previous-tag>` + `tools/publish.ps1` reproduces the prior build (deterministic builds, pinned SDK).

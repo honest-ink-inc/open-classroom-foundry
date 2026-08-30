@@ -44,3 +44,23 @@ Desktop.ini
 # obviously-fictional example is tracked.
 docs/evidence/pilot-kit/seeded-packets.json
 **/FACILITATOR-KEY.md
+# Credentials and secrets - NEVER committed, in any form, by any contributor,
+# human or automated. The CI scan is a backstop that runs after a commit
+# exists; these patterns and the pre-commit hook (tools/install-hooks.ps1)
+# are the guard. Extend this list rather than making an exception to it.
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.pfx
+*.p12
+*.publishsettings
+id_rsa*
+id_ed25519*
+secrets.json
+appsettings.*.local.json
+
+# A locally dropped secret scanner, so the hook can find one without a
+# system-wide install.
+tools/bin/

@@ -2,9 +2,31 @@
 
 Thank you for helping build free tools for teachers. The project is in its charter phase — contributions right now are mostly review, co-design, and fixtures, not code.
 
-## The one rule that outranks everything
+## The rules that outrank everything
 
-**No student work, student data, or identifying classroom material ever enters this repository.** Not in code, tests, fixtures, issues, pull requests, screenshots, discussion, or documentation. All fixtures and examples must be synthetic, teacher-authored, public-domain, or openly licensed OER — and marked as such. If you accidentally include such material, report it privately per [SECURITY.md](SECURITY.md) immediately; do not push a "fix" commit that leaves it in history.
+Three kinds of thing must never enter this repository. The first is the oldest and still the gravest; the other two were learned here, the hard way.
+
+**1. No student work, student data, or identifying classroom material.** Not in code, tests, fixtures, issues, pull requests, screenshots, discussion, or documentation. All fixtures and examples must be synthetic, teacher-authored, public-domain, or openly licensed OER — and marked as such. If you accidentally include such material, report it privately per [SECURITY.md](SECURITY.md) immediately; do not push a "fix" commit that leaves it in history.
+
+**2. No credentials.** API keys, tokens, passwords, connection strings, private keys, certificates, `.env` files — none of it, not even briefly, not even in a branch. Git history is permanent and **this repository is public**: a committed key is a burned key even if the next commit removes it. Rotate it; do not merely delete it.
+
+**3. No blind-study instruments.** The seeded-error study’s definitions and its facilitator key stay with the facilitator, outside this repository (see [the pilot kit](docs/evidence/pilot-kit/README.md)). These are not secrets in a security sense; they are secrets in a *research* sense, and the harm is quieter: **a participant who has seen the key is trained, not testing.** The study gates the pilot, so leaking it costs the evidence, not the data.
+
+### And one question that is not about what enters
+
+Before anything becomes **newly visible** — repository visibility, a release, the site, a public filing — run the pre-publication check in the [1.0 hardening checklist](docs/release/hardening-checklist.md). Content that is harmless in a private repository can be harmful the moment it is public, and **publishing publishes the whole history, not the working tree**. That check exists because this project once made a repository public with a study answer key inside it.
+
+### These are guarded by machinery, not goodwill
+
+`.gitignore` refuses the obvious filenames; a **pre-commit hook** scans staged changes and refuses the commit before history exists; `RepositoryHygieneTests` fails the build if a credential or answer key is ever tracked; and CI scans the full history on every push. Install the hook in every working copy — hooks are per-clone and are never inherited:
+
+```
+pwsh tools/install-hooks.ps1
+```
+
+If the hook refuses your commit, it is working. Fix the content, never the hook.
+
+**Automated contributors** — LLM agents committing on the project’s behalf — are bound by all of the above and by [AGENTS.md](AGENTS.md), which additionally names the acts an agent must never perform without a human: changing repository visibility, publishing, tagging or distributing a release, sending correspondence, and filing anything public.
 
 ## What contributions are welcome now
 
