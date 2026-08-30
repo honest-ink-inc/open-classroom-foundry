@@ -219,6 +219,8 @@ public sealed class CiSupplyChainContractTests
         Assert.Contains("cmp --silent", workflow, StringComparison.Ordinal);
         Assert.Contains("samples-windows/${file}", workflow, StringComparison.Ordinal);
         Assert.Contains("Windows and Linux sample files matched byte-for-byte", workflow, StringComparison.Ordinal);
+        Assert.Contains("name: linux-sample-candidate", workflow, StringComparison.Ordinal);
+        Assert.Contains("if: ${{ always() && hashFiles('samples-linux-a/**') != '' }}", workflow, StringComparison.Ordinal);
         Assert.Contains("test -x .githooks/pre-commit", workflow, StringComparison.Ordinal);
         Assert.Contains("GIT_INDEX_FILE=\"${PWD}\"", workflow, StringComparison.Ordinal);
         Assert.Contains("scratch/packet-synthetic.print.html", workflow, StringComparison.Ordinal);
