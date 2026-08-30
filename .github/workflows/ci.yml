@@ -87,7 +87,7 @@ jobs:
         run: dotnet build OpenClassroomFoundry.slnx --no-restore --configuration Release
 
       - name: Format gate (whitespace + curated style + analyzers)
-        run: dotnet format OpenClassroomFoundry.slnx --verify-no-changes
+        run: dotnet format OpenClassroomFoundry.slnx --no-restore --verify-no-changes
 
       - name: Test with coverage
         run: dotnet test OpenClassroomFoundry.slnx --no-build --configuration Release --logger "trx;LogFileName=test-results.trx" --collect:"XPlat Code Coverage"

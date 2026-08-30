@@ -84,6 +84,10 @@ public sealed class CiSupplyChainContractTests
         Assert.Contains("dotnet restore OpenClassroomFoundry.slnx --locked-mode --configfile NuGet.config", workflow, StringComparison.Ordinal);
         Assert.Contains("--runtime win-x64 --locked-mode", workflow, StringComparison.Ordinal);
         Assert.Contains("-p:NuGetLockFilePath=packages.win-x64.lock.json", workflow, StringComparison.Ordinal);
+        Assert.Contains(
+            "dotnet format OpenClassroomFoundry.slnx --no-restore --verify-no-changes",
+            workflow,
+            StringComparison.Ordinal);
         Assert.Contains("repository-build-dependency-inventory.json", workflow, StringComparison.Ordinal);
         Assert.Contains("repository-build-sbom.cdx.json", workflow, StringComparison.Ordinal);
         Assert.Contains("distributable-app-dependency-inventory.json", workflow, StringComparison.Ordinal);
