@@ -331,6 +331,89 @@ public sealed class MinimumHardwareFloorTests
             AssertFloor(host);
         });
 
+    [Fact]
+    public void Floor_assertion_requires_list_item_text_to_fit_or_have_a_horizontal_reading_path()
+        => RunSta(() =>
+        {
+            const string LongSafeguard =
+                "Synthetic safeguard text is deliberately wider than its list and must remain fully readable.";
+
+            using (var clippedForm = SyntheticChromeForm())
+            {
+                var clipped = new ListBox
+                {
+                    AccessibleName = "Synthetic clipped safeguards",
+                    Location = new Point(20, 20),
+                    Size = new Size(150, 100),
+                };
+                clipped.Items.Add(LongSafeguard);
+                clippedForm.Controls.Add(clipped);
+                using var clippedHost = PrepareAtFloor(clippedForm, 1.0f, maximize: false);
+
+                var failure = Assert.ThrowsAny<Xunit.Sdk.XunitException>(() => AssertFloor(clippedHost));
+                Assert.Contains(LongSafeguard, failure.Message, StringComparison.Ordinal);
+                Assert.Contains("horizontal reading path", failure.Message, StringComparison.Ordinal);
+            }
+
+            using (var verticalScrollForm = SyntheticChromeForm())
+            {
+                var verticalScroll = new ListBox
+                {
+                    AccessibleName = "Synthetic vertical-scroll safeguards",
+                    IntegralHeight = false,
+                    Location = new Point(20, 20),
+                    Size = new Size(150, 100),
+                };
+                var widthWithoutScrollBar = Math.Max(0, verticalScroll.ClientSize.Width - 4);
+                var widthWithScrollBar = Math.Max(
+                    0,
+                    widthWithoutScrollBar - SystemInformation.VerticalScrollBarWidth);
+                var boundaryText = "i";
+                while (TextRenderer.MeasureText(
+                           boundaryText,
+                           verticalScroll.Font,
+                           Size.Empty,
+                           TextFormatFlags.SingleLine | TextFormatFlags.NoPadding | TextFormatFlags.NoPrefix).Width
+                       <= widthWithScrollBar)
+                {
+                    boundaryText += "i";
+                }
+
+                var boundaryWidth = TextRenderer.MeasureText(
+                    boundaryText,
+                    verticalScroll.Font,
+                    Size.Empty,
+                    TextFormatFlags.SingleLine | TextFormatFlags.NoPadding | TextFormatFlags.NoPrefix).Width;
+                Assert.InRange(boundaryWidth, widthWithScrollBar + 1, widthWithoutScrollBar);
+                verticalScroll.Items.Add(boundaryText);
+                for (var index = 0; index < 30; index++)
+                {
+                    verticalScroll.Items.Add($"Synthetic item {index}");
+                }
+
+                verticalScrollForm.Controls.Add(verticalScroll);
+                using var verticalScrollHost = PrepareAtFloor(verticalScrollForm, 1.0f, maximize: false);
+
+                var failure = Assert.ThrowsAny<Xunit.Sdk.XunitException>(() => AssertFloor(verticalScrollHost));
+                Assert.Contains(boundaryText, failure.Message, StringComparison.Ordinal);
+                Assert.Contains("horizontal reading path", failure.Message, StringComparison.Ordinal);
+            }
+
+            using var readableForm = SyntheticChromeForm();
+            var readable = new ListBox
+            {
+                AccessibleName = "Synthetic readable safeguards",
+                HorizontalScrollbar = true,
+                Location = new Point(20, 20),
+                Size = new Size(150, 100),
+            };
+            readable.Items.Add(LongSafeguard);
+            readableForm.Controls.Add(readable);
+            using var readableHost = PrepareAtFloor(readableForm, 1.0f, maximize: false);
+
+            AssertFloor(readableHost);
+        });
+
     private static void ExerciseEveryReviewTabAtFloor(FloorHost floor)
     {
         var tabs = Descendants(floor.ClientCanvas).OfType<TabControl>().Single();
@@ -565,6 +648,11 @@ public sealed class MinimumHardwareFloorTests
                 $"{form.GetType().Name}: '{name}' ({control.GetType().Name}) is clipped " +
                 "inside a non-scrollable viewport at the 1366 x 768 floor. " +
                 BoundsTrace(control));
+
+            if (control is ListBox list)
+            {
+                AssertListItemTextIsReadable(form, list);
+            }
         }
 
         foreach (var chrome in Descendants(floor.ClientCanvas)
@@ -601,6 +689,33 @@ public sealed class MinimumHardwareFloorTests
 
     private static bool IsNoninteractiveChrome(Control control)
         => control is Label or GroupBox or TabControl or DataGridView;
+
+    private static void AssertListItemTextIsReadable(Form form, ListBox list)
+    {
+        var verticalScrollBarWidth = list.ScrollAlwaysVisible
+            || (!list.MultiColumn && (long)list.ItemHeight * list.Items.Count > list.ClientSize.Height)
+                ? SystemInformation.VerticalScrollBarWidth
+                : 0;
+        var availableWidth = Math.Max(0, list.ClientSize.Width - 4 - verticalScrollBarWidth);
+        foreach (var item in list.Items.Cast<object>())
+        {
+            var text = item.ToString() ?? "";
+            if (text.Length == 0)
+            {
+                continue;
+            }
+
+            var required = TextRenderer.MeasureText(
+                text,
+                list.Font,
+                Size.Empty,
+                TextFormatFlags.SingleLine | TextFormatFlags.NoPadding | TextFormatFlags.NoPrefix);
+            Assert.True(
+                required.Width <= availableWidth || list.HorizontalScrollbar,
+                $"{form.GetType().Name}: list item '{text}' requires {required.Width}px, but its " +
+                $"visible list offers {availableWidth}px and has no horizontal reading path.");
+        }
+    }
 
     private static void AssertLabelTextFits(Form form, Label label)
     {

@@ -51,10 +51,14 @@ public sealed class ReviewForm : Form
 
         // The title is the first thing a screen reader announces: the draft
         // state must be audible there, not only visual (walkthrough step 8).
-        Text = UiStrings.ReviewWindowTitle;
+        Text = UiStrings.WithoutMnemonic(UiStrings.ReviewWindowTitle);
         MinimumSize = new Size(720, 480);
 
-        _nodeList = new ListBox { Dock = DockStyle.Fill, AccessibleName = UiStrings.DraftElements };
+        _nodeList = new ListBox
+        {
+            Dock = DockStyle.Fill,
+            AccessibleName = UiStrings.WithoutMnemonic(UiStrings.DraftElements),
+        };
         _nodeList.SelectedIndexChanged += (_, _) => SelectionChanged();
 
         _editor = new TextBox
@@ -62,14 +66,14 @@ public sealed class ReviewForm : Form
             Dock = DockStyle.Fill,
             Multiline = true,
             ScrollBars = ScrollBars.Vertical,
-            AccessibleName = UiStrings.SelectedElementText,
+            AccessibleName = UiStrings.WithoutMnemonic(UiStrings.SelectedElementText),
         };
         _editor.TextChanged += (_, _) => EditorTextChanged();
 
         _issueList = new ListBox
         {
             Dock = DockStyle.Fill,
-            AccessibleName = UiStrings.ValidationIssues,
+            AccessibleName = UiStrings.WithoutMnemonic(UiStrings.ValidationIssues),
             HorizontalScrollbar = true,
         };
         _issueList.SelectedIndexChanged += (_, _) => LoadIssueDetail();
@@ -80,15 +84,15 @@ public sealed class ReviewForm : Form
             ReadOnly = true,
             WordWrap = true,
             ScrollBars = ScrollBars.Vertical,
-            AccessibleName = UiStrings.SelectedValidationIssueDetail,
+            AccessibleName = UiStrings.WithoutMnemonic(UiStrings.SelectedValidationIssueDetail),
         };
         _editStatus = new Label
         {
             AutoSize = false,
             Dock = DockStyle.Bottom,
             Height = 36,
-            AccessibleName = UiStrings.PendingEditMustBeAppliedOrRejected,
             AccessibleRole = AccessibleRole.StatusBar,
+            UseMnemonic = false,
             Visible = false,
         };
 
@@ -102,12 +106,12 @@ public sealed class ReviewForm : Form
             AutoSize = true,
             Text = UiStrings.ReviewWarningsAcknowledgement,
             AccessibleName = UiStrings.WithoutMnemonic(UiStrings.ReviewWarningsAcknowledgement),
-            AccessibleDescription = UiStrings.ReviewWarningsAcknowledgementDescription,
+            AccessibleDescription = UiStrings.WithoutMnemonic(UiStrings.ReviewWarningsAcknowledgementDescription),
         };
         _acknowledgeWarnings.CheckedChanged += (_, _) => AcknowledgementChanged();
         _approve = MakeButton(UiStrings.Approve, (_, _) => ApproveAndClose());
         // Approval must state what it means, not just "OK" (walkthrough step 11).
-        _approve.AccessibleDescription = UiStrings.ApproveDescription;
+        _approve.AccessibleDescription = UiStrings.WithoutMnemonic(UiStrings.ApproveDescription);
         _reject = MakeButton(UiStrings.Reject, (_, _) => RejectAndClose());
 
         var buttons = new FlowLayoutPanel { Dock = DockStyle.Bottom, AutoSize = true, FlowDirection = FlowDirection.LeftToRight };
@@ -121,7 +125,7 @@ public sealed class ReviewForm : Form
         {
             Dock = DockStyle.Fill,
             Orientation = Orientation.Vertical,
-            AccessibleName = UiStrings.SplitterDraftEditor,
+            AccessibleName = UiStrings.WithoutMnemonic(UiStrings.SplitterDraftEditor),
         };
         split.Panel1.Controls.Add(_nodeList);
 
@@ -129,7 +133,7 @@ public sealed class ReviewForm : Form
         {
             Dock = DockStyle.Fill,
             Orientation = Orientation.Horizontal,
-            AccessibleName = UiStrings.SplitterEditorIssues,
+            AccessibleName = UiStrings.WithoutMnemonic(UiStrings.SplitterEditorIssues),
         };
         rightSplit.Panel1.Controls.Add(_editor);
         rightSplit.Panel1.Controls.Add(_editStatus);
@@ -165,21 +169,23 @@ public sealed class ReviewForm : Form
             Dock = DockStyle.Top,
             AutoSize = true,
             Padding = new Padding(6),
-            Text = UiStrings.UnapprovedPreviewStatus,
-            AccessibleName = UiStrings.UnapprovedPreviewStatus,
+            Text = UiStrings.WithoutMnemonic(UiStrings.UnapprovedPreviewStatus),
+            AccessibleName = UiStrings.WithoutMnemonic(UiStrings.UnapprovedPreviewStatus),
             AccessibleRole = AccessibleRole.StatusBar,
+            UseMnemonic = false,
         };
         _previewProfile = new Label
         {
             Dock = DockStyle.Top,
             AutoSize = true,
             Padding = new Padding(6),
+            UseMnemonic = false,
         };
         _previewBrowser = new WebBrowser
         {
             Dock = DockStyle.Fill,
-            AccessibleName = UiStrings.UnapprovedVisualPreview,
-            AccessibleDescription = UiStrings.UnapprovedPreviewBrowser,
+            AccessibleName = UiStrings.WithoutMnemonic(UiStrings.UnapprovedVisualPreview),
+            AccessibleDescription = UiStrings.WithoutMnemonic(UiStrings.UnapprovedPreviewBrowser),
             AllowWebBrowserDrop = false,
             IsWebBrowserContextMenuEnabled = false,
             WebBrowserShortcutsEnabled = false,
@@ -199,7 +205,7 @@ public sealed class ReviewForm : Form
         _reviewTabs = new TabControl
         {
             Dock = DockStyle.Fill,
-            AccessibleName = UiStrings.ReviewWindowTitle,
+            AccessibleName = UiStrings.WithoutMnemonic(UiStrings.ReviewWindowTitle),
         };
         _reviewTabs.TabPages.AddRange([elementsPage, comparisonPage, previewPage]);
 
@@ -236,7 +242,7 @@ public sealed class ReviewForm : Form
             ReadOnly = true,
             WordWrap = true,
             ScrollBars = ScrollBars.Both,
-            AccessibleName = accessibleName,
+            AccessibleName = UiStrings.WithoutMnemonic(accessibleName),
         };
 
     private static GroupBox Group(string text, Control content)
@@ -245,7 +251,7 @@ public sealed class ReviewForm : Form
         {
             Dock = DockStyle.Fill,
             Text = text,
-            AccessibleName = text,
+            AccessibleName = UiStrings.WithoutMnemonic(text),
             Padding = new Padding(6),
         };
         group.Controls.Add(content);
@@ -259,7 +265,7 @@ public sealed class ReviewForm : Form
         if (_editorDirty && !_explicitClose)
         {
             e.Cancel = true;
-            _editStatus.Text = UiStrings.PendingEditMustBeAppliedOrRejected;
+            SetEditStatus(UiStrings.PendingEditMustBeAppliedOrRejected);
             _editStatus.Visible = true;
             _applyEdit.Focus();
             // The legacy embedded browser tears its active document down while
@@ -472,7 +478,7 @@ public sealed class ReviewForm : Form
         _issueList.Items.Clear();
         foreach (var issue in _session.Issues)
         {
-            _issueList.Items.Add(UiStrings.Format(
+            _issueList.Items.Add(UiStrings.FormatWithoutMnemonic(
                 UiStrings.IssueLine,
                 DisplaySeverity(issue.Severity),
                 issue.Message));
@@ -485,8 +491,9 @@ public sealed class ReviewForm : Form
         _refreshingAcknowledgement = true;
         _session.SetRequiredIssuesAcknowledged(acknowledged: false);
         _acknowledgeWarnings.Checked = false;
-        _acknowledgeWarnings.Visible = _session.RequiredAcknowledgements.Count > 0;
-        _acknowledgeWarnings.Enabled = _acknowledgeWarnings.Visible;
+        var requiresAcknowledgement = _session.RequiredAcknowledgements.Count > 0;
+        _acknowledgeWarnings.Visible = requiresAcknowledgement;
+        _acknowledgeWarnings.Enabled = requiresAcknowledgement;
         _refreshingAcknowledgement = false;
 
         RefreshComparisonAndPreview();
@@ -497,26 +504,26 @@ public sealed class ReviewForm : Form
     {
         var source = _session.ViewContext.Source;
         _sourceContext.Text = source is null
-            ? UiStrings.SourceUnavailable
+            ? UiStrings.WithoutMnemonic(UiStrings.SourceUnavailable)
             : string.Join(
                 Environment.NewLine,
                 source.Description,
-                UiStrings.Format(UiStrings.ExactSourceCodeUnitCount, source.ExactText.Length),
-                UiStrings.ExactSourceBegins,
+                UiStrings.FormatWithoutMnemonic(UiStrings.ExactSourceCodeUnitCount, source.ExactText.Length),
+                UiStrings.WithoutMnemonic(UiStrings.ExactSourceBegins),
                 source.ExactText,
-                UiStrings.ExactSourceEnds);
+                UiStrings.WithoutMnemonic(UiStrings.ExactSourceEnds));
         _currentDraft.Text = ExactArtifactDocumentText.Describe(
             _session.Draft.Revision.Document);
 
         var request = _session.ViewContext.PreviewRequest;
-        _previewProfile.Text = UiStrings.Format(
+        _previewProfile.Text = UiStrings.FormatWithoutMnemonic(
             UiStrings.UnapprovedPreviewProfile,
             DisplayPreviewTarget(request.Target),
             DisplayAudience(request.Audience),
             request.TextScalePercent.ToString("0.###", CultureInfo.InvariantCulture),
-            request.TargetLanguageFirst
+            UiStrings.WithoutMnemonic(request.TargetLanguageFirst
                 ? UiStrings.PreviewTargetLanguageFirst
-                : UiStrings.PreviewSourceLanguageFirst);
+                : UiStrings.PreviewSourceLanguageFirst));
         _previewProfile.AccessibleName = _previewProfile.Text;
 
         var generation = _previewReadiness.BeginLoad();
@@ -548,7 +555,7 @@ public sealed class ReviewForm : Form
         {
             _previewReadiness.Fail(generation);
             _previewBrowser.DocumentText = string.Empty;
-            SetPreviewStatus(UiStrings.Format(UiStrings.PreviewUnavailable, failure.Message));
+            SetPreviewStatus(UiStrings.PreviewUnavailable, failure.Message);
         }
     }
 
@@ -596,10 +603,11 @@ public sealed class ReviewForm : Form
         UpdateActionAvailability();
     }
 
-    private void SetPreviewStatus(string status)
+    private void SetPreviewStatus(string template, params object?[] arguments)
     {
-        _previewStatus.Text = status;
-        _previewStatus.AccessibleName = status;
+        var text = UiStrings.FormatWithoutMnemonic(template, arguments);
+        _previewStatus.Text = text;
+        _previewStatus.AccessibleName = text;
     }
 
     private void UpdateActionAvailability()
@@ -618,15 +626,22 @@ public sealed class ReviewForm : Form
             && _previewReadiness.IsReadyFor(
                 _session.Draft.Revision,
                 _session.ViewContext.PreviewRequest);
-        _editStatus.Text = _editorDirty ? UiStrings.PendingEditMustBeAppliedOrRejected : string.Empty;
+        SetEditStatus(_editorDirty ? UiStrings.PendingEditMustBeAppliedOrRejected : string.Empty);
         _editStatus.Visible = _editorDirty;
+    }
+
+    private void SetEditStatus(string template, params object?[] arguments)
+    {
+        var text = UiStrings.FormatWithoutMnemonic(template, arguments);
+        _editStatus.Text = text;
+        _editStatus.AccessibleName = text;
     }
 
     private void LoadIssueDetail()
     {
         _issueDetail.Text = _issueList.SelectedIndex >= 0
             && _issueList.SelectedIndex < _session.Issues.Count
-                ? UiStrings.Format(
+                ? UiStrings.FormatWithoutMnemonic(
                     UiStrings.IssueLine,
                     DisplaySeverity(_session.Issues[_issueList.SelectedIndex].Severity),
                     _session.Issues[_issueList.SelectedIndex].Message)
@@ -635,21 +650,21 @@ public sealed class ReviewForm : Form
 
     private static string Describe(DocumentNode node) => node switch
     {
-        Heading heading => UiStrings.Format(UiStrings.NodeHeading, heading.Level, heading.Text),
-        Paragraph paragraph => UiStrings.Format(UiStrings.NodeParagraph, paragraph.Text),
-        OrderedSteps steps => UiStrings.Format(UiStrings.NodeSteps, steps.Steps.Count),
-        UnorderedList list => UiStrings.Format(UiStrings.NodeList, list.Items.Count),
-        TableNode table => UiStrings.Format(UiStrings.NodeTable, table.Rows.Count),
-        Card card => UiStrings.Format(UiStrings.NodeCard, card.Title),
-        ImageReference image => UiStrings.Format(UiStrings.NodeImage, image.AltText),
-        BilingualPair pair => UiStrings.Format(UiStrings.NodeBilingual, pair.SourceText),
-        ChoiceSet choices => UiStrings.Format(UiStrings.NodeChoices, choices.Options.Count),
-        EvidenceLink evidence => UiStrings.Format(UiStrings.NodeEvidence, evidence.Claim),
-        Citation citation => UiStrings.Format(UiStrings.NodeCitation, citation.Text),
-        TeacherOnlyNotice notice => UiStrings.Format(UiStrings.NodeTeacherOnly, notice.Text),
-        StepRow => UiStrings.NodeStepRow,
-        PageBreak => UiStrings.NodePageBreak,
-        VectorGraphic graphic => UiStrings.Format(UiStrings.NodeVectorGraphic, graphic.Description),
+        Heading heading => UiStrings.FormatWithoutMnemonic(UiStrings.NodeHeading, heading.Level, heading.Text),
+        Paragraph paragraph => UiStrings.FormatWithoutMnemonic(UiStrings.NodeParagraph, paragraph.Text),
+        OrderedSteps steps => UiStrings.FormatWithoutMnemonic(UiStrings.NodeSteps, steps.Steps.Count),
+        UnorderedList list => UiStrings.FormatWithoutMnemonic(UiStrings.NodeList, list.Items.Count),
+        TableNode table => UiStrings.FormatWithoutMnemonic(UiStrings.NodeTable, table.Rows.Count),
+        Card card => UiStrings.FormatWithoutMnemonic(UiStrings.NodeCard, card.Title),
+        ImageReference image => UiStrings.FormatWithoutMnemonic(UiStrings.NodeImage, image.AltText),
+        BilingualPair pair => UiStrings.FormatWithoutMnemonic(UiStrings.NodeBilingual, pair.SourceText),
+        ChoiceSet choices => UiStrings.FormatWithoutMnemonic(UiStrings.NodeChoices, choices.Options.Count),
+        EvidenceLink evidence => UiStrings.FormatWithoutMnemonic(UiStrings.NodeEvidence, evidence.Claim),
+        Citation citation => UiStrings.FormatWithoutMnemonic(UiStrings.NodeCitation, citation.Text),
+        TeacherOnlyNotice notice => UiStrings.FormatWithoutMnemonic(UiStrings.NodeTeacherOnly, notice.Text),
+        StepRow => UiStrings.WithoutMnemonic(UiStrings.NodeStepRow),
+        PageBreak => UiStrings.WithoutMnemonic(UiStrings.NodePageBreak),
+        VectorGraphic graphic => UiStrings.FormatWithoutMnemonic(UiStrings.NodeVectorGraphic, graphic.Description),
         _ => node.GetType().Name,
     };
 
@@ -659,38 +674,38 @@ public sealed class ReviewForm : Form
         switch (node)
         {
             case Heading heading:
-                lines.Add(UiStrings.Format(UiStrings.NodeHeading, heading.Level, heading.Text));
+                lines.Add(UiStrings.FormatWithoutMnemonic(UiStrings.NodeHeading, heading.Level, heading.Text));
                 break;
 
             case OrderedSteps steps:
-                lines.Add(UiStrings.Format(UiStrings.NodeSteps, steps.Steps.Count));
+                lines.Add(UiStrings.FormatWithoutMnemonic(UiStrings.NodeSteps, steps.Steps.Count));
                 for (var index = 0; index < steps.Steps.Count; index++)
                 {
-                    lines.Add(UiStrings.Format(UiStrings.NodeOrderedStepItem, index + 1, steps.Steps[index]));
+                    lines.Add(UiStrings.FormatWithoutMnemonic(UiStrings.NodeOrderedStepItem, index + 1, steps.Steps[index]));
                 }
 
                 break;
 
             case UnorderedList list:
-                lines.Add(UiStrings.Format(UiStrings.NodeList, list.Items.Count));
+                lines.Add(UiStrings.FormatWithoutMnemonic(UiStrings.NodeList, list.Items.Count));
                 for (var index = 0; index < list.Items.Count; index++)
                 {
-                    lines.Add(UiStrings.Format(UiStrings.NodeListItem, index + 1, list.Items[index]));
+                    lines.Add(UiStrings.FormatWithoutMnemonic(UiStrings.NodeListItem, index + 1, list.Items[index]));
                 }
 
                 break;
 
             case TableNode table:
-                lines.Add(UiStrings.Format(UiStrings.NodeTable, table.Rows.Count));
+                lines.Add(UiStrings.FormatWithoutMnemonic(UiStrings.NodeTable, table.Rows.Count));
                 if (table.HeaderRow is null)
                 {
-                    lines.Add(UiStrings.NodeTableNoHeaders);
+                    lines.Add(UiStrings.WithoutMnemonic(UiStrings.NodeTableNoHeaders));
                 }
                 else
                 {
                     for (var column = 0; column < table.HeaderRow.Count; column++)
                     {
-                        lines.Add(UiStrings.Format(UiStrings.NodeTableHeaderCell, column + 1, table.HeaderRow[column]));
+                        lines.Add(UiStrings.FormatWithoutMnemonic(UiStrings.NodeTableHeaderCell, column + 1, table.HeaderRow[column]));
                     }
                 }
 
@@ -698,61 +713,61 @@ public sealed class ReviewForm : Form
                 {
                     for (var column = 0; column < table.Rows[row].Count; column++)
                     {
-                        lines.Add(UiStrings.Format(UiStrings.NodeTableCell, row + 1, column + 1, table.Rows[row][column]));
+                        lines.Add(UiStrings.FormatWithoutMnemonic(UiStrings.NodeTableCell, row + 1, column + 1, table.Rows[row][column]));
                     }
                 }
 
                 break;
 
             case Card card:
-                lines.Add(UiStrings.Format(UiStrings.NodeCard, card.Title));
-                lines.Add(UiStrings.Format(UiStrings.NodeBodyContent, card.Body));
+                lines.Add(UiStrings.FormatWithoutMnemonic(UiStrings.NodeCard, card.Title));
+                lines.Add(UiStrings.FormatWithoutMnemonic(UiStrings.NodeBodyContent, card.Body));
                 break;
 
             case ImageReference image:
-                lines.Add(UiStrings.Format(UiStrings.NodeImage, image.AltText));
-                lines.Add(UiStrings.Format(UiStrings.NodeImageAssetIdentity, image.Asset.Value));
+                lines.Add(UiStrings.FormatWithoutMnemonic(UiStrings.NodeImage, image.AltText));
+                lines.Add(UiStrings.FormatWithoutMnemonic(UiStrings.NodeImageAssetIdentity, image.Asset.Value));
                 break;
 
             case BilingualPair pair:
-                lines.Add(UiStrings.Format(UiStrings.NodeTextContent, pair.SourceText));
-                lines.Add(UiStrings.Format(UiStrings.NodeTranslationContent, pair.TargetText));
-                lines.Add(UiStrings.Format(UiStrings.NodeLocalesContent, pair.SourceLocale, pair.TargetLocale));
+                lines.Add(UiStrings.FormatWithoutMnemonic(UiStrings.NodeTextContent, pair.SourceText));
+                lines.Add(UiStrings.FormatWithoutMnemonic(UiStrings.NodeTranslationContent, pair.TargetText));
+                lines.Add(UiStrings.FormatWithoutMnemonic(UiStrings.NodeLocalesContent, pair.SourceLocale, pair.TargetLocale));
                 break;
 
             case ChoiceSet choices:
-                lines.Add(UiStrings.Format(UiStrings.NodeChoices, choices.Options.Count));
+                lines.Add(UiStrings.FormatWithoutMnemonic(UiStrings.NodeChoices, choices.Options.Count));
                 for (var index = 0; index < choices.Options.Count; index++)
                 {
-                    lines.Add(UiStrings.Format(UiStrings.NodeChoiceItem, index + 1, choices.Options[index]));
+                    lines.Add(UiStrings.FormatWithoutMnemonic(UiStrings.NodeChoiceItem, index + 1, choices.Options[index]));
                 }
 
                 break;
 
             case EvidenceLink evidence:
-                lines.Add(UiStrings.Format(UiStrings.NodeEvidence, evidence.Claim));
-                lines.Add(UiStrings.Format(UiStrings.NodeSourcePointerContent, evidence.SourcePointer));
+                lines.Add(UiStrings.FormatWithoutMnemonic(UiStrings.NodeEvidence, evidence.Claim));
+                lines.Add(UiStrings.FormatWithoutMnemonic(UiStrings.NodeSourcePointerContent, evidence.SourcePointer));
                 break;
 
             case Citation citation:
-                lines.Add(UiStrings.Format(UiStrings.NodeCitation, citation.Text));
+                lines.Add(UiStrings.FormatWithoutMnemonic(UiStrings.NodeCitation, citation.Text));
                 break;
 
             case TeacherOnlyNotice notice:
-                lines.Add(UiStrings.Format(UiStrings.NodeTeacherOnly, notice.Text));
+                lines.Add(UiStrings.FormatWithoutMnemonic(UiStrings.NodeTeacherOnly, notice.Text));
                 break;
 
             case StepRow step:
-                lines.Add(UiStrings.NodeStepRow);
-                lines.Add(UiStrings.Format(UiStrings.NodeTextContent, step.Text));
-                lines.Add(UiStrings.Format(UiStrings.NodeTranslationContent, step.TargetText));
-                lines.Add(UiStrings.Format(UiStrings.NodeLocalesContent, step.SourceLocale, step.TargetLocale));
-                lines.Add(UiStrings.Format(UiStrings.NodeImageAssetIdentity, step.Symbol?.Asset.Value));
-                lines.Add(UiStrings.Format(UiStrings.NodeSymbolAltContent, step.Symbol?.AltText));
+                lines.Add(UiStrings.WithoutMnemonic(UiStrings.NodeStepRow));
+                lines.Add(UiStrings.FormatWithoutMnemonic(UiStrings.NodeTextContent, step.Text));
+                lines.Add(UiStrings.FormatWithoutMnemonic(UiStrings.NodeTranslationContent, step.TargetText));
+                lines.Add(UiStrings.FormatWithoutMnemonic(UiStrings.NodeLocalesContent, step.SourceLocale, step.TargetLocale));
+                lines.Add(UiStrings.FormatWithoutMnemonic(UiStrings.NodeImageAssetIdentity, step.Symbol?.Asset.Value));
+                lines.Add(UiStrings.FormatWithoutMnemonic(UiStrings.NodeSymbolAltContent, step.Symbol?.AltText));
                 break;
 
             case PageBreak:
-                lines.Add(UiStrings.NodePageBreak);
+                lines.Add(UiStrings.WithoutMnemonic(UiStrings.NodePageBreak));
                 break;
 
             case VectorGraphic graphic:
@@ -771,12 +786,12 @@ public sealed class ReviewForm : Form
 
     private static void AddVectorContents(List<string> lines, VectorGraphic graphic)
     {
-        lines.Add(UiStrings.Format(UiStrings.NodeVectorGraphic, graphic.Description));
-        lines.Add(UiStrings.Format(
+        lines.Add(UiStrings.FormatWithoutMnemonic(UiStrings.NodeVectorGraphic, graphic.Description));
+        lines.Add(UiStrings.FormatWithoutMnemonic(
             UiStrings.NodeDimensionsContent,
             ExactNumber(graphic.WidthMm),
             ExactNumber(graphic.HeightMm)));
-        lines.Add(UiStrings.Format(
+        lines.Add(UiStrings.FormatWithoutMnemonic(
             UiStrings.NodeVectorPrimitiveCounts,
             graphic.Primitives.OfType<LineSeg>().Count(),
             graphic.Primitives.OfType<CircleShape>().Count(),
@@ -787,7 +802,7 @@ public sealed class ReviewForm : Form
         {
             lines.Add(primitive switch
             {
-                LineSeg line => UiStrings.Format(
+                LineSeg line => UiStrings.FormatWithoutMnemonic(
                     UiStrings.NodeVectorLineDetail,
                     ExactNumber(line.X1),
                     ExactNumber(line.Y1),
@@ -795,14 +810,14 @@ public sealed class ReviewForm : Form
                     ExactNumber(line.Y2),
                     ExactNumber(line.StrokeWidthMm),
                     DisplayBoolean(line.Dashed)),
-                CircleShape circle => UiStrings.Format(
+                CircleShape circle => UiStrings.FormatWithoutMnemonic(
                     UiStrings.NodeVectorCircleDetail,
                     ExactNumber(circle.CenterX),
                     ExactNumber(circle.CenterY),
                     ExactNumber(circle.RadiusMm),
                     ExactNumber(circle.StrokeWidthMm),
                     DisplayBoolean(circle.Filled)),
-                RectShape rectangle => UiStrings.Format(
+                RectShape rectangle => UiStrings.FormatWithoutMnemonic(
                     UiStrings.NodeVectorRectangleDetail,
                     ExactNumber(rectangle.X),
                     ExactNumber(rectangle.Y),
@@ -810,7 +825,7 @@ public sealed class ReviewForm : Form
                     ExactNumber(rectangle.HeightMm),
                     ExactNumber(rectangle.StrokeWidthMm),
                     DisplayBoolean(rectangle.Filled)),
-                TextLabel label => UiStrings.Format(
+                TextLabel label => UiStrings.FormatWithoutMnemonic(
                     UiStrings.NodeVectorTextLabelDetail,
                     ExactNumber(label.X),
                     ExactNumber(label.Y),
@@ -826,39 +841,39 @@ public sealed class ReviewForm : Form
         => value.ToString("R", CultureInfo.InvariantCulture);
 
     private static string DisplayBoolean(bool value)
-        => value ? UiStrings.BooleanYes : UiStrings.BooleanNo;
+        => UiStrings.WithoutMnemonic(value ? UiStrings.BooleanYes : UiStrings.BooleanNo);
 
     private static string DisplayAnchor(TextAnchor anchor)
         => anchor switch
         {
-            TextAnchor.Start => UiStrings.TextAnchorStart,
-            TextAnchor.Middle => UiStrings.TextAnchorMiddle,
-            TextAnchor.End => UiStrings.TextAnchorEnd,
+            TextAnchor.Start => UiStrings.WithoutMnemonic(UiStrings.TextAnchorStart),
+            TextAnchor.Middle => UiStrings.WithoutMnemonic(UiStrings.TextAnchorMiddle),
+            TextAnchor.End => UiStrings.WithoutMnemonic(UiStrings.TextAnchorEnd),
             _ => throw new ArgumentOutOfRangeException(nameof(anchor)),
         };
 
     private static string DisplaySeverity(ValidationSeverity severity)
         => severity switch
         {
-            ValidationSeverity.Info => UiStrings.SeverityInformation,
-            ValidationSeverity.Warning => UiStrings.SeverityWarning,
-            ValidationSeverity.Blocking => UiStrings.SeverityBlocking,
+            ValidationSeverity.Info => UiStrings.WithoutMnemonic(UiStrings.SeverityInformation),
+            ValidationSeverity.Warning => UiStrings.WithoutMnemonic(UiStrings.SeverityWarning),
+            ValidationSeverity.Blocking => UiStrings.WithoutMnemonic(UiStrings.SeverityBlocking),
             _ => throw new ArgumentOutOfRangeException(nameof(severity)),
         };
 
     private static string DisplayPreviewTarget(RenderTarget target)
         => target switch
         {
-            RenderTarget.PrintHtml => UiStrings.PreviewPrintLayout,
-            RenderTarget.AccessibleHtml => UiStrings.PreviewAccessibleLayout,
+            RenderTarget.PrintHtml => UiStrings.WithoutMnemonic(UiStrings.PreviewPrintLayout),
+            RenderTarget.AccessibleHtml => UiStrings.WithoutMnemonic(UiStrings.PreviewAccessibleLayout),
             _ => throw new ArgumentOutOfRangeException(nameof(target)),
         };
 
     private static string DisplayAudience(RenderAudience audience)
         => audience switch
         {
-            RenderAudience.Teacher => UiStrings.AudienceTeacher,
-            RenderAudience.Learner => UiStrings.AudienceLearner,
+            RenderAudience.Teacher => UiStrings.WithoutMnemonic(UiStrings.AudienceTeacher),
+            RenderAudience.Learner => UiStrings.WithoutMnemonic(UiStrings.AudienceLearner),
             _ => throw new ArgumentOutOfRangeException(nameof(audience)),
         };
 }

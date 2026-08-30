@@ -79,7 +79,7 @@ public static class UiaHarness
         {
             throw new ProjectLibraryRootException(
                 ProjectLibraryRootFailureCodes.SwitchInvalid,
-                UiStrings.ProjectLibraryRootSwitchInvalid);
+                UiStrings.WithoutMnemonic(UiStrings.ProjectLibraryRootSwitchInvalid));
         }
 
         var harnessSwitches = args
@@ -96,14 +96,14 @@ public static class UiaHarness
             || harnessSwitches[0] + 1 >= args.Length
             || args[harnessSwitches[0] + 1].StartsWith("--", StringComparison.Ordinal))
         {
-            throw new InvalidDataException(UiStrings.UiaHarnessSwitchInvalid);
+            throw new InvalidDataException(UiStrings.WithoutMnemonic(UiStrings.UiaHarnessSwitchInvalid));
         }
 
         var index = harnessSwitches[0];
         var harnessMode = args[index + 1];
         if (harnessMode is not ("review" or "capture" or "pressroom" or "allaboard" or "modules"))
         {
-            throw new InvalidDataException(UiStrings.UiaHarnessSwitchInvalid);
+            throw new InvalidDataException(UiStrings.WithoutMnemonic(UiStrings.UiaHarnessSwitchInvalid));
         }
 
         // Program has already validated and applied this exact switch. Harness
@@ -117,7 +117,7 @@ public static class UiaHarness
         {
             throw new ProjectLibraryRootException(
                 ProjectLibraryRootFailureCodes.RootInvalid,
-                UiStrings.ProjectLibraryRootInvalid);
+                UiStrings.WithoutMnemonic(UiStrings.ProjectLibraryRootInvalid));
         }
 
         // In harness mode a swallowed exception is invisible evidence. Keep the
@@ -184,7 +184,7 @@ public static class UiaHarness
         {
             throw new ProjectLibraryRootException(
                 ProjectLibraryRootFailureCodes.RootInvalid,
-                UiStrings.ProjectLibraryRootInvalid);
+                UiStrings.WithoutMnemonic(UiStrings.ProjectLibraryRootInvalid));
         }
 
         if (segments.Length != 3
@@ -196,7 +196,7 @@ public static class UiaHarness
         {
             throw new ProjectLibraryRootException(
                 ProjectLibraryRootFailureCodes.RootInvalid,
-                UiStrings.ProjectLibraryRootInvalid);
+                UiStrings.WithoutMnemonic(UiStrings.ProjectLibraryRootInvalid));
         }
 
         return admitted;
@@ -209,7 +209,7 @@ public static class UiaHarness
     {
         if (args.Any(value => value.StartsWith(ExportToSwitch + "=", StringComparison.Ordinal)))
         {
-            throw new InvalidDataException(UiStrings.UiaHarnessExportInvalid);
+            throw new InvalidDataException(UiStrings.WithoutMnemonic(UiStrings.UiaHarnessExportInvalid));
         }
 
         var matches = args
@@ -228,7 +228,7 @@ public static class UiaHarness
             || matches[0] + 1 >= args.Length
             || args[matches[0] + 1].StartsWith("--", StringComparison.Ordinal))
         {
-            throw new InvalidDataException(UiStrings.UiaHarnessExportInvalid);
+            throw new InvalidDataException(UiStrings.WithoutMnemonic(UiStrings.UiaHarnessExportInvalid));
         }
 
         try
@@ -236,7 +236,7 @@ public static class UiaHarness
             var requested = args[matches[0] + 1];
             if (string.IsNullOrWhiteSpace(requested) || !Path.IsPathFullyQualified(requested))
             {
-                throw new InvalidDataException(UiStrings.UiaHarnessExportInvalid);
+                throw new InvalidDataException(UiStrings.WithoutMnemonic(UiStrings.UiaHarnessExportInvalid));
             }
 
             var fullPath = Path.GetFullPath(requested);
@@ -252,7 +252,7 @@ public static class UiaHarness
                 || File.Exists(fullPath)
                 || Directory.Exists(fullPath))
             {
-                throw new InvalidDataException(UiStrings.UiaHarnessExportInvalid);
+                throw new InvalidDataException(UiStrings.WithoutMnemonic(UiStrings.UiaHarnessExportInvalid));
             }
 
             return fullPath;
@@ -266,7 +266,7 @@ public static class UiaHarness
                                              or ArgumentException
                                              or NotSupportedException)
         {
-            throw new InvalidDataException(UiStrings.UiaHarnessExportInvalid);
+            throw new InvalidDataException(UiStrings.WithoutMnemonic(UiStrings.UiaHarnessExportInvalid));
         }
     }
 }

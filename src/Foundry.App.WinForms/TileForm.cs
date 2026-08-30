@@ -15,8 +15,22 @@ public sealed class TileForm : Form
         MaximizeBox = false;
         ClientSize = new Size(260, 130);
 
-        _columns = new NumericUpDown { Minimum = 1, Maximum = 4, Value = 2, Width = 70, AccessibleName = UiStrings.TileColumns };
-        _rows = new NumericUpDown { Minimum = 1, Maximum = 4, Value = 2, Width = 70, AccessibleName = UiStrings.TileRows };
+        _columns = new NumericUpDown
+        {
+            Minimum = 1,
+            Maximum = 4,
+            Value = 2,
+            Width = 70,
+            AccessibleName = UiStrings.WithoutMnemonic(UiStrings.TileColumns),
+        };
+        _rows = new NumericUpDown
+        {
+            Minimum = 1,
+            Maximum = 4,
+            Value = 2,
+            Width = 70,
+            AccessibleName = UiStrings.WithoutMnemonic(UiStrings.TileRows),
+        };
 
         var make = new Button { Text = UiStrings.TileMake, AutoSize = true, DialogResult = DialogResult.OK };
         AcceptButton = make;

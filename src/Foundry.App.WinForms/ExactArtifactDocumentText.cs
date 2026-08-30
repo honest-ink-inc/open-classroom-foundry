@@ -16,10 +16,10 @@ internal static class ExactArtifactDocumentText
         ArgumentNullException.ThrowIfNull(document);
         var lines = new List<string>
         {
-            UiStrings.Format(
+            UiStrings.FormatWithoutMnemonic(
                 UiStrings.LoadedProjectDocumentDigest,
                 Contracts.ArtifactDocumentFingerprint.Compute(document)),
-            UiStrings.Format(
+            UiStrings.FormatWithoutMnemonic(
                 UiStrings.LoadedProjectDocumentLanguage,
                 Value(document.Language)),
         };
@@ -27,7 +27,7 @@ internal static class ExactArtifactDocumentText
         for (var index = 0; index < document.Nodes.Count; index++)
         {
             lines.Add(string.Empty);
-            lines.Add(UiStrings.Format(UiStrings.LoadedProjectDocumentElement, index + 1));
+            lines.Add(UiStrings.FormatWithoutMnemonic(UiStrings.LoadedProjectDocumentElement, index + 1));
             AddNode(lines, document.Nodes[index]);
         }
 
@@ -39,62 +39,68 @@ internal static class ExactArtifactDocumentText
         switch (node)
         {
             case Heading heading:
-                lines.Add(UiStrings.Format(UiStrings.NodeHeading, heading.Level, Value(heading.Text)));
+                lines.Add(UiStrings.FormatWithoutMnemonic(UiStrings.NodeHeading, heading.Level, Value(heading.Text)));
                 break;
 
             case Paragraph paragraph:
-                lines.Add(UiStrings.Format(UiStrings.NodeParagraph, Value(paragraph.Text)));
+                lines.Add(UiStrings.FormatWithoutMnemonic(UiStrings.NodeParagraph, Value(paragraph.Text)));
                 break;
 
             case OrderedSteps steps:
-                lines.Add(UiStrings.Format(UiStrings.NodeSteps, steps.Steps.Count));
+                lines.Add(UiStrings.FormatWithoutMnemonic(UiStrings.NodeSteps, steps.Steps.Count));
                 for (var index = 0; index < steps.Steps.Count; index++)
                 {
-                    lines.Add(UiStrings.Format(UiStrings.NodeOrderedStepItem, index + 1, Value(steps.Steps[index])));
+                    lines.Add(UiStrings.FormatWithoutMnemonic(
+                        UiStrings.NodeOrderedStepItem,
+                        index + 1,
+                        Value(steps.Steps[index])));
                 }
 
                 break;
 
             case StepRow step:
-                lines.Add(UiStrings.NodeStepRow);
-                lines.Add(UiStrings.Format(UiStrings.NodeTextContent, Value(step.Text)));
-                lines.Add(UiStrings.Format(UiStrings.NodeTranslationContent, Value(step.TargetText)));
-                lines.Add(UiStrings.Format(
+                lines.Add(UiStrings.WithoutMnemonic(UiStrings.NodeStepRow));
+                lines.Add(UiStrings.FormatWithoutMnemonic(UiStrings.NodeTextContent, Value(step.Text)));
+                lines.Add(UiStrings.FormatWithoutMnemonic(UiStrings.NodeTranslationContent, Value(step.TargetText)));
+                lines.Add(UiStrings.FormatWithoutMnemonic(
                     UiStrings.NodeLocalesContent,
                     Value(step.SourceLocale),
                     Value(step.TargetLocale)));
-                lines.Add(UiStrings.Format(
+                lines.Add(UiStrings.FormatWithoutMnemonic(
                     UiStrings.NodeImageAssetIdentity,
                     Value(step.Symbol?.Asset.Value)));
-                lines.Add(UiStrings.Format(
+                lines.Add(UiStrings.FormatWithoutMnemonic(
                     UiStrings.NodeSymbolAltContent,
                     Value(step.Symbol?.AltText)));
                 break;
 
             case PageBreak:
-                lines.Add(UiStrings.NodePageBreak);
+                lines.Add(UiStrings.WithoutMnemonic(UiStrings.NodePageBreak));
                 break;
 
             case UnorderedList list:
-                lines.Add(UiStrings.Format(UiStrings.NodeList, list.Items.Count));
+                lines.Add(UiStrings.FormatWithoutMnemonic(UiStrings.NodeList, list.Items.Count));
                 for (var index = 0; index < list.Items.Count; index++)
                 {
-                    lines.Add(UiStrings.Format(UiStrings.NodeListItem, index + 1, Value(list.Items[index])));
+                    lines.Add(UiStrings.FormatWithoutMnemonic(
+                        UiStrings.NodeListItem,
+                        index + 1,
+                        Value(list.Items[index])));
                 }
 
                 break;
 
             case TableNode table:
-                lines.Add(UiStrings.Format(UiStrings.NodeTable, table.Rows.Count));
+                lines.Add(UiStrings.FormatWithoutMnemonic(UiStrings.NodeTable, table.Rows.Count));
                 if (table.HeaderRow is null)
                 {
-                    lines.Add(UiStrings.NodeTableNoHeaders);
+                    lines.Add(UiStrings.WithoutMnemonic(UiStrings.NodeTableNoHeaders));
                 }
                 else
                 {
                     for (var column = 0; column < table.HeaderRow.Count; column++)
                     {
-                        lines.Add(UiStrings.Format(
+                        lines.Add(UiStrings.FormatWithoutMnemonic(
                             UiStrings.NodeTableHeaderCell,
                             column + 1,
                             Value(table.HeaderRow[column])));
@@ -105,7 +111,7 @@ internal static class ExactArtifactDocumentText
                 {
                     for (var column = 0; column < table.Rows[row].Count; column++)
                     {
-                        lines.Add(UiStrings.Format(
+                        lines.Add(UiStrings.FormatWithoutMnemonic(
                             UiStrings.NodeTableCell,
                             row + 1,
                             column + 1,
@@ -116,44 +122,49 @@ internal static class ExactArtifactDocumentText
                 break;
 
             case Card card:
-                lines.Add(UiStrings.Format(UiStrings.NodeCard, Value(card.Title)));
-                lines.Add(UiStrings.Format(UiStrings.NodeBodyContent, Value(card.Body)));
+                lines.Add(UiStrings.FormatWithoutMnemonic(UiStrings.NodeCard, Value(card.Title)));
+                lines.Add(UiStrings.FormatWithoutMnemonic(UiStrings.NodeBodyContent, Value(card.Body)));
                 break;
 
             case ImageReference image:
-                lines.Add(UiStrings.Format(UiStrings.NodeImage, Value(image.AltText)));
-                lines.Add(UiStrings.Format(UiStrings.NodeImageAssetIdentity, Value(image.Asset.Value)));
+                lines.Add(UiStrings.FormatWithoutMnemonic(UiStrings.NodeImage, Value(image.AltText)));
+                lines.Add(UiStrings.FormatWithoutMnemonic(UiStrings.NodeImageAssetIdentity, Value(image.Asset.Value)));
                 break;
 
             case BilingualPair pair:
-                lines.Add(UiStrings.Format(UiStrings.NodeTextContent, Value(pair.SourceText)));
-                lines.Add(UiStrings.Format(UiStrings.NodeTranslationContent, Value(pair.TargetText)));
-                lines.Add(UiStrings.Format(
+                lines.Add(UiStrings.FormatWithoutMnemonic(UiStrings.NodeTextContent, Value(pair.SourceText)));
+                lines.Add(UiStrings.FormatWithoutMnemonic(UiStrings.NodeTranslationContent, Value(pair.TargetText)));
+                lines.Add(UiStrings.FormatWithoutMnemonic(
                     UiStrings.NodeLocalesContent,
                     Value(pair.SourceLocale),
                     Value(pair.TargetLocale)));
                 break;
 
             case ChoiceSet choices:
-                lines.Add(UiStrings.Format(UiStrings.NodeChoices, choices.Options.Count));
+                lines.Add(UiStrings.FormatWithoutMnemonic(UiStrings.NodeChoices, choices.Options.Count));
                 for (var index = 0; index < choices.Options.Count; index++)
                 {
-                    lines.Add(UiStrings.Format(UiStrings.NodeChoiceItem, index + 1, Value(choices.Options[index])));
+                    lines.Add(UiStrings.FormatWithoutMnemonic(
+                        UiStrings.NodeChoiceItem,
+                        index + 1,
+                        Value(choices.Options[index])));
                 }
 
                 break;
 
             case EvidenceLink evidence:
-                lines.Add(UiStrings.Format(UiStrings.NodeEvidence, Value(evidence.Claim)));
-                lines.Add(UiStrings.Format(UiStrings.NodeSourcePointerContent, Value(evidence.SourcePointer)));
+                lines.Add(UiStrings.FormatWithoutMnemonic(UiStrings.NodeEvidence, Value(evidence.Claim)));
+                lines.Add(UiStrings.FormatWithoutMnemonic(
+                    UiStrings.NodeSourcePointerContent,
+                    Value(evidence.SourcePointer)));
                 break;
 
             case Citation citation:
-                lines.Add(UiStrings.Format(UiStrings.NodeCitation, Value(citation.Text)));
+                lines.Add(UiStrings.FormatWithoutMnemonic(UiStrings.NodeCitation, Value(citation.Text)));
                 break;
 
             case TeacherOnlyNotice notice:
-                lines.Add(UiStrings.Format(UiStrings.NodeTeacherOnly, Value(notice.Text)));
+                lines.Add(UiStrings.FormatWithoutMnemonic(UiStrings.NodeTeacherOnly, Value(notice.Text)));
                 break;
 
             case VectorGraphic graphic:
@@ -168,12 +179,12 @@ internal static class ExactArtifactDocumentText
 
     private static void AddVectorGraphic(List<string> lines, VectorGraphic graphic)
     {
-        lines.Add(UiStrings.Format(UiStrings.NodeVectorGraphic, Value(graphic.Description)));
-        lines.Add(UiStrings.Format(
+        lines.Add(UiStrings.FormatWithoutMnemonic(UiStrings.NodeVectorGraphic, Value(graphic.Description)));
+        lines.Add(UiStrings.FormatWithoutMnemonic(
             UiStrings.NodeDimensionsContent,
             Number(graphic.WidthMm),
             Number(graphic.HeightMm)));
-        lines.Add(UiStrings.Format(
+        lines.Add(UiStrings.FormatWithoutMnemonic(
             UiStrings.NodeVectorPrimitiveCounts,
             graphic.Primitives.OfType<LineSeg>().Count(),
             graphic.Primitives.OfType<CircleShape>().Count(),
@@ -184,7 +195,7 @@ internal static class ExactArtifactDocumentText
         {
             lines.Add(primitive switch
             {
-                LineSeg line => UiStrings.Format(
+                LineSeg line => UiStrings.FormatWithoutMnemonic(
                     UiStrings.NodeVectorLineDetail,
                     Number(line.X1),
                     Number(line.Y1),
@@ -192,14 +203,14 @@ internal static class ExactArtifactDocumentText
                     Number(line.Y2),
                     Number(line.StrokeWidthMm),
                     Boolean(line.Dashed)),
-                CircleShape circle => UiStrings.Format(
+                CircleShape circle => UiStrings.FormatWithoutMnemonic(
                     UiStrings.NodeVectorCircleDetail,
                     Number(circle.CenterX),
                     Number(circle.CenterY),
                     Number(circle.RadiusMm),
                     Number(circle.StrokeWidthMm),
                     Boolean(circle.Filled)),
-                RectShape rectangle => UiStrings.Format(
+                RectShape rectangle => UiStrings.FormatWithoutMnemonic(
                     UiStrings.NodeVectorRectangleDetail,
                     Number(rectangle.X),
                     Number(rectangle.Y),
@@ -207,14 +218,14 @@ internal static class ExactArtifactDocumentText
                     Number(rectangle.HeightMm),
                     Number(rectangle.StrokeWidthMm),
                     Boolean(rectangle.Filled)),
-                TextLabel label => UiStrings.Format(
+                TextLabel label => UiStrings.FormatWithoutMnemonic(
                     UiStrings.NodeVectorTextLabelDetail,
                     Number(label.X),
                     Number(label.Y),
                     Value(label.Text),
                     Number(label.FontSizeMm),
                     Anchor(label.Anchor)),
-                null => UiStrings.ExactValueNotSet,
+                null => UiStrings.WithoutMnemonic(UiStrings.ExactValueNotSet),
                 _ => primitive.GetType().Name,
             });
         }
@@ -222,8 +233,8 @@ internal static class ExactArtifactDocumentText
 
     private static string Value(string? value)
         => value is null
-            ? UiStrings.ExactValueNotSet
-            : UiStrings.Format(
+            ? UiStrings.WithoutMnemonic(UiStrings.ExactValueNotSet)
+            : UiStrings.FormatWithoutMnemonic(
                 UiStrings.LoadedProjectExactStringFrame,
                 value.Length,
                 Escape(value));
@@ -300,13 +311,14 @@ internal static class ExactArtifactDocumentText
         escaped.Append(((int)character).ToString("X4", CultureInfo.InvariantCulture));
     }
 
-    private static string Boolean(bool value) => value ? UiStrings.BooleanYes : UiStrings.BooleanNo;
+    private static string Boolean(bool value)
+        => UiStrings.WithoutMnemonic(value ? UiStrings.BooleanYes : UiStrings.BooleanNo);
 
     private static string Anchor(TextAnchor anchor) => anchor switch
     {
-        TextAnchor.Start => UiStrings.TextAnchorStart,
-        TextAnchor.Middle => UiStrings.TextAnchorMiddle,
-        TextAnchor.End => UiStrings.TextAnchorEnd,
+        TextAnchor.Start => UiStrings.WithoutMnemonic(UiStrings.TextAnchorStart),
+        TextAnchor.Middle => UiStrings.WithoutMnemonic(UiStrings.TextAnchorMiddle),
+        TextAnchor.End => UiStrings.WithoutMnemonic(UiStrings.TextAnchorEnd),
         _ => anchor.ToString(),
     };
 

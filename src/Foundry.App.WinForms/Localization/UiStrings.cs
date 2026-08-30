@@ -294,7 +294,7 @@ public static class UiStrings
 
     public static string ContinueToExactReview => T("&Continue to exact review");
 
-    public static string Cancel => T("&Cancel");
+    public static string Cancel => T("C&ancel");
 
     public static string LoadedProjectGreenChecklistIncomplete => T("Every Green data-lane statement must be confirmed for this exact document.");
 
@@ -447,7 +447,7 @@ public static class UiStrings
 
     public static string DraftElements => T("Draft elements");
 
-    public static string ReviewElementsTab => T("&Elements and issues");
+    public static string ReviewElementsTab => T("Elements and &issues");
 
     public static string SourceComparisonTab => T("&Source comparison");
 
@@ -808,6 +808,8 @@ public static class UiStrings
 
     public static string CatalogMnemonicMismatch => T("Keyboard mnemonic markers do not match the neutral source for string id {0}.");
 
+    public static string CatalogMnemonicDuplicate => T("Keyboard access key {0} is assigned more than once in the simultaneously visible {1} context: {2} and {3}.");
+
     public static string CatalogObjectRequired => T("The UI catalog value at {0} must be an object.");
 
     public static string CatalogPropertyUnknown => T("The UI catalog object {0} contains unknown property {1}.");
@@ -832,6 +834,16 @@ public static class UiStrings
 
     public static string Format(string template, params object?[] arguments)
         => string.Format(System.Globalization.CultureInfo.InvariantCulture, template, arguments);
+
+    /// <summary>
+    /// Formats static catalog chrome for a control that does not process
+    /// mnemonic markers. The template's '&amp;' contract is decoded before raw
+    /// dynamic arguments are inserted, so neither side can reinterpret the
+    /// other (for example, translated "Ready &amp;&amp; waiting: {0}" plus a file
+    /// name containing one literal ampersand).
+    /// </summary>
+    public static string FormatWithoutMnemonic(string template, params object?[] arguments)
+        => Format(WithoutMnemonic(template), arguments);
 
     public static string WithoutMnemonic(string text)
     {

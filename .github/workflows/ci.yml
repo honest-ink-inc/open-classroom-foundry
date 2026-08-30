@@ -1,7 +1,8 @@
 # Pull-request and main-branch CI per implementation plan §12.
 #
 # Coverage of the plan's CI list, honestly stated:
-#   [x] Build on pinned .NET 10 with warnings as errors (global.json + Directory.Build.props)
+#   [x] Build on the exact .NET SDK in global.json with warnings as errors
+#       (an explicit gate proves the resolved SDK before restore)
 #   [x] Unit, contract, schema, and migration tests (dotnet test — suites grow with the code)
 #   [x] Secret scan (gitleaks CLI, pinned + checksum-verified, full history) — the licensed
 #       Action wrapper was dropped 30 Aug 2026 when moving into an organization made its
@@ -51,6 +52,22 @@ jobs:
       - uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
         with:
           global-json-file: global.json
+
+      - name: Exact SDK gate
+        shell: pwsh
+        run: |
+          $settings = Get-Content global.json -Raw | ConvertFrom-Json
+          $expected = ([string]$settings.sdk.version).Trim()
+          if ([string]::IsNullOrWhiteSpace($expected)) {
+            throw 'global.json did not declare a non-empty SDK version.'
+          }
+
+          $actual = ([string](& dotnet --version)).Trim()
+          if ($LASTEXITCODE -ne 0) { throw 'dotnet --version failed.' }
+          if (-not [string]::Equals($actual, $expected, [System.StringComparison]::Ordinal)) {
+            throw "Resolved .NET SDK '$actual' did not equal global.json SDK '$expected'."
+          }
+          Write-Host "Exact .NET SDK: $actual"
 
       - name: Restore
         run: dotnet restore OpenClassroomFoundry.slnx

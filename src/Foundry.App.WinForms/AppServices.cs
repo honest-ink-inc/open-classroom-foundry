@@ -217,7 +217,7 @@ public static class AppServices
             || !string.Equals(renderProfile.ArtifactSha256, documentHash, StringComparison.Ordinal))
         {
             throw new InvalidOperationException(
-                UiStrings.SavedArtifactContextMismatch);
+                UiStrings.WithoutMnemonic(UiStrings.SavedArtifactContextMismatch));
         }
 
         var store = new OcfprojProjectStore(LibraryRoot, new AccessibleHtmlRenderer(), catalog);
@@ -252,7 +252,8 @@ public static class AppServices
     /// Gate B or its Green-only sinks through an implicit overload.
     /// </summary>
     public static ReviewSession SessionOverLoadedProject(LoadedProject loaded)
-        => throw new InvalidOperationException(UiStrings.StatusLoadedProjectPreflightNotConfirmed);
+        => throw new InvalidOperationException(
+            UiStrings.WithoutMnemonic(UiStrings.StatusLoadedProjectPreflightNotConfirmed));
 
     /// <summary>
     /// Records a teacher's explicit content classification for this one loaded
@@ -269,7 +270,8 @@ public static class AppServices
             || !checklist.HasNoLearnerLinkedContent
             || !checklist.HasNoRestrictedContent)
         {
-            throw new InvalidOperationException(UiStrings.LoadedProjectGreenChecklistIncomplete);
+            throw new InvalidOperationException(
+                UiStrings.WithoutMnemonic(UiStrings.LoadedProjectGreenChecklistIncomplete));
         }
 
         return LoadedProjectGreenConfirmation.Create(loaded);
@@ -288,12 +290,14 @@ public static class AppServices
         ArgumentNullException.ThrowIfNull(confirmation);
         if (!confirmation.AppliesTo(loaded))
         {
-            throw new InvalidOperationException(UiStrings.StatusLoadedProjectPreflightNotConfirmed);
+            throw new InvalidOperationException(
+                UiStrings.WithoutMnemonic(UiStrings.StatusLoadedProjectPreflightNotConfirmed));
         }
 
         if (loaded.Validation is null || loaded.RenderProfile is null)
         {
-            throw new InvalidOperationException(UiStrings.SavedProjectNeedsManagedUpgrade);
+            throw new InvalidOperationException(
+                UiStrings.WithoutMnemonic(UiStrings.SavedProjectNeedsManagedUpgrade));
         }
 
         var notices = ResolveTrustedSavedNotices();
@@ -312,7 +316,7 @@ public static class AppServices
         [
             ValidationIssue.Warning(
                 "project.origin-unverified",
-                UiStrings.SavedOriginUnverifiedWarning,
+                UiStrings.WithoutMnemonic(UiStrings.SavedOriginUnverifiedWarning),
                 requiresAcknowledgement: true),
         ];
     }

@@ -51,14 +51,24 @@ public sealed class AllAboardForm : Form
         var duplicated = _catalog.All.GroupBy(p => p.IntendedMeaning)
             .Where(g => g.Count() > 1).Select(g => g.Key).ToHashSet(StringComparer.Ordinal);
         _symbolNames = [.. _catalog.All.Select(p => duplicated.Contains(p.IntendedMeaning)
-            ? UiStrings.Format(UiStrings.SymbolDisambiguation, p.IntendedMeaning, p.AltText)
+            ? UiStrings.FormatWithoutMnemonic(UiStrings.SymbolDisambiguation, p.IntendedMeaning, p.AltText)
             : p.IntendedMeaning)];
 
-        Text = UiStrings.AllAboardWindowTitle;
+        Text = UiStrings.WithoutMnemonic(UiStrings.AllAboardWindowTitle);
         MinimumSize = new Size(720, 560);
 
-        _mode = new ComboBox { DropDownStyle = ComboBoxStyle.DropDownList, Width = 200, AccessibleName = UiStrings.OutputMode };
-        _mode.Items.AddRange([UiStrings.ModeTaskStrip, UiStrings.ModeFirstThen, UiStrings.ModeNowNextDone, UiStrings.ModeAgencyCards]);
+        _mode = new ComboBox
+        {
+            DropDownStyle = ComboBoxStyle.DropDownList,
+            Width = 200,
+            AccessibleName = UiStrings.WithoutMnemonic(UiStrings.OutputMode),
+        };
+        _mode.Items.AddRange([
+            UiStrings.WithoutMnemonic(UiStrings.ModeTaskStrip),
+            UiStrings.WithoutMnemonic(UiStrings.ModeFirstThen),
+            UiStrings.WithoutMnemonic(UiStrings.ModeNowNextDone),
+            UiStrings.WithoutMnemonic(UiStrings.ModeAgencyCards),
+        ]);
         _mode.SelectedIndexChanged += (_, _) => LoadMode();
 
         _grid = new TableLayoutPanel { Dock = DockStyle.Fill, ColumnCount = 2, AutoScroll = true };
@@ -75,7 +85,7 @@ public sealed class AllAboardForm : Form
             }
             catch (Exception failure) when (failure is InvalidOperationException or IOException or NotSupportedException)
             {
-                SetStatus(UiStrings.Format(UiStrings.StatusRefused, failure.Message));
+                SetStatus(UiStrings.StatusRefused, failure.Message);
             }
         }));
         _printView = MakeButton(UiStrings.OpenPrintView, (_, _) => WithApproved(a =>
@@ -87,11 +97,11 @@ public sealed class AllAboardForm : Form
         _save = MakeButton(UiStrings.SaveToLibrary, (_, _) => WithApproved(a =>
         {
             var hint = AppServices.SaveToLibrary(a, _approvedRecipe.Id.Replace('.', '-'), "all-aboard", _approvedRecipe.Id, _approvedRecipe.Version, _catalog);
-            SetStatus(UiStrings.Format(UiStrings.StatusSaved, hint));
+            SetStatus(UiStrings.StatusSaved, hint);
         }));
 
-        // No AccessibleName override: the message itself is what AT hears.
-        _status = new Label { Dock = DockStyle.Bottom, AutoSize = false, Height = 28 };
+        // The message itself is what AT hears.
+        _status = new Label { Dock = DockStyle.Bottom, AutoSize = false, Height = 28, UseMnemonic = false };
         SetStatus(UiStrings.StatusReady);
 
         var buttons = new FlowLayoutPanel { Dock = DockStyle.Bottom, AutoSize = true, FlowDirection = FlowDirection.LeftToRight };
@@ -165,15 +175,15 @@ public sealed class AllAboardForm : Form
 
     private void AddTaskStripRows()
     {
-        _title = new TextBox { Width = 360, AccessibleName = UiStrings.TaskTitle };
+        _title = new TextBox { Width = 360, AccessibleName = UiStrings.WithoutMnemonic(UiStrings.TaskTitle) };
         AddRow(UiStrings.TaskTitle, _title);
 
         for (var i = 1; i <= AllAboardBuilders.MaximumSteps; i++)
         {
-            var text = new TextBox { Width = 360, AccessibleName = UiStrings.Format(UiStrings.StepTextLabel, i) };
-            var symbol = SymbolPicker(UiStrings.Format(UiStrings.StepSymbolLabel, i));
-            AddRow(UiStrings.Format(UiStrings.StepTextLabel, i), text);
-            AddRow(UiStrings.Format(UiStrings.StepSymbolLabel, i), symbol);
+            var text = new TextBox { Width = 360, AccessibleName = UiStrings.FormatWithoutMnemonic(UiStrings.StepTextLabel, i) };
+            var symbol = SymbolPicker(UiStrings.StepSymbolLabel, i);
+            AddRow(UiStrings.StepTextLabel, text, i);
+            AddRow(UiStrings.StepSymbolLabel, symbol, i);
             _steps.Add((text, symbol));
         }
     }
@@ -182,10 +192,10 @@ public sealed class AllAboardForm : Form
     {
         foreach (var name in cardNames)
         {
-            var text = new TextBox { Width = 360, AccessibleName = UiStrings.Format(UiStrings.CardTextLabel, name) };
-            var symbol = SymbolPicker(UiStrings.Format(UiStrings.CardSymbolLabel, name));
-            AddRow(UiStrings.Format(UiStrings.CardTextLabel, name), text);
-            AddRow(UiStrings.Format(UiStrings.CardSymbolLabel, name), symbol);
+            var text = new TextBox { Width = 360, AccessibleName = UiStrings.FormatWithoutMnemonic(UiStrings.CardTextLabel, name) };
+            var symbol = SymbolPicker(UiStrings.CardSymbolLabel, name);
+            AddRow(UiStrings.CardTextLabel, text, name);
+            AddRow(UiStrings.CardSymbolLabel, symbol, name);
             _steps.Add((text, symbol));
         }
     }
@@ -197,11 +207,19 @@ public sealed class AllAboardForm : Form
         // names the row: never "image", never a filename.
         for (var i = 0; i < _catalog.All.Count; i++)
         {
-            var include = new CheckBox { Text = _symbolNames[i], AutoSize = true, Checked = true };
+            var include = new CheckBox
+            {
+                Text = _symbolNames[i],
+                AutoSize = true,
+                Checked = true,
+                // Pack-provided meanings are content, not static chrome access
+                // keys; a literal '&' must remain visible and audible.
+                UseMnemonic = false,
+            };
             var overrideBox = new TextBox
             {
                 Width = 220,
-                AccessibleName = UiStrings.Format(UiStrings.AgencyOverrideLabel, _symbolNames[i]),
+                AccessibleName = UiStrings.FormatWithoutMnemonic(UiStrings.AgencyOverrideLabel, _symbolNames[i]),
             };
 
             var row = _grid.RowCount++;
@@ -214,10 +232,15 @@ public sealed class AllAboardForm : Form
         }
     }
 
-    private ComboBox SymbolPicker(string accessibleName)
+    private ComboBox SymbolPicker(string accessibleNameTemplate, params object?[] arguments)
     {
-        var symbol = new ComboBox { DropDownStyle = ComboBoxStyle.DropDownList, Width = 180, AccessibleName = accessibleName };
-        symbol.Items.Add(UiStrings.NoSymbol);
+        var symbol = new ComboBox
+        {
+            DropDownStyle = ComboBoxStyle.DropDownList,
+            Width = 180,
+            AccessibleName = UiStrings.FormatWithoutMnemonic(accessibleNameTemplate, arguments),
+        };
+        symbol.Items.Add(UiStrings.WithoutMnemonic(UiStrings.NoSymbol));
         foreach (var name in _symbolNames)
         {
             symbol.Items.Add(name);
@@ -227,11 +250,18 @@ public sealed class AllAboardForm : Form
         return symbol;
     }
 
-    private void AddRow(string label, Control control)
+    private void AddRow(string labelTemplate, Control control, params object?[] arguments)
     {
         var row = _grid.RowCount++;
         _grid.RowStyles.Add(new RowStyle(SizeType.AutoSize));
-        _grid.Controls.Add(new Label { Text = label, AutoSize = true, Anchor = AnchorStyles.Left }, 0, row);
+        _grid.Controls.Add(new Label
+        {
+            Text = UiStrings.FormatWithoutMnemonic(labelTemplate, arguments),
+            AutoSize = true,
+            Anchor = AnchorStyles.Left,
+            // Card names come from the dynamic catalog, where '&' is literal.
+            UseMnemonic = false,
+        }, 0, row);
         _grid.Controls.Add(control, 1, row);
         TrackInput(control);
     }
@@ -299,7 +329,7 @@ public sealed class AllAboardForm : Form
         }
         catch (ArgumentException refusal)
         {
-            SetStatus(UiStrings.Format(UiStrings.StatusRefused, refusal.Message));
+            SetStatus(UiStrings.StatusRefused, refusal.Message);
             return;
         }
 
@@ -344,10 +374,10 @@ public sealed class AllAboardForm : Form
         }
     }
 
-    private static ApprovedArtifact? RunModalReview(ReviewSession session)
+    private ApprovedArtifact? RunModalReview(ReviewSession session)
     {
         using var review = new ReviewForm(session);
-        return review.ShowDialog() == DialogResult.OK ? review.Result : null;
+        return review.ShowDialog(this) == DialogResult.OK ? review.Result : null;
     }
 
     private void WithApproved(Action<ApprovedArtifact> action)
@@ -363,7 +393,7 @@ public sealed class AllAboardForm : Form
         using var dialog = new SaveFileDialog
         {
             FileName = _approvedRecipe.Id.Replace('.', '-'),
-            Filter = $"{UiStrings.ExportFilterPrint}|*.html|{UiStrings.ExportFilterAccessible}|*.html",
+            Filter = $"{UiStrings.WithoutMnemonic(UiStrings.ExportFilterPrint)}|*.html|{UiStrings.WithoutMnemonic(UiStrings.ExportFilterAccessible)}|*.html",
         };
         if (dialog.ShowDialog(this) != DialogResult.OK)
         {
@@ -372,7 +402,7 @@ public sealed class AllAboardForm : Form
 
         var target = dialog.FilterIndex == 2 ? RenderTarget.AccessibleHtml : RenderTarget.PrintHtml;
         File.WriteAllBytes(dialog.FileName, AppServices.Render(approved, target));
-        SetStatus(UiStrings.Format(UiStrings.StatusExported, Path.GetFileName(dialog.FileName)));
+        SetStatus(UiStrings.StatusExported, Path.GetFileName(dialog.FileName));
     }
 
     private void UpdateGatedButtons()
@@ -420,5 +450,10 @@ public sealed class AllAboardForm : Form
         UpdateGatedButtons();
     }
 
-    private void SetStatus(string text) => _status.Text = text;
+    private void SetStatus(string template, params object?[] arguments)
+    {
+        var text = UiStrings.FormatWithoutMnemonic(template, arguments);
+        _status.Text = text;
+        _status.AccessibleName = text;
+    }
 }

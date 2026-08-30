@@ -19,7 +19,7 @@ public static class ProjectLibraryRootConfiguration
         {
             throw Failure(
                 ProjectLibraryRootFailureCodes.SwitchInvalid,
-                UiStrings.ProjectLibraryRootSwitchInvalid);
+                UiStrings.WithoutMnemonic(UiStrings.ProjectLibraryRootSwitchInvalid));
         }
 
         var matches = args
@@ -38,7 +38,7 @@ public static class ProjectLibraryRootConfiguration
         {
             throw Failure(
                 ProjectLibraryRootFailureCodes.SwitchInvalid,
-                UiStrings.ProjectLibraryRootSwitchInvalid);
+                UiStrings.WithoutMnemonic(UiStrings.ProjectLibraryRootSwitchInvalid));
         }
 
         AppServices.LibraryRoot = ValidateProductionRoot(args[matches[0] + 1]);
@@ -51,7 +51,7 @@ public static class ProjectLibraryRootConfiguration
         {
             throw Failure(
                 ProjectLibraryRootFailureCodes.RootInvalid,
-                UiStrings.ProjectLibraryRootInvalid);
+                UiStrings.WithoutMnemonic(UiStrings.ProjectLibraryRootInvalid));
         }
 
         try
@@ -62,7 +62,7 @@ public static class ProjectLibraryRootConfiguration
             {
                 throw Failure(
                     ProjectLibraryRootFailureCodes.RootInvalid,
-                    UiStrings.ProjectLibraryRootInvalid);
+                    UiStrings.WithoutMnemonic(UiStrings.ProjectLibraryRootInvalid));
             }
 
             EnsureNoReparseAncestors(new DirectoryInfo(fullPath));
@@ -70,7 +70,7 @@ public static class ProjectLibraryRootConfiguration
             {
                 throw Failure(
                     ProjectLibraryRootFailureCodes.VersionSegmentMissing,
-                    UiStrings.ProjectLibraryRootVersionSegmentMissing);
+                    UiStrings.WithoutMnemonic(UiStrings.ProjectLibraryRootVersionSegmentMissing));
             }
 
             return fullPath;
@@ -86,7 +86,7 @@ public static class ProjectLibraryRootConfiguration
         {
             throw Failure(
                 ProjectLibraryRootFailureCodes.RootInvalid,
-                UiStrings.ProjectLibraryRootInvalid);
+                UiStrings.WithoutMnemonic(UiStrings.ProjectLibraryRootInvalid));
         }
     }
 
@@ -101,7 +101,7 @@ public static class ProjectLibraryRootConfiguration
                 || !fullPath.StartsWith(root + Path.DirectorySeparatorChar, PathComparison))
             {
                 throw new InvalidOperationException(
-                    UiStrings.ProjectOutsideConfiguredLibrary);
+                    UiStrings.WithoutMnemonic(UiStrings.ProjectOutsideConfiguredLibrary));
             }
 
             EnsureNoReparseWithinRoot(new FileInfo(fullPath), root);
@@ -117,7 +117,7 @@ public static class ProjectLibraryRootConfiguration
                                              or NotSupportedException)
         {
             throw new InvalidOperationException(
-                UiStrings.ProjectOutsideConfiguredLibrary);
+                UiStrings.WithoutMnemonic(UiStrings.ProjectOutsideConfiguredLibrary));
         }
     }
 
@@ -144,7 +144,7 @@ public static class ProjectLibraryRootConfiguration
             {
                 throw Failure(
                     ProjectLibraryRootFailureCodes.RootInvalid,
-                    UiStrings.ProjectLibraryRootInvalid);
+                    UiStrings.WithoutMnemonic(UiStrings.ProjectLibraryRootInvalid));
             }
 
             current = current.Parent;
@@ -159,7 +159,7 @@ public static class ProjectLibraryRootConfiguration
             if ((current.Attributes & FileAttributes.ReparsePoint) != 0)
             {
                 throw new InvalidOperationException(
-                    UiStrings.ProjectOutsideConfiguredLibrary);
+                    UiStrings.WithoutMnemonic(UiStrings.ProjectOutsideConfiguredLibrary));
             }
 
             if (PathsEqual(current.FullName, root))
@@ -176,7 +176,7 @@ public static class ProjectLibraryRootConfiguration
         }
 
         throw new InvalidOperationException(
-            UiStrings.ProjectOutsideConfiguredLibrary);
+            UiStrings.WithoutMnemonic(UiStrings.ProjectOutsideConfiguredLibrary));
     }
 
     private static bool PathsEqual(string left, string right)

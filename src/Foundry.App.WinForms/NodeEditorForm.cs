@@ -49,7 +49,7 @@ public sealed class NodeEditorForm : Form
     {
         _original = node ?? throw new ArgumentNullException(nameof(node));
 
-        Text = UiStrings.NodeEditorWindowTitle;
+        Text = UiStrings.WithoutMnemonic(UiStrings.NodeEditorWindowTitle);
         StartPosition = FormStartPosition.CenterParent;
         AutoScaleMode = AutoScaleMode.Dpi;
         MinimumSize = new Size(640, 420);
@@ -62,7 +62,7 @@ public sealed class NodeEditorForm : Form
             ReadOnly = true,
             WordWrap = true,
             ScrollBars = ScrollBars.Both,
-            AccessibleName = UiStrings.ExactSelectedElementBeforeEdit,
+            AccessibleName = UiStrings.WithoutMnemonic(UiStrings.ExactSelectedElementBeforeEdit),
             Text = ExactArtifactDocumentText.Describe(new ArtifactDocument([node])),
         };
 
@@ -70,7 +70,7 @@ public sealed class NodeEditorForm : Form
         {
             Dock = DockStyle.Fill,
             Text = UiStrings.ExactSelectedElementBeforeEdit,
-            AccessibleName = UiStrings.ExactSelectedElementBeforeEdit,
+            AccessibleName = UiStrings.WithoutMnemonic(UiStrings.ExactSelectedElementBeforeEdit),
         };
         originalGroup.Controls.Add(original);
 
@@ -81,7 +81,7 @@ public sealed class NodeEditorForm : Form
             ColumnCount = 2,
             Dock = DockStyle.Top,
             Padding = new Padding(8),
-            AccessibleName = UiStrings.TypedElementFields,
+            AccessibleName = UiStrings.WithoutMnemonic(UiStrings.TypedElementFields),
         };
         _fields.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 34));
         _fields.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 66));
@@ -90,7 +90,7 @@ public sealed class NodeEditorForm : Form
         {
             AutoScroll = true,
             Dock = DockStyle.Fill,
-            AccessibleName = UiStrings.TypedElementFields,
+            AccessibleName = UiStrings.WithoutMnemonic(UiStrings.TypedElementFields),
         };
         editorScroller.Controls.Add(_fields);
 
@@ -99,9 +99,9 @@ public sealed class NodeEditorForm : Form
             AutoEllipsis = false,
             AutoSize = false,
             Dock = DockStyle.Fill,
-            AccessibleName = UiStrings.PendingReplacementMustBeAppliedOrDiscarded,
             AccessibleRole = AccessibleRole.StatusBar,
             TextAlign = ContentAlignment.MiddleLeft,
+            UseMnemonic = false,
         };
 
         _apply = MakeButton(UiStrings.ApplyReplacement, (_, _) => ApplyAndClose());
@@ -154,7 +154,7 @@ public sealed class NodeEditorForm : Form
         if ((_dirty || _primitiveDirty) && !_explicitClose)
         {
             e.Cancel = true;
-            _status.Text = UiStrings.PendingReplacementMustBeAppliedOrDiscarded;
+            SetStatus(UiStrings.PendingReplacementMustBeAppliedOrDiscarded);
             (_primitiveDirty ? _applyPrimitive : _apply)?.Focus();
             return;
         }
@@ -237,7 +237,7 @@ public sealed class NodeEditorForm : Form
                     AutoSize = true,
                     MaximumSize = new Size(720, 0),
                     Text = UiStrings.NodeEditorNoEditableFields,
-                    AccessibleName = UiStrings.NodeEditorNoEditableFields,
+                    AccessibleName = UiStrings.WithoutMnemonic(UiStrings.NodeEditorNoEditableFields),
                 });
                 break;
 
@@ -250,7 +250,7 @@ public sealed class NodeEditorForm : Form
                 {
                     AutoSize = true,
                     Text = UiStrings.NodeEditorNoEditableFields,
-                    AccessibleName = UiStrings.NodeEditorNoEditableFields,
+                    AccessibleName = UiStrings.WithoutMnemonic(UiStrings.NodeEditorNoEditableFields),
                 });
                 break;
         }
@@ -290,7 +290,7 @@ public sealed class NodeEditorForm : Form
         _sequence = NewGrid(UiStrings.EditorSequenceItems);
         _sequence.Columns.Add(new DataGridViewTextBoxColumn
         {
-            HeaderText = UiStrings.EditorItemText,
+            HeaderText = UiStrings.WithoutMnemonic(UiStrings.EditorItemText),
             AutoSizeMode = DataGridViewAutoSizeColumnMode.Fill,
         });
         foreach (var value in values)
@@ -406,22 +406,22 @@ public sealed class NodeEditorForm : Form
         _primitiveList = new ListBox
         {
             Dock = DockStyle.Fill,
-            AccessibleName = UiStrings.EditorVectorPrimitives,
+            AccessibleName = UiStrings.WithoutMnemonic(UiStrings.EditorVectorPrimitives),
         };
         _primitiveList.SelectedIndexChanged += (_, _) => PrimitiveSelectionChanged();
 
         _primitiveType = new ComboBox
         {
             DropDownStyle = ComboBoxStyle.DropDownList,
-            AccessibleName = UiStrings.EditorVectorPrimitiveType,
+            AccessibleName = UiStrings.WithoutMnemonic(UiStrings.EditorVectorPrimitiveType),
             Width = 180,
         };
         _primitiveType.Items.AddRange(
         [
-            new PrimitiveChoice(typeof(LineSeg), UiStrings.PrimitiveLine),
-            new PrimitiveChoice(typeof(CircleShape), UiStrings.PrimitiveCircle),
-            new PrimitiveChoice(typeof(RectShape), UiStrings.PrimitiveRectangle),
-            new PrimitiveChoice(typeof(TextLabel), UiStrings.PrimitiveTextLabel),
+            new PrimitiveChoice(typeof(LineSeg), UiStrings.WithoutMnemonic(UiStrings.PrimitiveLine)),
+            new PrimitiveChoice(typeof(CircleShape), UiStrings.WithoutMnemonic(UiStrings.PrimitiveCircle)),
+            new PrimitiveChoice(typeof(RectShape), UiStrings.WithoutMnemonic(UiStrings.PrimitiveRectangle)),
+            new PrimitiveChoice(typeof(TextLabel), UiStrings.WithoutMnemonic(UiStrings.PrimitiveTextLabel)),
         ]);
         _primitiveType.SelectedIndex = 0;
 
@@ -475,7 +475,7 @@ public sealed class NodeEditorForm : Form
         var split = new SplitContainer
         {
             Dock = DockStyle.Fill,
-            AccessibleName = UiStrings.EditorVectorPrimitives,
+            AccessibleName = UiStrings.WithoutMnemonic(UiStrings.EditorVectorPrimitives),
             SplitterDistance = 270,
         };
         split.Panel1.Controls.Add(_primitiveList);
@@ -487,7 +487,7 @@ public sealed class NodeEditorForm : Form
             Dock = DockStyle.Fill,
             Height = 360,
             Text = UiStrings.EditorVectorPrimitives,
-            AccessibleName = UiStrings.EditorVectorPrimitives,
+            AccessibleName = UiStrings.WithoutMnemonic(UiStrings.EditorVectorPrimitives),
         };
         group.Controls.Add(split);
         AddFullWidth(group, 360);
@@ -499,7 +499,7 @@ public sealed class NodeEditorForm : Form
     {
         var control = new TextBox
         {
-            AccessibleName = label,
+            AccessibleName = UiStrings.WithoutMnemonic(label),
             Dock = DockStyle.Fill,
             Multiline = multiline,
             ScrollBars = multiline ? ScrollBars.Vertical : ScrollBars.None,
@@ -521,7 +521,7 @@ public sealed class NodeEditorForm : Form
     {
         var control = new NumericUpDown
         {
-            AccessibleName = label,
+            AccessibleName = UiStrings.WithoutMnemonic(label),
             Dock = DockStyle.Fill,
             Minimum = minimum,
             Maximum = maximum,
@@ -538,7 +538,7 @@ public sealed class NodeEditorForm : Form
         var control = new CheckBox
         {
             AutoSize = true,
-            AccessibleName = label,
+            AccessibleName = UiStrings.WithoutMnemonic(label),
             Text = label,
             Checked = value,
         };
@@ -588,7 +588,7 @@ public sealed class NodeEditorForm : Form
     private static DataGridView NewGrid(string accessibleName)
         => new()
         {
-            AccessibleName = accessibleName,
+            AccessibleName = UiStrings.WithoutMnemonic(accessibleName),
             AllowUserToAddRows = false,
             AllowUserToDeleteRows = false,
             AllowUserToOrderColumns = false,
@@ -612,7 +612,7 @@ public sealed class NodeEditorForm : Form
         {
             _table.Columns.Add(new DataGridViewTextBoxColumn
             {
-                HeaderText = UiStrings.Format(UiStrings.EditorTableColumn, column + 1),
+                HeaderText = UiStrings.FormatWithoutMnemonic(UiStrings.EditorTableColumn, column + 1),
                 AutoSizeMode = DataGridViewAutoSizeColumnMode.Fill,
             });
         }
@@ -635,8 +635,10 @@ public sealed class NodeEditorForm : Form
         for (var row = 0; row < _table.Rows.Count; row++)
         {
             _table.Rows[row].HeaderCell.Value = _tableHasHeader.Checked && row == 0
-                ? UiStrings.EditorTableHeaderRow
-                : UiStrings.Format(UiStrings.EditorTableDataRow, row + (_tableHasHeader.Checked ? 0 : 1));
+                ? UiStrings.WithoutMnemonic(UiStrings.EditorTableHeaderRow)
+                : UiStrings.FormatWithoutMnemonic(
+                    UiStrings.EditorTableDataRow,
+                    row + (_tableHasHeader.Checked ? 0 : 1));
         }
     }
 
@@ -760,7 +762,7 @@ public sealed class NodeEditorForm : Form
     {
         var control = new TextBox
         {
-            AccessibleName = label,
+            AccessibleName = UiStrings.WithoutMnemonic(label),
             Dock = DockStyle.Fill,
             Text = value,
         };
@@ -774,7 +776,7 @@ public sealed class NodeEditorForm : Form
         var control = new CheckBox
         {
             AutoSize = true,
-            AccessibleName = label,
+            AccessibleName = UiStrings.WithoutMnemonic(label),
             Text = label,
             Checked = value,
         };
@@ -787,15 +789,15 @@ public sealed class NodeEditorForm : Form
     {
         _primitiveAnchor = new ComboBox
         {
-            AccessibleName = UiStrings.EditorTextAnchor,
+            AccessibleName = UiStrings.WithoutMnemonic(UiStrings.EditorTextAnchor),
             Dock = DockStyle.Fill,
             DropDownStyle = ComboBoxStyle.DropDownList,
         };
         _primitiveAnchor.Items.AddRange(
         [
-            new AnchorChoice(TextAnchor.Start, UiStrings.TextAnchorStart),
-            new AnchorChoice(TextAnchor.Middle, UiStrings.TextAnchorMiddle),
-            new AnchorChoice(TextAnchor.End, UiStrings.TextAnchorEnd),
+            new AnchorChoice(TextAnchor.Start, UiStrings.WithoutMnemonic(UiStrings.TextAnchorStart)),
+            new AnchorChoice(TextAnchor.Middle, UiStrings.WithoutMnemonic(UiStrings.TextAnchorMiddle)),
+            new AnchorChoice(TextAnchor.End, UiStrings.WithoutMnemonic(UiStrings.TextAnchorEnd)),
         ]);
         _primitiveAnchor.SelectedIndex = anchor switch
         {
@@ -1016,9 +1018,9 @@ public sealed class NodeEditorForm : Form
     private void UpdateActions()
     {
         _apply.Enabled = _dirty && !_primitiveDirty;
-        _status.Text = _dirty || _primitiveDirty
+        SetStatus(_dirty || _primitiveDirty
             ? UiStrings.PendingReplacementMustBeAppliedOrDiscarded
-            : string.Empty;
+            : string.Empty);
 
         if (_primitiveList is null)
         {
@@ -1138,7 +1140,7 @@ public sealed class NodeEditorForm : Form
             return true;
         }
 
-        _status.Text = UiStrings.Format(UiStrings.NodeEditorInvalidNumber, label);
+        SetStatus(UiStrings.NodeEditorInvalidNumber, UiStrings.WithoutMnemonic(label));
         control.Focus();
         return false;
     }
@@ -1160,35 +1162,35 @@ public sealed class NodeEditorForm : Form
                 ? new CircleShape(10, 10, 5)
                 : type == typeof(RectShape)
                     ? new RectShape(0, 0, 10, 10)
-                    : new TextLabel(0, 0, UiStrings.PrimitiveTextLabel);
+                    : new TextLabel(0, 0, UiStrings.WithoutMnemonic(UiStrings.PrimitiveTextLabel));
 
     private static string DescribePrimitive(VectorPrimitive primitive)
         => primitive switch
         {
-            LineSeg line => UiStrings.Format(
+            LineSeg line => UiStrings.FormatWithoutMnemonic(
                 UiStrings.NodeVectorLineDetail,
                 Number(line.X1),
                 Number(line.Y1),
                 Number(line.X2),
                 Number(line.Y2),
                 Number(line.StrokeWidthMm),
-                line.Dashed ? UiStrings.BooleanYes : UiStrings.BooleanNo),
-            CircleShape circle => UiStrings.Format(
+                UiStrings.WithoutMnemonic(line.Dashed ? UiStrings.BooleanYes : UiStrings.BooleanNo)),
+            CircleShape circle => UiStrings.FormatWithoutMnemonic(
                 UiStrings.NodeVectorCircleDetail,
                 Number(circle.CenterX),
                 Number(circle.CenterY),
                 Number(circle.RadiusMm),
                 Number(circle.StrokeWidthMm),
-                circle.Filled ? UiStrings.BooleanYes : UiStrings.BooleanNo),
-            RectShape rectangle => UiStrings.Format(
+                UiStrings.WithoutMnemonic(circle.Filled ? UiStrings.BooleanYes : UiStrings.BooleanNo)),
+            RectShape rectangle => UiStrings.FormatWithoutMnemonic(
                 UiStrings.NodeVectorRectangleDetail,
                 Number(rectangle.X),
                 Number(rectangle.Y),
                 Number(rectangle.WidthMm),
                 Number(rectangle.HeightMm),
                 Number(rectangle.StrokeWidthMm),
-                rectangle.Filled ? UiStrings.BooleanYes : UiStrings.BooleanNo),
-            TextLabel label => UiStrings.Format(
+                UiStrings.WithoutMnemonic(rectangle.Filled ? UiStrings.BooleanYes : UiStrings.BooleanNo)),
+            TextLabel label => UiStrings.FormatWithoutMnemonic(
                 UiStrings.NodeVectorTextLabelDetail,
                 Number(label.X),
                 Number(label.Y),
@@ -1196,9 +1198,9 @@ public sealed class NodeEditorForm : Form
                 Number(label.FontSizeMm),
                 label.Anchor switch
                 {
-                    TextAnchor.Start => UiStrings.TextAnchorStart,
-                    TextAnchor.Middle => UiStrings.TextAnchorMiddle,
-                    TextAnchor.End => UiStrings.TextAnchorEnd,
+                    TextAnchor.Start => UiStrings.WithoutMnemonic(UiStrings.TextAnchorStart),
+                    TextAnchor.Middle => UiStrings.WithoutMnemonic(UiStrings.TextAnchorMiddle),
+                    TextAnchor.End => UiStrings.WithoutMnemonic(UiStrings.TextAnchorEnd),
                     _ => label.Anchor.ToString(),
                 }),
             _ => primitive.GetType().Name,
@@ -1206,6 +1208,14 @@ public sealed class NodeEditorForm : Form
 
     private static string Number(double value)
         => value.ToString("R", CultureInfo.InvariantCulture);
+
+    private void SetStatus(string template, params object?[] arguments)
+    {
+        var text = UiStrings.FormatWithoutMnemonic(template, arguments);
+        _status.Text = text;
+        _status.AccessibleName = text;
+        _status.Visible = text.Length > 0;
+    }
 
     private static Button MakeButton(string text, EventHandler onClick)
     {

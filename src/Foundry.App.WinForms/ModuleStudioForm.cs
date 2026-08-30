@@ -64,7 +64,7 @@ public sealed class ModuleStudioForm : Form
         _reviewRunner = reviewRunner ?? RunModalReview;
         _exportPicker = exportPicker;
 
-        Text = UiStrings.ModuleStudioWindowTitle;
+        Text = UiStrings.WithoutMnemonic(UiStrings.ModuleStudioWindowTitle);
         // Keep the ordinary 1180 x 720 design surface, but leave enough
         // headroom for 125% scaling inside the 1366 x 768 hardware floor.
         // The field pane already owns scrolling; a taller minimum only made
@@ -76,7 +76,7 @@ public sealed class ModuleStudioForm : Form
         _doorList = new ListBox
         {
             Dock = DockStyle.Fill,
-            AccessibleName = UiStrings.ModuleDoors,
+            AccessibleName = UiStrings.WithoutMnemonic(UiStrings.ModuleDoors),
             IntegralHeight = false,
         };
         foreach (var door in ModuleStudioCatalog.All)
@@ -88,7 +88,7 @@ public sealed class ModuleStudioForm : Form
         {
             Dock = DockStyle.Fill,
             DropDownStyle = ComboBoxStyle.DropDownList,
-            AccessibleName = UiStrings.ModuleMode,
+            AccessibleName = UiStrings.WithoutMnemonic(UiStrings.ModuleMode),
         };
 
         _parameterPanel = new FlowLayoutPanel
@@ -97,33 +97,41 @@ public sealed class ModuleStudioForm : Form
             AutoScroll = true,
             FlowDirection = FlowDirection.TopDown,
             WrapContents = false,
-            AccessibleName = UiStrings.ModuleInputs,
+            AccessibleName = UiStrings.WithoutMnemonic(UiStrings.ModuleInputs),
         };
 
         _notes = new ListBox
         {
             Dock = DockStyle.Fill,
+            // Safeguards are deliberately exact, sometimes sentence-length
+            // statements. A single-line ListBox must provide its native
+            // horizontal reading path instead of silently clipping that text.
+            HorizontalScrollbar = true,
             IntegralHeight = false,
-            AccessibleName = UiStrings.ModuleNotes,
+            AccessibleName = UiStrings.WithoutMnemonic(UiStrings.ModuleNotes),
         };
 
         _greenInput = new CheckBox
         {
             AutoSize = true,
             Text = UiStrings.GreenInputAttestation,
-            AccessibleName = UiStrings.GreenInputAttestation,
+            AccessibleName = UiStrings.WithoutMnemonic(UiStrings.GreenInputAttestation),
         };
 
         _audience = new ComboBox
         {
             DropDownStyle = ComboBoxStyle.DropDownList,
             Width = 180,
-            AccessibleName = UiStrings.OutputAudience,
+            AccessibleName = UiStrings.WithoutMnemonic(UiStrings.OutputAudience),
         };
         _audience.Items.AddRange(
         [
-            new DisplayItem<RenderAudience>(RenderAudience.Teacher, UiStrings.AudienceTeacher),
-            new DisplayItem<RenderAudience>(RenderAudience.Learner, UiStrings.AudienceLearner),
+            new DisplayItem<RenderAudience>(
+                RenderAudience.Teacher,
+                UiStrings.WithoutMnemonic(UiStrings.AudienceTeacher)),
+            new DisplayItem<RenderAudience>(
+                RenderAudience.Learner,
+                UiStrings.WithoutMnemonic(UiStrings.AudienceLearner)),
         ]);
         _audience.SelectedIndex = 0;
 
@@ -134,13 +142,13 @@ public sealed class ModuleStudioForm : Form
             Increment = 25,
             Value = 100,
             Width = 90,
-            AccessibleName = UiStrings.TextScalePercent,
+            AccessibleName = UiStrings.WithoutMnemonic(UiStrings.TextScalePercent),
         };
         _targetLanguageFirst = new CheckBox
         {
             AutoSize = true,
             Text = UiStrings.TargetLanguageFirst,
-            AccessibleName = UiStrings.TargetLanguageFirst,
+            AccessibleName = UiStrings.WithoutMnemonic(UiStrings.TargetLanguageFirst),
         };
 
         _review = MakeButton(UiStrings.ReviewAndApprove, (_, _) => ReviewAndApprove());
@@ -149,7 +157,7 @@ public sealed class ModuleStudioForm : Form
         _export = MakeButton(UiStrings.ExportEllipsis, (_, _) => BeginInvoke(Export));
         _save = MakeButton(UiStrings.SaveToLibrary, (_, _) => SaveToLibrary());
 
-        _status = new Label { Dock = DockStyle.Bottom, AutoSize = false, Height = 34 };
+        _status = new Label { Dock = DockStyle.Bottom, AutoSize = false, Height = 34, UseMnemonic = false };
         SetStatus(UiStrings.StatusModuleReady);
 
         var modeRow = new TableLayoutPanel
@@ -169,7 +177,7 @@ public sealed class ModuleStudioForm : Form
             Dock = DockStyle.Fill,
             AutoSize = true,
             Text = UiStrings.ModuleLaneConfirmation,
-            AccessibleName = UiStrings.ModuleLaneConfirmation,
+            AccessibleName = UiStrings.WithoutMnemonic(UiStrings.ModuleLaneConfirmation),
         };
         laneGroup.Controls.Add(_greenInput);
 
@@ -190,7 +198,7 @@ public sealed class ModuleStudioForm : Form
             Dock = DockStyle.Fill,
             AutoSize = true,
             Text = UiStrings.ModuleOutputOptions,
-            AccessibleName = UiStrings.ModuleOutputOptions,
+            AccessibleName = UiStrings.WithoutMnemonic(UiStrings.ModuleOutputOptions),
         };
         outputGroup.Controls.Add(outputOptions);
 
@@ -263,7 +271,12 @@ public sealed class ModuleStudioForm : Form
 
     private static Button MakeButton(string text, EventHandler click)
     {
-        var button = new Button { Text = text, AutoSize = true, AccessibleName = text };
+        var button = new Button
+        {
+            Text = text,
+            AutoSize = true,
+            AccessibleName = UiStrings.WithoutMnemonic(text),
+        };
         button.Click += click;
         return button;
     }
@@ -318,9 +331,15 @@ public sealed class ModuleStudioForm : Form
         PopulateNotes(mode, []);
         _loadingFields = false;
         UpdateConditions();
-        SetStatus(!mode.IsBuildAvailable
-            ? UiStrings.Format(UiStrings.StatusModuleUnavailable, Display(mode.UnavailableReason!))
-            : ReadinessStatus());
+        if (!mode.IsBuildAvailable)
+        {
+            SetStatus(UiStrings.StatusModuleUnavailable, Display(mode.UnavailableReason!));
+        }
+        else
+        {
+            SetStatus(ReadinessStatus());
+        }
+
         UpdateGatedButtons();
     }
 
@@ -332,7 +351,9 @@ public sealed class ModuleStudioForm : Form
             AutoSize = false,
             Width = 780,
             Height = field.Kind is ModuleFieldKind.Multiline or ModuleFieldKind.Lines or ModuleFieldKind.RecordTable ? 170 : 78,
-            Text = label,
+            // GroupBox has no UseMnemonic switch, so escape the native prefix
+            // marker while preserving the exact catalog text for accessibility.
+            Text = EscapeMnemonicMarkers(label),
             AccessibleName = label,
             Padding = new Padding(10),
         };
@@ -355,7 +376,7 @@ public sealed class ModuleStudioForm : Form
         control.AccessibleName ??= label;
         if (field.IsSensitive)
         {
-            control.AccessibleDescription = UiStrings.ModuleSensitiveInput;
+            control.AccessibleDescription = UiStrings.WithoutMnemonic(UiStrings.ModuleSensitiveInput);
         }
 
         group.Controls.Add(control);
@@ -397,6 +418,9 @@ public sealed class ModuleStudioForm : Form
             AutoSize = true,
             Text = Display(field.Display),
             Checked = string.Equals(field.DefaultValue?.ToString(), "true", StringComparison.Ordinal),
+            // Dynamic module labels treat '&' literally; access keys belong
+            // only to the separately validated static chrome inventory.
+            UseMnemonic = false,
         };
         check.CheckedChanged += (_, _) => BoundedInputChanged();
         _valueReaders[field.Key] = () => check.Checked ? "true" : "false";
@@ -427,7 +451,7 @@ public sealed class ModuleStudioForm : Form
             AllowUserToDeleteRows = true,
             RowHeadersVisible = false,
             AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.Fill,
-            AccessibleDescription = UiStrings.RecordTableHint,
+            AccessibleDescription = UiStrings.WithoutMnemonic(UiStrings.RecordTableHint),
         };
 
         foreach (var column in field.Columns)
@@ -485,7 +509,7 @@ public sealed class ModuleStudioForm : Form
         var selected = new TextBox
         {
             ReadOnly = true,
-            Text = UiStrings.AccessPurposeAuthorityAbsent,
+            Text = UiStrings.WithoutMnemonic(UiStrings.AccessPurposeAuthorityAbsent),
             AccessibleName = Display(field.Display),
             Dock = DockStyle.Fill,
         };
@@ -499,7 +523,11 @@ public sealed class ModuleStudioForm : Form
             AutoSize = false,
             Text = Display(field.Display),
             AccessibleName = Display(field.Display),
+            UseMnemonic = false,
         };
+
+    private static string EscapeMnemonicMarkers(string text)
+        => text.Replace("&", "&&", StringComparison.Ordinal);
 
     private void ReviewAndApprove()
     {
@@ -523,7 +551,7 @@ public sealed class ModuleStudioForm : Form
         }
         catch (Exception refusal) when (refusal is ArgumentException or InvalidOperationException)
         {
-            SetStatus(UiStrings.Format(UiStrings.StatusRefused, refusal.Message));
+            SetStatus(UiStrings.StatusRefused, refusal.Message);
             _parameterPanel.SelectNextControl(null, true, true, true, false);
             return;
         }
@@ -534,16 +562,15 @@ public sealed class ModuleStudioForm : Form
             .ToList();
         if (blockingIssues.Count > 0)
         {
-            var summary = UiStrings.Format(UiStrings.StatusModuleBuiltWithIssues, blockingIssues.Count);
             foreach (var issue in blockingIssues)
             {
-                _notes.Items.Add(UiStrings.Format(
+                _notes.Items.Add(UiStrings.FormatWithoutMnemonic(
                     UiStrings.ModuleIssueDetail,
                     issue.Code,
                     issue.Message));
             }
 
-            SetStatus(summary);
+            SetStatus(UiStrings.StatusModuleBuiltWithIssues, blockingIssues.Count);
             UpdateGatedButtons();
             return;
         }
@@ -628,10 +655,10 @@ public sealed class ModuleStudioForm : Form
         _targetLanguageFirst.Enabled = enabled;
     }
 
-    private static ApprovedArtifact? RunModalReview(ReviewSession session)
+    private ApprovedArtifact? RunModalReview(ReviewSession session)
     {
         using var review = new ReviewForm(session);
-        return review.ShowDialog() == DialogResult.OK ? review.Result : null;
+        return review.ShowDialog(this) == DialogResult.OK ? review.Result : null;
     }
 
     private void OpenPrintView()
@@ -668,7 +695,7 @@ public sealed class ModuleStudioForm : Form
         }
         catch (Exception refusal) when (refusal is InvalidOperationException or IOException or NotSupportedException)
         {
-            SetStatus(UiStrings.Format(UiStrings.StatusRefused, refusal.Message));
+            SetStatus(UiStrings.StatusRefused, refusal.Message);
         }
     }
 
@@ -689,7 +716,7 @@ public sealed class ModuleStudioForm : Form
 
         if (!SupportedExportTargets(_context.Mode).Contains(choice.Target))
         {
-            SetStatus(UiStrings.Format(UiStrings.StatusRefused, choice.Target.ToString()));
+            SetStatus(UiStrings.StatusRefused, choice.Target.ToString());
             return;
         }
 
@@ -701,11 +728,11 @@ public sealed class ModuleStudioForm : Form
                 (double)_textScale.Value,
                 _targetLanguageFirst.Checked);
             File.WriteAllBytes(choice.Path, AppServices.Render(ApprovedResult, request));
-            SetStatus(UiStrings.Format(UiStrings.StatusExported, Path.GetFileName(choice.Path)));
+            SetStatus(UiStrings.StatusExported, Path.GetFileName(choice.Path));
         }
         catch (Exception refusal) when (refusal is InvalidOperationException or IOException or NotSupportedException)
         {
-            SetStatus(UiStrings.Format(UiStrings.StatusRefused, refusal.Message));
+            SetStatus(UiStrings.StatusRefused, refusal.Message);
         }
     }
 
@@ -730,8 +757,8 @@ public sealed class ModuleStudioForm : Form
 
     private static string ExportLabel(RenderTarget target)
         => target == RenderTarget.AccessibleHtml
-            ? UiStrings.ExportFilterModuleAccessible
-            : UiStrings.ExportFilterModulePrint;
+            ? UiStrings.WithoutMnemonic(UiStrings.ExportFilterModuleAccessible)
+            : UiStrings.WithoutMnemonic(UiStrings.ExportFilterModulePrint);
 
     private static IReadOnlyList<RenderTarget> SupportedExportTargets(ModuleModeDefinition mode)
         => [.. mode.Recipe.SupportedExports
@@ -754,20 +781,20 @@ public sealed class ModuleStudioForm : Form
             AppServices.SymbolCatalog(),
             _validationEnvelope,
             _renderProfile);
-        SetStatus(UiStrings.Format(UiStrings.StatusSaved, name));
+        SetStatus(UiStrings.StatusSaved, name);
     }
 
     private void PopulateNotes(ModuleModeDefinition mode, IReadOnlyList<string> transformationReport)
     {
         _notes.Items.Clear();
-        _notes.Items.Add(UiStrings.Format(
+        _notes.Items.Add(UiStrings.FormatWithoutMnemonic(
             UiStrings.ModuleLaneAndRecipe,
             mode.Lane,
             mode.Recipe.Id,
             mode.Recipe.Version));
         if (mode.DefaultsAreSynthetic)
         {
-            _notes.Items.Add(UiStrings.ModuleSyntheticStarter);
+            _notes.Items.Add(UiStrings.WithoutMnemonic(UiStrings.ModuleSyntheticStarter));
         }
 
         if (mode.UnavailableReason is not null)
@@ -777,7 +804,7 @@ public sealed class ModuleStudioForm : Form
 
         foreach (var prohibited in mode.Recipe.ProhibitedPurposes)
         {
-            _notes.Items.Add(UiStrings.Format(UiStrings.ModuleProhibitedPurpose, prohibited));
+            _notes.Items.Add(UiStrings.FormatWithoutMnemonic(UiStrings.ModuleProhibitedPurpose, prohibited));
         }
 
         foreach (var warning in mode.Recipe.Warnings.Concat(transformationReport).Distinct(StringComparer.Ordinal))
@@ -847,7 +874,7 @@ public sealed class ModuleStudioForm : Form
             _greenInput.Checked = false;
             _loadingFields = false;
             ClearApproval();
-            SetStatus(UiStrings.Format(UiStrings.StatusModuleUnavailable, Display(reason)));
+            SetStatus(UiStrings.StatusModuleUnavailable, Display(reason));
             UpdateGatedButtons();
             return;
         }
@@ -904,8 +931,9 @@ public sealed class ModuleStudioForm : Form
         _save.Enabled = approved;
     }
 
-    private void SetStatus(string text)
+    private void SetStatus(string template, params object?[] arguments)
     {
+        var text = UiStrings.FormatWithoutMnemonic(template, arguments);
         _status.Text = text;
         _status.AccessibleName = text;
     }

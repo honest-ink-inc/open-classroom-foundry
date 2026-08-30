@@ -1,10 +1,12 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 using System.Reflection;
 using System.IO;
+using System.Globalization;
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using Foundry.App.WinForms;
+using Foundry.Contracts;
 using Foundry.Domain;
 using Foundry.Modules.BuiltIn;
 using Foundry.Modules.DeterministicPress;
@@ -182,6 +184,131 @@ public class ReviewedUiCatalogTests
         AssertCatalogRefused(root => root["strings"]![mnemonicId] = "Apply edit&", mnemonicId);
         AssertCatalogRefused(root => root["strings"]![mnemonicId] = "Apply & edit", mnemonicId);
         AssertCatalogRefused(root => root["strings"]![mnemonicId] = "Apply &…edit", mnemonicId);
+        AssertCatalogRefused(root => root["strings"]![mnemonicId] = "Apply &𐐀edit", mnemonicId);
+    }
+
+    [Fact]
+    public void Access_key_contexts_cover_every_mnemonic_bearing_static_chrome_id()
+    {
+        var expected = UiCatalogInventory.NeutralStrings
+            .Where(pair => pair.Key.StartsWith("chrome.", StringComparison.Ordinal)
+                && MnemonicKeys(pair.Value).Count > 0)
+            .Select(pair => pair.Key)
+            .Order(StringComparer.Ordinal)
+            .ToArray();
+        var declared = UiCatalogAccessKeyContexts.All
+            .SelectMany(context => context.LocalizationIds)
+            .Distinct(StringComparer.Ordinal)
+            .Order(StringComparer.Ordinal)
+            .ToArray();
+
+        Assert.Equal(expected, declared);
+        Assert.All(UiCatalogAccessKeyContexts.All, context =>
+        {
+            Assert.Equal(
+                context.LocalizationIds.Count,
+                context.LocalizationIds.Distinct(StringComparer.Ordinal).Count());
+            Assert.All(context.LocalizationIds, localizationId =>
+                Assert.Single(MnemonicKeys(UiCatalogInventory.NeutralStrings[localizationId])));
+        });
+    }
+
+    [Theory]
+    [InlineData(
+        nameof(UiStrings.ReviewAndApprove),
+        "Review and a&pprove…",
+        nameof(UiStrings.PrintButton),
+        "press-room")]
+    [InlineData(
+        nameof(UiStrings.ReviewElementsTab),
+        "&Elements and issues",
+        nameof(UiStrings.EditElement),
+        "review")]
+    [InlineData(
+        nameof(UiStrings.AddItem),
+        "A&dd item",
+        nameof(UiStrings.DiscardReplacement),
+        "node-editor-sequence")]
+    public void Catalog_refuses_duplicate_access_keys_within_one_simultaneously_visible_context(
+        string changedMember,
+        string changedTranslation,
+        string collidingMember,
+        string contextName)
+    {
+        var changedId = UiCatalogIds.Chrome(changedMember);
+        var collidingId = UiCatalogIds.Chrome(collidingMember);
+        using var file = ReviewedCatalog(root => root["strings"]![changedId] = changedTranslation);
+
+        var refusal = Assert.Throws<InvalidDataException>(() => UiCatalogLoader.LoadReviewed(file.Path));
+
+        Assert.Contains(contextName, refusal.Message, StringComparison.Ordinal);
+        Assert.Contains(changedId, refusal.Message, StringComparison.Ordinal);
+        Assert.Contains(collidingId, refusal.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Catalog_mirrors_WinForms_current_culture_for_dotted_I_access_key_collisions()
+    {
+        var previousCulture = CultureInfo.CurrentCulture;
+        var previousUiCulture = CultureInfo.CurrentUICulture;
+        try
+        {
+            var culture = CultureInfo.GetCultureInfo("en-US");
+            CultureInfo.CurrentCulture = culture;
+            CultureInfo.CurrentUICulture = culture;
+            var changedId = UiCatalogIds.Chrome(nameof(UiStrings.EditElement));
+            var collidingId = UiCatalogIds.Chrome(nameof(UiStrings.ReviewElementsTab));
+            const string ChangedTranslation = "Edit element with &İ…";
+            using var file = ReviewedCatalog(root =>
+                root["strings"]![changedId] = ChangedTranslation);
+
+            var nativeCollision = Control.IsMnemonic('İ', UiStrings.ReviewElementsTab)
+                || Control.IsMnemonic('i', ChangedTranslation);
+            var outcome = Record.Exception(() => UiCatalogLoader.LoadReviewed(file.Path));
+
+            if (nativeCollision)
+            {
+                var refusal = Assert.IsType<InvalidDataException>(outcome);
+                Assert.Contains("review", refusal.Message, StringComparison.Ordinal);
+                Assert.Contains(changedId, refusal.Message, StringComparison.Ordinal);
+                Assert.Contains(collidingId, refusal.Message, StringComparison.Ordinal);
+            }
+            else
+            {
+                // Globalization-invariant runtimes intentionally give
+                // Control.IsMnemonic invariant semantics; the loader must
+                // mirror that same result rather than hard-code en-US data.
+                Assert.Null(outcome);
+            }
+        }
+        finally
+        {
+            CultureInfo.CurrentCulture = previousCulture;
+            CultureInfo.CurrentUICulture = previousUiCulture;
+        }
+    }
+
+    [Fact]
+    public void Catalog_allows_access_key_reuse_across_separate_forms_and_mutually_exclusive_editor_variants()
+    {
+        var tileId = UiCatalogIds.Chrome(nameof(UiStrings.TileMake));
+        var importId = UiCatalogIds.Chrome(nameof(UiStrings.ImportImage));
+        var sequenceId = UiCatalogIds.Chrome(nameof(UiStrings.AddItem));
+        var tableId = UiCatalogIds.Chrome(nameof(UiStrings.AddTableRow));
+        using var file = ReviewedCatalog(root =>
+        {
+            root["strings"]![tileId] = "Make tiles with &Z";
+            root["strings"]![importId] = "Import image with &Z…";
+            root["strings"]![sequenceId] = "Add item with &Q";
+            root["strings"]![tableId] = "Add row with &Q";
+        });
+
+        var catalog = UiCatalogLoader.LoadReviewed(file.Path);
+
+        Assert.Equal("Make tiles with &Z", catalog.Translate(tileId, UiStrings.TileMake));
+        Assert.Equal("Import image with &Z…", catalog.Translate(importId, UiStrings.ImportImage));
+        Assert.Equal("Add item with &Q", catalog.Translate(sequenceId, UiStrings.AddItem));
+        Assert.Equal("Add row with &Q", catalog.Translate(tableId, UiStrings.AddTableRow));
     }
 
     [Fact]
@@ -203,6 +330,9 @@ public class ReviewedUiCatalogTests
         {
             root["strings"]![UiCatalogIds.Chrome(nameof(UiStrings.ReviewElementsTab))] = "A&&B &C";
             root["strings"]![UiCatalogIds.Chrome(nameof(UiStrings.TileForWall))] = "A&&B &C…";
+            root["strings"]![UiCatalogIds.Chrome(nameof(UiStrings.ReviewWindowTitle))] = "reviewing an A&&B draft";
+            root["strings"]![UiCatalogIds.Chrome(nameof(UiStrings.UnapprovedPreviewProfile))] =
+                "A&&B profile: {0}; {1}; {2}; {3}";
         });
 
         try
@@ -217,6 +347,13 @@ public class ReviewedUiCatalogTests
 
                 Assert.Equal("A&&B &C", elements.Text);
                 Assert.Equal("A&B C", elements.AccessibilityObject.Name);
+                Assert.Contains("A&B draft", review.Text, StringComparison.Ordinal);
+                Assert.DoesNotContain("A&&B", review.Text, StringComparison.Ordinal);
+                var profile = ReviewSurfaceContractTests.Flatten(review)
+                    .OfType<Label>()
+                    .Single(label => label.Text.StartsWith("A&B profile:", StringComparison.Ordinal));
+                Assert.DoesNotContain("A&&B", profile.Text, StringComparison.Ordinal);
+                Assert.Equal(profile.Text, profile.AccessibilityObject.Name);
                 Assert.Equal("A&B C", tile.Text);
             });
         }
@@ -227,18 +364,201 @@ public class ReviewedUiCatalogTests
     }
 
     [Fact]
-    public void Catalog_preserves_literal_ampersands_in_dynamic_non_mnemonic_text()
+    public void Dynamic_press_and_all_aboard_labels_keep_literal_ampersands_without_disabling_static_access_keys()
     {
-        var id = UiCatalogIds.PressTitle("calibration-proof");
-        Assert.Equal("Calibration & proof sheet", UiCatalogInventory.NeutralStrings[id]);
+        const string NumberLabel = "Radius &size";
+        const string ToggleLabel = "Numbers &labels";
+        const string CardName = "First &follow";
+        const string ExpectedReady = "Ready & waiting";
+        const string ExpectedCardLabel = "Card & text: First &follow";
+        var press = PressRoomCatalog.ById("clock-face");
         using var file = ReviewedCatalog(root =>
-            root["strings"]![id] = "Calibration & hoja de prueba");
+        {
+            root["strings"]![UiCatalogIds.PressParameter(press.Id, "radius")] = NumberLabel;
+            root["strings"]![UiCatalogIds.PressParameter(press.Id, "numerals")] = ToggleLabel;
+            root["strings"]![UiCatalogIds.AllAboardFirstCard] = CardName;
+            root["strings"]![UiCatalogIds.Chrome(nameof(UiStrings.StatusReady))] = "Ready && waiting";
+            root["strings"]![UiCatalogIds.Chrome(nameof(UiStrings.CardTextLabel))] = "Card && text: {0}";
+        });
 
-        var catalog = UiCatalogLoader.LoadReviewed(file.Path);
+        try
+        {
+            ConfigureApprovedForTest([file], [UiLocale.CatalogSwitch, file.Path]);
+            Sta.Run(() =>
+            {
+                using var pressRoom = new PressRoomForm(_ => null);
+                var pressList = ReviewSurfaceContractTests.Flatten(pressRoom)
+                    .OfType<ListBox>()
+                    .Single(list => string.Equals(list.AccessibleName, UiStrings.PressList, StringComparison.Ordinal));
+                pressList.SelectedIndex = PressRoomCatalog.All.ToList().IndexOf(press);
 
-        Assert.Equal(
-            "Calibration & hoja de prueba",
-            catalog.Translate(id, UiCatalogInventory.NeutralStrings[id]));
+                var numberLabel = ReviewSurfaceContractTests.Flatten(pressRoom)
+                    .OfType<Label>()
+                    .Single(label => string.Equals(label.Text, NumberLabel, StringComparison.Ordinal));
+                var toggle = ReviewSurfaceContractTests.Flatten(pressRoom)
+                    .OfType<CheckBox>()
+                    .Single(check => string.Equals(check.Text, ToggleLabel, StringComparison.Ordinal));
+                Assert.False(numberLabel.UseMnemonic);
+                Assert.False(toggle.UseMnemonic);
+                Assert.Equal(ToggleLabel, toggle.AccessibilityObject.Name);
+
+                var pressReview = ReviewSurfaceContractTests.Flatten(pressRoom)
+                    .OfType<Button>()
+                    .Single(button => string.Equals(button.Text, UiStrings.ReviewAndApprove, StringComparison.Ordinal));
+                Assert.True(pressReview.UseMnemonic);
+                Assert.True(Control.IsMnemonic('r', pressReview.Text));
+                var pressStatus = ReviewSurfaceContractTests.Flatten(pressRoom)
+                    .OfType<Label>()
+                    .Single(label => label.Dock == DockStyle.Bottom);
+                Assert.False(pressStatus.UseMnemonic);
+                Assert.Equal(ExpectedReady, pressStatus.Text);
+                Assert.Equal(pressStatus.Text, pressStatus.AccessibilityObject.Name);
+
+                using var allAboard = new AllAboardForm(new LiteralAmpersandAssetCatalog(), _ => null);
+                var mode = ReviewSurfaceContractTests.Flatten(allAboard)
+                    .OfType<ComboBox>()
+                    .Single(combo => string.Equals(combo.AccessibleName, UiStrings.OutputMode, StringComparison.Ordinal));
+                mode.SelectedIndex = 1;
+                var cardLabel = ReviewSurfaceContractTests.Flatten(allAboard)
+                    .OfType<Label>()
+                    .Single(label => string.Equals(
+                        label.Text,
+                        ExpectedCardLabel,
+                        StringComparison.Ordinal));
+                Assert.False(cardLabel.UseMnemonic);
+
+                mode.SelectedIndex = 3;
+                var agencyMeaning = ReviewSurfaceContractTests.Flatten(allAboard)
+                    .OfType<CheckBox>()
+                    .Single(check => string.Equals(
+                        check.Text,
+                        LiteralAmpersandAssetCatalog.Meaning,
+                        StringComparison.Ordinal));
+                Assert.False(agencyMeaning.UseMnemonic);
+                Assert.Equal(LiteralAmpersandAssetCatalog.Meaning, agencyMeaning.AccessibilityObject.Name);
+                var allAboardStatus = ReviewSurfaceContractTests.Flatten(allAboard)
+                    .OfType<Label>()
+                    .Single(label => label.Dock == DockStyle.Bottom);
+                Assert.False(allAboardStatus.UseMnemonic);
+                Assert.Equal(ExpectedReady, allAboardStatus.Text);
+                Assert.Equal(allAboardStatus.Text, allAboardStatus.AccessibilityObject.Name);
+            });
+        }
+        finally
+        {
+            UiLocale.Set(UiLocaleMode.Neutral);
+        }
+    }
+
+    [Fact]
+    public void Dynamic_module_labels_escape_group_prefixes_and_disable_mnemonics_on_text_controls()
+    {
+        const string ToggleLabel = "Transcript &verified";
+        const string NoticeLabel = "Layout &text only";
+        const string UnavailableReason = "Authority &review required";
+        var sourceDoor = ModuleStudioCatalog.ById("source-lens");
+        var sourceToggle = Assert.Single(sourceDoor.Modes)
+            .Fields.Single(field => field.Key == "transcript-verified");
+        var accessDoor = ModuleStudioCatalog.ById("access-remix");
+        var accessNotice = Assert.Single(accessDoor.Modes)
+            .Fields.Single(field => field.Key == "layout-only");
+        var accessReason = Assert.IsType<ModuleDisplayText>(Assert.Single(accessDoor.Modes).UnavailableReason);
+        using var file = ReviewedCatalog(root =>
+        {
+            root["strings"]![sourceToggle.Display.LocalizationId] = ToggleLabel;
+            root["strings"]![accessNotice.Display.LocalizationId] = NoticeLabel;
+            root["strings"]![accessReason.LocalizationId] = UnavailableReason;
+            root["strings"]![UiCatalogIds.Chrome(nameof(UiStrings.StatusModuleUnavailable))] =
+                "Unavailable && held: {0}";
+            root["strings"]![UiCatalogIds.Chrome(nameof(UiStrings.PendingReplacementMustBeAppliedOrDiscarded))] =
+                "Apply && hold this replacement.";
+            root["strings"]![UiCatalogIds.Chrome(nameof(UiStrings.NodeEditorInvalidNumber))] =
+                "Invalid && value for {0}.";
+            root["strings"]![UiCatalogIds.Chrome(nameof(UiStrings.EditorVectorWidthMm))] =
+                "Vector && width";
+        });
+
+        try
+        {
+            ConfigureApprovedForTest([file], [UiLocale.CatalogSwitch, file.Path]);
+            Sta.Run(() =>
+            {
+                using var form = new ModuleStudioForm(_ => null);
+                var doors = ReviewSurfaceContractTests.Flatten(form)
+                    .OfType<ListBox>()
+                    .Single(list => string.Equals(list.AccessibleName, UiStrings.ModuleDoors, StringComparison.Ordinal));
+
+                doors.SelectedIndex = ModuleStudioCatalog.All.ToList().IndexOf(sourceDoor);
+                var toggle = ReviewSurfaceContractTests.Flatten(form)
+                    .OfType<CheckBox>()
+                    .Single(check => string.Equals(check.Text, ToggleLabel, StringComparison.Ordinal));
+                var toggleGroup = ReviewSurfaceContractTests.Flatten(form)
+                    .OfType<GroupBox>()
+                    .Single(group => string.Equals(group.AccessibleName, ToggleLabel, StringComparison.Ordinal));
+                Assert.False(toggle.UseMnemonic);
+                Assert.Equal(ToggleLabel, toggle.AccessibilityObject.Name);
+                Assert.Equal("Transcript &&verified", toggleGroup.Text);
+                Assert.False(Control.IsMnemonic('v', toggleGroup.Text));
+
+                doors.SelectedIndex = ModuleStudioCatalog.All.ToList().IndexOf(accessDoor);
+                var notice = ReviewSurfaceContractTests.Flatten(form)
+                    .OfType<Label>()
+                    .Single(label => string.Equals(label.Text, NoticeLabel, StringComparison.Ordinal));
+                var noticeGroup = ReviewSurfaceContractTests.Flatten(form)
+                    .OfType<GroupBox>()
+                    .Single(group => string.Equals(group.AccessibleName, NoticeLabel, StringComparison.Ordinal));
+                Assert.False(notice.UseMnemonic);
+                Assert.Equal("Layout &&text only", noticeGroup.Text);
+                Assert.False(Control.IsMnemonic('t', noticeGroup.Text));
+
+                var status = ReviewSurfaceContractTests.Flatten(form)
+                    .OfType<Label>()
+                    .Single(label => string.Equals(
+                        label.AccessibleName,
+                        "Unavailable & held: Authority &review required",
+                        StringComparison.Ordinal));
+                Assert.False(status.UseMnemonic);
+                Assert.Contains("&review", status.Text, StringComparison.Ordinal);
+                Assert.DoesNotContain("&&", status.AccessibleName, StringComparison.Ordinal);
+                Assert.Equal(status.Text, status.AccessibleName);
+
+                using var editor = new NodeEditorForm(new VectorGraphic(
+                    10,
+                    10,
+                    [new LineSeg(0, 0, 1, 1)],
+                    "Synthetic & vector"));
+                editor.Show();
+                var editorStatus = ReviewSurfaceContractTests.Flatten(editor)
+                    .OfType<Label>()
+                    .Single(label => label.AccessibilityObject.Role == AccessibleRole.StatusBar);
+                Assert.True(string.IsNullOrEmpty(editorStatus.Text));
+                Assert.True(string.IsNullOrEmpty(editorStatus.AccessibilityObject.Name));
+
+                var width = ReviewSurfaceContractTests.Flatten(editor)
+                    .OfType<TextBox>()
+                    .Single(text => string.Equals(
+                        text.AccessibleName,
+                        "Vector & width",
+                        StringComparison.Ordinal));
+                width.Text = "not-a-number";
+                Assert.Equal("Apply & hold this replacement.", editorStatus.Text);
+                Assert.Equal(editorStatus.Text, editorStatus.AccessibilityObject.Name);
+
+                var apply = ReviewSurfaceContractTests.Flatten(editor)
+                    .OfType<Button>()
+                    .Single(button => string.Equals(
+                        button.AccessibilityObject.Name,
+                        UiStrings.WithoutMnemonic(UiStrings.ApplyReplacement),
+                        StringComparison.Ordinal));
+                apply.PerformClick();
+                Assert.Equal("Invalid & value for Vector & width.", editorStatus.Text);
+                Assert.Equal(editorStatus.Text, editorStatus.AccessibilityObject.Name);
+            });
+        }
+        finally
+        {
+            UiLocale.Set(UiLocaleMode.Neutral);
+        }
     }
 
     [Fact]
@@ -507,6 +827,28 @@ public class ReviewedUiCatalogTests
     private static string SHA256Hex(string text)
         => Convert.ToHexStringLower(System.Security.Cryptography.SHA256.HashData(Encoding.UTF8.GetBytes(text)));
 
+    private static List<Rune> MnemonicKeys(string text)
+    {
+        var keys = new List<Rune>();
+        for (var index = 0; index < text.Length; index++)
+        {
+            if (text[index] != '&')
+            {
+                continue;
+            }
+
+            if (index + 1 < text.Length && text[index + 1] == '&')
+            {
+                index++;
+                continue;
+            }
+
+            keys.Add(Rune.GetRuneAt(text, index + 1));
+        }
+
+        return keys;
+    }
+
     private static HashSet<string> ApprovedHashes(params CatalogFile[] files)
         => files.Select(file => file.Sha256)
             .ToHashSet(StringComparer.OrdinalIgnoreCase);
@@ -515,6 +857,37 @@ public class ReviewedUiCatalogTests
         CatalogFile[] approvedFiles,
         string[] args)
         => UiLocale.ConfigureForTest(args, ApprovedHashes(approvedFiles));
+
+    private sealed class LiteralAmpersandAssetCatalog : IAssetCatalog
+    {
+        internal const string Meaning = "Stop &wait";
+
+        private static readonly AssetProvenance Asset = new(
+            new AssetId("synthetic-literal-ampersand"),
+            "synthetic-literal-ampersand",
+            "1.0.0",
+            "synthetic.svg",
+            "image/svg+xml",
+            "Synthetic test fixture",
+            "Automated test",
+            "CC0-1.0",
+            new string('0', 64),
+            Meaning,
+            "Stop and wait",
+            Redistributable: true);
+
+        public IReadOnlyList<AssetProvenance> All { get; } = [Asset];
+
+        public AssetProvenance? Find(AssetId id)
+            => id == Asset.Id ? Asset : null;
+
+        public bool TryGetContent(AssetId id, out ReadOnlyMemory<byte> content, out string mimeType)
+        {
+            content = default;
+            mimeType = "";
+            return false;
+        }
+    }
 
     private sealed class CatalogFile : IDisposable
     {

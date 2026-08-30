@@ -16,10 +16,8 @@ public sealed partial class HeadedUiaWalkTests
         using var app = new HeadedApp("pressroom");
 
         InvokeButton(app.Window, "Built-in studios…");
-        var studio = DialogByTitle(app, "built-in module studios");
+        var studio = DialogByTitle(app, app.Window, "built-in module studios", "Built-in studios invoked");
         Assert.Equal(app.Process.Id, studio.Current.ProcessId);
-        Assert.True(((WindowPattern)studio.GetCurrentPattern(WindowPattern.Pattern)).Current.IsModal,
-            "Press Room must open the production Built-in Studios modal, not a harness substitute.");
 
         var doors = ByName(studio, ControlType.List, App.WinForms.UiStrings.ModuleDoors);
         var doorItems = ChildListItems(doors);
@@ -31,57 +29,60 @@ public sealed partial class HeadedUiaWalkTests
         var exposedModes = new List<string>();
         foreach (var door in ModuleStudioCatalog.All)
         {
-            SelectListItem(doors, door.Display.Fallback);
+            SelectListItem(app, doors, door.Display.Fallback, "previous studio mode inspected");
             var modeList = ByName(studio, ControlType.ComboBox, App.WinForms.UiStrings.ModuleMode);
             var value = (ValuePattern)modeList.GetCurrentPattern(ValuePattern.Pattern);
 
+            var firstModeMatches = 0;
             var firstMode = WaitFor(() =>
             {
                 var selected = value.Current.Value;
-                return string.Equals(selected, door.Modes[0].Display.Fallback, StringComparison.Ordinal)
+                firstModeMatches = string.Equals(
+                    selected,
+                    door.Modes[0].Display.Fallback,
+                    StringComparison.Ordinal)
+                        ? 1
+                        : 0;
+                return firstModeMatches == 1
                     ? selected
                     : null;
-            }, expectation: $"studio mode '{door.Modes[0].Display.Fallback}' after selecting door '{door.Display.Fallback}'");
+            },
+                expectation: $"studio mode '{door.Modes[0].Display.Fallback}' after selecting door '{door.Display.Fallback}'",
+                diagnosticSnapshot: () => CachedWaitSnapshot(
+                    app.Process,
+                    "studio door selection completed",
+                    ControlType.ComboBox.ProgrammaticName,
+                    candidates: 1,
+                    matches: firstModeMatches));
             exposedModes.Add(firstMode);
 
             if (door.Modes.Count > 1)
             {
                 var expand = (ExpandCollapsePattern)modeList.GetCurrentPattern(ExpandCollapsePattern.Pattern);
-                expand.Expand();
-                try
-                {
-                    var availableModes = WaitFor(() =>
-                    {
-                        var items = modeList.FindAll(
-                                TreeScope.Descendants,
-                                new PropertyCondition(AutomationElement.ControlTypeProperty, ControlType.ListItem))
-                            .Cast<AutomationElement>()
-                            .ToList();
-                        return items.Count == door.Modes.Count ? items : null;
-                    }, expectation: $"all {door.Modes.Count} modes for door '{door.Display.Fallback}' in the expanded standard combo box");
-                    Assert.Equal(
-                        door.Modes.Select(mode => mode.Display.Fallback),
-                        availableModes.Select(item => item.Current.Name));
+                var availableModes = ExpandedComboItems(
+                    app,
+                    modeList,
+                    expand,
+                    door.Modes.Count,
+                    door.Display.Fallback);
+                Assert.Equal(
+                    door.Modes.Select(mode => mode.Display.Fallback),
+                    availableModes.Select(item => item.Current.Name));
 
-                    foreach (var mode in door.Modes.Skip(1))
-                    {
-                        var item = Assert.Single(
-                            availableModes,
-                            candidate => string.Equals(candidate.Current.Name, mode.Display.Fallback, StringComparison.Ordinal));
-                        ((SelectionItemPattern)item.GetCurrentPattern(SelectionItemPattern.Pattern)).Select();
-                        exposedModes.Add(WaitFor(() =>
-                        {
-                            var selected = value.Current.Value;
-                            return string.Equals(selected, mode.Display.Fallback, StringComparison.Ordinal)
-                                ? selected
-                                : null;
-                        }, expectation: $"selected studio mode '{mode.Display.Fallback}' over UI Automation"));
-                    }
-                }
-                finally
+                foreach (var mode in door.Modes.Skip(1))
                 {
-                    expand.Collapse();
+                    exposedModes.Add(SelectComboItem(
+                        app,
+                        modeList,
+                        expand,
+                        value,
+                        mode.Display.Fallback));
                 }
+
+                // Cleanup is useful only after the inspection completed. If a
+                // wait above fails, HeadedApp.Dispose owns process cleanup; do
+                // not start another UIA wait that can mask the first failure.
+                CollapseCombo(app, expand, door.Display.Fallback);
             }
         }
 
@@ -97,29 +98,30 @@ public sealed partial class HeadedUiaWalkTests
         // Return to one catalog-owned synthetic Green starter. Every sink is
         // structurally locked until the actual modal Gate B returns a typed
         // approval for this exact generated revision.
-        SelectListItem(doors, "Board to Brief");
+        SelectListItem(app, doors, "Board to Brief", "all studio modes inspected");
         var sinks = new[]
         {
-            ByName(studio, ControlType.Button, App.WinForms.UiStrings.PrintButton),
-            ByName(studio, ControlType.Button, App.WinForms.UiStrings.OpenPrintView),
-            ByName(studio, ControlType.Button, App.WinForms.UiStrings.ExportEllipsis),
-            ByName(studio, ControlType.Button, App.WinForms.UiStrings.SaveToLibrary),
+            ByName(studio, ControlType.Button, App.WinForms.UiStrings.WithoutMnemonic(App.WinForms.UiStrings.PrintButton)),
+            ByName(studio, ControlType.Button, App.WinForms.UiStrings.WithoutMnemonic(App.WinForms.UiStrings.OpenPrintView)),
+            ByName(studio, ControlType.Button, App.WinForms.UiStrings.WithoutMnemonic(App.WinForms.UiStrings.ExportEllipsis)),
+            ByName(studio, ControlType.Button, App.WinForms.UiStrings.WithoutMnemonic(App.WinForms.UiStrings.SaveToLibrary)),
         };
         Assert.All(sinks, sink => Assert.False(sink.Current.IsEnabled,
             $"'{sink.Current.Name}' must remain locked before Gate B approval."));
 
-        var review = ByName(studio, ControlType.Button, App.WinForms.UiStrings.ReviewAndApprove);
+        var review = ByName(
+            studio,
+            ControlType.Button,
+            App.WinForms.UiStrings.WithoutMnemonic(App.WinForms.UiStrings.ReviewAndApprove));
         Assert.True(review.Current.IsEnabled,
             "The catalog-owned synthetic Board to Brief starter must be eligible for review.");
         ((InvokePattern)review.GetCurrentPattern(InvokePattern.Pattern)).Invoke();
 
-        var gateB = DialogByTitle(app, "reviewing a draft");
+        var gateB = DialogByTitle(app, studio, "reviewing a draft", "Review and approve invoked");
         Assert.Equal(app.Process.Id, gateB.Current.ProcessId);
-        Assert.True(((WindowPattern)gateB.GetCurrentPattern(WindowPattern.Pattern)).Current.IsModal,
-            "Gate B must be the real production modal review window.");
-        ApproveGateB(app);
+        ApproveGateB(app, studio);
 
-        AwaitStatus(studio, "Approved —");
+        AwaitStatus(app, studio, "Approved —", "Board to Brief Gate B approval invoked");
         Assert.All(sinks, sink => Assert.True(sink.Current.IsEnabled,
             $"'{sink.Current.Name}' must unlock only after the exact Gate B approval."));
     }
@@ -130,27 +132,180 @@ public sealed partial class HeadedUiaWalkTests
                 new PropertyCondition(AutomationElement.ControlTypeProperty, ControlType.ListItem))
             .Cast<AutomationElement>()];
 
-    private static void SelectListItem(AutomationElement list, string name)
+    private static IReadOnlyList<AutomationElement> ExpandedComboItems(
+        HeadedApp app,
+        AutomationElement combo,
+        ExpandCollapsePattern expand,
+        int expectedCount,
+        string doorName)
     {
-        var item = WaitFor(() => list.FindFirst(
-                TreeScope.Children,
-                new AndCondition(
-                    new PropertyCondition(AutomationElement.ControlTypeProperty, ControlType.ListItem),
-                    new PropertyCondition(AutomationElement.NameProperty, name))),
-            expectation: $"a list item named '{name}'");
+        var candidateCount = 0;
+        var matchCount = 0;
+        var expandAttempts = 0;
+        return WaitFor<IReadOnlyList<AutomationElement>>(() =>
+        {
+            var items = combo.FindAll(
+                    TreeScope.Descendants,
+                    new PropertyCondition(AutomationElement.ControlTypeProperty, ControlType.ListItem))
+                .Cast<AutomationElement>()
+                .ToList();
+            candidateCount = items.Count;
+            matchCount = candidateCount == expectedCount ? expectedCount : 0;
+            if (matchCount == expectedCount)
+            {
+                return items;
+            }
+
+            // Expand is idempotent. WinForms can acknowledge one UIA request
+            // before its standard ComboBox provider exposes the popup items.
+            expand.Expand();
+            expandAttempts++;
+            return null;
+        },
+            expectation: $"all {expectedCount} modes for door '{doorName}' in the expanded standard combo box",
+            diagnosticSnapshot: () => CachedWaitSnapshot(
+                app.Process,
+                $"studio mode expansion requested {expandAttempts} times",
+                ControlType.ListItem.ProgrammaticName,
+                candidateCount,
+                matchCount));
+    }
+
+    private static string SelectComboItem(
+        HeadedApp app,
+        AutomationElement combo,
+        ExpandCollapsePattern expand,
+        ValuePattern value,
+        string modeName)
+    {
+        var candidateCount = 0;
+        var selectedCount = 0;
+        var selectionAttempts = 0;
+        return WaitFor(() =>
+        {
+            var selected = value.Current.Value;
+            selectedCount = string.Equals(selected, modeName, StringComparison.Ordinal) ? 1 : 0;
+            if (selectedCount == 1)
+            {
+                return selected;
+            }
+
+            var items = combo.FindAll(
+                    TreeScope.Descendants,
+                    new PropertyCondition(AutomationElement.ControlTypeProperty, ControlType.ListItem))
+                .Cast<AutomationElement>()
+                .ToList();
+            candidateCount = items.Count;
+            var item = items.FirstOrDefault(candidate => candidate.Current.Name == modeName);
+            if (item is null)
+            {
+                expand.Expand();
+            }
+            else
+            {
+                ((SelectionItemPattern)item.GetCurrentPattern(SelectionItemPattern.Pattern)).Select();
+            }
+
+            selectionAttempts++;
+            return null;
+        },
+            expectation: $"selected studio mode '{modeName}' over UI Automation",
+            diagnosticSnapshot: () => CachedWaitSnapshot(
+                app.Process,
+                $"studio mode selection requested {selectionAttempts} times",
+                ControlType.ListItem.ProgrammaticName,
+                candidateCount,
+                selectedCount));
+    }
+
+    private static void CollapseCombo(
+        HeadedApp app,
+        ExpandCollapsePattern expand,
+        string doorName)
+    {
+        var collapsed = 0;
+        var collapseAttempts = 0;
+        _ = WaitFor(() =>
+        {
+            collapsed = expand.Current.ExpandCollapseState == ExpandCollapseState.Collapsed ? 1 : 0;
+            if (collapsed == 1)
+            {
+                return "collapsed";
+            }
+
+            expand.Collapse();
+            collapseAttempts++;
+            return null;
+        },
+            expectation: $"the studio mode list for '{doorName}' to collapse",
+            diagnosticSnapshot: () => CachedWaitSnapshot(
+                app.Process,
+                $"studio mode collapse requested {collapseAttempts} times",
+                ControlType.ComboBox.ProgrammaticName,
+                candidates: 1,
+                matches: collapsed));
+    }
+
+    private static void SelectListItem(
+        HeadedApp app,
+        AutomationElement list,
+        string name,
+        string lastTransition)
+    {
+        var candidateCount = 0;
+        var matchCount = 0;
+        var selectedCount = 0;
+        var selectionAttempts = 0;
+        var item = WaitFor(() =>
+        {
+            var candidates = ChildListItems(list);
+            candidateCount = candidates.Count;
+            var match = candidates.FirstOrDefault(candidate => candidate.Current.Name == name);
+            matchCount = match is null ? 0 : 1;
+            return match;
+        },
+            expectation: $"a list item named '{name}'",
+            diagnosticSnapshot: () => CachedWaitSnapshot(
+                app.Process,
+                lastTransition,
+                ControlType.ListItem.ProgrammaticName,
+                candidateCount,
+                matchCount));
         ((SelectionItemPattern)item.GetCurrentPattern(SelectionItemPattern.Pattern)).Select();
+        selectionAttempts++;
         WaitFor(() =>
         {
-            var refreshed = list.FindFirst(
-                TreeScope.Children,
-                new AndCondition(
-                    new PropertyCondition(AutomationElement.ControlTypeProperty, ControlType.ListItem),
-                    new PropertyCondition(AutomationElement.NameProperty, name)));
-            return refreshed is not null
+            var candidates = ChildListItems(list);
+            candidateCount = candidates.Count;
+            var refreshed = candidates.FirstOrDefault(candidate => candidate.Current.Name == name);
+            matchCount = refreshed is null ? 0 : 1;
+            selectedCount = refreshed is not null
                 && ((SelectionItemPattern)refreshed.GetCurrentPattern(SelectionItemPattern.Pattern)).Current.IsSelected
-                    ? refreshed
-                    : null;
-        }, expectation: $"list item '{name}' to become selected over UI Automation");
+                    ? 1
+                    : 0;
+            if (selectedCount == 1)
+            {
+                return refreshed;
+            }
+
+            if (refreshed is not null)
+            {
+                // The WinForms UIA provider can acknowledge Select before its
+                // ListBox selection has changed. Re-resolve and reissue the
+                // same idempotent request inside the existing bounded wait.
+                ((SelectionItemPattern)refreshed.GetCurrentPattern(SelectionItemPattern.Pattern)).Select();
+                selectionAttempts++;
+            }
+
+            return null;
+        },
+            expectation: $"list item '{name}' to become selected over UI Automation",
+            diagnosticSnapshot: () => CachedWaitSnapshot(
+                app.Process,
+                $"studio door selection requested {selectionAttempts} times",
+                ControlType.ListItem.ProgrammaticName,
+                candidateCount,
+                selectedCount));
     }
 
     private static void AssertHumanHeldModeCannotBeEnabled(
@@ -159,11 +314,11 @@ public sealed partial class HeadedUiaWalkTests
         string doorName)
     {
         var doors = ByName(studio, ControlType.List, App.WinForms.UiStrings.ModuleDoors);
-        SelectListItem(doors, doorName);
+        SelectListItem(app, doors, doorName, "studio door inventory completed");
         var door = ModuleStudioCatalog.All.Single(candidate =>
             string.Equals(candidate.Display.Fallback, doorName, StringComparison.Ordinal));
         var unavailableReason = door.Modes[0].UnavailableReason;
-        var expectedStatus = App.WinForms.UiStrings.Format(
+        var expectedStatus = App.WinForms.UiStrings.FormatWithoutMnemonic(
             App.WinForms.UiStrings.StatusModuleUnavailable,
             App.WinForms.UiStrings.Localize(
                 unavailableReason!.LocalizationId,
@@ -173,14 +328,17 @@ public sealed partial class HeadedUiaWalkTests
         var green = ByName(
             studio,
             ControlType.CheckBox,
-            App.WinForms.UiStrings.GreenInputAttestation);
-        var review = ByName(studio, ControlType.Button, App.WinForms.UiStrings.ReviewAndApprove);
+            App.WinForms.UiStrings.WithoutMnemonic(App.WinForms.UiStrings.GreenInputAttestation));
+        var review = ByName(
+            studio,
+            ControlType.Button,
+            App.WinForms.UiStrings.WithoutMnemonic(App.WinForms.UiStrings.ReviewAndApprove));
         var sinks = new[]
         {
-            ByName(studio, ControlType.Button, App.WinForms.UiStrings.PrintButton),
-            ByName(studio, ControlType.Button, App.WinForms.UiStrings.OpenPrintView),
-            ByName(studio, ControlType.Button, App.WinForms.UiStrings.ExportEllipsis),
-            ByName(studio, ControlType.Button, App.WinForms.UiStrings.SaveToLibrary),
+            ByName(studio, ControlType.Button, App.WinForms.UiStrings.WithoutMnemonic(App.WinForms.UiStrings.PrintButton)),
+            ByName(studio, ControlType.Button, App.WinForms.UiStrings.WithoutMnemonic(App.WinForms.UiStrings.OpenPrintView)),
+            ByName(studio, ControlType.Button, App.WinForms.UiStrings.WithoutMnemonic(App.WinForms.UiStrings.ExportEllipsis)),
+            ByName(studio, ControlType.Button, App.WinForms.UiStrings.WithoutMnemonic(App.WinForms.UiStrings.SaveToLibrary)),
         };
 
         Assert.False(green.Current.IsEnabled,

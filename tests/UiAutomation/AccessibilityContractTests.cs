@@ -573,6 +573,7 @@ public class ReviewSurfaceContractTests
             Assert.True(detail.WordWrap);
             Assert.Contains(completeMessage, detail.Text, StringComparison.Ordinal);
             Assert.True(acknowledge.Visible);
+            Assert.True(acknowledge.Enabled);
             Assert.Equal('w', Mnemonic(acknowledge.Text));
             Assert.Equal(
                 "I have reviewed the non-dismissable warnings",

@@ -62,17 +62,25 @@ public sealed class PressRoomForm : Form
         _exportPicker = exportPicker ?? PickExportDialog;
         _loadedProjectPreflight = loadedProjectPreflight ?? RunLoadedProjectPreflight;
 
-        Text = UiStrings.MainWindowTitle;
+        Text = UiStrings.WithoutMnemonic(UiStrings.MainWindowTitle);
         MinimumSize = new Size(860, 560);
 
-        _pressList = new ListBox { Dock = DockStyle.Fill, AccessibleName = UiStrings.PressList };
+        _pressList = new ListBox
+        {
+            Dock = DockStyle.Fill,
+            AccessibleName = UiStrings.WithoutMnemonic(UiStrings.PressList),
+        };
         foreach (var definition in PressRoomCatalog.All)
         {
             _pressList.Items.Add(UiStrings.Localize(UiCatalogIds.PressTitle(definition.Id), definition.Title));
         }
 
-        _budget = new Label { AutoSize = true, AccessibleName = UiStrings.Format(UiStrings.BudgetLine, PressRoomCatalog.BudgetMinutes) };
-        _budget.Text = _budget.AccessibleName;
+        _budget = new Label
+        {
+            AutoSize = true,
+            Text = UiStrings.Format(UiStrings.BudgetLine, PressRoomCatalog.BudgetMinutes),
+            AccessibleName = UiStrings.FormatWithoutMnemonic(UiStrings.BudgetLine, PressRoomCatalog.BudgetMinutes),
+        };
         _lowInk = new CheckBox { Text = UiStrings.LowInkToggle, AutoSize = true };
 
         _parameterPanel = new TableLayoutPanel
@@ -96,9 +104,9 @@ public sealed class PressRoomForm : Form
         var allAboard = MakeButton(UiStrings.AllAboardOpen, (_, _) => BeginInvoke(OpenAllAboard));
         var builtInStudios = MakeButton(UiStrings.BuiltInStudiosOpen, (_, _) => BeginInvoke(OpenModuleStudios));
 
-        // No AccessibleName override: the message itself must be what a screen
-        // reader hears, not the word "Status" (a harness finding, 29 Aug 2026).
-        _status = new Label { Dock = DockStyle.Bottom, AutoSize = false, Height = 28 };
+        // The message itself must be what a screen reader hears, not the word
+        // "Status" (a harness finding, 29 Aug 2026).
+        _status = new Label { Dock = DockStyle.Bottom, AutoSize = false, Height = 28, UseMnemonic = false };
         SetStatus(UiStrings.StatusReady);
 
         var buttons = new FlowLayoutPanel { Dock = DockStyle.Bottom, AutoSize = true, FlowDirection = FlowDirection.LeftToRight };
@@ -212,7 +220,15 @@ public sealed class PressRoomForm : Form
                 break;
 
             case ToggleParameter toggle:
-                var check = new CheckBox { Text = label, AutoSize = true, Checked = toggle.Default };
+                var check = new CheckBox
+                {
+                    Text = label,
+                    AutoSize = true,
+                    Checked = toggle.Default,
+                    // Dynamic catalog labels treat '&' as authored text. Only
+                    // static UiStrings chrome participates in access keys.
+                    UseMnemonic = false,
+                };
                 _valueReaders[parameter.Key] = () => check.Checked ? "true" : "false";
                 control = check;
                 break;
@@ -267,7 +283,14 @@ public sealed class PressRoomForm : Form
         }
         else
         {
-            _parameterPanel.Controls.Add(new Label { Text = label, AutoSize = true, Anchor = AnchorStyles.Left }, 0, row);
+            _parameterPanel.Controls.Add(new Label
+            {
+                Text = label,
+                AutoSize = true,
+                Anchor = AnchorStyles.Left,
+                // Dynamic parameter labels may contain a literal ampersand.
+                UseMnemonic = false,
+            }, 0, row);
             _parameterPanel.Controls.Add(control, 1, row);
         }
     }
@@ -289,7 +312,7 @@ public sealed class PressRoomForm : Form
         }
         catch (ArgumentException refusal)
         {
-            SetStatus(UiStrings.Format(UiStrings.StatusRefused, refusal.Message));
+            SetStatus(UiStrings.StatusRefused, refusal.Message);
             _parameterPanel.Controls.OfType<Control>().FirstOrDefault(c => c.CanSelect)?.Focus();
             return;
         }
@@ -345,10 +368,10 @@ public sealed class PressRoomForm : Form
         }
     }
 
-    private static ApprovedArtifact? RunModalReview(ReviewSession session)
+    private ApprovedArtifact? RunModalReview(ReviewSession session)
     {
         using var review = new ReviewForm(session);
-        return review.ShowDialog() == DialogResult.OK ? review.Result : null;
+        return review.ShowDialog(this) == DialogResult.OK ? review.Result : null;
     }
 
     private void OpenPrintView()
@@ -377,7 +400,7 @@ public sealed class PressRoomForm : Form
         catch (Exception failure) when (failure is InvalidOperationException or IOException or NotSupportedException)
         {
             // Print failures land in the speaking status, never a dialog trap.
-            SetStatus(UiStrings.Format(UiStrings.StatusRefused, failure.Message));
+            SetStatus(UiStrings.StatusRefused, failure.Message);
         }
     }
 
@@ -410,11 +433,11 @@ public sealed class PressRoomForm : Form
         {
             // Single-sheet-only SVG, vector-only PDF, and uniform-page booklets
             // refuse loudly; say so.
-            SetStatus(UiStrings.Format(UiStrings.StatusRefused, refusal.Message));
+            SetStatus(UiStrings.StatusRefused, refusal.Message);
             return;
         }
 
-        SetStatus(UiStrings.Format(UiStrings.StatusExported, Path.GetFileName(choice.Path)));
+        SetStatus(UiStrings.StatusExported, Path.GetFileName(choice.Path));
     }
 
     private ExportChoice? PickExportDialog()
@@ -422,7 +445,7 @@ public sealed class PressRoomForm : Form
         using var dialog = new SaveFileDialog
         {
             FileName = _context!.Name,
-            Filter = $"{UiStrings.ExportFilterPdf}|*.pdf|{UiStrings.ExportFilterBooklet}|*.pdf|{UiStrings.ExportFilterPrint}|*.html|{UiStrings.ExportFilterAccessible}|*.html|{UiStrings.ExportFilterSvg}|*.svg",
+            Filter = $"{UiStrings.WithoutMnemonic(UiStrings.ExportFilterPdf)}|*.pdf|{UiStrings.WithoutMnemonic(UiStrings.ExportFilterBooklet)}|*.pdf|{UiStrings.WithoutMnemonic(UiStrings.ExportFilterPrint)}|*.html|{UiStrings.WithoutMnemonic(UiStrings.ExportFilterAccessible)}|*.html|{UiStrings.WithoutMnemonic(UiStrings.ExportFilterSvg)}|*.svg",
         };
         return dialog.ShowDialog(this) == DialogResult.OK
             ? new ExportChoice(dialog.FileName, dialog.FilterIndex)
@@ -434,7 +457,7 @@ public sealed class PressRoomForm : Form
         var contentPages = approved.Revision.Document.Nodes.OfType<VectorGraphic>().Count();
         if (contentPages < 2)
         {
-            throw new NotSupportedException(UiStrings.BookletNeedsPages);
+            throw new NotSupportedException(UiStrings.WithoutMnemonic(UiStrings.BookletNeedsPages));
         }
 
         return Rendering.VectorPdfWriter.WriteImposed(
@@ -453,7 +476,7 @@ public sealed class PressRoomForm : Form
         var hint = AppServices.SaveToLibrary(
             ApprovedResult, _context!.Name, _context.ModuleId,
             _context.RecipeId, _context.RecipeVersion, AppServices.SymbolCatalog());
-        SetStatus(UiStrings.Format(UiStrings.StatusSaved, hint));
+        SetStatus(UiStrings.StatusSaved, hint);
     }
 
     /// <summary>Reversibility, visible: a saved project reopens into a fresh Gate B review — reopen, re-review, re-approve, reprint.</summary>
@@ -476,7 +499,7 @@ public sealed class PressRoomForm : Form
         {
             // The hardened reader's refusals — tampered lane, colliding names,
             // schema drift — arrive here and speak.
-            SetStatus(UiStrings.Format(UiStrings.StatusRefused, refusal.Message));
+            SetStatus(UiStrings.StatusRefused, refusal.Message);
             return;
         }
 
@@ -502,7 +525,7 @@ public sealed class PressRoomForm : Form
         }
         catch (InvalidOperationException refusal)
         {
-            SetStatus(UiStrings.Format(UiStrings.StatusRefused, refusal.Message));
+            SetStatus(UiStrings.StatusRefused, refusal.Message);
             return;
         }
         var generation = ++_stateGeneration;
@@ -547,7 +570,7 @@ public sealed class PressRoomForm : Form
         var sheets = ApprovedResult.Revision.Document.Nodes.OfType<VectorGraphic>().ToList();
         if (sheets.Count != 1)
         {
-            SetStatus(UiStrings.Format(UiStrings.StatusRefused, UiStrings.TileNeedsSingleSheet));
+            SetStatus(UiStrings.StatusRefused, UiStrings.WithoutMnemonic(UiStrings.TileNeedsSingleSheet));
             return;
         }
 
@@ -558,7 +581,7 @@ public sealed class PressRoomForm : Form
         }
         catch (ArgumentException refusal)
         {
-            SetStatus(UiStrings.Format(UiStrings.StatusRefused, refusal.Message));
+            SetStatus(UiStrings.StatusRefused, refusal.Message);
             return;
         }
 
@@ -634,7 +657,12 @@ public sealed class PressRoomForm : Form
         UpdateGatedButtons();
     }
 
-    private void SetStatus(string text) => _status.Text = text;
+    private void SetStatus(string template, params object?[] arguments)
+    {
+        var text = UiStrings.FormatWithoutMnemonic(template, arguments);
+        _status.Text = text;
+        _status.AccessibleName = text;
+    }
 
     private void OpenAllAboard()
     {

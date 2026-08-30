@@ -21,7 +21,7 @@ internal sealed class PreviewReadinessState
         if (_generation == long.MaxValue)
         {
             throw new InvalidOperationException(
-                UiStrings.PreviewGenerationExhausted);
+                UiStrings.WithoutMnemonic(UiStrings.PreviewGenerationExhausted));
         }
 
         _generation++;

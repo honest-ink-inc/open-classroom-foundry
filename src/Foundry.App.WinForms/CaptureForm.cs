@@ -30,7 +30,7 @@ public sealed class CaptureForm : Form
         _session = session ?? throw new ArgumentNullException(nameof(session));
         _policy = policy ?? throw new ArgumentNullException(nameof(policy));
 
-        Text = UiStrings.CaptureWindowTitle;
+        Text = UiStrings.WithoutMnemonic(UiStrings.CaptureWindowTitle);
         MinimumSize = new Size(640, 420);
 
         _import = MakeButton(UiStrings.ImportImage, async (_, _) => await ImportAsync());
@@ -52,7 +52,7 @@ public sealed class CaptureForm : Form
         _confirm = MakeButton(UiStrings.ConfirmLane, (_, _) => ConfirmLane());
         _safetyPause = MakeButton(UiStrings.SafetyPause, (_, _) => SafetyPause());
         // No AccessibleName override: the message itself is what AT hears.
-        _status = new Label { Dock = DockStyle.Bottom, AutoSize = false, Height = 28 };
+        _status = new Label { Dock = DockStyle.Bottom, AutoSize = false, Height = 28, UseMnemonic = false };
 
         var layout = new FlowLayoutPanel { Dock = DockStyle.Fill, FlowDirection = FlowDirection.TopDown, Padding = new Padding(12) };
         layout.Controls.AddRange([_import, _rotate, _stagedGreen, _keepAmber, _confirm, _safetyPause]);
@@ -71,7 +71,10 @@ public sealed class CaptureForm : Form
 
     private async Task ImportAsync()
     {
-        using var dialog = new OpenFileDialog { Filter = $"{UiStrings.ImagesFilterLabel}|*.png;*.jpg;*.jpeg;*.bmp" };
+        using var dialog = new OpenFileDialog
+        {
+            Filter = $"{UiStrings.WithoutMnemonic(UiStrings.ImagesFilterLabel)}|*.png;*.jpg;*.jpeg;*.bmp",
+        };
         if (dialog.ShowDialog(this) == DialogResult.OK)
         {
             // The path dies here: only bytes and a type travel onward (plan §6.5).
@@ -84,21 +87,21 @@ public sealed class CaptureForm : Form
             };
             await _session.CaptureAsync(new CaptureRequest(ByteImportCaptureSource.Kind, mime, bytes), CancellationToken.None);
             await _session.NormalizeAsync(new NormalizationRequest(), CancellationToken.None);
-            _status.Text = UiStrings.StatusImported;
+            SetStatus(UiStrings.StatusImported);
         }
     }
 
     private async Task RotateAsync()
     {
         await _session.NormalizeAsync(new NormalizationRequest(RotationDegrees.Rotate90), CancellationToken.None);
-        _status.Text = UiStrings.StatusRotated;
+        SetStatus(UiStrings.StatusRotated);
     }
 
     private void ConfirmLane()
     {
         var lane = _stagedGreen.Checked ? DataLane.Green : DataLane.Amber;
         _session.ConfirmLane(lane);
-        _status.Text = UiStrings.Format(UiStrings.StatusLaneConfirmed, lane);
+        SetStatus(UiStrings.StatusLaneConfirmed, lane);
         DialogResult = DialogResult.OK;
         Close();
     }
@@ -106,9 +109,16 @@ public sealed class CaptureForm : Form
     private void SafetyPause()
     {
         var result = _session.InvokeSafetyPause(_policy);
-        MessageBox.Show(this, result.ProcedureText, UiStrings.PauseCaption,
+        MessageBox.Show(this, result.ProcedureText, UiStrings.WithoutMnemonic(UiStrings.PauseCaption),
             MessageBoxButtons.OK, MessageBoxIcon.Information);
         DialogResult = DialogResult.Abort;
         Close();
+    }
+
+    private void SetStatus(string template, params object?[] arguments)
+    {
+        var text = UiStrings.FormatWithoutMnemonic(template, arguments);
+        _status.Text = text;
+        _status.AccessibleName = text;
     }
 }

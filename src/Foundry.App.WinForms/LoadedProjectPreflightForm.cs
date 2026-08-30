@@ -21,7 +21,7 @@ public sealed class LoadedProjectPreflightForm : Form
     {
         _loaded = loaded ?? throw new ArgumentNullException(nameof(loaded));
 
-        Text = UiStrings.LoadedProjectPreflightWindowTitle;
+        Text = UiStrings.WithoutMnemonic(UiStrings.LoadedProjectPreflightWindowTitle);
         MinimumSize = new Size(680, 430);
         Size = new Size(760, 500);
         AutoScaleMode = AutoScaleMode.Dpi;
@@ -31,7 +31,7 @@ public sealed class LoadedProjectPreflightForm : Form
             AutoSize = true,
             MaximumSize = new Size(700, 0),
             Text = UiStrings.LoadedProjectPreflightIntroduction,
-            AccessibleName = UiStrings.LoadedProjectPreflightIntroduction,
+            AccessibleName = UiStrings.WithoutMnemonic(UiStrings.LoadedProjectPreflightIntroduction),
         };
         var exactDocument = new TextBox
         {
@@ -41,7 +41,7 @@ public sealed class LoadedProjectPreflightForm : Form
             ScrollBars = ScrollBars.Both,
             WordWrap = false,
             Text = ExactArtifactDocumentText.Describe(loaded.Document),
-            AccessibleName = UiStrings.LoadedProjectExactDocument,
+            AccessibleName = UiStrings.WithoutMnemonic(UiStrings.LoadedProjectExactDocument),
         };
         _greenContent = ChecklistItem(UiStrings.LoadedProjectGreenContent);
         _noLearnerLinkedContent = ChecklistItem(UiStrings.LoadedProjectNoLearnerLinkedContent);
@@ -65,7 +65,7 @@ public sealed class LoadedProjectPreflightForm : Form
             Dock = DockStyle.Fill,
             AutoSize = true,
             Text = UiStrings.LoadedProjectPreflightChecklist,
-            AccessibleName = UiStrings.LoadedProjectPreflightChecklist,
+            AccessibleName = UiStrings.WithoutMnemonic(UiStrings.LoadedProjectPreflightChecklist),
         };
         group.Controls.Add(checklist);
 
@@ -74,7 +74,7 @@ public sealed class LoadedProjectPreflightForm : Form
             AutoSize = true,
             MaximumSize = new Size(700, 0),
             Text = UiStrings.LoadedProjectPreflightExactBinding,
-            AccessibleName = UiStrings.LoadedProjectPreflightExactBinding,
+            AccessibleName = UiStrings.WithoutMnemonic(UiStrings.LoadedProjectPreflightExactBinding),
         };
         _continue = Button(UiStrings.ContinueToExactReview, (_, _) => ConfirmAndClose());
         var cancel = Button(UiStrings.Cancel, (_, _) => CancelAndClose());
@@ -123,7 +123,7 @@ public sealed class LoadedProjectPreflightForm : Form
             AutoSize = true,
             MaximumSize = new Size(680, 0),
             Text = text,
-            AccessibleName = text,
+            AccessibleName = UiStrings.WithoutMnemonic(text),
         };
         return item;
     }

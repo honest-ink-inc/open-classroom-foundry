@@ -56,6 +56,105 @@ public static class UiCatalogIds
 
 }
 
+internal sealed record UiCatalogAccessKeyContext(
+    string Name,
+    IReadOnlyList<string> LocalizationIds);
+
+/// <summary>
+/// Static chrome whose WinForms access keys can be active at the same time.
+/// Reuse across separate forms is harmless. Node-editor variants are separate
+/// contexts because one exact node type is selected before the form is built.
+/// Review tab headers share a context with the persistent action bar because
+/// every tab header and every action remains visible as the selected tab moves.
+/// </summary>
+internal static class UiCatalogAccessKeyContexts
+{
+    internal static IReadOnlyList<UiCatalogAccessKeyContext> All { get; } =
+    [
+        Context("press-room",
+            nameof(UiStrings.ReviewAndApprove),
+            nameof(UiStrings.PrintButton),
+            nameof(UiStrings.OpenPrintView),
+            nameof(UiStrings.ExportEllipsis),
+            nameof(UiStrings.SaveToLibrary),
+            nameof(UiStrings.TileForWall),
+            nameof(UiStrings.OpenFromLibrary),
+            nameof(UiStrings.AllAboardOpen),
+            nameof(UiStrings.BuiltInStudiosOpen),
+            nameof(UiStrings.LowInkToggle)),
+        Context("all-aboard",
+            nameof(UiStrings.ReviewAndApprove),
+            nameof(UiStrings.PrintButton),
+            nameof(UiStrings.OpenPrintView),
+            nameof(UiStrings.ExportEllipsis),
+            nameof(UiStrings.SaveToLibrary)),
+        Context("built-in-studios",
+            nameof(UiStrings.GreenInputAttestation),
+            nameof(UiStrings.TargetLanguageFirst),
+            nameof(UiStrings.ReviewAndApprove),
+            nameof(UiStrings.PrintButton),
+            nameof(UiStrings.OpenPrintView),
+            nameof(UiStrings.ExportEllipsis),
+            nameof(UiStrings.SaveToLibrary)),
+        Context("reopened-project-preflight",
+            nameof(UiStrings.ContinueToExactReview),
+            nameof(UiStrings.Cancel)),
+        Context("tile-dialog",
+            nameof(UiStrings.TileMake)),
+        Context("review",
+            nameof(UiStrings.ReviewElementsTab),
+            nameof(UiStrings.SourceComparisonTab),
+            nameof(UiStrings.VisualPreviewTab),
+            nameof(UiStrings.ApplyEdit),
+            nameof(UiStrings.EditElement),
+            nameof(UiStrings.RemoveElement),
+            nameof(UiStrings.MoveUp),
+            nameof(UiStrings.MoveDown),
+            nameof(UiStrings.ReviewWarningsAcknowledgement),
+            nameof(UiStrings.Approve),
+            nameof(UiStrings.Reject)),
+        Context("capture",
+            nameof(UiStrings.ImportImage),
+            nameof(UiStrings.Rotate90),
+            nameof(UiStrings.LaneGreen),
+            nameof(UiStrings.LaneAmber),
+            nameof(UiStrings.ConfirmLane),
+            nameof(UiStrings.SafetyPause)),
+        Context("node-editor-basic",
+            nameof(UiStrings.ApplyReplacement),
+            nameof(UiStrings.DiscardReplacement)),
+        Context("node-editor-sequence",
+            nameof(UiStrings.ApplyReplacement),
+            nameof(UiStrings.DiscardReplacement),
+            nameof(UiStrings.AddItem),
+            nameof(UiStrings.RemoveItem),
+            nameof(UiStrings.MoveItemUp),
+            nameof(UiStrings.MoveItemDown)),
+        Context("node-editor-table",
+            nameof(UiStrings.ApplyReplacement),
+            nameof(UiStrings.DiscardReplacement),
+            nameof(UiStrings.AddTableRow),
+            nameof(UiStrings.RemoveTableRow),
+            nameof(UiStrings.MoveTableRowUp),
+            nameof(UiStrings.MoveTableRowDown)),
+        Context("node-editor-vector",
+            nameof(UiStrings.ApplyReplacement),
+            nameof(UiStrings.DiscardReplacement),
+            nameof(UiStrings.AddPrimitive),
+            nameof(UiStrings.ReplacePrimitiveType),
+            nameof(UiStrings.RemovePrimitive),
+            nameof(UiStrings.MovePrimitiveUp),
+            nameof(UiStrings.MovePrimitiveDown),
+            nameof(UiStrings.ApplyPrimitiveEdit),
+            nameof(UiStrings.DiscardPrimitiveEdit)),
+    ];
+
+    private static UiCatalogAccessKeyContext Context(string name, params string[] memberNames)
+        => new(
+            name,
+            Array.AsReadOnly(memberNames.Select(UiCatalogIds.Chrome).ToArray()));
+}
+
 /// <summary>
 /// The complete neutral chrome inventory and the deterministic packet handed to
 /// the multilingual seat. It contains no translated content and grants no review.
@@ -480,6 +579,8 @@ internal static class UiCatalogLoader
             }
         }
 
+        ValidateUniqueAccessKeys(translations);
+
         var review = new UiCatalogReviewMetadata(reviewerName, reviewerRole, reviewedAtUtc, digest);
         var provenance = new UiCatalogProvenance(catalogId, creator, source, license, modificationHistory);
         return new ReviewedUiCatalog(languageTag, direction, review, provenance, new ReadOnlyDictionary<string, string>(translations));
@@ -679,19 +780,23 @@ internal static class UiCatalogLoader
     }
 
     private static int MnemonicCount(string text, string localizationId)
+        => MnemonicKeys(text, localizationId).Count;
+
+    private static List<char> MnemonicKeys(string text, string localizationId)
     {
         // Only the static chrome namespace is rendered by controls that honor
-        // WinForms '&' mnemonic markers. Dynamic press/module labels are list,
-        // combo-box, or document-facing text where an ampersand is literal
-        // (for example, "Calibration & proof sheet"). Treating those values as
-        // mnemonic markup would reject valid language rather than protect a
-        // keyboard contract.
+        // WinForms '&' mnemonic markers. Dynamic text is either list/combo/
+        // document content or is placed on a control whose mnemonic parsing is
+        // explicitly disabled (GroupBox prefixes are escaped). An ampersand is
+        // therefore literal there (for example, "Calibration & proof sheet").
+        // Treating those values as mnemonic markup would reject valid language
+        // rather than protect a keyboard contract.
         if (!localizationId.StartsWith("chrome.", StringComparison.Ordinal))
         {
-            return 0;
+            return [];
         }
 
-        var count = 0;
+        var keys = new List<char>();
         for (var index = 0; index < text.Length; index++)
         {
             if (text[index] != '&')
@@ -710,17 +815,50 @@ internal static class UiCatalogLoader
             }
             else
             {
-                var mnemonic = Rune.GetRuneAt(text, index + 1);
-                if (!Rune.IsLetterOrDigit(mnemonic))
+                var mnemonic = text[index + 1];
+                if (!char.IsLetterOrDigit(mnemonic))
                 {
                     throw Refusal(UiStrings.CatalogMnemonicMismatch, localizationId);
                 }
 
-                count++;
+                keys.Add(mnemonic);
             }
         }
 
-        return count;
+        return keys;
+    }
+
+    private static void ValidateUniqueAccessKeys(Dictionary<string, string> translations)
+    {
+        foreach (var context in UiCatalogAccessKeyContexts.All)
+        {
+            var admitted = new List<(char Key, string Text, string LocalizationId)>();
+            foreach (var localizationId in context.LocalizationIds)
+            {
+                var translation = translations[localizationId];
+                var keys = MnemonicKeys(translation, localizationId);
+                if (keys.Count != 1)
+                {
+                    throw Refusal(UiStrings.CatalogMnemonicMismatch, localizationId);
+                }
+
+                var key = keys[0];
+                var (Key, Text, LocalizationId) = admitted.FirstOrDefault(existing =>
+                    Control.IsMnemonic(key, existing.Text)
+                    || Control.IsMnemonic(existing.Key, translation));
+                if (LocalizationId is not null)
+                {
+                    throw Refusal(
+                        UiStrings.CatalogMnemonicDuplicate,
+                        key,
+                        context.Name,
+                        LocalizationId,
+                        localizationId);
+                }
+
+                admitted.Add((key, translation, localizationId));
+            }
+        }
     }
 
     private static bool IsTrimmedVisible(string value)
