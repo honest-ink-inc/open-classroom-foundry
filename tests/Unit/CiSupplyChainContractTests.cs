@@ -164,6 +164,27 @@ public sealed class CiSupplyChainContractTests
     }
 
     [Fact]
+    public void Human_readable_notice_acknowledges_the_version_locked_dependency_inventory()
+    {
+        var packageReferences = Directory.EnumerateFiles(Root, "*.csproj", SearchOption.AllDirectories)
+            .Where(path => !PathSegments(path).Any(segment =>
+                segment.Equals("bin", StringComparison.OrdinalIgnoreCase)
+                || segment.Equals("obj", StringComparison.OrdinalIgnoreCase)))
+            .SelectMany(path => XDocument.Load(path).Descendants("PackageReference"))
+            .ToList();
+        Assert.NotEmpty(packageReferences);
+
+        var notice = File.ReadAllText(Path.Combine(Root, "NOTICE.md"));
+        Assert.DoesNotContain("None yet", notice, StringComparison.Ordinal);
+        Assert.Contains("[CI workflow](.github/workflows/ci.yml)", notice, StringComparison.Ordinal);
+        Assert.Contains(
+            "[release traceability matrix](docs/release/release-requirement-test-traceability.md#rights-and-openness)",
+            notice,
+            StringComparison.Ordinal);
+        Assert.Contains("commit-scoped", notice, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void Ci_retains_distinct_repository_and_application_dependency_evidence()
     {
         var workflow = File.ReadAllText(Path.Combine(Root, ".github", "workflows", "ci.yml"));
@@ -183,12 +204,21 @@ public sealed class CiSupplyChainContractTests
         Assert.Contains("not-claimed:", workflow, StringComparison.Ordinal);
         Assert.Contains("this workflow neither configures nor proves GitHub branch protection", workflow, StringComparison.Ordinal);
         Assert.Contains("portable-samples:", workflow, StringComparison.Ordinal);
+        Assert.Contains("needs: build-and-test", workflow, StringComparison.Ordinal);
+        Assert.Contains("Get-ChildItem $rootA -Recurse -File", workflow, StringComparison.Ordinal);
+        Assert.Contains("windows-sample-baseline", workflow, StringComparison.Ordinal);
+        Assert.Contains(
+            "actions/download-artifact@70fc10c6e5e1ce46ad2ea6f2b72d43f7d47b13c3 # v8.0.0",
+            workflow,
+            StringComparison.Ordinal);
         Assert.Contains(
             "dotnet restore tools/SampleGenerator/Foundry.Tools.SampleGenerator.csproj --locked-mode --configfile NuGet.config",
             workflow,
             StringComparison.Ordinal);
         Assert.Contains("samples-linux-a", workflow, StringComparison.Ordinal);
         Assert.Contains("cmp --silent", workflow, StringComparison.Ordinal);
+        Assert.Contains("samples-windows/${file}", workflow, StringComparison.Ordinal);
+        Assert.Contains("Windows and Linux sample files matched byte-for-byte", workflow, StringComparison.Ordinal);
         Assert.Contains("test -x .githooks/pre-commit", workflow, StringComparison.Ordinal);
         Assert.Contains("GIT_INDEX_FILE=\"${PWD}\"", workflow, StringComparison.Ordinal);
         Assert.Contains("scratch/packet-synthetic.print.html", workflow, StringComparison.Ordinal);

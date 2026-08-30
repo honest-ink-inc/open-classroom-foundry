@@ -29,7 +29,8 @@
 #       is hash-compared (menu 4 item 7) — determinism re-proven on a machine nobody tuned.
 #       No exclusions: the .ocfproj writer was made deterministic on 29 Aug 2026 and the last
 #       standing exclusion was deleted with it. A separate Ubuntu job builds only the portable
-#       sample graph and repeats the same all-file comparison off Windows.
+#       sample graph, repeats the same all-file comparison off Windows, and then compares its
+#       complete recursive output byte-for-byte with the retained Windows baseline.
 #   [x] UIA accessibility harness (tests/UiAutomation): in-process contract tests always run;
 #       headed UIA tests run where the runner offers an interactive desktop and are VISIBLY
 #       skipped otherwise (or with OCF_SKIP_HEADED=1) — a skip is an honest gap, never a pass
@@ -105,18 +106,36 @@ jobs:
           # No exclusions. The .ocfproj writer's nondeterminism was fixed on
           # 29 Aug 2026 (deterministic project id, save-instant entry stamps);
           # every byte of every sample must match.
-          $filesA = Get-ChildItem samples-run-a -File
-          $filesB = Get-ChildItem samples-run-b -File
-          if ($filesA.Count -ne $filesB.Count) { throw "Run file counts differ: $($filesA.Count) vs $($filesB.Count)." }
+          $rootA = (Resolve-Path samples-run-a).Path
+          $rootB = (Resolve-Path samples-run-b).Path
+          $filesA = @(Get-ChildItem $rootA -Recurse -File |
+            ForEach-Object { [IO.Path]::GetRelativePath($rootA, $_.FullName) } |
+            Sort-Object)
+          $filesB = @(Get-ChildItem $rootB -Recurse -File |
+            ForEach-Object { [IO.Path]::GetRelativePath($rootB, $_.FullName) } |
+            Sort-Object)
+          if ($filesA.Count -eq 0) { throw "SampleGenerator produced no Windows files." }
+          $inventoryDiff = @(Compare-Object -ReferenceObject $filesA -DifferenceObject $filesB)
+          if ($inventoryDiff.Count -gt 0) {
+            throw "Run file inventories differ:`n$($inventoryDiff | Out-String)"
+          }
 
           $failures = @()
-          foreach ($file in $filesA) {
-            $ha = (Get-FileHash $file.FullName -Algorithm SHA256).Hash
-            $hb = (Get-FileHash (Join-Path samples-run-b $file.Name) -Algorithm SHA256).Hash
-            if ($ha -ne $hb) { $failures += $file.Name }
+          foreach ($relativePath in $filesA) {
+            $ha = (Get-FileHash (Join-Path $rootA $relativePath) -Algorithm SHA256).Hash
+            $hb = (Get-FileHash (Join-Path $rootB $relativePath) -Algorithm SHA256).Hash
+            if ($ha -ne $hb) { $failures += $relativePath }
           }
           Write-Host "$($filesA.Count) files compared byte-for-byte."
           if ($failures.Count -gt 0) { throw "Nondeterministic output: $($failures -join ', ')" }
+
+      - name: Retain Windows samples for the portable comparison
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: windows-sample-baseline
+          path: samples-run-a
+          if-no-files-found: error
+          retention-days: 7
 
       - name: Coverage threshold (core + module assemblies >= 80%)
         shell: pwsh
@@ -918,9 +937,16 @@ jobs:
   # is configured to test that bounded claim without asking an Ubuntu host to
   # build the WinForms solution; only a green hosted conclusion is proof.
   portable-samples:
+    needs: build-and-test
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Download the Windows sample baseline
+        uses: actions/download-artifact@70fc10c6e5e1ce46ad2ea6f2b72d43f7d47b13c3 # v8.0.0
+        with:
+          name: windows-sample-baseline
+          path: samples-windows
 
       - uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
         with:
@@ -974,6 +1000,27 @@ jobs:
             compared=$((compared + 1))
           done < "${inventory_a}"
           printf '%s files compared byte-for-byte on Linux.\n' "${compared}"
+
+          windows_inventory="${RUNNER_TEMP}/samples-windows.inventory"
+          find samples-windows -type f -printf '%P\0' | LC_ALL=C sort -z > "${windows_inventory}"
+          if ! cmp --silent "${windows_inventory}" "${inventory_a}"; then
+            printf 'Windows and Linux sample file inventories differ.\n' >&2
+            printf 'Windows inventory:\n' >&2
+            tr '\0' '\n' < "${windows_inventory}" >&2
+            printf 'Linux inventory:\n' >&2
+            tr '\0' '\n' < "${inventory_a}" >&2
+            exit 1
+          fi
+
+          cross_platform_compared=0
+          while IFS= read -r -d '' file; do
+            if ! cmp --silent "samples-windows/${file}" "samples-linux-a/${file}"; then
+              printf 'Cross-platform sample mismatch: %s\n' "${file}" >&2
+              exit 1
+            fi
+            cross_platform_compared=$((cross_platform_compared + 1))
+          done < "${inventory_a}"
+          printf '%s Windows and Linux sample files matched byte-for-byte.\n' "${cross_platform_compared}"
 
   secret-scan:
     runs-on: ubuntu-latest

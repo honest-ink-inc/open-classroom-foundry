@@ -9,7 +9,7 @@ This file is the human-readable companion to the asset ledger. Every shipped ass
 
 ## Third-party dependencies
 
-None yet. When dependencies are added, the SBOM and dependency-license report are generated in CI, and license-relevant notices are summarized here.
+Third-party NuGet dependencies are present and version-locked. The [CI workflow](.github/workflows/ci.yml) generates, verifies, and retains separate repository/build and `Foundry.App.WinForms` `win-x64` dependency-license inventories and CycloneDX SBOMs; the [release traceability matrix](docs/release/release-requirement-test-traceability.md#rights-and-openness) records their measured scope and limits. Those inventories are commit-scoped. Any dependency notice required for distribution must also be summarized here before release.
 
 ## Bundled assets
 
