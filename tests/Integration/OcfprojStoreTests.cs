@@ -503,6 +503,16 @@ public class OcfprojStoreTests : IDisposable
     }
 
     [Fact]
+    public async Task Saved_projects_use_canonical_storage_newlines_and_zip_metadata()
+    {
+        await _store.SaveGreenProjectAsync(ApprovedStrip(), Request("canonical"), CancellationToken.None);
+
+        var path = _store.PathFor("canonical");
+        OcfprojZipAssertions.HasCanonicalStorageJson(path);
+        OcfprojZipAssertions.HasCanonicalMetadata(path);
+    }
+
+    [Fact]
     public async Task The_project_id_is_derived_from_the_save_not_from_chance()
     {
         // The cause that actually differed across sample runs: Guid.NewGuid().

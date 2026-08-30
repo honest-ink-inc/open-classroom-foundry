@@ -12,6 +12,9 @@ internal static class StorageJson
     public static JsonSerializerOptions Options { get; } = new(JsonSerializerDefaults.Web)
     {
         WriteIndented = true,
+        // System.Text.Json otherwise follows Environment.NewLine, which makes
+        // durable storage bytes differ between the Windows and Linux writers.
+        NewLine = "\r\n",
         Converters = { new JsonStringEnumConverter() },
     };
 }

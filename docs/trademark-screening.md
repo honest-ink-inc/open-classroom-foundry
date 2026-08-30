@@ -24,11 +24,21 @@ First-pass search of the visual-schedule/autism app space (Goally, Lil Planner, 
 
 No product named "Symbol Commons" surfaced. The adjacent ecosystem is an implementation gift, not a conflict:
 
-- **OpenSymbols** (opensymbols.org, open-aac/opensymbols on GitHub) aggregates 50,000+ open-licensed AAC symbols with an open API — prior art to learn from and interoperate with, not compete with.
+- **OpenSymbols** (opensymbols.org, open-aac/opensymbols on GitHub) indexes 50,000+ AAC symbols from multiple repositories and returns source-specific licence and attribution metadata — prior art to learn from and interoperate with, not compete with.
 - **Mulberry Symbols** (~3,000, CC BY-SA) and **OpenMoji** (~3,000, CC BY-SA) are license-compatible candidates for the bundled libre core (plan §9 prefers CC0/CC BY/CC BY-SA).
 - **ARASAAC** (~13,000, CC BY-NC-SA) and **Sclera** (~11,000, CC BY-NC) are **noncommercial-licensed: never bundled** as a universally free commons — import-only for entitled educators, technically isolated from public export, exactly as the plan's invariants require.
 
 **Recommendation:** record Mulberry + OpenMoji as the candidate bundled core for plan §20 decision 6, and add "interoperability with OpenSymbols identifiers" to Symbol Commons' design considerations.
+
+### OpenSymbols candidate note — 30 August 2026
+
+The typist has expressly noted that OpenSymbols may be used for AAC features. That makes it a recorded candidate, not a blanket asset approval or a substitute for the AAC/SLP and rights seats.
+
+The current [catalog](https://www.opensymbols.org/search) aggregates repositories under different licences; each admitted symbol therefore needs its own provider, repository key, symbol key, source/detail URL, acquisition date, author, exact licence metadata, attribution, and content hash carried into Honest Ink's existing rights ledger. Remote identifiers alone are not durable provenance. The API's fields may be absent and do not supply Honest Ink's required modification history, attribution disposition, commercial-use decision, or release/consent record. The MIT licence on the [OpenSymbols server source](https://github.com/open-aac/opensymbols) licenses that server code, not every indexed image.
+
+The current [API documentation](https://www.opensymbols.org/api) requires an application-issued shared secret, short-lived access tokens, and compliance with service usage guidance. The secret must not be exposed in browser JavaScript or a compiled application, requests may be throttled, and returned image URLs are not promised to remain permanent. Search accepts only two-letter lowercase locales, and `hc=1` is a relevance preference rather than proof that a result satisfies Honest Ink's accessibility standard. Any future importer must allowlist and bound admitted fields, sanitize downloaded PNG/SVG content, avoid retaining unneeded search phrases or query logs, and hash the exact acquired bytes. No account was created, terms accepted, secret requested, network egress added, symbol downloaded, or AAC meaning selected here.
+
+The safe future route is exact, curated, locally vendored assets selected only after protected AAC/SLP recognizability and meaning review plus OER/licence-steward approval, with per-asset licence, attribution, provenance, and hash evidence. Identifier interoperability remains a design candidate. A live runtime dependency on OpenSymbols is not admitted by this note and would additionally require a governed server-side secret boundary, offline/failure behaviour, and an authorized service-account decision.
 
 ## Public-name verdict and the three finalists (29 August 2026)
 

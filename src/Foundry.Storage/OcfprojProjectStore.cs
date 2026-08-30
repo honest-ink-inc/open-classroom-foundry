@@ -128,7 +128,7 @@ public sealed class OcfprojProjectStore(string rootDirectory, IRenderer renderer
             await using (var stream = new FileStream(
                 stagingPath,
                 FileMode.CreateNew,
-                FileAccess.Write,
+                FileAccess.ReadWrite,
                 FileShare.None,
                 bufferSize: 128 * 1024,
                 FileOptions.Asynchronous | FileOptions.SequentialScan | FileOptions.WriteThrough))
@@ -168,6 +168,8 @@ public sealed class OcfprojProjectStore(string rootDirectory, IRenderer renderer
                     }
                 }
 
+                cancellationToken.ThrowIfCancellationRequested();
+                OcfprojZipCanonicalizer.Canonicalize(stream);
                 await stream.FlushAsync(cancellationToken).ConfigureAwait(false);
                 stream.Flush(flushToDisk: true);
             }
@@ -326,7 +328,7 @@ public sealed class OcfprojProjectStore(string rootDirectory, IRenderer renderer
     private static async Task WriteEntryAsync(
         ZipArchive archive, string name, byte[] content, DateTimeOffset stamp, CancellationToken cancellationToken)
     {
-        var entry = archive.CreateEntry(name, CompressionLevel.Optimal);
+        var entry = OcfprojZipCanonicalizer.CreateDataEntry(archive, name, CompressionLevel.Optimal);
         entry.LastWriteTime = stamp;
         await using var entryStream = entry.Open();
         await entryStream.WriteAsync(content, cancellationToken).ConfigureAwait(false);

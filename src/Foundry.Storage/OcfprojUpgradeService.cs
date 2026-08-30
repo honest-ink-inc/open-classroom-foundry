@@ -524,6 +524,8 @@ public static partial class OcfprojUpgradeService
                     output,
                     loadedSource,
                     cancellationToken).ConfigureAwait(false);
+                cancellationToken.ThrowIfCancellationRequested();
+                OcfprojZipCanonicalizer.Canonicalize(output);
             }
             else
             {
@@ -614,7 +616,10 @@ public static partial class OcfprojUpgradeService
         foreach (var entry in inputArchive.Entries)
         {
             cancellationToken.ThrowIfCancellationRequested();
-            var copy = outputArchive.CreateEntry(entry.FullName, CompressionLevel.Optimal);
+            var copy = OcfprojZipCanonicalizer.CreateDataEntry(
+                outputArchive,
+                entry.FullName,
+                CompressionLevel.Optimal);
             copy.LastWriteTime = entry.LastWriteTime;
             contextStamp ??= entry.LastWriteTime;
             await using var input = entry.Open();
@@ -660,7 +665,7 @@ public static partial class OcfprojUpgradeService
         DateTimeOffset stamp,
         CancellationToken cancellationToken)
     {
-        var entry = archive.CreateEntry(name, CompressionLevel.Optimal);
+        var entry = OcfprojZipCanonicalizer.CreateDataEntry(archive, name, CompressionLevel.Optimal);
         entry.LastWriteTime = stamp;
         await using var destination = entry.Open();
         await destination.WriteAsync(content, cancellationToken).ConfigureAwait(false);

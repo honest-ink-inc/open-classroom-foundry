@@ -93,6 +93,7 @@ public sealed class OcfprojUpgradeTests : IDisposable
         Assert.Equal(_fixtureBytes, await File.ReadAllBytesAsync(_sourcePath));
         var destinationBytes = await File.ReadAllBytesAsync(destination);
         Assert.NotEqual(_fixtureBytes, destinationBytes);
+        OcfprojZipAssertions.HasCanonicalMetadata(destinationBytes);
         Assert.Equal(PriorEngineVersion, receipt.SourceEngineVersion);
         Assert.Equal(PriorSchemaVersion, receipt.SourceSchemaVersion);
         Assert.Equal(FrozenFixtureSha256, receipt.SourceSha256);
