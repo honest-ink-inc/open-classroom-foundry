@@ -169,4 +169,95 @@ public class ArchitectureRulesTests
         var reference = Assert.Single(ProjectReferences(csproj));
         Assert.Contains("Foundry.Inference.Abstractions", reference, StringComparison.OrdinalIgnoreCase);
     }
+
+    // D17 / D19 Q5: the outbound surface is the claim a district security reviewer
+    // is most likely to lean on, and until now nothing in this repository checked
+    // it -- the review instrument that did lives outside the build and its pattern
+    // could not see a listening socket.
+    //
+    // This is deliberately an ALLOWLIST WITH REASONS rather than a count. "At most
+    // one file" invites the question "which one, and how do you know?", and it is
+    // not the rule this project actually holds: one file reaches outward, and one
+    // serves a bounded loopback handoff. A count would also have to be edited into
+    // a lie the day a second inference provider ships. Adding a network-capable
+    // file should be a decision, and this test is where that decision is recorded.
+    private static readonly string[] NetworkReachTokens =
+    [
+        "System.Net.Http",
+        "System.Net.Sockets",
+        "HttpClient",
+        "HttpRequestMessage",
+        "HttpListener",
+        "WebRequest",
+        "TcpListener",
+        "TcpClient",
+        "UdpClient",
+        "NetworkStream",
+        "Socket(",
+        "Dns.",
+    ];
+
+    // Bare `System.Net` is deliberately absent: WebUtility.HtmlEncode lives there,
+    // and two renderers import the namespace for escaping alone. Treating that as
+    // network reach would make this test cry wolf, and an ignored checker is worse
+    // than none.
+    private static readonly Dictionary<string, string> NetworkCapableFiles =
+        new(StringComparer.OrdinalIgnoreCase)
+        {
+            ["src/Foundry.Inference.AzureOpenAI/AzureOpenAIProvider.cs"] =
+                "The only outbound path. Council finding R2-12 makes an endpoint off the "
+                + "district allowlist unconstructable; redirects are disabled and any 3xx "
+                + "is refused rather than followed.",
+            ["src/Foundry.App.WinForms/AppServices.PrintViewHandoff.cs"] =
+                "Inbound only, and never off-machine: a one-shot TcpListener bound to "
+                + "IPAddress.Loopback on an ephemeral port, in a short-lived child process, "
+                + "gated by a single-use path token and an absolute deadline.",
+        };
+
+    [Fact]
+    public void Only_declared_files_may_touch_the_network()
+    {
+        var root = RepoRoot();
+        var offenders = new List<string>();
+        var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+        foreach (var file in Directory
+                     .EnumerateFiles(Path.Combine(root, "src"), "*.cs", SearchOption.AllDirectories)
+                     .Where(path => !path.Split(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar)
+                         .Any(segment => segment.Equals("bin", StringComparison.OrdinalIgnoreCase)
+                             || segment.Equals("obj", StringComparison.OrdinalIgnoreCase))))
+        {
+            var source = File.ReadAllText(file);
+            var matched = NetworkReachTokens
+                .Where(token => source.Contains(token, StringComparison.Ordinal))
+                .ToArray();
+            if (matched.Length == 0)
+            {
+                continue;
+            }
+
+            var relative = Path.GetRelativePath(root, file).Replace(Path.DirectorySeparatorChar, '/');
+            if (NetworkCapableFiles.ContainsKey(relative))
+            {
+                seen.Add(relative);
+                continue;
+            }
+
+            offenders.Add($"{relative} ({string.Join(", ", matched)})");
+        }
+
+        Assert.True(
+            offenders.Count == 0,
+            "A file outside the declared network allowlist reaches the network. If this is "
+            + "intended, add it to NetworkCapableFiles with the reason it is safe:\n"
+            + string.Join('\n', offenders));
+
+        // An allowlist that keeps entries it no longer needs stops describing the
+        // tree and starts excusing it.
+        var stale = NetworkCapableFiles.Keys.Where(declared => !seen.Contains(declared)).ToArray();
+        Assert.True(
+            stale.Length == 0,
+            "The network allowlist names files that no longer reach the network; remove them:\n"
+            + string.Join('\n', stale));
+    }
 }
