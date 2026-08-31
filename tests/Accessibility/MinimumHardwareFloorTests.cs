@@ -1,7 +1,9 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 using Foundry.App.WinForms;
+using Foundry.Application;
 using Foundry.Contracts;
 using Foundry.Domain;
+using Foundry.Modules.BuiltIn.BoardToBrief;
 using Foundry.Storage;
 
 [assembly: CollectionBehavior(DisableTestParallelization = true)]
@@ -21,6 +23,7 @@ public sealed class MinimumHardwareFloorTests
     [
         typeof(ReviewForm),
         typeof(CaptureForm),
+        typeof(BoardToBriefIntakeForm),
         typeof(PressRoomForm),
         typeof(AllAboardForm),
         typeof(ModuleStudioForm),
@@ -56,6 +59,8 @@ public sealed class MinimumHardwareFloorTests
             {
                 using var review = UiaHarness.CreateReviewForm();
                 using var capture = UiaHarness.CreateCaptureForm();
+                var boardFixture = CreateBoardIntakeFloorFixture();
+                using var boardIntake = boardFixture.Form;
                 using var pressRoom = new PressRoomForm(
                     reviewRunner: _ => null,
                     libraryPicker: () => null,
@@ -69,6 +74,7 @@ public sealed class MinimumHardwareFloorTests
                 {
                     review,
                     capture,
+                    boardIntake,
                     pressRoom,
                     allAboard,
                     modules,
@@ -90,6 +96,9 @@ public sealed class MinimumHardwareFloorTests
                     }
 
                     ExerciseEveryReviewTabAtFloor(floorHosts[review]);
+                    ExerciseBoardIntakeStagesAtFloor(
+                        floorHosts[boardIntake],
+                        boardFixture.Session);
                     ExerciseEveryPressAtFloor(floorHosts[pressRoom]);
                     ExerciseEveryAllAboardModeAtFloor(floorHosts[allAboard]);
                     ExerciseEveryModuleModeAtFloor(floorHosts[modules]);
@@ -424,6 +433,86 @@ public sealed class MinimumHardwareFloorTests
             FlushLayout(floor.ClientCanvas);
             AssertFloor(floor);
         }
+    }
+
+    private static BoardIntakeFloorFixture CreateBoardIntakeFloorFixture()
+    {
+        var store = new FailsFirstFloorPurgeStore();
+        var session = new CaptureSession(
+            new ByteImportCaptureSource(store),
+            new FloorPassThroughNormalizer(),
+            store);
+        session.CaptureAsync(
+                new CaptureRequest(
+                    ByteImportCaptureSource.Kind,
+                    "image/png",
+                    new byte[] { 1, 2, 3 }),
+                CancellationToken.None)
+            .GetAwaiter()
+            .GetResult();
+        session.NormalizeAsync(new NormalizationRequest(), CancellationToken.None)
+            .GetAwaiter()
+            .GetResult();
+        session.ConfirmLane(DataLane.Green);
+
+        var form = new BoardToBriefIntakeForm(
+            store,
+            session,
+            new FloorOcrService(),
+            DistrictPolicy.Offline,
+            captureRunner: _ => DialogResult.Cancel,
+            noticePresenter: (_, _, _) => { });
+        return new BoardIntakeFloorFixture(form, session);
+    }
+
+    private static void ExerciseBoardIntakeStagesAtFloor(
+        FloorHost floor,
+        CaptureSession session)
+    {
+        var manual = Descendants(floor.ClientCanvas).OfType<TextBox>()
+            .Single(control => control.Name == BoardToBriefIntakeForm.ManualInputName);
+        manual.Text = "Synthetic board title" + Environment.NewLine
+            + "Open the synthetic notebook.";
+        Descendants(floor.ClientCanvas).OfType<Button>()
+            .Single(control => control.Name == BoardToBriefIntakeForm.UseManualName)
+            .PerformClick();
+        AssertFloor(floor);
+
+        var accept = Descendants(floor.ClientCanvas).OfType<Button>()
+            .Single(control => control.Name == BoardToBriefIntakeForm.AcceptCandidateName);
+        Assert.True(accept.Enabled, "The floor fixture did not enter the unresolved-token stage.");
+        accept.PerformClick();
+        AssertFloor(floor);
+        accept.PerformClick();
+
+        var roles = Descendants(floor.ClientCanvas).OfType<DataGridView>()
+            .Single(control => control.Name == BoardToBriefIntakeForm.RoleGridName);
+        Assert.Equal(2, roles.Rows.Count);
+        roles.Rows[0].Cells[1].Value = BriefRole.Title;
+        roles.Rows[1].Cells[1].Value = BriefRole.Step;
+        AssertFloor(floor);
+
+        var moveDown = Descendants(floor.ClientCanvas).OfType<Button>()
+            .Single(control => control.Name == BoardToBriefIntakeForm.MoveDownName);
+        var moveUp = Descendants(floor.ClientCanvas).OfType<Button>()
+            .Single(control => control.Name == BoardToBriefIntakeForm.MoveUpName);
+        roles.CurrentCell = roles.Rows[0].Cells[0];
+        moveDown.PerformClick();
+        moveUp.PerformClick();
+        AssertFloor(floor);
+
+        Descendants(floor.ClientCanvas).OfType<Button>()
+            .Single(control => control.Name == BoardToBriefIntakeForm.FinishName)
+            .PerformClick();
+        Assert.Equal(JobState.PurgeIncomplete, session.Machine.State);
+        AssertFloor(floor);
+
+        var retry = Descendants(floor.ClientCanvas).OfType<Button>()
+            .Single(control => control.Name == BoardToBriefIntakeForm.RetryPurgeName);
+        Assert.True(retry.Visible, "The first synthetic purge refusal did not expose recovery.");
+        Assert.True(retry.Enabled, "The exposed purge-recovery action was not enabled.");
+        retry.PerformClick();
+        Assert.Equal(JobState.TransientSourcesPurged, session.Machine.State);
     }
 
     private static void ExerciseEveryPressAtFloor(FloorHost floor)
@@ -1028,6 +1117,62 @@ public sealed class MinimumHardwareFloorTests
 
                 return parameters;
             }
+        }
+    }
+
+    private sealed record BoardIntakeFloorFixture(
+        BoardToBriefIntakeForm Form,
+        CaptureSession Session);
+
+    private sealed class FloorPassThroughNormalizer : IDocumentNormalizer
+    {
+        public Task<SourceEnvelope> NormalizeAsync(
+            SourceEnvelope source,
+            NormalizationRequest request,
+            CancellationToken cancellationToken)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            return Task.FromResult(source with { MetadataStripped = true });
+        }
+    }
+
+    private sealed class FloorOcrService : IOcrService
+    {
+        public Task<OcrResult> RecognizeAsync(
+            SourceEnvelope source,
+            CancellationToken cancellationToken)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            return Task.FromResult(new OcrResult(
+            [
+                new OcrToken("Synthetic", 0) { ConfidenceAvailable = false },
+            ]));
+        }
+    }
+
+    private sealed class FailsFirstFloorPurgeStore : ISessionByteStore
+    {
+        private readonly InMemorySessionByteStore _inner = new();
+        private bool _failNextPurge = true;
+
+        public int Count => _inner.Count;
+
+        public SessionByteReference Put(ReadOnlyMemory<byte> content) => _inner.Put(content);
+
+        public bool TryGet(SessionByteReference reference, out ReadOnlyMemory<byte> content)
+            => _inner.TryGet(reference, out content);
+
+        public void Release(SessionByteReference reference) => _inner.Release(reference);
+
+        public void PurgeAll()
+        {
+            if (_failNextPurge)
+            {
+                _failNextPurge = false;
+                throw new IOException("Synthetic first purge refusal for floor-state proof.");
+            }
+
+            _inner.PurgeAll();
         }
     }
 

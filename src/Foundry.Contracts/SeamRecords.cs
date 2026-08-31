@@ -35,9 +35,37 @@ public sealed record NormalizationRequest(
     CropRectangle? Crop = null,
     IReadOnlyList<RedactionRegion>? RedactionBurns = null);
 
-public sealed record OcrToken(string Text, double Confidence);
+/// <summary>
+/// One OCR word in source order. <see cref="LineIndex"/> is the zero-based
+/// source-line index and must be non-negative and non-decreasing within a result.
+/// <see cref="ConfidenceAvailable"/> is false when the recognizer exposes no
+/// trustworthy word confidence; consumers must then require human verification
+/// regardless of the numeric placeholder in <paramref name="Confidence"/>.
+/// When <see cref="LayoutMetadataAvailable"/> is true, <see cref="LeadingText"/>
+/// contains the exact source text between the preceding word (or line start) and
+/// this word. <see cref="TrailingText"/> contains the exact suffix after the last
+/// word on the line and must be empty on every earlier word. This keeps the
+/// positional record constructor source-compatible while allowing exact line
+/// reconstruction instead of inventing spaces between recognized words.
+/// </summary>
+public sealed record OcrToken(string Text, double Confidence)
+{
+    public int LineIndex { get; init; }
 
-public sealed record OcrResult(IReadOnlyList<OcrToken> Tokens);
+    public bool ConfidenceAvailable { get; init; } = true;
+
+    public bool LayoutMetadataAvailable { get; init; }
+
+    public string LeadingText { get; init; } = string.Empty;
+
+    public string TrailingText { get; init; } = string.Empty;
+}
+
+public sealed record OcrResult(IReadOnlyList<OcrToken> Tokens)
+{
+    /// <summary>BCP-47 language tag reported by the recognizer, or empty when not supplied.</summary>
+    public string RecognizerLanguage { get; init; } = string.Empty;
+}
 
 public sealed record RedactionRegion(int Page, double X, double Y, double Width, double Height, string Reason);
 

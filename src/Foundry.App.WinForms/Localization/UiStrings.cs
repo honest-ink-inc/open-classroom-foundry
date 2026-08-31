@@ -361,6 +361,8 @@ public static class UiStrings
     // chrome catalog until a seat-reviewed language pack is supplied.
     public static string BuiltInStudiosOpen => T("&Built-in studios…");
 
+    public static string ImportAndVerifyBoard => T("&Import and verify board…");
+
     public static string ModuleStudioWindowTitle => Compose(T("built-in module studios"));
 
     public static string ModuleDoors => T("Module doors");
@@ -418,6 +420,111 @@ public static class UiStrings
     public static string ExportFilterModuleAccessible => T("Accessible HTML");
 
     public static string RecordTableHint => T("Add rows as needed. Choice cells submit stable values even when their labels are translated.");
+
+    // Board-to-Brief intake. This surface verifies source transcription and
+    // reading order only; artifact creation, review, and output remain in the
+    // built-in module studio.
+    public static string BoardIntakeWindowTitle => Compose(T("Board to Brief — source intake"));
+
+    public static string BoardIntakeIntroduction => T("Compare the normalized board image with every candidate word, resolve every uncertainty, then assign one role to every verified line. This intake creates no artifact and unlocks no output.");
+
+    public static string BoardIntakeSourceImage => T("Normalized source image");
+
+    public static string BoardIntakeCandidateText => T("OCR candidate text — not verified");
+
+    public static string BoardIntakeVerifiedText => T("Teacher-verified text; unresolved words remain explicit");
+
+    public static string BoardIntakeCurrentUncertain => T("Current uncertain word {0}: {1}");
+
+    public static string BoardIntakeNoCurrentUncertain => T("No unresolved word is selected.");
+
+    public static string BoardIntakeReplacement => T("Exact replacement text");
+
+    public static string BoardIntakeNextUncertain => T("&Next uncertain");
+
+    public static string BoardIntakeAcceptCandidate => T("&Accept candidate");
+
+    public static string BoardIntakeRetype => T("&Retype exactly");
+
+    public static string BoardIntakeMarkIllegible => T("Mark &illegible");
+
+    public static string BoardIntakeManualTranscript => T("Manual literal-transcript fallback");
+
+    public static string BoardIntakeManualInstructions => T("If local Windows OCR is unavailable or unsuitable, type one literal source line per line. Every entered line will still be marked uncertain and require explicit acceptance, retyping, or an illegible mark.");
+
+    public static string BoardIntakeManualInput => T("Literal source lines");
+
+    public static string BoardIntakeUseManual => T("Use &manual literal transcript");
+
+    public static string BoardIntakeLineRoles => T("Verified line reading order and teacher-assigned roles");
+
+    public static string BoardIntakeLineColumn => T("Verified line");
+
+    public static string BoardIntakeRoleColumn => T("Role");
+
+    public static string BoardIntakeRoleTitle => T("Title");
+
+    public static string BoardIntakeRoleStep => T("Step");
+
+    public static string BoardIntakeRoleMaterial => T("Material");
+
+    public static string BoardIntakeRoleVocabulary => T("Vocabulary");
+
+    public static string BoardIntakeRoleDate => T("Date");
+
+    public static string BoardIntakeRoleNote => T("Teacher note");
+
+    public static string BoardIntakeMoveLineUp => T("Move line &up");
+
+    public static string BoardIntakeMoveLineDown => T("Move line &down");
+
+    public static string BoardIntakeFinish => T("&Finish and return lines");
+
+    public static string BoardIntakeCancel => T("&Cancel intake");
+
+    public static string BoardIntakeUnresolvedMarker => T("[unresolved: {0}]");
+
+    public static string StatusBoardIntakeStarting => T("Opening the capture and lane-confirmation surface…");
+
+    public static string StatusBoardIntakeOcrRunning => T("Running local Windows OCR. Its candidates are not verified and every word without reported confidence requires teacher review.");
+
+    public static string StatusBoardIntakeOcrReady => T("Local OCR candidates are ready. Resolve every uncertain word against the source image.");
+
+    public static string StatusBoardIntakeOcrFallback => T("Local Windows OCR could not provide candidate text: {0} Use the honestly labeled manual literal-transcript fallback.");
+
+    public static string StatusBoardIntakeAmberRefused => T("Board to Brief accepts only teacher-confirmed Green staged or openly licensed source material. Amber capture was refused and its bytes are being purged.");
+
+    public static string StatusBoardIntakeManualRequired => T("Enter at least one nonblank literal source line before using the manual fallback.");
+
+    public static string StatusBoardIntakeManualWhitespace => T("A manual source line cannot contain only whitespace. Remove the blank line or transcribe its visible content.");
+
+    public static string StatusBoardIntakeManualLoaded => T("Manual literal lines are loaded as uncertain candidates. Verify each one against the source image.");
+
+    public static string StatusBoardIntakeRetypeRequired => T("Type the exact replacement before choosing Retype exactly.");
+
+    public static string StatusBoardIntakeRolesReady => T("Transcription is complete. Assign a role to every line, verify reading order, and choose Finish and return lines.");
+
+    public static string StatusBoardIntakeRoleRequired => T("Every verified line must have one teacher-assigned role.");
+
+    public static string StatusBoardIntakeOneTitleRequired => T("Exactly one verified line must be assigned the Title role.");
+
+    public static string StatusBoardIntakeLineSelectionRequired => T("Select exactly one verified line before changing reading order.");
+
+    public static string StatusBoardIntakeLineBoundary => T("The selected line is already at that reading-order boundary.");
+
+    public static string StatusBoardIntakePurgeIncomplete => T("Normalized source bytes could not be fully purged. Only Retry secure purge is available; no verified lines have been returned.");
+
+    public static string StatusBoardIntakeReturned => T("Source bytes were purged successfully. Verified lines are ready for the module table; Green confirmation and Gate B review remain required.");
+
+    public static string StatusBoardIntakeGridError => T("The line-role table refused an invalid value. Select one of the listed roles.");
+
+    public static string StatusBoardIntakeImageUnavailable => T("The normalized source image is unavailable; intake was refused.");
+
+    public static string StatusBoardIntakeImported => T("Verified board lines were placed in the module table. Confirm their Green status again before Gate B review; no approval or output was carried across.");
+
+    public static string StatusBoardIntakeTableUnavailable => T("The Board-to-Brief line table is unavailable. No intake rows were applied.");
+
+    public static string StatusBoardIntakeRowsRefused => T("The intake handoff was invalid: it must contain nonblank verified lines, defined roles, and exactly one title. The module table was not changed.");
 
     public static string AllAboardWindowTitle => Compose(T($"{ModulePublicIdentity.VisualSupport.DisplayName} — drafting a task strip"));
 

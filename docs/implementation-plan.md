@@ -631,6 +631,12 @@ Learner profiles, people in photographs, individualized schedules, AAC-device sy
 - The uncertain-token surface has a specified keyboard grammar — jump-to-next-uncertain, accept, retype, mark-illegible — tested with NVDA before any other UI polish
 - Low-light and marker-color fixtures reflect real end-of-day whiteboard photography under fluorescent glare
 
+**Implementation status — 30 August 2026.** A bounded first source-intake slice is now reachable from the Board-to-Brief module door. It reuses the capture/normalization and teacher lane-attestation surface, advances only teacher-confirmed Green material, compares the normalized image with either local Windows OCR candidates or an explicitly labeled manual literal transcript, requires every uncertain token to be accepted, retyped, or marked illegible, and then requires a teacher role for every line plus exactly one title. The teacher can edit the verified line text and change the line reading order. The intake returns verified line/role values only after terminal source-byte purge; a purge failure exposes only retry and returns nothing. Imported lines deliberately clear the module's Green attestation and any earlier Gate B approval, and the intake itself creates no artifact or output.
+
+The Windows path uses the installed `Windows.Media.Ocr` user-language recognizer and has no application network or credential path. Because that platform API supplies words and line boundaries but no trustworthy word confidence, every platform word enters the same explicit uncertainty grammar. The service aligns each platform word list to the platform's exact line text and retains the intervening/suffix separators, preserving forms such as `x=2`, `25 mL`, punctuation, and arrows even when a word is retyped; a line/word mismatch fails closed to the manual path. Candidate, partial-verification, and completed views share that reconstruction contract. Capture-surface failure, an unexpected OCR fault during terminal cancellation, and forced `Dispose()` also withhold results and converge on cancel → OCR settlement → session purge; disposal does not purge while OCR may still be borrowing the buffer.
+
+This implemented slice does **not** close the section: local language-pack availability, real low-light/glare/marker-color photographs, perspective/glare correction, multi-page/PDF/slide input, human keyboard and NVDA/Narrator evidence, 200 percent zoom, grayscale/high-contrast inspection, the three-minute teacher measure, accessible DOCX/ODT, and native print-PDF evidence remain open. The current module outputs remain accessible HTML and print HTML.
+
 **Defer**
 
 Live lecture recording, arbitrary complex-table reconstruction, exact visual facsimiles, and textbook-digitization workflows.
@@ -1532,7 +1538,7 @@ Do not release if:
 1. Public project and executable name after trademark screening — **decided 29 August 2026: the public name is Honest Ink (ADR-006); "Open Classroom Foundry" remains the working/repository title; counsel confirmation is a pre-release checkpoint**
 2. Whether Writer’s Kiosk and Foundry remain separate repositories or later share an extracted library repository
 3. Exact Green project save locations permitted by district policy
-4. Local OCR implementation after a Windows/API feasibility spike
+4. Local OCR implementation after a Windows/API feasibility spike — **bounded Board-to-Brief implementation added 30 August 2026; installed-language, field-image, human-AT, and release evidence remain open (see §10.2)**
 5. First two supported language pairs and named reviewers
 6. Original/libre symbol design system and content license
 7. Accessible digital export target: structured HTML first, then DOCX/ODT

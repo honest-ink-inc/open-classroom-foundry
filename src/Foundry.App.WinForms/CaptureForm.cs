@@ -8,6 +8,12 @@ using System.Security.Cryptography;
 
 namespace Foundry.App.WinForms;
 
+internal enum CaptureCompletionMode
+{
+    PurgeOnCompletion,
+    RetainForOwner,
+}
+
 /// <summary>
 /// Capture surface — prototype, standard controls only (ADR-002). All behavior
 /// lives in <see cref="CaptureSession"/>; this form binds it. The safety-pause
@@ -21,6 +27,7 @@ public sealed class CaptureForm : Form
     private readonly CaptureSession _session;
     private readonly DistrictPolicy _policy;
     private readonly Action<SafetyPauseResult> _presentSafetyPause;
+    private readonly CaptureCompletionMode _completionMode;
     private readonly CancellationTokenSource _lifetimeCancellation = new();
     private readonly Button _import;
     private readonly Button _rotate;
@@ -40,7 +47,7 @@ public sealed class CaptureForm : Form
     internal bool OperationPending { get; private set; }
 
     public CaptureForm(CaptureSession session, DistrictPolicy policy)
-        : this(session, policy, safetyPausePresenter: null)
+        : this(session, policy, CaptureCompletionMode.PurgeOnCompletion, safetyPausePresenter: null)
     {
     }
 
@@ -48,9 +55,25 @@ public sealed class CaptureForm : Form
         CaptureSession session,
         DistrictPolicy policy,
         Action<SafetyPauseResult>? safetyPausePresenter)
+        : this(session, policy, CaptureCompletionMode.PurgeOnCompletion, safetyPausePresenter)
+    {
+    }
+
+    /// <summary>
+    /// A parent-owned workflow may retain the normalized session bytes after
+    /// lane confirmation. The parent then owns every terminal path and must call
+    /// CompleteCapture, Cancel, or InvokeSafetyPause before it can close.
+    /// Standalone callers keep the public constructor's purge-on-completion law.
+    /// </summary>
+    internal CaptureForm(
+        CaptureSession session,
+        DistrictPolicy policy,
+        CaptureCompletionMode completionMode,
+        Action<SafetyPauseResult>? safetyPausePresenter = null)
     {
         _session = session ?? throw new ArgumentNullException(nameof(session));
         _policy = policy ?? throw new ArgumentNullException(nameof(policy));
+        _completionMode = completionMode;
         _presentSafetyPause = safetyPausePresenter ?? (result => MessageBox.Show(
             this,
             result.ProcedureText,
@@ -276,8 +299,16 @@ public sealed class CaptureForm : Form
 
         var lane = _stagedGreen.Checked ? DataLane.Green : DataLane.Amber;
         _session.ConfirmLane(lane);
-        var purged = _session.CompleteCapture();
         _completed = true;
+        if (_completionMode == CaptureCompletionMode.RetainForOwner)
+        {
+            SetStatus(UiStrings.StatusLaneConfirmed, lane);
+            DialogResult = DialogResult.OK;
+            Close();
+            return;
+        }
+
+        var purged = _session.CompleteCapture();
         if (!purged)
         {
             BeginPurgeRecovery(DialogResult.OK);

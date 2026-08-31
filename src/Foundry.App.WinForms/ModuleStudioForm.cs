@@ -4,6 +4,7 @@ using Foundry.Application;
 using Foundry.Contracts;
 using Foundry.Domain;
 using Foundry.Modules.BuiltIn;
+using Foundry.Modules.BuiltIn.BoardToBrief;
 
 namespace Foundry.App.WinForms;
 
@@ -16,10 +17,13 @@ namespace Foundry.App.WinForms;
 /// </summary>
 public sealed class ModuleStudioForm : Form
 {
+    private const string BoardToBriefModeKey = "board-to-brief";
+
     private readonly Func<ReviewSession, ApprovedArtifact?> _reviewRunner;
     private readonly Func<ExportChoice?>? _exportPicker;
     private readonly Func<string, ReadOnlyMemory<byte>, CancellationToken, Task> _exportWriter;
     private readonly Func<ApprovedArtifact, string, RenderAudience, double, bool, IAssetCatalog?, Task> _printViewOpener;
+    private readonly Func<IWin32Window, IReadOnlyList<BriefLine>?> _boardIntakeRunner;
     private readonly bool _modalReview;
     private readonly ListBox _doorList;
     private readonly ComboBox _modeList;
@@ -29,6 +33,7 @@ public sealed class ModuleStudioForm : Form
     private readonly ComboBox _audience;
     private readonly NumericUpDown _textScale;
     private readonly CheckBox _targetLanguageFirst;
+    private readonly Button _boardIntake;
     private readonly Button _review;
     private readonly Button _print;
     private readonly Button _printView;
@@ -71,7 +76,8 @@ public sealed class ModuleStudioForm : Form
         Func<ReviewSession, ApprovedArtifact?>? reviewRunner = null,
         Func<ExportChoice?>? exportPicker = null,
         Func<string, ReadOnlyMemory<byte>, CancellationToken, Task>? exportWriter = null,
-        Func<ApprovedArtifact, string, RenderAudience, double, bool, IAssetCatalog?, Task>? printViewOpener = null)
+        Func<ApprovedArtifact, string, RenderAudience, double, bool, IAssetCatalog?, Task>? printViewOpener = null,
+        Func<IWin32Window, IReadOnlyList<BriefLine>?>? boardIntakeRunner = null)
     {
         _modalReview = reviewRunner is null;
         _reviewRunner = reviewRunner ?? RunModalReview;
@@ -80,6 +86,7 @@ public sealed class ModuleStudioForm : Form
             ?? ((destination, content, cancellationToken) =>
                 AppServices.WriteExportBytesAsync(destination, content, cancellationToken));
         _printViewOpener = printViewOpener ?? AppServices.OpenPrintViewAsync;
+        _boardIntakeRunner = boardIntakeRunner ?? RunBoardIntake;
 
         Text = UiStrings.WithoutMnemonic(UiStrings.ModuleStudioWindowTitle);
         // Keep the ordinary 1180 x 720 design surface, but leave enough
@@ -169,6 +176,9 @@ public sealed class ModuleStudioForm : Form
             AccessibleName = UiStrings.WithoutMnemonic(UiStrings.TargetLanguageFirst),
         };
 
+        _boardIntake = MakeButton(UiStrings.ImportAndVerifyBoard, (_, _) => ImportAndVerifyBoard());
+        _boardIntake.Name = "board-to-brief-intake";
+        _boardIntake.Visible = false;
         _review = MakeButton(UiStrings.ReviewAndApprove, (_, _) => ReviewAndApprove());
         _print = MakeButton(UiStrings.PrintButton, (_, _) => PrintApproved());
         _printView = MakeButton(UiStrings.OpenPrintView, async (_, _) => await OpenPrintViewAsync());
@@ -227,7 +237,7 @@ public sealed class ModuleStudioForm : Form
             AutoSize = true,
             WrapContents = true,
         };
-        buttons.Controls.AddRange([_review, _print, _printView, _export, _cancelExport, _save]);
+        buttons.Controls.AddRange([_boardIntake, _review, _print, _printView, _export, _cancelExport, _save]);
 
         var right = new TableLayoutPanel
         {
@@ -339,6 +349,8 @@ public sealed class ModuleStudioForm : Form
         {
             AddField(field);
         }
+
+        _boardIntake.Visible = string.Equals(mode.Key, BoardToBriefModeKey, StringComparison.Ordinal);
 
         // Catalog-owned synthetic starters are known Green. Every free-text or
         // table edit clears this state, because automated code may escalate a
@@ -672,6 +684,8 @@ public sealed class ModuleStudioForm : Form
         _audience.Enabled = enabled;
         _textScale.Enabled = enabled;
         _targetLanguageFirst.Enabled = enabled;
+        _boardIntake.Enabled = enabled
+            && SelectedMode is { Key: BoardToBriefModeKey, IsBuildAvailable: true };
     }
 
     private ApprovedArtifact? RunModalReview(ReviewSession session)
@@ -679,6 +693,78 @@ public sealed class ModuleStudioForm : Form
         using var review = new ReviewForm(session);
         return review.ShowDialog(this) == DialogResult.OK ? review.Result : null;
     }
+
+    private static IReadOnlyList<BriefLine>? RunBoardIntake(IWin32Window owner)
+    {
+        using var intake = new BoardToBriefIntakeForm();
+        return intake.ShowDialog(owner) == DialogResult.OK ? intake.ResultLines : null;
+    }
+
+    private void ImportAndVerifyBoard()
+    {
+        if (SelectedMode is not { Key: BoardToBriefModeKey, IsBuildAvailable: true })
+        {
+            return;
+        }
+
+        var lines = _boardIntakeRunner(this);
+        if (lines is null)
+        {
+            return;
+        }
+
+        if (lines.Count == 0
+            || lines.Any(line => line is null
+                || string.IsNullOrWhiteSpace(line.Text)
+                || !Enum.IsDefined(line.Role))
+            || lines.Count(line => line.Role == BriefRole.Title) != 1)
+        {
+            SetStatus(UiStrings.StatusBoardIntakeRowsRefused);
+            return;
+        }
+
+        if (!_fieldContainers.TryGetValue("lines", out var container)
+            || container.Controls.OfType<DataGridView>().SingleOrDefault() is not { } grid)
+        {
+            SetStatus(UiStrings.StatusBoardIntakeTableUnavailable);
+            return;
+        }
+
+        _stateGeneration++;
+        _loadingFields = true;
+        try
+        {
+            grid.Rows.Clear();
+            foreach (var line in lines)
+            {
+                grid.Rows.Add(line.Text, BoardRoleValue(line.Role));
+            }
+
+            // Transcription and role decisions occur after source-lane
+            // confirmation. They never inherit that attestation or stale Gate B.
+            _greenInput.Checked = false;
+        }
+        finally
+        {
+            _loadingFields = false;
+        }
+
+        ClearApproval();
+        UpdateConditions();
+        SetStatus(UiStrings.StatusBoardIntakeImported);
+        UpdateGatedButtons();
+    }
+
+    private static string BoardRoleValue(BriefRole role) => role switch
+    {
+        BriefRole.Title => "title",
+        BriefRole.Step => "step",
+        BriefRole.Material => "material",
+        BriefRole.Vocabulary => "vocabulary",
+        BriefRole.Date => "date",
+        BriefRole.Note => "note",
+        _ => throw new ArgumentOutOfRangeException(nameof(role), role, null),
+    };
 
     private async Task OpenPrintViewAsync()
     {
@@ -1089,6 +1175,8 @@ public sealed class ModuleStudioForm : Form
         _review.Enabled = idle
             && SelectedMode is { IsBuildAvailable: true }
             && IsInputReady();
+        _boardIntake.Enabled = idle
+            && SelectedMode is { Key: BoardToBriefModeKey, IsBuildAvailable: true };
         _print.Enabled = approved && supported.Contains(RenderTarget.PrintHtml);
         _printView.Enabled = approved && supported.Contains(RenderTarget.PrintHtml);
         _export.Enabled = approved && supported.Count > 0;

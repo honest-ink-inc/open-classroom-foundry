@@ -52,11 +52,13 @@ public class CaptureFlowTests
         transcript.Resolve(2, "9");
         transcript.Resolve(6, "9");
         Assert.True(transcript.IsComplete);
+        var verifiedStep = Assert.Single(transcript.VerifiedLines());
+        Assert.Equal("Finish chapter 9 by Friday, October 9", verifiedStep);
 
         var brief = BoardToBriefBuilder.Build(
             [
                 new BriefLine("Chapter 9 homework", BriefRole.Title),
-                new BriefLine("Finish chapter 9 by Friday, October 9", BriefRole.Step),
+                new BriefLine(verifiedStep, BriefRole.Step),
                 new BriefLine("Bring your annotations", BriefRole.Step),
             ],
             [new LockedField(LockedFieldKind.Date, "Friday, October 9")]);
