@@ -1,6 +1,6 @@
 # Educator council — charter and recruitment kit
 
-**Status:** Formation **underway** (29 August 2026): seven invitations sent covering every seat below; two acceptances so far. **The pilot is materialized but its opening date moved (29 Aug 2026)** and is downstream of Maryland's acceptance of the articles — see [the moved calendar](handover/2026-08-29-the-moved-calendar.md); the six-week structure stands, coordinated by [docs/pilots/human-gates-coordination-plan.md](pilots/human-gates-coordination-plan.md), with the think-aloud protocol, seeded-error kit, print checklist, and NVDA script ready. The recognition/compensation policy was ratified 29 August; confirming schedules remains before week 1. All Aboard co-design begins when the AAC/SLP seat accepts. No real council selection of the next Atlas 2.0 priority is recorded; the [needs-first priority-session packet](council/atlas-priority-session.md) is ready but unrun. Invitations and correspondence now flow from **contact@honest-ink.org** (Honest Ink, Inc.).
+**Status:** Formation **underway** (29 August 2026): seven invitations sent covering every seat below; two acceptances so far. **The pilot is materialized but its opening date moved (29 Aug 2026)** and is downstream of Maryland's acceptance of the articles — see [the moved calendar](handover/2026-08-29-the-moved-calendar.md); the six-week structure stands, coordinated by [docs/pilots/human-gates-coordination-plan.md](pilots/human-gates-coordination-plan.md), with the think-aloud protocol, seeded-error kit, print checklist, and NVDA script ready. The recognition/compensation policy was ratified 29 August; confirming schedules remains before week 1. SequenceSlate co-design begins when the AAC/SLP seat accepts. ADR-008's naming decision does not waive that seat or any other protected territory. No real council selection of the next Atlas 2.0 priority is recorded; the [needs-first priority-session packet](council/atlas-priority-session.md) is ready but unrun. Invitations and correspondence now flow from **contact@honest-ink.org** (Honest Ink, Inc.).
 
 ## What the council is
 
@@ -10,8 +10,8 @@ A standing group of practicing educators and specialists who co-design, pressure
 
 | Seat | Why now | First work |
 |---|---|---|
-| 2–3 general/special educators (elementary + secondary) | Think-alouds begin with Module Zero and All Aboard | Deterministic Press time-to-artifact sessions; staged-task fixtures |
-| AAC user, SLP, or special educator with AAC practice | **Required before All Aboard co-design begins** (governance) | Visual-support agency review; symbol/AAC boundary terms |
+| 2–3 general/special educators (elementary + secondary) | Think-alouds begin with Module Zero and SequenceSlate | Deterministic Press time-to-artifact sessions; staged-task fixtures |
+| AAC user, SLP, or special educator with AAC practice | **Required before SequenceSlate co-design begins** (governance) | Visual-support agency review; symbol/AAC boundary terms |
 | Accessibility / assistive-technology reviewer | The review surface needs AT walkthroughs early, not late (ADR-002) | Keyboard and NVDA/Narrator walkthrough of the first slice |
 | Multilingual educator or family liaison | Directions Duet ships in 0.2; language pairs need named reviewers (plan §20, decision 5) | First two language pairs; glossary review |
 | Curriculum reviewer (any core subject) | Fixture families need expert-agreed expectations | Gold fixtures for the first modules |
@@ -32,7 +32,11 @@ Council members are advisors, not test subjects: no student data is ever solicit
 
 **Recognition and compensation policy — DECIDED.** Ratified 29 August 2026: [compensation-policy.md](council/compensation-policy.md) ($50/session educator, $85 specialist, $300/quarter cap; credit by preference; Phase 1 ledger now, honoraria retroactive once the entity can lawfully disburse; compensation never buys a finding). The September update letters ([council/correspondence/2026-09-invitation-updates.md](council/correspondence/2026-09-invitation-updates.md)) quote it and are cleared to send.
 
-## Invitation draft (adapt and send)
+## Invitation draft (historical working-title copy)
+
+This retained draft records the working title used before ADR-006. Any future
+invitation must use **Honest Ink — the classroom foundry** and remains a
+typist-authored correspondence act; this document does not send it.
 
 > Subject: Help shape free, teacher-owned classroom tools (30–60 min/week, your expertise credited)
 >

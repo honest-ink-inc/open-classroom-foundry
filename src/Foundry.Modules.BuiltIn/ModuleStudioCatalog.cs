@@ -138,6 +138,7 @@ public sealed record ModuleModeDefinition(
 
 public sealed record ModuleDoorDefinition(
     string Id,
+    string PublicFileStem,
     ModuleDisplayText Display,
     IReadOnlyList<ModuleModeDefinition> Modes);
 
@@ -449,7 +450,7 @@ public static class ModuleStudioCatalog
 
     private static ModuleDoorDefinition TalkDoor()
     {
-        return Door("talk-moves", "Talk Moves Studio",
+        return Door("talk-moves", ModulePublicIdentity.DiscussionDesign.DisplayName,
             Mode(
                 "talk-moves-studio",
                 "Discussion plan",
@@ -476,7 +477,7 @@ public static class ModuleStudioCatalog
 
     private static ModuleDoorDefinition LessonDoor()
     {
-        return Door("lesson-loom", "Lesson Loom",
+        return Door("lesson-loom", ModulePublicIdentity.LessonDesign.DisplayName,
             Mode(
                 "lesson-loom",
                 "Lesson plan",
@@ -504,7 +505,7 @@ public static class ModuleStudioCatalog
 
     private static ModuleDoorDefinition ExitDoor()
     {
-        return Door("exit-lens", "Exit Lens",
+        return Door("exit-lens", ModulePublicIdentity.FormativeEvidence.DisplayName,
             UnavailableMode(
                 "exit-lens",
                 "Response clustering",
@@ -560,7 +561,7 @@ public static class ModuleStudioCatalog
 
     private static ModuleDoorDefinition SourceDoor()
     {
-        return Door("source-lens", "Source Lens",
+        return Door("source-lens", ModulePublicIdentity.SourceInquiry.DisplayName,
             Mode(
                 "source-lens",
                 "Source inquiry",
@@ -593,7 +594,7 @@ public static class ModuleStudioCatalog
     {
         var translated = new ModuleFieldCondition("target-locale", "", EqualsSubmittedValue: false);
 
-        return Door("family-bridge", "Family Bridge",
+        return Door("family-bridge", ModulePublicIdentity.FamilyCommunication.DisplayName,
             Mode(
                 "family-bridge",
                 "General family communication",
@@ -1109,7 +1110,11 @@ public static class ModuleStudioCatalog
         => string.IsNullOrWhiteSpace(value) ? null : value;
 
     private static ModuleDoorDefinition Door(string id, string fallback, params ModuleModeDefinition[] modes)
-        => new(id, Display($"modules.{id}.door", fallback), modes);
+        => new(
+            id,
+            ModulePublicIdentity.FindByLegacyId(id)?.FileStem ?? id,
+            Display($"modules.{id}.door", fallback),
+            modes);
 
     private static ModuleModeDefinition Mode(
         string key,

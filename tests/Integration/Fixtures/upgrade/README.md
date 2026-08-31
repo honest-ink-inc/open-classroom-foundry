@@ -1,7 +1,7 @@
 # Frozen project compatibility fixture
 
 `0.1.0-dev-schema-1-assets.ocfproj.base64` freezes the historically
-representative All Aboard shape: a heading, an `ImageReference`, an
+representative SequenceSlate shape (stable legacy id `all-aboard`): a heading, an `ImageReference`, an
 ordered task, the actual `agency.help.v1` SVG, and its complete provenance
 record. It decodes to 2,138 bytes with SHA-256
 `9B592AA00C2CCB31C5678D82C1685DBE99E023FA482AE25F103AE0D50D9A13FD`.

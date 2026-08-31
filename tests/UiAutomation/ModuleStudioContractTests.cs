@@ -74,6 +74,33 @@ public sealed class ModuleStudioContractTests : IDisposable
         });
 
     [Fact]
+    public void Public_file_stems_follow_display_names_without_changing_mode_keys()
+    {
+        var expected = new Dictionary<string, string>(StringComparer.Ordinal)
+        {
+            ["board-to-brief"] = "board-to-brief",
+            ["access-remix"] = "access-remix",
+            ["directions-duet"] = "directions-duet",
+            ["scaffold-smith.packet"] = "scaffold-smith-packet",
+            ["scaffold-smith.task-entry"] = "scaffold-smith-task-entry",
+            ["talk-moves-studio"] = "forumwright",
+            ["lesson-loom"] = "gridlesson",
+            ["exit-lens"] = "reteachsignal",
+            ["rubric-relay"] = "rubric-relay",
+            ["source-lens"] = "inquirywright",
+            ["family-bridge"] = "kindispatch",
+        };
+
+        foreach (var door in ModuleStudioCatalog.All)
+        {
+            foreach (var mode in door.Modes)
+            {
+                Assert.Equal(expected[mode.Key], ModuleStudioForm.PublicFileStem(door, mode));
+            }
+        }
+    }
+
+    [Fact]
     public void The_press_room_carries_the_built_in_studios_door()
         => Sta.Run(() =>
         {

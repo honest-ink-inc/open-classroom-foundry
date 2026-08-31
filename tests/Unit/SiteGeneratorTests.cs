@@ -80,8 +80,8 @@ public class SiteBuilderTests
     {
         var index = Page("index.html");
 
-        Assert.Contains("<h1>Open Classroom Foundry</h1>", index, StringComparison.Ordinal);
-        Assert.Contains("<title>Open Classroom Foundry</title>", index, StringComparison.Ordinal);
+        Assert.Contains("<h1>Honest Ink — the classroom foundry</h1>", index, StringComparison.Ordinal);
+        Assert.Contains("<title>Honest Ink — the classroom foundry</title>", index, StringComparison.Ordinal);
         Assert.Contains("aria-current=\"page\"", index, StringComparison.Ordinal);
         foreach (var page in SiteBuilder.Pages)
         {

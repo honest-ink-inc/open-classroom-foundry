@@ -4,16 +4,43 @@ using Foundry.App.WinForms;
 using Foundry.Application;
 using Foundry.Contracts;
 using Foundry.Domain;
+using Foundry.Modules.BuiltIn;
+using Foundry.Modules.BuiltIn.AllAboard;
 using Foundry.Storage;
 
 namespace Foundry.Tests.UiAutomation;
 
-// The All Aboard typed-steps surface (second forge menu, item 2): walkthrough
+// The SequenceSlate typed-steps surface (second forge menu, item 2): walkthrough
 // part 2 encoded where automation honestly can. The wall stands in the tests
 // too — everything here exercises the ratified 0.1 slice and nothing else.
 
 public class AllAboardContractTests
 {
+    [Fact]
+    public void Public_chrome_and_file_stems_use_SequenceSlate_while_recipe_ids_stay_stable()
+    {
+        Assert.Contains(
+            ModulePublicIdentity.VisualSupport.DisplayName,
+            UiStrings.WithoutMnemonic(UiStrings.AllAboardOpen),
+            StringComparison.Ordinal);
+        Assert.Contains(
+            ModulePublicIdentity.VisualSupport.DisplayName,
+            UiStrings.AllAboardWindowTitle,
+            StringComparison.Ordinal);
+
+        var expected = new Dictionary<string, string>(StringComparer.Ordinal)
+        {
+            ["all-aboard.task-strip"] = "sequenceslate-task-strip",
+            ["all-aboard.first-then"] = "sequenceslate-first-then",
+            ["all-aboard.now-next-done"] = "sequenceslate-now-next-done",
+            ["all-aboard.agency-cards"] = "sequenceslate-agency-cards",
+        };
+        foreach (var recipe in AllAboardRecipes.All)
+        {
+            Assert.Equal(expected[recipe.Id], AllAboardForm.PublicFileStem(recipe));
+        }
+    }
+
     private static JsonAssetCatalog Catalog()
     {
         var dir = new DirectoryInfo(AppContext.BaseDirectory);
@@ -439,7 +466,9 @@ public class AllAboardContractTests
         => Sta.Run(() =>
         {
             using var pressRoom = new PressRoomForm(_ => null);
-            Assert.NotNull(ReviewSurfaceContractTests.ByName(pressRoom, "All Aboard task strip…"));
+            Assert.NotNull(ReviewSurfaceContractTests.ByName(
+                pressRoom,
+                UiStrings.WithoutMnemonic(UiStrings.AllAboardOpen)));
         });
 
     private sealed class ReorderingCatalog(IAssetCatalog inner) : IAssetCatalog

@@ -30,7 +30,7 @@ The pilot occupies Gate 4's first two rungs only: **synthetic/teacher-authored v
 |---|---|---|---|
 | Prep | The 4–5 working days before week 1 | ~~State the compensation policy in writing~~ **ratified 29 Aug**; send the update letters; confirm schedule with accepted seats; print the pilot kit; deliver the district packet; typist self-runs the NVDA script once | SPF/DKIM check before the first send |
 | 1 | Opening week | Deterministic Press time-to-artifact think-alouds (2 sessions) — the recipes' stated budgets are on trial (constitution item 14) | 2 educator seats |
-| 2 | Week 1 + 1 | All Aboard think-alouds **if the AAC/SLP seat has accepted** (governance requires it before co-design); otherwise continue Press + Board-to-Brief; AT reviewer walkthrough | AAC seat status known |
+| 2 | Week 1 + 1 | SequenceSlate think-alouds **if the AAC/SLP seat has accepted** (governance requires it before co-design); otherwise continue Press + Board-to-Brief; AT reviewer walkthrough | AAC seat status known |
 | 3 | Week 1 + 2 | Physical print inspection incl. booklet imposition; bilingual fixture review with the multilingual seat (EN–ES, EN–AR right-to-left) | Printer, ruler, multilingual seat |
 | 4 | Week 1 + 3 | Seeded-error study, paper pass (packets A–H) | ≥3 educators, sealed key |
 | 5 | Week 1 + 4 | Seeded-error study, in-app Gate B pass; defect burn-down begins | Builds on participants' machines |

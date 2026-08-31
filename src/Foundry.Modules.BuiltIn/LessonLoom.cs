@@ -10,7 +10,7 @@ public sealed record LessonPhase(string Name, int Minutes, string LearnerWork, s
 public sealed record LessonResult(ArtifactDocument Document, IReadOnlyList<ValidationIssue> Issues);
 
 /// <summary>
-/// Lesson Loom (plan §10.7): backward alignment from evidence, with the arithmetic
+/// GridLesson (stable legacy id: lesson-loom; plan §10.7): backward alignment from evidence, with the arithmetic
 /// the model never does — the engine checks it. Minutes must sum exactly, at least
 /// two checks must carry responses, and closure must produce evidence.
 /// </summary>
@@ -137,7 +137,7 @@ public static class LessonLoomBuilder
         Version: "0.1.0",
         License: "GPL-3.0-or-later",
         MinimumEngineVersion: EngineIdentity.EngineVersion,
-        InstructionalPurpose: "Weave an objective, time, and materials into a feasible lesson with checks that have planned responses.",
+        InstructionalPurpose: "Arrange an objective, time, and materials into a feasible lesson with checks that have planned responses.",
         ProhibitedPurposes:
         [
             "invented standard text, source citations, or safety procedures",

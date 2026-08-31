@@ -32,6 +32,39 @@ public class ModuleStudioCatalogTests
     }
 
     [Fact]
+    public void Adopted_public_names_are_unique_and_leave_every_legacy_key_intact()
+    {
+        var expected = new Dictionary<string, (string Name, string Subtitle, string FileStem)>(StringComparer.Ordinal)
+        {
+            ["all-aboard"] = ("SequenceSlate", "Visual Support Studio", "sequenceslate"),
+            ["lesson-loom"] = ("GridLesson", "Lesson Design Studio", "gridlesson"),
+            ["talk-moves"] = ("Forumwright", "Discussion Design", "forumwright"),
+            ["exit-lens"] = ("ReteachSignal", "Formative Evidence", "reteachsignal"),
+            ["source-lens"] = ("Inquirywright", "Source & Inquiry", "inquirywright"),
+            ["family-bridge"] = ("KinDispatch", "Bilingual & Family Press", "kindispatch"),
+        };
+
+        Assert.Equal(expected.Keys, ModulePublicIdentity.All.Select(identity => identity.LegacyId));
+        Assert.Equal(ModulePublicIdentity.All.Count,
+            ModulePublicIdentity.All.Select(identity => identity.Name).Distinct(StringComparer.Ordinal).Count());
+        Assert.Equal(ModulePublicIdentity.All.Count,
+            ModulePublicIdentity.All.Select(identity => identity.FileStem).Distinct(StringComparer.Ordinal).Count());
+
+        foreach (var identity in ModulePublicIdentity.All)
+        {
+            Assert.Equal(expected[identity.LegacyId], (identity.Name, identity.Subtitle, identity.FileStem));
+            Assert.Equal(identity, ModulePublicIdentity.FindByLegacyId(identity.LegacyId));
+
+            if (!string.Equals(identity.LegacyId, ModulePublicIdentity.VisualSupport.LegacyId, StringComparison.Ordinal))
+            {
+                var door = ModuleStudioCatalog.ById(identity.LegacyId);
+                Assert.Equal(identity.DisplayName, door.Display.Fallback);
+                Assert.Equal(identity.FileStem, door.PublicFileStem);
+            }
+        }
+    }
+
+    [Fact]
     public void Every_mode_binds_the_real_recipe_and_its_declared_lane()
     {
         var expectedRecipes = new Dictionary<string, string>(StringComparer.Ordinal)

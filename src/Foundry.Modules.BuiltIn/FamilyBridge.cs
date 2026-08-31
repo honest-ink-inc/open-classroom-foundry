@@ -10,7 +10,7 @@ public sealed record BridgeParagraph(string SourceText, string? TargetText = nul
 public sealed record FamilyBridgeResult(ArtifactDocument Document, IReadOnlyList<ValidationIssue> Issues);
 
 /// <summary>
-/// Family Bridge, Green general communications only (plan §10.10). The council's
+/// KinDispatch (stable legacy id: family-bridge), Green general communications only (plan §10.10). The council's
 /// readability lint (RC-9) is deterministic law: long sentences block, and a
 /// letter asking two things at once is flagged, because one clear ask travels
 /// home better than three buried ones. Locked facts survive both languages;

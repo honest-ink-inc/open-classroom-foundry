@@ -1,10 +1,10 @@
-# Open Classroom Foundry
+# Honest Ink — the classroom foundry
 
 ## Enriched, refined, and audited implementation plan for Module Zero and the twelve-module starting sequence
 
 **Plan version:** 2.0 — regenerated 29 August 2026, applying The Master's Review 1.0 (amendments 1–7; findings F2, F5–F11 incorporated)  
 **Date:** 29 August 2026  
-**Status (30 August 2026):** Foundation, the deterministic press, All Aboard, and the reachable Green built-in studios are implemented; protected-seat review, pilot evidence, packaging, release, and the remaining roadmap stay open. See the [forge closeout](handover/2026-08-30-forge-closeout.md).
+**Status (30 August 2026):** Foundation, the deterministic press, SequenceSlate, and the reachable Green built-in studios are implemented; protected-seat review, pilot evidence, packaging, release, and the remaining roadmap stay open. ADR-008 fixes current public display names while preserving all stable internal identifiers. See the [forge closeout](handover/2026-08-30-forge-closeout.md).
 **License intention:** Application code and first-party recipes under GNU GPL-3.0-or-later; other content and assets governed by explicit, compatible licenses  
 **Initial operating environment:** .NET 10 on managed Windows 10/11 devices, local-first authoring, optional district-governed Azure OpenAI inference  
 
@@ -22,18 +22,18 @@ The viable unit is:
 
 The public-facing priority sequence remains inspiring:
 
-1. All Aboard
+1. SequenceSlate — Visual Support Studio
 2. Board to Brief
 3. Scaffold Smith
 4. Access Remix
 5. Directions Duet
-6. Exit Lens
-7. Lesson Loom
+6. ReteachSignal — Formative Evidence
+7. GridLesson — Lesson Design Studio
 8. Rubric Relay
-9. Talk Moves Studio
-10. Family Bridge
+9. Forumwright — Discussion Design
+10. KinDispatch — Bilingual & Family Press
 11. Symbol Commons
-12. Source Lens
+12. Inquirywright — Source & Inquiry
 
 Preceding the twelve as **Module Zero** is the **Deterministic Press** — the zero-inference printable studio specified in section 10.0. It carries no privacy risk, needs no district AI approval, exercises the entire pipeline except the inference provider, and establishes the trust every later module is measured against.
 
@@ -42,15 +42,15 @@ The **engineering and release sequence must differ**:
 1. Shared Green-lane foundation
 2. Deterministic Press module zero — its first presses serve as the rendering pipeline's real cargo
 3. Minimal asset/provenance kernel
-4. All Aboard vertical slice
+4. SequenceSlate vertical slice
 5. Board to Brief and Directions Duet
 6. Access Remix
-7. Scaffold Smith (absorbing TaskDock per ADR-005), Lesson Loom, and Talk Moves Studio
+7. Scaffold Smith (including its task-entry scaffold), GridLesson, and Forumwright
 8. Full Symbol Commons and the complete Deterministic Press studio
-9. Source Lens and Green-only Family Bridge
-10. Exit Lens and Rubric Relay only after the complete Amber architecture and written district approval
+9. Inquirywright and Green-only KinDispatch
+10. ReteachSignal and Rubric Relay only after the complete Amber architecture and written district approval
 
-This difference is not demotion. It is disciplined dependency management. Symbol provenance is an All Aboard dependency; anonymous formative-response processing and work-sample feedback introduce risks that must not be forced into the foundation.
+This difference is not demotion. It is disciplined dependency management. Symbol provenance is a SequenceSlate dependency; anonymous formative-response processing and work-sample feedback introduce risks that must not be forced into the foundation.
 
 ## Audit corrections accepted as binding
 
@@ -59,20 +59,20 @@ This difference is not demotion. It is disciplined dependency management. Symbol
 - The data lane follows the content and every derivative, not the operator, module, or device.
 - Removing a name is not assumed to make an artifact anonymous or de-identified.
 - Restricted content is structurally excluded from every MVP.
-- Exit Lens reports reasoning clusters and matched instructional routes; it does not form named groups.
+- ReteachSignal reports reasoning clusters and matched instructional routes; it does not form named groups.
 - Rubric Relay offers no grade, score, ranking, authorship judgment, or final evaluation.
-- Family Bridge exports generic communication drafts but holds no recipient list and sends nothing.
-- All Aboard begins with staged materials and empty environments, not learner photographs or named individualized profiles.
+- KinDispatch exports generic communication drafts but holds no recipient list and sends nothing.
+- SequenceSlate begins with staged materials and empty environments, not learner photographs or named individualized profiles.
 - Model output never prints, exports, sends, or saves as approved content without teacher inspection.
 - “In memory only,” “zero retention,” “FERPA compliant,” and “de-identified” are not used as absolute marketing claims without corresponding forensic, contractual, and district evidence.
-- TaskDock is absorbed into Scaffold Smith as its task-entry preset (ADR-005); it is not a separate product.
+- Scaffold Smith includes the task-entry scaffold ratified by ADR-005; the former TaskDock title is a historical Atlas/ADR reference, not a separate runtime or public product.
 - Accumulating stores persist only teacher-authored pattern descriptions, never response-derived content (review finding F5).
 
 ---
 
 # 2. Program purpose and liberation test
 
-Open Classroom Foundry exists to remove repetitive production labor between a teacher’s perception and a learner’s next useful support. It is an authoring, transformation, and analysis instrument. The teacher remains the accountable author, editor, witness, and decision-maker.
+Honest Ink exists to remove repetitive production labor between a teacher’s perception and a learner’s next useful support. It is an authoring, transformation, and analysis instrument. The teacher remains the accountable author, editor, witness, and decision-maker. Open Classroom Foundry remains the repository and internal engineering title.
 
 The program advances educational liberation only if:
 
@@ -254,7 +254,7 @@ Use a **strangler refactor with characterization tests**:
 4. Build the Foundry teacher shell against those services.
 5. Port improvements back only after equivalent behavior passes tests.
 
-Keep WinForms for the first vertical slices. Use dependency injection and presenters/view-models so the UI framework is not the architecture. Reassess WPF or another shell after All Aboard field testing; do not spend the first months on a framework rewrite.
+Keep WinForms for the first vertical slices. Use dependency injection and presenters/view-models so the UI framework is not the architecture. Reassess WPF or another shell after SequenceSlate field testing; do not spend the first months on a framework rewrite.
 
 One accessibility rule binds from day one: standard controls only, with no owner-drawing, until the accessibility test harness exists — and thereafter any custom control ships with its own UI Automation peer and NVDA/Narrator evidence. The review surface, as the most novel UI in the program, receives assistive-technology walkthroughs early, not late.
 
@@ -540,7 +540,7 @@ Each module below states the safe MVP, invariants, proof, and deferrals. Every m
 
 The complete specification is the companion document `open-classroom-foundry-deterministic-press-spec.md`.
 
-## 10.1 All Aboard: Visual Support Studio
+## 10.1 SequenceSlate — Visual Support Studio
 
 **Lane:** Green when using staged materials and empty environments; individualized or learner-containing material is excluded from the MVP.  
 **Problem:** Teachers spend substantial time photographing, cropping, labeling, sequencing, and formatting real activities into visual supports.  
@@ -639,7 +639,7 @@ Live lecture recording, arbitrary complex-table reconstruction, exact visual fac
 
 **Lane:** Green. Individual learner records and identifiable work are excluded.  
 **Problem:** Teachers need temporary access supports that preserve grade-level reasoning.  
-**Absorption:** TaskDock enters this module as the task-entry preset — materials, first action, chunks, checkpoints, help routes, and a concrete definition of done (ADR-005).
+**Task-entry scaffold:** This module includes materials, first action, chunks, checkpoints, help routes, and a concrete definition of done, as ratified by ADR-005. The old TaskDock label remains only in that historical decision and stable record references.
 
 **Authorized inputs**
 
@@ -694,7 +694,7 @@ Individualized accommodation plans, student mastery tracking, diagnosis-linked r
 
 **Invariants**
 
-- The production MVP requires purpose authority established through protected specialist review and not grantable by typed content. The current build deliberately issues no such authority: All Aboard content remains purpose `Unknown`, the Access catalog mode has no build delegate, and the remixer is not a public API
+- The production MVP requires purpose authority established through protected specialist review and not grantable by typed content. The current build deliberately issues no such authority: SequenceSlate content remains purpose `Unknown`, the Access catalog mode has no build delegate, and the remixer is not a public API
 - Preserve every prompt, condition, datum, reference, and criterion
 - Do not alter item difficulty or cue the answer
 - Keep indispensable graphics with their prompt
@@ -755,7 +755,7 @@ Formal-test conversion, braille/tactile output, arbitrary complex math/table rec
 
 Unlimited unsupported languages, speech interpretation, dialect guarantees, personalized directions, and high-stakes machine-only translations.
 
-## 10.6 Exit Lens
+## 10.6 ReteachSignal — Formative Evidence
 
 **Lane:** Amber by design; synthetic inputs only until written district authorization.  
 **Problem:** Teachers need fast visibility into reasoning patterns without turning a quick check into grading or surveillance.
@@ -810,7 +810,7 @@ Unlimited unsupported languages, speech interpretation, dialect guarantees, pers
 
 Named grouping, longitudinal dashboards, grading, SIS/LMS integration, student histories, subgroup comparison, and response-level export.
 
-## 10.7 Lesson Loom
+## 10.7 GridLesson — Lesson Design Studio
 
 **Lane:** Green.  
 **Problem:** Plans often become lists of activities rather than coherent target-evidence-instruction-decision sequences.
@@ -891,7 +891,7 @@ One de-identified artifact, teacher-approved assignment, target, and rubric. No 
 
 Scores, grades, ranking, batch use, persistent portfolios, authorship detection, and high-stakes decisions.
 
-## 10.9 Talk Moves Studio
+## 10.9 Forumwright — Discussion Design
 
 **Lane:** Green, rosterless.  
 **Problem:** Discussion plans may create prompts without equitable participation, evidence use, idea-building, or disciplined disagreement.
@@ -931,7 +931,7 @@ Scores, grades, ranking, batch use, persistent portfolios, authorship detection,
 
 Recordings, transcripts, speaker analytics, emotion inference, participation prediction, and roster-based grouping.
 
-## 10.10 Family Bridge
+## 10.10 KinDispatch — Bilingual & Family Press
 
 **Lane:** Green general communications only.  
 **Problem:** Teacher communication can hide actions inside jargon, mistranslation, inaccessible layout, or assumptions about devices, money, transportation, and time.
@@ -1027,7 +1027,7 @@ Recipient databases, direct messaging, emergency/legal/discipline/medical/consen
 
 Community upload, public synchronization, web scraping, unclear generated-image rights, and proprietary-pack redistribution.
 
-## 10.12 Source Lens
+## 10.12 Inquirywright — Source & Inquiry
 
 **Lane:** Green for public-domain, libre, or teacher-authorized sources.  
 **Problem:** Source activities often collapse into generic comprehension, fabricated intent, decontextualized quotation, presentism, or false equivalence.
@@ -1221,7 +1221,7 @@ Assumptions:
 - Stand up the minimum-hardware bench machine (on the order of a 2015-era CPU, 8 GB RAM, 1366×768)
 - Complete Gate 0 governance artifacts
 
-## Release 0.1 — All Aboard vertical slice
+## Release 0.1 — SequenceSlate vertical slice
 
 **Estimate:** 10–14 weeks
 
@@ -1249,9 +1249,9 @@ An honest educator alpha is plausible five to seven months after foundation work
 
 **Estimate:** 12–18 weeks
 
-- Scaffold Smith, including the absorbed TaskDock task-entry preset (ADR-005)
-- Lesson Loom
-- Talk Moves Studio
+- Scaffold Smith, including its task-entry scaffold (ADR-005)
+- GridLesson — Lesson Design Studio
+- Forumwright — Discussion Design
 - Complete Deterministic Press studio (all eight presses)
 - Shared target, evidence, access-route, and instructional-decision contracts
 - Instructional evaluation harness
@@ -1271,8 +1271,8 @@ An honest educator alpha is plausible five to seven months after foundation work
 
 **Estimate:** 10–16 weeks
 
-- Source Lens for teacher-provided OER/public-domain/authorized sources
-- Family Bridge for generic informational communication
+- Inquirywright — Source & Inquiry for teacher-provided OER/public-domain/authorized sources
+- KinDispatch — Bilingual & Family Press for generic informational communication
 - Provenance/citation editor
 - Translation uncertainty and invariant preservation
 
@@ -1281,7 +1281,7 @@ An honest educator alpha is plausible five to seven months after foundation work
 **Estimate:** 18–26 weeks
 
 - Batch/evidence kernel
-- Exit Lens and Rubric Relay using synthetic fixtures first
+- ReteachSignal — Formative Evidence and Rubric Relay using synthetic fixtures first
 - De-identification review, no-autosave sessions, evidence tracing, district-controlled export
 - Independent privacy, bias/error, assessment, and security review
 - No real student artifact until written authorization
@@ -1345,7 +1345,7 @@ An honest educator alpha is plausible five to seven months after foundation work
 - Build escaped HTML and print renderers
 - Test cancellation and purge paths
 
-## Days 61–75 — Asset kernel and All Aboard thin slice
+## Days 61–75 — Asset kernel and SequenceSlate thin slice
 
 - Define asset/concept/provenance manifest
 - Curate a tiny original/libre test pack
@@ -1363,7 +1363,7 @@ An honest educator alpha is plausible five to seven months after foundation work
 - Prompt-injection and PII-canary red team
 - Teacher think-aloud sessions
 - Produce 0.1-alpha evidence bundle
-- Decide whether All Aboard merits continued expansion before starting the next module
+- Decide whether SequenceSlate merits continued expansion before starting the next module
 
 ---
 
@@ -1545,6 +1545,7 @@ Do not release if:
 14. Minimum supported hardware floor and its permanent test-bench machine
 15. Amber teacher-edit-only journaling: whether, and under what district-approved retention rule, pending pilot fragility data
 16. Ratification of ADR-005: TaskDock absorption into Scaffold Smith — **decided: ratified 29 August 2026**
+17. Public display names for the six screened modules — **decided 30 August 2026 by ADR-008: SequenceSlate, GridLesson, Forumwright, ReteachSignal, Inquirywright, and KinDispatch; legacy identifiers remain stable and counsel review remains a pre-release checkpoint**
 
 ---
 
@@ -1554,9 +1555,9 @@ This plan draws upon:
 
 - The supplied Office of Curriculum and Instruction / Department of IT email
 - Writer’s Kiosk source and test suite at audited commit c2b670b
-- The Open Classroom Foundry 227-Idea Atlas (version 2.0)
+- The Honest Ink 227-Idea Atlas (version 2.0; repository document `docs/idea-atlas.md`)
 - The Master's Review 1.0 (open-classroom-foundry-davinci-review.md), whose amendments this version applies
-- ADR-005 (proposed) and the Deterministic Press module specification
+- Accepted ADR-005, ADR-006, and ADR-008, plus the Deterministic Press module specification
 - U.S. Department of Education FERPA guidance on direct and indirect identifiers
 - Official PECS description establishing it as a specific six-phase protocol
 - Provider capability documentation, cited per configured deployment at Gate 3 (for district Azure OpenAI, Microsoft's Azure OpenAI documentation)
@@ -1578,10 +1579,10 @@ Important references:
 
 # 22. Final implementation judgment
 
-Begin with the foundation and one honest vertical slice. All Aboard should prove the full grammar:
+Begin with the foundation and one honest vertical slice. SequenceSlate should prove the full grammar:
 
 > staged capture → privacy preflight → bounded structured suggestion → deterministic validation → teacher edit → explicit approval → accessible rendering → print/export → source purge → reopenable free project.
 
-If that path is trustworthy, fast, accessible, and instructionally worthy, the remaining Green modules become disciplined extensions. Exit Lens and Rubric Relay then become tests of whether the Foundry can enter the Amber lane without betraying its first principle.
+If that path is trustworthy, fast, accessible, and instructionally worthy, the remaining Green modules become disciplined extensions. ReteachSignal and Rubric Relay then become tests of whether the Foundry can enter the Amber lane without betraying its first principle.
 
 The purpose is not to make the machine appear to be a master teacher. It is to give real teachers a transparent, extraordinarily capable press and apprentice—one that remains subordinate to truth, learner agency, human judgment, public ownership, and the verity supreme.

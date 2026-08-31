@@ -56,7 +56,7 @@ File each sheet, de-identified, as one issue per distinct defect plus a summary 
 2. A flashcard set of 10 from a list you invent — through print, cut lines and all.
 3. An 8-page booklet from any two artifacts — imposition ordering is the trial.
 
-## Task cards for week 2 (All Aboard — only after the AAC/SLP seat has accepted)
+## Task cards for week 2 (SequenceSlate — only after the AAC/SLP seat has accepted)
 
 1. A four-step task strip for a real routine, invented details, with two symbols from the pack.
 2. The same strip bilingual (participant's language pair, or EN–ES).

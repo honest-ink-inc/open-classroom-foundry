@@ -94,6 +94,7 @@ public sealed class ModuleStudioForm : Form
         {
             Dock = DockStyle.Fill,
             AccessibleName = UiStrings.WithoutMnemonic(UiStrings.ModuleDoors),
+            HorizontalScrollbar = true,
             IntegralHeight = false,
         };
         foreach (var door in ModuleStudioCatalog.All)
@@ -321,7 +322,7 @@ public sealed class ModuleStudioForm : Form
 
     private void LoadMode()
     {
-        if (_loadingFields || SelectedMode is not { } mode)
+        if (_loadingFields || SelectedDoor is not { } door || SelectedMode is not { } mode)
         {
             return;
         }
@@ -346,7 +347,7 @@ public sealed class ModuleStudioForm : Form
         _greenInput.Enabled = mode.IsBuildAvailable;
         _parameterPanel.Enabled = mode.IsBuildAvailable;
         _parameterPanel.ResumeLayout();
-        PopulateNotes(mode, []);
+        PopulateNotes(door, mode, []);
         _loadingFields = false;
         UpdateConditions();
         if (!mode.IsBuildAvailable)
@@ -574,7 +575,7 @@ public sealed class ModuleStudioForm : Form
             return;
         }
 
-        PopulateNotes(mode, outcome.TransformationReport);
+        PopulateNotes(door, mode, outcome.TransformationReport);
         var blockingIssues = outcome.Issues
             .Where(issue => issue.Severity == ValidationSeverity.Blocking)
             .ToList();
@@ -695,7 +696,7 @@ public sealed class ModuleStudioForm : Form
         {
             await _printViewOpener(
                 approved,
-                context.Mode.Key,
+                PublicFileStem(context),
                 SelectedAudience(),
                 (double)_textScale.Value,
                 _targetLanguageFirst.Checked,
@@ -764,7 +765,7 @@ public sealed class ModuleStudioForm : Form
         try
         {
             choice = _exportPicker is null
-                ? PickExportDialog(context.Mode)
+                ? PickExportDialog(context)
                 : _exportPicker();
             exportToken.ThrowIfCancellationRequested();
             if (_formClosing || IsDisposed || Disposing)
@@ -879,8 +880,9 @@ public sealed class ModuleStudioForm : Form
         }
     }
 
-    private ExportChoice? PickExportDialog(ModuleModeDefinition mode)
+    private ExportChoice? PickExportDialog(ApprovedContext context)
     {
+        var mode = context.Mode;
         var targets = SupportedExportTargets(mode);
         if (targets.Count == 0)
         {
@@ -889,7 +891,7 @@ public sealed class ModuleStudioForm : Form
 
         using var dialog = new SaveFileDialog
         {
-            FileName = mode.Key,
+            FileName = PublicFileStem(context),
             Filter = string.Join('|', targets.Select(target =>
                 $"{ExportLabel(target)}|*.html")),
         };
@@ -917,7 +919,7 @@ public sealed class ModuleStudioForm : Form
 
         var name = AppServices.SaveToLibrary(
             ApprovedResult,
-            _context.Mode.Key,
+            PublicFileStem(_context),
             _context.Door.Id,
             _context.Mode.Recipe.Id,
             _context.Mode.Recipe.Version,
@@ -927,13 +929,16 @@ public sealed class ModuleStudioForm : Form
         SetStatus(UiStrings.StatusSaved, name);
     }
 
-    private void PopulateNotes(ModuleModeDefinition mode, IReadOnlyList<string> transformationReport)
+    private void PopulateNotes(
+        ModuleDoorDefinition door,
+        ModuleModeDefinition mode,
+        IReadOnlyList<string> transformationReport)
     {
         _notes.Items.Clear();
         _notes.Items.Add(UiStrings.FormatWithoutMnemonic(
             UiStrings.ModuleLaneAndRecipe,
             mode.Lane,
-            mode.Recipe.Id,
+            Display(door.Display),
             mode.Recipe.Version));
         if (mode.DefaultsAreSynthetic)
         {
@@ -958,6 +963,12 @@ public sealed class ModuleStudioForm : Form
 
     private RenderAudience SelectedAudience()
         => (_audience.SelectedItem as DisplayItem<RenderAudience>)?.Value ?? RenderAudience.Teacher;
+
+    private static string PublicFileStem(ApprovedContext context)
+        => PublicFileStem(context.Door, context.Mode);
+
+    internal static string PublicFileStem(ModuleDoorDefinition door, ModuleModeDefinition mode)
+        => ModulePublicIdentity.FileStemFor(door, mode);
 
     private void ContentInputChanged()
     {

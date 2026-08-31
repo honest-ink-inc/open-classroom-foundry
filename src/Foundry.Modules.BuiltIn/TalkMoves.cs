@@ -10,7 +10,7 @@ public sealed record DiscussionQuestion(string Question, string Purpose, string 
 public sealed record TalkMovesResult(ArtifactDocument Document, IReadOnlyList<ValidationIssue> Issues);
 
 /// <summary>
-/// Talk Moves Studio (plan §10.9): equitable, intellectually productive discussion.
+/// Forumwright (stable legacy id: talk-moves; plan §10.9): equitable, intellectually productive discussion.
 /// Participation is not airtime: at least three modes plus an always-appended
 /// wait/pass option; the five facilitation move families are required; the equity
 /// reflection prints as a teacher-only card — used standing up, after the bell.

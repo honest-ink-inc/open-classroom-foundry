@@ -8,7 +8,7 @@ using Foundry.Storage;
 namespace Foundry.Tests.InstructionalEvals;
 
 /// <summary>
-/// The thirty staged-task fixtures of All Aboard's acceptance proof (plan §10.1):
+/// The thirty staged-task fixtures of SequenceSlate's acceptance proof (stable legacy id: all-aboard; plan §10.1):
 /// subjects and environments across the school day, several language pairs, and
 /// symbol-bearing strips against the shipped libre pack. Every fixture must build,
 /// validate, approve, and render cleanly for both paper and screen.

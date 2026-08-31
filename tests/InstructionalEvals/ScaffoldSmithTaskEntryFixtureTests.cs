@@ -598,6 +598,7 @@ public sealed class ScaffoldSmithTaskEntryFixtureTests
         Assert.DoesNotContain("TaskDock preset", learner, StringComparison.Ordinal);
         Assert.DoesNotContain("<aside class=\"teacher-only\"", print, StringComparison.Ordinal);
         Assert.Contains("<aside class=\"teacher-only\"", teacher, StringComparison.Ordinal);
+        Assert.DoesNotContain("TaskDock", teacher, StringComparison.Ordinal);
         Assert.Contains(fixture.FadeCriterion, WebUtility.HtmlDecode(teacher), StringComparison.Ordinal);
         Assert.Contains("@page", print, StringComparison.Ordinal);
 

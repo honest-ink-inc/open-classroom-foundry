@@ -7,7 +7,7 @@ namespace Foundry.Modules.BuiltIn.ExitLens;
 public sealed record ExitLensResult(ArtifactDocument Document, IReadOnlyList<ValidationIssue> Issues);
 
 /// <summary>
-/// Exit Lens (plan §10.6), Amber by design, synthetic inputs only until written
+/// ReteachSignal (stable legacy id: exit-lens; plan §10.6), Amber by design, synthetic inputs only until written
 /// district authorization. Version 1 is teacher-driven clustering: the teacher
 /// defines reasoning clusters, assigns every response, and authors every route —
 /// model-proposed clusters arrive later as proposals into this same session.

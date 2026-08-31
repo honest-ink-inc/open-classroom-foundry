@@ -29,7 +29,7 @@ public sealed record InquiryPrompts(
 public sealed record SourceLensResult(ArtifactDocument Document, IReadOnlyList<ValidationIssue> Issues);
 
 /// <summary>
-/// Source Lens (plan §10.12): disciplined source inquiry. Metadata is stated or
+/// Inquirywright (stable legacy id: source-lens; plan §10.12): disciplined source inquiry. Metadata is stated or
 /// explicitly unknown, never guessed; the transcript is human-verified or the
 /// artifact does not exist; every inquiry set includes genuine sourcing and
 /// corroboration; observation and inference are structurally separate columns.

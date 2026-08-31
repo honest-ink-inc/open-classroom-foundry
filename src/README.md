@@ -17,6 +17,6 @@ Projects are created during Days 16–30 (implementation plan §14). The directo
 | `Foundry.Rendering` | Escaped HTML and print renderers over the semantic ArtifactDocument | Accept a DraftArtifact at a sink (ADR-004) |
 | `Foundry.Storage` | `.ocfproj` packages, safe path handling, rebuildable index | Treat the index as the source of truth (ADR-003) |
 | `Foundry.Modules.DeterministicPress` | Module Zero: the eight presses | Reference inference, OCR, capture, or redaction seams — enforced by a build-failing architecture test |
-| `Foundry.Modules.BuiltIn` | First-party modules (All Aboard onward) | Reach camera/network/filesystem/printer/diagnostics directly (ADR-001) |
+| `Foundry.Modules.BuiltIn` | First-party modules (SequenceSlate onward) | Reach camera/network/filesystem/printer/diagnostics directly (ADR-001) |
 
 Universal rule: **a module may not directly reach the camera, network, filesystem, printer, or diagnostics sink.** All access flows through the engine's seams (implementation plan §6.2).

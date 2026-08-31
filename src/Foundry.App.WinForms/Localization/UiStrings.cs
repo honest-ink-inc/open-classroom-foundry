@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 using System.Runtime.CompilerServices;
 using System.Text;
+using Foundry.Modules.BuiltIn;
 
 namespace Foundry.App.WinForms;
 
@@ -230,7 +231,7 @@ public static class UiStrings
 
     public static string StatusApproved => T("Approved — print view, export, and save to library are unlocked.");
 
-    public static string StatusAllAboardApprovedAccessHeld => T("Approved for All Aboard outputs. Access Remix remains held until the protected specialist purpose authority is designed and reviewed; typed content cannot waive that hold.");
+    public static string StatusAllAboardApprovedAccessHeld => T($"Approved for {ModulePublicIdentity.VisualSupport.DisplayName} outputs. Access Remix remains held until the protected specialist purpose authority is designed and reviewed; typed content cannot waive that hold.");
 
     public static string StatusNotApproved => T("Review ended without approval; nothing is unlocked.");
 
@@ -352,8 +353,8 @@ public static class UiStrings
 
     public static string ExportFilterSvg => T("SVG (single sheet only)");
 
-    // All Aboard surface — the ratified 0.1 typed-steps slice only.
-    public static string AllAboardOpen => T("&All Aboard task strip…");
+    // SequenceSlate surface — stable legacy ids retain the former working name.
+    public static string AllAboardOpen => T($"{ModulePublicIdentity.VisualSupport.DisplayName.Replace("q", "&q", StringComparison.Ordinal)}…");
 
     // Built-in module studios. Module/field labels have stable identifiers in
     // ModuleStudioCatalog; their neutral fallbacks pass through the same
@@ -388,7 +389,7 @@ public static class UiStrings
 
     public static string AccessPurposeAuthorityAbsent => T("Protected purpose authority is not available in this application");
 
-    public static string ModuleLaneAndRecipe => T("Lane: {0}. Recipe: {1}, version {2}.");
+    public static string ModuleLaneAndRecipe => T("Lane: {0}. Studio: {1}. Recipe version: {2}.");
 
     public static string ModuleSyntheticStarter => T("The starter values are synthetic and contain no learner data.");
 
@@ -418,7 +419,7 @@ public static class UiStrings
 
     public static string RecordTableHint => T("Add rows as needed. Choice cells submit stable values even when their labels are translated.");
 
-    public static string AllAboardWindowTitle => Compose(T("All Aboard — drafting a task strip"));
+    public static string AllAboardWindowTitle => Compose(T($"{ModulePublicIdentity.VisualSupport.DisplayName} — drafting a task strip"));
 
     public static string TaskTitle => T("Task title");
 
@@ -862,7 +863,7 @@ public static class UiStrings
 
     public static string CatalogArrayRequired => T("The UI catalog value at {0} must be an array.");
 
-    public static string CatalogNotApprovedForBuild => T("This exact UI catalog is not approved for this Honest Ink build. A command-line path or JSON review assertion cannot grant multilingual-seat approval.");
+    public static string CatalogNotApprovedForBuild => T($"This exact UI catalog is not approved for this {ProductIdentity.PublicName} build. A command-line path or JSON review assertion cannot grant multilingual-seat approval.");
 
     public static string CatalogFileSizeInvalid => T("The UI catalog file is empty or exceeds the bounded catalog size.");
 

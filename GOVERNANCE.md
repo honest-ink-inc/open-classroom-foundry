@@ -1,6 +1,6 @@
 # Governance
 
-This document records how decisions are made in Open Classroom Foundry. It exists from the first commit because a liberation project that dies with its maintainer liberates no one (Master's Review, finding F11).
+This document records how decisions are made in **Honest Ink**. Open Classroom Foundry remains the repository and internal engineering title. The governance record exists from the first commit because a liberation project that dies with its maintainer liberates no one (Master's Review, finding F11).
 
 ## Roles
 
@@ -12,7 +12,7 @@ This document records how decisions are made in Open Classroom Foundry. It exist
 | Privacy/legal/records | Lane decisions, FERPA analysis, retention, deletion, contracts | Vacant — engaged before any Amber work |
 | Curriculum/content reviewers | Target fidelity, facts, standards, subject fixtures, pedagogical evaluation | Recruiting (educator council) |
 | Accessibility/AT reviewers | Keyboard, screen reader, outputs, cognitive access, ACR/VPAT | Recruiting |
-| AAC users / SLP / special educators | Visual-support agency, terminology, symbol/AAC boundaries | Recruiting — required before All Aboard co-design |
+| AAC users / SLP / special educators | Visual-support agency, terminology, symbol/AAC boundaries | Recruiting — required before SequenceSlate co-design |
 | Multilingual services / family liaisons | Translation review, family clarity, localization | Recruiting |
 | OER/license steward | Asset and dependency rights, provenance, attribution, takedown | The founding maintainer, until delegated |
 | Safeguarding leads | Direct-source procedure, alert boundaries, training | Vacant — engaged per deployment |
@@ -22,12 +22,12 @@ This document records how decisions are made in Open Classroom Foundry. It exist
 
 ## Council formation status (updated 29 August 2026)
 
-**The tabling has ended: formation is underway.** The product owner has sent seven invitations covering every seat in the recruiting table; two educators have already accepted. The ratified compensation policy exists, but this repository does not yet record the first cohort's cadence, voting or decision rule, quorum, or term limits. Those terms must be enacted with the cohort before a council recommendation is treated as a council decision; they must not be inferred by a facilitator or automation. The tripwires stand satisfied in progress: think-aloud capacity is forming ahead of the release-evidence studies, and the AAC/SLP seat is among the invitations — All Aboard co-design still waits for that specific acceptance.
+**The tabling has ended: formation is underway.** The product owner has sent seven invitations covering every seat in the recruiting table; two educators have already accepted. The ratified compensation policy exists, but this repository does not yet record the first cohort's cadence, voting or decision rule, quorum, or term limits. Those terms must be enacted with the cohort before a council recommendation is treated as a council decision; they must not be inferred by a facilitator or automation. The tripwires stand satisfied in progress: think-aloud capacity is forming ahead of the release-evidence studies, and the AAC/SLP seat is among the invitations — SequenceSlate co-design still waits for that specific acceptance. ADR-008's display-name decision grants no protected-seat authority.
 
 *Original tabling record (29 August 2026), retained for history:* Council formation was tabled by the product owner while the Days 16–30 engineering block proceeded — that work (dependency wiring, state machine, schemas, synthetic provider, CI) touches no council gate, so tabling costs nothing. Two tripwires end the tabling automatically:
 
-1. **Before All Aboard co-design begins** (the start of Release 0.1 design work), the AAC user / SLP / special-educator seat must be filled. This gate is absolute.
-2. **Before any release evidence requiring teacher studies** (Module Zero's time-to-artifact proof; All Aboard's think-alouds and seeded-error study), teacher pilot participants must exist — recruitment therefore starts no later than mid-Release-0.0.
+1. **Before SequenceSlate co-design begins** (the start of Release 0.1 design work), the AAC user / SLP / special-educator seat must be filled. This gate is absolute.
+2. **Before any release evidence requiring teacher studies** (Module Zero's time-to-artifact proof; SequenceSlate's think-alouds and seeded-error study), teacher pilot participants must exist — recruitment therefore starts no later than mid-Release-0.0.
 
 Procedural terms — meeting cadence, voting weights, term limits, recognition/compensation — are enacted with the first cohort: they govern members, and there are no members yet. Gate authority and the stop-ship conditions stand regardless of tabling; a tabled council defers formation, never safety.
 

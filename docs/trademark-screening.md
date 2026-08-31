@@ -1,24 +1,59 @@
-# Trademark screening — first pass
+# Public-name and module-name screening — current informal record
 
-**Date:** 29 August 2026 · **Status:** informal screening, not legal clearance and not legal advice. This satisfies the Days 1–15 "trademark-screening task" at the working-title level; professional screening (USPTO TESS, EUIPO, state registries, common-law search) is required before any public distribution, and counsel before 1.0.
+**Date:** 30 August 2026 · **Status:** informal product screening, not legal clearance and not legal advice. Professional registry, common-law, domain, marketplace, and counsel review remain required before release, distribution, publication, or any use that treats a selected name as a cleared mark.
 
-All names remain working titles. The standing insurance policy holds: every product keeps a load-bearing subtitle ("Visual Support Studio") as its functional identity, so any single name can be replaced without losing the product's meaning.
+ADR-006 fixes **Honest Ink — the classroom foundry** as the public product name. ADR-008 fixes six public module display names while deliberately preserving internal identifiers. The standing insurance policy holds: every renamed product keeps a load-bearing functional subtitle so a display name can change without changing a project, recipe, schema, or diagnostic identity.
 
-## Findings by name, highest risk first
+## Six former module displays that must not ship as branding
 
-### Lesson Loom — direct collision found; rename before public release
+### Lesson Loom — direct same-category collision
 
-**"The Lesson Loom"** (thelessonloom.com) is an existing product: an AI-powered lesson-planning "smart curriculum companion" for homeschool educators — the same product category as our module. "Loom" additionally collides with the well-known video product. **Recommendation: treat the rename as decided-in-principle; choose the replacement at public-naming time.** Candidate replacements to screen: **Lesson Bench**, **Lesson Wright**, **Planwright**, **Lesson Anvil**. The module identifier in code should stay neutral (`Modules.LessonPlanning`) so the rename is a resource change, not a refactor.
+**The Lesson Loom** is an existing AI lesson-planning and curriculum product in the same teacher-authoring category. In addition to its active product site, United States registry records exist at TSDR serial numbers [`99339738`](https://tsdr.uspto.gov/#caseNumber=99339738&caseSearchType=US_APPLICATION&caseType=DEFAULT&searchType=statusSearch) and [`99339743`](https://tsdr.uspto.gov/#caseNumber=99339743&caseSearchType=US_APPLICATION&caseType=DEFAULT&searchType=statusSearch). The public display is replaced by **GridLesson — Lesson Design Studio**. Stable recipe, schema, source-code, and project tokens retain `lesson-loom` for compatibility; that token is not public branding.
 
-### Open Classroom Foundry — significant adjacent brand; plan a distinct public name
+### All Aboard — direct education and accessibility uses
+
+All Aboard Learning sells an education-software, curriculum, app, and print-resource family, including the All Aboard Phonics product. The American Printing House for the Blind also sells **All Aboard! The Sight Word Activity Express**, an accessible instructional product. This is not merely a crowded common phrase in unrelated transit or games. The public display is replaced by **SequenceSlate — Visual Support Studio**; stable `all-aboard` module, recipe, schema, and localization identities remain unchanged.
+
+### Talk Moves Studio — established education term, title, domain, and application
+
+`talkmoves.com` is occupied by a classroom-discourse application, research describes a TalkMoves application, and Heinemann publishes **Talk Moves** in the same teacher-practice field. Adding “Studio” does not create adequate distance for a discussion-planning module. The public display is replaced by **Forumwright — Discussion Design**. Stable door ID `talk-moves`, mode/recipe ID `talk-moves-studio`, and schema ID `schema.talk-moves.v1` remain unchanged.
+
+### Source Lens — exact software use
+
+**SourceLens** is in current use for a software platform and service. Its recruitment field differs, but the exact coined software name is occupied, and the repository also found a current Sourcelens learning-site identity. The public display is replaced by **Inquirywright — Source & Inquiry**; `source-lens` and `schema.source-lens.v1` remain stable identifiers.
+
+### Family Bridge — crowded exact application and education use
+
+**FamilyBridge** is used by multiple current applications and family-service programs, including communication/workflow software and an education-family engagement program. It is both highly descriptive and crowded in the exact relationship-and-communication territory this module would occupy. The public display is replaced by **KinDispatch — Bilingual & Family Press**; `family-bridge` and `schema.family-bridge.v1` remain stable identifiers.
+
+### Exit Lens — exact current software and model uses
+
+**Exit Lens/ExitLens** is already used by a current governance-software application and a published browser classifier/model family. Those fields are different from formative education, but the exact software string is occupied and weakly descriptive. The public display is replaced by **ReteachSignal — Formative Evidence**; `exit-lens` and `schema.exit-lens.v1` remain stable identifiers.
+
+## Selected displays and candidate method — 30 August 2026
+
+| Former display | Selected display | Load-bearing subtitle | Initial exact-name result |
+|---|---|---|---|
+| All Aboard | **SequenceSlate** | Visual Support Studio | No same-name education-software product surfaced in this pass |
+| Lesson Loom | **GridLesson** | Lesson Design Studio | Best result in the product owner's candidate set; no same-name education-software product surfaced in this pass |
+| Talk Moves Studio | **Forumwright** | Discussion Design | No same-name education-software product surfaced in this pass |
+| Exit Lens | **ReteachSignal** | Formative Evidence | No same-name education-software product surfaced in this pass |
+| Source Lens | **Inquirywright** | Source & Inquiry | No same-name education-software product surfaced in this pass |
+| Family Bridge | **KinDispatch** | Bilingual & Family Press | No same-name education-software product surfaced in this pass |
+
+“No product surfaced” is an exact description of a bounded informal search, not a claim of availability, priority, registrability, or non-infringement. The pass checked exact and spaced variants across general web results, education/software products, app stores, code forges, domain use, and preliminary United States trademark records, then checked semantic fit, spoken/readability ergonomics, and Honest Ink's craft register. It did not order professional clearance searches, reserve a domain, create an account, file a mark, or accept terms.
+
+For Lesson Loom, the product owner supplied weaving, minimalist, growth, and blended-word candidates. **GridLesson** was the strongest combination of module fit, teacher legibility, app-name compactness, and distance from the direct conflict. Syllabuild, CurriculumCraft, Planly, Loominote, Lessoneer, Weavly, Tapestry/TapestryEdu, SyncClass, and Planwright were eliminated by current exact or strongly adjacent product uses. StrandPlan and LessonSprout were plausible but less exact descriptions of the implemented planning surface. GridLesson remains subject to the same counsel checkpoint as every selected name.
+
+The full identifier map and protected-seat consequences are binding in [ADR-008](adr/ADR-008-public-module-display-names.md). A name change grants no AAC/SLP, accessibility, multilingual, rights, district, or council authority.
+
+## Repository name — retained internal; Honest Ink selected publicly
+
+### Open Classroom Foundry — significant adjacent brand; not the public name
 
 The typist found an "Open Classrooms" iOS app; research confirms the source: **OpenClassrooms** (openclassrooms.com) is a major France-based online vocational-education platform — founded 2013, ~2.5 million users, courses in English/French/Spanish, B Corp, institutionally funded — operating squarely in education services, our class of goods and services.
 
-Assessment: the phrase "open classroom" is also a generic 1970s pedagogy term, which cuts both ways — descriptive terms make weak marks (limiting their reach against a different composite name), but an established international education brand this close in name and class is a real opposition and confusion risk for a *public-facing* software name. **Recommendation: keep "Open Classroom Foundry" as the internal working title and repository name (fine), and select a more distinctive public name before public distribution** — plan §20 decision 1, which remains the typist's. Candidates worth screening when that day comes: **Schoolhouse Foundry**, **Chalk Foundry**, **Teacher's Foundry**, **The Classroom Press**. No decision is needed now; nothing in the codebase should hard-code the public name (ship name lives in one resource).
-
-### All Aboard — crowded phrase, no direct collision surfaced
-
-First-pass search of the visual-schedule/autism app space (Goally, Lil Planner, Visual Schedule & Social Story, and similar) surfaced **no app named "All Aboard"** in the category — consistent with the typist's finding pattern. However, "All Aboard" is a common phrase with known uses in other app categories (transit, games), and common phrases in crowded fields need a proper USPTO/app-store screen before release. Risk: moderate. The subtitle "Visual Support Studio" carries the identity regardless.
+Assessment: the phrase "open classroom" is also a generic 1970s pedagogy term, which cuts both ways — descriptive terms make weak marks, but an established international education brand this close in name and class is a real confusion risk for a public-facing software name. ADR-006 resolved the issue: **Honest Ink — the classroom foundry** is public; Open Classroom Foundry remains the repository and internal engineering title. Counsel confirmation remains mandatory before release.
 
 ### Symbol Commons — clear, and the search found something better than clearance
 
@@ -93,7 +128,7 @@ The organization was therefore created as **`honest-ink-inc`**. The namespace is
 
 ## Method for the professional screen (pre-release checklist)
 
-1. USPTO TESS search per name (word mark + design variants) in the relevant classes (education services; computer software).
+1. USPTO Trademark Search per name (exact, phonetic, spacing, word-mark, and design variants) in the relevant software, education, publishing, and printable-goods classes; read each candidate's current prosecution record in TSDR rather than relying on a search-result label.
 2. EUIPO and national registries where distribution is expected (OpenClassrooms is EU-based — the EU screen matters).
 3. App-store, domain, and common-law search per name.
 4. Code-forge and package-registry namespaces (GitHub, GitLab, npm, NuGet, PyPI) per name — a handle is not a mark, but an occupied one is a fact worth carrying to counsel, and it constrains the project’s own naming (see the namespace observation above).
@@ -102,7 +137,7 @@ The organization was therefore created as **`honest-ink-inc`**. The namespace is
 ## Sources
 
 - [OpenClassrooms — Wikipedia](https://en.wikipedia.org/wiki/OpenClassrooms) · [openclassrooms.com/en/about-us](https://openclassrooms.com/en/about-us) · [Crunchbase profile](https://www.crunchbase.com/organization/openclassrooms) · [B Corp listing](https://www.bcorporation.net/en-us/find-a-b-corp/company/open-classrooms/)
-- [The Lesson Loom](https://thelessonloom.com/) · [AVID Open Access on Loom (video product)](https://avidopenaccess.org/resource/loom/)
+- Former module displays: [The Lesson Loom](https://thelessonloom.com/) · [USPTO TSDR 99339738](https://tsdr.uspto.gov/#caseNumber=99339738&caseSearchType=US_APPLICATION&caseType=DEFAULT&searchType=statusSearch) · [USPTO TSDR 99339743](https://tsdr.uspto.gov/#caseNumber=99339743&caseSearchType=US_APPLICATION&caseType=DEFAULT&searchType=statusSearch) · [All Aboard Learning](https://allaboardlearning.com/) · [USPTO TSDR 79339212](https://tsdr.uspto.gov/#caseNumber=79339212&caseSearchType=US_APPLICATION&caseType=DEFAULT&searchType=statusSearch) · [APH All Aboard!](https://www.aph.org/product/all-aboard-the-sight-word-activity-express/) · [TalkMoves](https://talkmoves.com/) · [Heinemann Talk Moves](https://www.heinemann.com/products/talk-moves-third-edition-e13768.aspx) · [SourceLens](https://sourcelens.ai/) · [FamilyBridge](https://familybridgeapp.com/) · [FamilyBridge visitation software](https://www.familybridge.ai/) · [BoardCadence Exit Lens](https://www.boardcadence.com/) · [ExitLens classifier](https://huggingface.co/saibiindex/exitlens)
 - Visual-schedule category scan: [Goally](https://getgoally.com/blog/visual-schedule-apps/) · [Lil Planner (App Store)](https://apps.apple.com/us/app/lil-planner-visual-schedule/id6448482826) · [Adult Down Syndrome Center resource list](https://adscresources.advocatehealth.com/resources/visual-schedule-apps/)
 - AAC symbol ecosystem: [OpenSymbols](https://www.opensymbols.org/) · [open-aac/opensymbols (GitHub)](https://github.com/open-aac/opensymbols) · [OpenAAC symbol libraries](https://www.openaac.org/symbols.html) · [Mulberry Symbols](https://mulberrysymbols.org/)
 - Namespace observation (29 Aug 2026): GitHub REST API, `users/honest-ink` and `users/honest-ink/repos` — public account and repository metadata, read directly rather than from a third-party profile.

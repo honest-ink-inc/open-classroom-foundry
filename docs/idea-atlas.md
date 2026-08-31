@@ -1,4 +1,4 @@
-# Open Classroom Foundry
+# Honest Ink — the classroom foundry
 
 ## An atlas of 227 free teacher-tool possibilities descended from Writer's Kiosk
 
@@ -14,7 +14,7 @@ The central discovery is that Writer's Kiosk is not merely one application. It e
 
 Writer's Kiosk already supplies much of the difficult machinery: live camera capture, image correction, subject/grade/band profiles, assignment focus, aligned bilingual rendering, bounded generation, PDF creation, silent printing, local logging, keyless district authentication, and an in-memory image path. The teacher-facing family should reuse those strengths while adding an indispensable **edit-and-approve studio** between generation and publication.
 
-All names in this atlas are working titles, not trademark clearances. Screening should begin with the names carrying the most public surface — All Aboard, Lesson Loom, and Symbol Commons — and every product keeps a load-bearing subtitle as its functional identity.
+Most names in this atlas remain working titles, not trademark clearances. ADR-008 fixes six current public display names—SequenceSlate, GridLesson, Forumwright, ReteachSignal, Inquirywright, and KinDispatch—while preserving their legacy internal identifiers. Every product keeps a load-bearing subtitle as its functional identity, and counsel screening remains a pre-release checkpoint.
 
 ## The three data lanes
 
@@ -28,9 +28,9 @@ Teacher-facing does not by itself make student-data duties disappear. The freedo
 
 The lane tags below describe the safest ordinary implementation, not a legal conclusion. `H` means that a human specialist or instructional team should verify the product.
 
-## Flagship concept: All Aboard
+## Flagship concept: SequenceSlate
 
-**All Aboard: Visual Support Studio** is an excellent working title and the clearest next descendant of Writer's Kiosk. Its promise is simple:
+**SequenceSlate — Visual Support Studio** is the public display name selected by ADR-008 and the clearest next descendant of Writer's Kiosk. Its promise is simple:
 
 > Lay out a real classroom task, photograph it, confirm the steps, and print the visual support the learner can use immediately.
 
@@ -62,24 +62,24 @@ The lane tags below describe the safest ordinary implementation, not a legal con
 - Hazardous procedures must use teacher-entered or locked school-approved safety language, not invented safety instructions.
 - Bundled symbols must be original or openly licensed with recorded provenance. Educators may import symbol sets they are entitled to use, but the program must not redistribute proprietary libraries.
 
-Alternative working titles: **Picture Path, StepDeck, Ready Route, Signal & Step, Wayfinder Studio, Next Stop, TaskTrack, Common Ground, Visual Harbor,** and **The Directions Dock**. “All Aboard” is warm and inclusive; the subtitle is important because the bare name does not reveal the product.
+The load-bearing subtitle remains essential because the coined name does not reveal the product by itself. The stable module, recipe, schema, localization, and project identifiers retain `all-aboard` by ADR-008; that token is compatibility identity, not current branding.
 
 ## The first twelve worth building
 
-1. **All Aboard** — the flagship; closest architectural sibling to Writer's Kiosk and a genuine unmet daily need.
+1. **SequenceSlate — Visual Support Studio** — the flagship; closest architectural sibling to Writer's Kiosk and a genuine unmet daily need.
 2. **Board to Brief** — camera-to-clean-handout utility with exceptionally broad use.
 3. **Scaffold Smith** — turns an existing task into temporary supports without changing the learning target.
 4. **Access Remix** — produces large-print, reduced-clutter, chunked, symbol-supported, and bilingual variants from one teacher-created source.
 5. **Directions Duet** — exploits the existing aligned bilingual renderer for classroom directions.
-6. **Exit Lens** — converts anonymous exit tickets into tomorrow's reteach and extension moves.
-7. **Lesson Loom** — the high-frequency teacher-planning studio.
+6. **ReteachSignal — Formative Evidence** — converts anonymous exit tickets into tomorrow's reteach and extension moves.
+7. **GridLesson — Lesson Design Studio** — the high-frequency teacher-planning studio.
 8. **Rubric Relay** — makes evidence, criteria, and revision moves visible before the teacher approves feedback.
-9. **Talk Moves Studio** — designs equitable, intellectually productive discussion.
-10. **Family Bridge** — transforms teacher-authored information into clear, parallel family communications.
+9. **Forumwright — Discussion Design** — designs equitable, intellectually productive discussion.
+10. **KinDispatch — Bilingual & Family Press** — transforms teacher-authored information into clear, parallel family communications.
 11. **Symbol Commons** — supplies the open, provenance-aware image foundation for all visual-support products.
-12. **Source Lens** — a disciplined social-studies inquiry maker and a natural first subject-specific module.
+12. **Inquirywright — Source & Inquiry** — a disciplined social-studies inquiry maker and a natural first subject-specific module.
 
-A pragmatic first release would place **All Aboard, Board to Brief, Access Remix, Directions Duet, and Scaffold Smith** inside one application as five output modes rather than maintaining five executables. TaskDock is absorbed into Scaffold Smith as its task-entry preset (ADR-005).
+A pragmatic first release would place **SequenceSlate, Board to Brief, Access Remix, Directions Duet, and Scaffold Smith** inside one application as five output modes rather than maintaining five executables. Scaffold Smith includes the task-entry scaffold ratified by ADR-005; TaskDock survives only as the historical title of Atlas entry 21 and as a stable record reference.
 
 Preceding the twelve is **Module Zero: the Deterministic Press** (entries 203–210) — a zero-inference printable studio that exercises the entire pipeline with no privacy risk, no district friction, and immediate daily value. It is built first, and every later module is measured against the trust it establishes.
 
@@ -89,7 +89,7 @@ Preceding the twelve is **Module Zero: the Deterministic Press** (entries 203–
 
 ## Studio I — Visual supports, picture-based communication, and AAC
 
-1. **All Aboard** `[G→R, H]` — Photograph a real activity and make teacher-confirmed task strips, First/Then cards, choice supports, finished markers, and bilingual visual directions.
+1. **SequenceSlate — Visual Support Studio** `[G→R, H]` — Photograph a real activity and make teacher-confirmed task strips, First/Then cards, choice supports, finished markers, and bilingual visual directions.
 2. **First/Then Press** `[G→R]` — Use two captures or two selected images to create First/Then/After strips with completion and transition cues.
 3. **Choice Foundry** `[G→R]` — Photograph genuinely available options and make a choice board that always preserves none, not now, different, stop, and help.
 4. **Core & Context** `[R, H]` — Draft a lesson-specific AAC board that preserves stable core-word placement and adds teacher-approved fringe vocabulary.
@@ -141,7 +141,7 @@ Preceding the twelve is **Module Zero: the Deterministic Press** (entries 203–
 
 ## Studio V — Lesson and unit design
 
-41. **Lesson Loom** `[G]` — Weave an objective, time, materials, and constraints into launch, modeling, practice, checks, closure, and access supports.
+41. **GridLesson — Lesson Design Studio** `[G]` — Arrange an objective, time, materials, and constraints into launch, modeling, practice, checks, closure, and access supports.
 42. **Standards Unpacker** `[G]` — Translate a standard into concepts, skills, vocabulary, prerequisites, success criteria, and acceptable evidence.
 43. **Unit Spine** `[G]` — Build a conceptual unit arc, lesson sequence, checkpoints, flex days, and culminating evidence from standards and a calendar.
 44. **Bell-to-Bell** `[G]` — Produce a realistic minute-by-minute lesson with transitions, contingency cuts, and protected closure.
@@ -154,7 +154,7 @@ Preceding the twelve is **Module Zero: the Deterministic Press** (entries 203–
 
 ## Studio VI — Formative assessment and responsive teaching
 
-51. **Exit Lens** `[A]` — Read anonymous exit tickets and return misconception clusters, flexible groups, a reteach mini-lesson, and next-day hinge questions.
+51. **ReteachSignal — Formative Evidence** `[A]` — Read anonymous exit tickets and return misconception clusters, instructional routes, a reteach mini-lesson, and next-day hinge questions.
 52. **Hinge Question Forge** `[G/A]` — Create one mid-lesson question whose options expose distinct reasoning paths and connect each path to an immediate response.
 53. **Whiteboard Sweep** `[A]` — Analyze anonymous mini-whiteboard images into response distributions, error clusters, and discussion prompts.
 54. **Quick Check Deck** `[G]` — Generate oral, written, gesture, diagram, selected-response, and demonstration checks for the same target.
@@ -219,7 +219,7 @@ Preceding the twelve is **Module Zero: the Deterministic Press** (entries 203–
 
 ## Studio XI — Social studies, history, geography, and civics
 
-101. **Source Lens** `[G, H]` — Turn a primary or secondary source into sourcing, context, close reading, corroboration, and bounded interpretation prompts.
+101. **Inquirywright — Source & Inquiry** `[G, H]` — Turn a primary or secondary source into sourcing, context, close reading, corroboration, and bounded interpretation prompts.
 102. **Perspective Matrix** `[G, H]` — Compare viewpoints, evidence, position, context, power, omissions, and uncertainty without manufacturing false equivalence.
 103. **Timeline Weaver** `[G]` — Display chronology, parallel developments, duration, causation, contingency, turning points, and significance together.
 104. **Map Inquiry Maker** `[G]` — Create a disciplined observation-to-inference sequence, spatial questions, contextual checks, and a map-production task.
@@ -278,7 +278,7 @@ Preceding the twelve is **Module Zero: the Deterministic Press** (entries 203–
 145. **Newcomer Maproom** `[G→R]` — Use approved school images to build an orientation booklet with essential phrases, routines, landmarks, and help routes.
 146. **Background Builder** `[G, H]` — Identify cultural, institutional, geographic, or school-specific assumptions in a task and draft brief neutral primers.
 147. **Glossary Garden** `[G]` — Maintain an illustrated, bilingual unit glossary with consistent terminology, morphology, examples, and teacher-recorded pronunciation.
-148. **Family Bridge** `[G→R, H]` — Transform teacher-authored information into plain-language letters, short messages, aligned translations, FAQs, and print/mobile layouts.
+148. **KinDispatch — Bilingual & Family Press** `[G→R, H]` — Transform teacher-authored information into plain-language letters, short messages, aligned translations, FAQs, and print/mobile layouts.
 149. **Interpreter Prep Pack** `[R, H]` — Prepare terminology, context, acronyms, planned pauses, and questions for a human interpreter without trying to replace one.
 150. **Translation QA Companion** `[G→R, H]` — Align source and translation, check dates/numbers/names, show back-translation warnings, and mark uncertainty for human review.
 
@@ -350,7 +350,7 @@ Preceding the twelve is **Module Zero: the Deterministic Press** (entries 203–
 ## Repairs to the numbered atlas (per review finding F1)
 
 201. **Scaffold Smith** `[G]` — Turn an existing task into temporary, removable supports — hint ladders, banks, checkpoints, entry scaffolds — without changing the learning target, each scaffold carrying its barrier, preserved demand, and fade criterion. *(Belongs with Studio V; absorbs TaskDock #21 per ADR-005.)*
-202. **Talk Moves Studio** `[G]` — Design equitable, intellectually productive discussion: question sequences with evidence targets, facilitation and learner cards, multimodal participation pathways, and a post-discussion equity reflection. *(Belongs with Studio VI; distinct from Talk Moves Loom #144.)*
+202. **Forumwright — Discussion Design** `[G]` — Design equitable, intellectually productive discussion: question sequences with evidence targets, facilitation and learner cards, multimodal participation pathways, and a post-discussion equity reflection. *(Belongs with Studio VI; distinct from Talk Moves Loom #144.)*
 
 ## Studio XXI — The Deterministic Press (zero inference, pure craft)
 
@@ -398,7 +398,7 @@ Not one idea in the original 200 was a pure press. This studio needs no model, n
 
 ## One engine, not 227 codebases
 
-A shared **Open Classroom Foundry** shell could expose each candidate as a recipe or module. The common architecture would contain:
+A shared **Honest Ink** shell could expose each candidate as a recipe or module. The common architecture would contain:
 
 - Camera, scanner, clipboard, typed-text, image, PDF, and document intake
 - Local crop, rotation, enhancement, OCR, metadata stripping, and redaction assistance
@@ -436,7 +436,7 @@ Harmonized with the audited implementation plan (version 2.0), whose roadmap is 
 
 Refactor the reusable Writer's Kiosk components into a shared engine — capture, profiles, bilingual layout, render/print, keyless district authentication, provider interface, privacy gates, and test harness — and build the first Deterministic Press presses (Blankforms Press, Flashcard Flywheel, Booklet Binder) as the rendering pipeline's real cargo.
 
-### All Aboard 0.1
+### SequenceSlate 0.1
 
 Ship material-only capture, teacher confirmation, open symbol import, text cards, First/Then, Now/Next/Done, three-to-eight-step task strips, aligned bilingual output, and explicit save/export. Avoid learner records, auto-generated safety instructions, and claims of PECS alignment.
 
@@ -446,15 +446,15 @@ Add Board to Brief and Directions Duet with the OCR-uncertainty workflow and har
 
 ### Green planning studio 0.3
 
-Add Scaffold Smith (with its TaskDock preset), Lesson Loom, and Talk Moves Studio; complete the full Deterministic Press studio; begin second-maintainer recruitment.
+Add Scaffold Smith (with its task-entry scaffold), GridLesson, and Forumwright; complete the full Deterministic Press studio; begin second-maintainer recruitment.
 
 ### Accessibility, commons, and sources 0.4–0.5
 
-Add full Symbol Commons, Access Remix, Source Lens, and Green-only Family Bridge; spike Foundry.Inference.Local.
+Add full Symbol Commons, Access Remix, Inquirywright, and Green-only KinDispatch; spike Foundry.Inference.Local.
 
 ### Amber research pilot 0.6
 
-Add Exit Lens and Rubric Relay on synthetic fixtures first, entering the Amber lane only with the complete Amber architecture and written district approval.
+Add ReteachSignal and Rubric Relay on synthetic fixtures first, entering the Amber lane only with the complete Amber architecture and written district approval.
 
 ### Open Commons 1.0
 

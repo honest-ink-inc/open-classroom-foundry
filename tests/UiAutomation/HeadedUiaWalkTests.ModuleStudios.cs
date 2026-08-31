@@ -92,7 +92,10 @@ public sealed partial class HeadedUiaWalkTests
             exposedModes);
 
         AssertHumanHeldModeCannotBeEnabled(app, studio, "Access Remix");
-        AssertHumanHeldModeCannotBeEnabled(app, studio, "Exit Lens");
+        AssertHumanHeldModeCannotBeEnabled(
+            app,
+            studio,
+            ModulePublicIdentity.FormativeEvidence.DisplayName);
         AssertHumanHeldModeCannotBeEnabled(app, studio, "Rubric Relay");
 
         // Return to one catalog-owned synthetic Green starter. Every sink is

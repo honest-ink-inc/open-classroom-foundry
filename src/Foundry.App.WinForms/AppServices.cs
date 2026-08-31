@@ -138,7 +138,7 @@ public static partial class AppServices
             validator,
             viewContext ?? ReviewViewContext.ManualDefault);
 
-    /// <summary>The established Green/manual path used by Module Zero and All Aboard.</summary>
+    /// <summary>The established Green/manual path used by Module Zero and SequenceSlate.</summary>
     public static ReviewSession SessionOverGreen(
         ArtifactDocument document,
         ReviewViewContext? viewContext = null)

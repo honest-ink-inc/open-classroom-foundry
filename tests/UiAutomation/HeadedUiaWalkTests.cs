@@ -3,6 +3,7 @@ using System.Diagnostics;
 using System.IO;
 using System.Runtime.CompilerServices;
 using System.Windows.Automation;
+using Foundry.Modules.BuiltIn;
 
 namespace Foundry.Tests.UiAutomation;
 
@@ -672,7 +673,10 @@ public sealed partial class HeadedUiaWalkTests
     {
         using var app = new HeadedApp("allaboard");
 
-        Assert.Contains("All Aboard", app.Window.Current.Name, StringComparison.Ordinal);
+        Assert.Contains(
+            ModulePublicIdentity.VisualSupport.DisplayName,
+            app.Window.Current.Name,
+            StringComparison.Ordinal);
 
         ((ValuePattern)ByName(app.Window, ControlType.Edit, "Task title")
             .GetCurrentPattern(ValuePattern.Pattern)).SetValue("Watering the class plants");
@@ -695,7 +699,7 @@ public sealed partial class HeadedUiaWalkTests
             exportMatches = export.Current.IsEnabled ? 1 : 0;
             return exportMatches == 1 ? export : null;
         },
-            expectation: "Export to unlock after All Aboard approval",
+            expectation: $"Export to unlock after {ModulePublicIdentity.VisualSupport.DisplayName} approval",
             diagnosticSnapshot: () => CachedWaitSnapshot(
                 app.Process,
                 "Gate B approval invoked",

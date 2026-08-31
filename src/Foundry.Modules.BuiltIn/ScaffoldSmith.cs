@@ -14,7 +14,7 @@ public sealed record ScaffoldResult(ArtifactDocument Document, IReadOnlyList<Val
 /// learning target. Every scaffold carries barrier, preserved demand, and fade
 /// criterion; the removal plan prints on the teacher page so temporariness is
 /// visible, not aspirational. Supports are explicitly optional to the learner.
-/// Includes the TaskDock task-entry preset (ADR-005).
+/// Includes the absorbed task-entry scaffold ratified by ADR-005.
 /// </summary>
 public static class ScaffoldSmithBuilder
 {
@@ -113,7 +113,7 @@ public static class ScaffoldSmithBuilder
         return new ScaffoldResult(document, issues);
     }
 
-    /// <summary>The absorbed TaskDock (ADR-005): task entry as a scaffold with a fade criterion of its own.</summary>
+    /// <summary>The absorbed task-entry mode (ADR-005): a scaffold with a fade criterion of its own.</summary>
     public static ScaffoldResult BuildTaskEntry(
         string task,
         IReadOnlyList<string> materials,
@@ -189,7 +189,7 @@ public static class ScaffoldSmithBuilder
         }
 
         nodes.Add(new TeacherOnlyNotice(
-            $"Task-entry scaffold (TaskDock preset, ADR-005). This card is temporary: fade when {fadeCriterion}."));
+            $"Task-entry scaffold (ADR-005). This card is temporary: fade when {fadeCriterion}."));
 
         var document = new ArtifactDocument(nodes, language);
         issues.AddRange(DocumentValidator.Validate(document));
@@ -199,7 +199,7 @@ public static class ScaffoldSmithBuilder
     public static IReadOnlyList<RecipeManifest> Recipes { get; } =
     [
         Manifest("scaffold-smith.packet", "Turn an existing task into temporary, removable supports that preserve the learning target, each with barrier, demand, and fade criterion."),
-        Manifest("scaffold-smith.task-entry", "Task breakdown for task initiation: materials, first action, chunks, checkpoints, help routes, and a concrete definition of done (the absorbed TaskDock, ADR-005)."),
+        Manifest("scaffold-smith.task-entry", "Task breakdown for task initiation: materials, first action, chunks, checkpoints, help routes, and a concrete definition of done (the absorbed task-entry mode, ADR-005)."),
     ];
 
     private static RecipeManifest Manifest(string id, string purpose) => new(

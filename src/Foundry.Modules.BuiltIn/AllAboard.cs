@@ -4,7 +4,8 @@ using Foundry.Domain;
 
 namespace Foundry.Modules.BuiltIn.AllAboard;
 
-// The All Aboard thin slice (plan §10.1, Days 61-75): deterministic builders over
+// The SequenceSlate thin slice (stable legacy id: all-aboard; plan §10.1,
+// Days 61-75): deterministic builders over
 // teacher-entered content. No model is involved anywhere in this file — text-first
 // cards are the Release 0.1 contract, and suggestions arrive later as proposals
 // into the same review surface.
@@ -15,7 +16,7 @@ public sealed record StepSpec(string Text, AssetId? Symbol = null, string? Targe
 public sealed record CardSpec(string Label, string Body = "", AssetId? Symbol = null, string? SymbolAltText = null);
 
 /// <summary>
-/// A typed All Aboard build result. Teacher-entered content remains purpose
+/// A typed SequenceSlate build result. Teacher-entered content remains purpose
 /// Unknown: the engine cannot infer that content is classroom support rather
 /// than an assessment from arbitrary prose, in every language, without the
 /// protected specialist authority that governs that distinction.

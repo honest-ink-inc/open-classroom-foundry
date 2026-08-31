@@ -60,6 +60,27 @@ public class ReviewedUiCatalogTests
                 .ToDictionary(pair => pair.Key, pair => pair.Value, StringComparer.Ordinal));
 
         Assert.DoesNotContain(inventory, pair => string.Equals(pair.Value, ProductIdentity.PublicName, StringComparison.Ordinal));
+        foreach (var identity in ModulePublicIdentity.All)
+        {
+            Assert.Contains(inventory.Values, value =>
+                value.Contains(identity.DisplayName, StringComparison.Ordinal));
+        }
+
+        foreach (var retiredName in new[]
+        {
+            "All Aboard",
+            "Lesson Loom",
+            "Talk Moves Studio",
+            "Exit Lens",
+            "Source Lens",
+            "Family Bridge",
+            "TaskDock",
+        })
+        {
+            Assert.DoesNotContain(inventory.Values, value =>
+                value.Contains(retiredName, StringComparison.Ordinal));
+        }
+
         Assert.Equal(inventory.Count, inventory.Keys.Distinct(StringComparer.Ordinal).Count());
         Assert.Equal(inventory.Keys.OrderBy(id => id, StringComparer.Ordinal), inventory.Keys);
     }

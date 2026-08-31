@@ -1,4 +1,4 @@
-# Open Classroom Foundry — Deterministic Press module specification
+# Honest Ink — Deterministic Press module specification
 
 **Module:** Deterministic Press (Module Zero; atlas Studio XXI, entries 203–210)
 **Specification version:** 1.0
@@ -166,7 +166,7 @@ Output claims stay honest: printed geometry is paper; the module claims high-con
 | Printer-driver scaling silently destroys dimensional accuracy | Calibration rule page, fit-to-page warnings, stated tolerances, physical bench verification |
 | Guide-face or template rights ambiguity | OFL-or-original policy, geometric derivation of variants, CI provenance hard-fail |
 | Scope creep into content generation | "Parameters, never prose" enforced by recipe schema and review |
-| Module Zero polish delays All Aboard | MVP is fixed at three presses; the remaining five wait for 0.3 by design |
+| Module Zero polish delays SequenceSlate | MVP is fixed at three presses; the remaining five wait for 0.3 by design |
 | Teachers mistake the lightweight Gate B for the full review rhythm | Identical approval vocabulary and surface across all modules; the rhythm is the lesson |
 
 ## 13. Success measures specific to Module Zero

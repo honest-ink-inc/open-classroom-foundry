@@ -2,12 +2,14 @@
 using Foundry.Application;
 using Foundry.Contracts;
 using Foundry.Domain;
+using Foundry.Modules.BuiltIn;
 using Foundry.Modules.BuiltIn.AllAboard;
 
 namespace Foundry.App.WinForms;
 
 /// <summary>
-/// The All Aboard surface — the RATIFIED 0.1 slice, now complete (third forge
+/// The SequenceSlate surface (stable legacy id: all-aboard) — the ratified 0.1
+/// slice, now complete (third forge
 /// menu, item 3): Task strip, First/Then, Now/Next/Done, and Agency cards,
 /// all with tested builders, symbols chosen by MEANING from the shipped CC0
 /// pack, agency labels overridable per card so a classroom prints "Alto," not
@@ -121,7 +123,13 @@ public sealed class AllAboardForm : Form
         _cancelExport = MakeButton(UiStrings.CancelExport, (_, _) => _exportCancellation?.Cancel());
         _save = MakeButton(UiStrings.SaveToLibrary, (_, _) => WithApproved(a =>
         {
-            var hint = AppServices.SaveToLibrary(a, _approvedRecipe.Id.Replace('.', '-'), "all-aboard", _approvedRecipe.Id, _approvedRecipe.Version, _catalog);
+            var hint = AppServices.SaveToLibrary(
+                a,
+                PublicFileStem(_approvedRecipe),
+                ModulePublicIdentity.VisualSupport.LegacyId,
+                _approvedRecipe.Id,
+                _approvedRecipe.Version,
+                _catalog);
             SetStatus(UiStrings.StatusSaved, hint);
         }));
 
@@ -438,7 +446,7 @@ public sealed class AllAboardForm : Form
         {
             await _printViewOpener(
                 approved,
-                "all-aboard",
+                PublicFileStem(_approvedRecipe),
                 RenderAudience.Learner,
                 100,
                 false,
@@ -460,7 +468,7 @@ public sealed class AllAboardForm : Form
     {
         using var dialog = new SaveFileDialog
         {
-            FileName = _approvedRecipe.Id.Replace('.', '-'),
+            FileName = PublicFileStem(_approvedRecipe),
             Filter = $"{UiStrings.WithoutMnemonic(UiStrings.ExportFilterPdf)}|*.pdf|{UiStrings.WithoutMnemonic(UiStrings.ExportFilterSvg)}|*.svg|{UiStrings.WithoutMnemonic(UiStrings.ExportFilterPrint)}|*.html|{UiStrings.WithoutMnemonic(UiStrings.ExportFilterAccessible)}|*.html",
         };
         if (dialog.ShowDialog(this) != DialogResult.OK)
@@ -470,6 +478,9 @@ public sealed class AllAboardForm : Form
 
         return new ExportChoice(dialog.FileName, dialog.FilterIndex);
     }
+
+    internal static string PublicFileStem(RecipeManifest recipe)
+        => ModulePublicIdentity.FileStemFor(recipe);
 
     private async Task ExportAsync(ApprovedArtifact approved)
     {

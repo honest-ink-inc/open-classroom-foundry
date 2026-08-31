@@ -95,7 +95,7 @@ relicense separately licensed artwork.
 1. Each loose manifest is intentionally bounded at 512 records. Either complete
    candidate collection exceeds that hostile-input limit; raising the limit is
    not a catalog design.
-2. All Aboard's current picker is a small, eager list. Feeding it thousands of
+2. SequenceSlate's current picker is a small, eager list. Feeding it thousands of
    symbols would be unusable. Agency Cards also represents the present small
    catalog as an agency set; a general corpus must never expand that set.
 3. The current strict schema-1 provenance record lacks the complete source-key,
