@@ -85,6 +85,12 @@ public sealed class ImageNormalizer(ISessionByteStore store) : IDocumentNormaliz
 
         cancellationToken.ThrowIfCancellationRequested();
 
+        // Crop coordinates are expressed in the post-rotation space the
+        // teacher sees. Validate the whole rectangle before drawing or
+        // encoding: silently intersecting an invalid request would normalize
+        // a different region than the teacher selected.
+        var cropBounds = ValidateCrop(decoded.Width, decoded.Height, request.Crop);
+
         // Fresh canvas: pixel data only, no property items, no embedded profiles.
         using var working = new Bitmap(decoded.Width, decoded.Height, PixelFormat.Format24bppRgb);
         using (var graphics = Graphics.FromImage(working))
@@ -111,7 +117,7 @@ public sealed class ImageNormalizer(ISessionByteStore store) : IDocumentNormaliz
 
         cancellationToken.ThrowIfCancellationRequested();
 
-        using var final = Crop(working, request.Crop);
+        using var final = Crop(working, cropBounds);
 
         cancellationToken.ThrowIfCancellationRequested();
 
@@ -173,20 +179,34 @@ public sealed class ImageNormalizer(ISessionByteStore store) : IDocumentNormaliz
         }
     }
 
-    private static Bitmap Crop(Bitmap working, CropRectangle? crop)
+    private static Rectangle? ValidateCrop(int imageWidth, int imageHeight, CropRectangle? crop)
     {
         if (crop is null)
         {
-            return (Bitmap)working.Clone();
+            return null;
         }
 
-        var bounds = Rectangle.Intersect(
-            new Rectangle(0, 0, working.Width, working.Height),
-            new Rectangle(crop.X, crop.Y, crop.Width, crop.Height));
+        var right = (long)crop.X + crop.Width;
+        var bottom = (long)crop.Y + crop.Height;
 
-        if (bounds.Width <= 0 || bounds.Height <= 0)
+        if (crop.X < 0
+            || crop.Y < 0
+            || crop.Width <= 0
+            || crop.Height <= 0
+            || right > imageWidth
+            || bottom > imageHeight)
         {
-            throw new ArgumentException("The crop rectangle lies outside the image.", nameof(crop));
+            throw new ArgumentException("The crop rectangle must lie wholly within the rotated image.", nameof(crop));
+        }
+
+        return new Rectangle(crop.X, crop.Y, crop.Width, crop.Height);
+    }
+
+    private static Bitmap Crop(Bitmap working, Rectangle? cropBounds)
+    {
+        if (cropBounds is not { } bounds)
+        {
+            return (Bitmap)working.Clone();
         }
 
         var cropped = new Bitmap(bounds.Width, bounds.Height, PixelFormat.Format24bppRgb);

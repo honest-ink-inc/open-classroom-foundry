@@ -134,6 +134,83 @@ public class ImageNormalizerTests
     }
 
     [Fact]
+    public async Task Asymmetric_crop_may_end_exactly_at_the_image_edges()
+    {
+        var source = MakePng(7, 5, bitmap => bitmap.SetPixel(6, 4, Color.Blue));
+        var (normalizer, store, envelope) = Setup(source, "image/png");
+
+        var normalized = await normalizer.NormalizeAsync(
+            envelope, new NormalizationRequest(Crop: new CropRectangle(2, 1, 5, 4)), CancellationToken.None);
+
+        using var image = Decode(store, normalized);
+        Assert.Equal(5, image.Width);
+        Assert.Equal(4, image.Height);
+        Assert.Equal(Color.Blue.ToArgb(), image.GetPixel(4, 3).ToArgb());
+    }
+
+    [Fact]
+    public async Task Crop_coordinates_are_validated_and_applied_after_rotation()
+    {
+        var source = MakePng(6, 3, bitmap => bitmap.SetPixel(5, 0, Color.Red));
+        var (normalizer, store, envelope) = Setup(source, "image/png");
+
+        var normalized = await normalizer.NormalizeAsync(
+            envelope,
+            new NormalizationRequest(
+                Rotation: RotationDegrees.Rotate90,
+                Crop: new CropRectangle(1, 3, 2, 3)),
+            CancellationToken.None);
+
+        using var image = Decode(store, normalized);
+        Assert.Equal(2, image.Width);
+        Assert.Equal(3, image.Height);
+        Assert.Equal(Color.Red.ToArgb(), image.GetPixel(1, 2).ToArgb());
+    }
+
+    [Theory]
+    [InlineData(-1, 0, 1, 1)]
+    [InlineData(0, -1, 1, 1)]
+    [InlineData(0, 0, 0, 1)]
+    [InlineData(0, 0, 1, 0)]
+    [InlineData(35, 0, 6, 1)]
+    [InlineData(0, 15, 1, 6)]
+    [InlineData(int.MaxValue - 4, 0, 10, 1)]
+    [InlineData(0, int.MaxValue - 4, 1, 10)]
+    [InlineData(1, 0, int.MaxValue, 1)]
+    [InlineData(0, 1, 1, int.MaxValue)]
+    public async Task Invalid_crop_is_refused_without_storing_a_generation_or_mutating_the_source(
+        int x,
+        int y,
+        int width,
+        int height)
+    {
+        var source = MakePng(40, 20, bitmap => bitmap.SetPixel(5, 5, Color.Red));
+        var store = new PutRecordingStore();
+        var sourceReference = store.Put(source);
+        var envelope = new SourceEnvelope(
+            "file-import",
+            "image/png",
+            1,
+            DataLane.Amber,
+            false,
+            string.Empty,
+            sourceReference);
+
+        var failure = await Assert.ThrowsAsync<ArgumentException>(
+            () => new ImageNormalizer(store).NormalizeAsync(
+                envelope,
+                new NormalizationRequest(Crop: new CropRectangle(x, y, width, height)),
+                CancellationToken.None));
+
+        Assert.Contains("wholly within", failure.Message, StringComparison.Ordinal);
+        Assert.Equal(1, store.PutCount);
+        Assert.Equal(0, store.ReleaseCount);
+        Assert.Equal(1, store.Count);
+        Assert.True(store.TryGet(sourceReference, out var retained));
+        Assert.Equal(source, retained.ToArray());
+    }
+
+    [Fact]
     public async Task A_burned_region_destroys_the_pixels_beneath_it()
     {
         var source = MakePng(40, 20, bitmap => bitmap.SetPixel(10, 10, Color.Red));
@@ -358,6 +435,35 @@ public class ImageNormalizerTests
             AllowRead.Set();
             AllowRead.Dispose();
         }
+    }
+
+    private sealed class PutRecordingStore : ISessionByteStore
+    {
+        private readonly InMemorySessionByteStore _inner = new();
+
+        public int Count => _inner.Count;
+
+        public int PutCount { get; private set; }
+
+        public int ReleaseCount { get; private set; }
+
+        public SessionByteReference Put(ReadOnlyMemory<byte> content)
+        {
+            PutCount++;
+            return _inner.Put(content);
+        }
+
+        public bool TryGet(SessionByteReference reference, out ReadOnlyMemory<byte> content)
+            => _inner.TryGet(reference, out content);
+
+        public void Release(SessionByteReference reference)
+        {
+            ReleaseCount++;
+            _inner.Release(reference);
+        }
+
+        public void PurgeAll()
+            => _inner.PurgeAll();
     }
 
     private sealed class PostPutCancellationStore : ISessionByteStore, IDisposable

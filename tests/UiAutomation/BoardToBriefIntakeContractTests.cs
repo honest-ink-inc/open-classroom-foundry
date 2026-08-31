@@ -2,10 +2,12 @@
 using System.Diagnostics;
 using System.Drawing.Imaging;
 using System.IO;
+using System.Security.Cryptography;
 using Foundry.App.WinForms;
 using Foundry.Application;
 using Foundry.Contracts;
 using Foundry.Domain;
+using Foundry.Infrastructure.Windows;
 using Foundry.Modules.BuiltIn.BoardToBrief;
 
 namespace Foundry.Tests.UiAutomation;
@@ -75,6 +77,120 @@ public sealed class BoardToBriefIntakeContractTests
                 form.ResultLines,
                 line => Assert.Equal(new BriefLine("Open the notebook", BriefRole.Step), line),
                 line => Assert.Equal(new BriefLine("Today's plan", BriefRole.Title), line));
+        });
+
+    [Fact]
+    public void Real_capture_crop_reaches_Board_OCR_exactly_and_is_retained_until_terminal_purge()
+        => Sta.Run(() =>
+        {
+            var store = new InMemorySessionByteStore();
+            var session = new CaptureSession(
+                new ByteImportCaptureSource(store),
+                new ImageNormalizer(store),
+                store);
+            var input = KnownPixelPng();
+            try
+            {
+                session.CaptureAsync(
+                        new CaptureRequest(ByteImportCaptureSource.Kind, "image/png", input),
+                        CancellationToken.None)
+                    .GetAwaiter().GetResult();
+            }
+            finally
+            {
+                CryptographicOperations.ZeroMemory(input);
+            }
+
+            var normalized = session.NormalizeAsync(new NormalizationRequest(), CancellationToken.None)
+                .GetAwaiter().GetResult();
+            var ocr = new EnvelopeRecordingOcrService(store, OneConfidentTitle());
+            SourceEnvelope? retainedEnvelope = null;
+            ReadOnlyMemory<byte> heldRetainedBytes = default;
+            byte[]? expectedContent = null;
+            try
+            {
+                using var form = new BoardToBriefIntakeForm(
+                    store,
+                    session,
+                    ocr,
+                    DistrictPolicy.Offline,
+                    captureRunner: owner =>
+                    {
+                        using var capture = new CaptureForm(
+                            session,
+                            DistrictPolicy.Offline,
+                            CaptureCompletionMode.RetainForOwner);
+                        capture.Shown += (_, _) => capture.BeginInvoke(new Action(() =>
+                        {
+                            var preview = Assert.Single(Controls(capture).OfType<PictureBox>());
+                            var rotate = ButtonByText(
+                                capture,
+                                UiStrings.WithoutMnemonic(UiStrings.Rotate90));
+                            PumpUntil(() => preview.Image is not null && rotate.Enabled);
+
+                            rotate.PerformClick();
+                            PumpUntil(() => !capture.OperationPending
+                                && preview.Image?.Size == new Size(3, 4));
+
+                            CropValue(capture, UiStrings.CropLeftX).Value = 1;
+                            CropValue(capture, UiStrings.CropTopY).Value = 0;
+                            CropValue(capture, UiStrings.CropWidth).Value = 2;
+                            CropValue(capture, UiStrings.CropHeight).Value = 3;
+                            ButtonByText(
+                                capture,
+                                UiStrings.WithoutMnemonic(UiStrings.ApplyCrop)).PerformClick();
+                            PumpUntil(() => !capture.OperationPending
+                                && preview.Image?.Size == new Size(2, 3));
+
+                            var green = Controls(capture).OfType<RadioButton>().Single(radio =>
+                                radio.AccessibilityObject.Name == UiStrings.WithoutMnemonic(UiStrings.LaneGreen));
+                            green.Checked = true;
+                            ButtonByText(
+                                capture,
+                                UiStrings.WithoutMnemonic(UiStrings.ConfirmLane)).PerformClick();
+                        }));
+
+                        var result = capture.ShowDialog(owner);
+                        Assert.Equal(DialogResult.OK, result);
+                        retainedEnvelope = Assert.IsType<SourceEnvelope>(session.Envelope);
+                        Assert.Equal(DataLane.Green, retainedEnvelope.Lane);
+                        Assert.NotEqual(normalized.Bytes, retainedEnvelope.Bytes);
+                        Assert.Equal(1, store.Count);
+                        Assert.True(store.TryGet(retainedEnvelope.Bytes, out heldRetainedBytes));
+                        expectedContent = heldRetainedBytes.ToArray();
+                        return result;
+                    },
+                    noticePresenter: (_, _, _) => { });
+
+                form.Show();
+                PumpUntil(() => Named<DataGridView>(form, BoardToBriefIntakeForm.RoleGridName).Rows.Count == 1);
+
+                Assert.Equal(retainedEnvelope, ocr.ReceivedEnvelope);
+                Assert.Equal(retainedEnvelope!.Bytes, ocr.ReceivedEnvelope!.Bytes);
+                Assert.Equal(expectedContent, ocr.ReceivedContent);
+                Assert.Equal(1, ocr.StoreCountAtCall);
+                Assert.Equal(1, store.Count);
+                AssertCroppedPixels(ocr.ReceivedContent!);
+
+                var roles = Named<DataGridView>(form, BoardToBriefIntakeForm.RoleGridName);
+                roles.Rows[0].Cells[1].Value = BriefRole.Title;
+                Named<Button>(form, BoardToBriefIntakeForm.FinishName).PerformClick();
+
+                Assert.False(form.Visible);
+                Assert.Equal(DialogResult.OK, form.DialogResult);
+                Assert.Equal(JobState.TransientSourcesPurged, form.IntakeState);
+                Assert.Equal(0, store.Count);
+                Assert.All(heldRetainedBytes.ToArray(), value => Assert.Equal(0, value));
+            }
+            finally
+            {
+                if (expectedContent is not null)
+                {
+                    CryptographicOperations.ZeroMemory(expectedContent);
+                }
+
+                ocr.ClearReceivedContent();
+            }
         });
 
     [Fact]
@@ -336,6 +452,43 @@ public sealed class BoardToBriefIntakeContractTests
         return output.ToArray();
     }
 
+    private static byte[] KnownPixelPng()
+    {
+        using var bitmap = new Bitmap(4, 3, PixelFormat.Format24bppRgb);
+        var pixels = new[,]
+        {
+            { Color.Red, Color.Lime, Color.Blue, Color.Yellow },
+            { Color.Magenta, Color.Cyan, Color.Black, Color.Gray },
+            { Color.Orange, Color.Purple, Color.Brown, Color.White },
+        };
+        for (var y = 0; y < bitmap.Height; y++)
+        {
+            for (var x = 0; x < bitmap.Width; x++)
+            {
+                bitmap.SetPixel(x, y, pixels[y, x]);
+            }
+        }
+
+        using var output = new MemoryStream();
+        bitmap.Save(output, ImageFormat.Png);
+        return output.ToArray();
+    }
+
+    private static void AssertCroppedPixels(byte[] content)
+    {
+        using var stream = new MemoryStream(content, writable: false);
+        using var bitmap = new Bitmap(stream);
+        Assert.Equal(new Size(2, 3), bitmap.Size);
+        Assert.Equal(
+            [
+                Color.Magenta.ToArgb(), Color.Red.ToArgb(),
+                Color.Cyan.ToArgb(), Color.Lime.ToArgb(),
+                Color.Black.ToArgb(), Color.Blue.ToArgb(),
+            ],
+            Enumerable.Range(0, bitmap.Height)
+                .SelectMany(y => Enumerable.Range(0, bitmap.Width).Select(x => bitmap.GetPixel(x, y).ToArgb())));
+    }
+
     private static OcrResult UncertainRecognition()
         => new(
         [
@@ -365,6 +518,10 @@ public sealed class BoardToBriefIntakeContractTests
     private static T Named<T>(Control root, string name)
         where T : Control
         => Controls(root).OfType<T>().Single(control => control.Name == name);
+
+    private static NumericUpDown CropValue(CaptureForm form, string accessibleName)
+        => Controls(form).OfType<NumericUpDown>().Single(value =>
+            value.AccessibilityObject.Name == UiStrings.WithoutMnemonic(accessibleName));
 
     private static List<Control> Controls(Control root)
         => [.. ReviewSurfaceContractTests.Flatten(root)];
@@ -449,6 +606,32 @@ public sealed class BoardToBriefIntakeContractTests
             cancellationToken.ThrowIfCancellationRequested();
             Calls++;
             return Task.FromResult(result);
+        }
+    }
+
+    private sealed class EnvelopeRecordingOcrService(ISessionByteStore store, OcrResult result) : IOcrService
+    {
+        public SourceEnvelope? ReceivedEnvelope { get; private set; }
+
+        public byte[]? ReceivedContent { get; private set; }
+
+        public int StoreCountAtCall { get; private set; }
+
+        public Task<OcrResult> RecognizeAsync(SourceEnvelope source, CancellationToken cancellationToken)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            ReceivedEnvelope = source;
+            StoreCountAtCall = store.Count;
+            ReceivedContent = store.TryGet(source.Bytes, out var content) ? content.ToArray() : [];
+            return Task.FromResult(result);
+        }
+
+        public void ClearReceivedContent()
+        {
+            if (ReceivedContent is not null)
+            {
+                CryptographicOperations.ZeroMemory(ReceivedContent);
+            }
         }
     }
 

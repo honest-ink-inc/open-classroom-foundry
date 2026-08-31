@@ -874,6 +874,40 @@ public static class UiStrings
 
     public static string Rotate90 => T("&Rotate 90°");
 
+    public static string CapturePreview => T("Exact normalized image");
+
+    public static string CapturePreviewAccessibleName => T("Exact normalized image preview");
+
+    public static string CapturePreviewAccessibleDescription => T("The exact current derivative. Image pixels and crop coordinates are never mirrored.");
+
+    public static string CapturePreviewDimensions => T("Exact normalized image preview: {0} by {1} pixels. Image pixels and crop coordinates are never mirrored.");
+
+    public static string CapturePreviewCopyRefused => T("The exact current image bytes are unavailable or still in use.");
+
+    public static string CapturePreviewEnvelopeRefused => T("The exact preview requires one metadata-stripped normalized PNG page.");
+
+    public static string CapturePreviewDecodeRefused => T("The exact preview could not be decoded within the bounded image contract.");
+
+    public static string CapturePreviewGenerationChanged => T("The normalized image changed or was purged before this preview could be used.");
+
+    public static string CropProposal => T("Crop proposal — post-rotation pixels");
+
+    public static string CropCoordinateExplanation => T("Coordinates use [X, X + width) × [Y, Y + height). The image and coordinate basis are never mirrored.");
+
+    public static string CropLeftX => T("Left &X in pixels");
+
+    public static string CropTopY => T("Top &Y in pixels");
+
+    public static string CropWidth => T("Crop &width in pixels");
+
+    public static string CropHeight => T("Crop &height in pixels");
+
+    public static string ApplyCrop => T("Apply crop — &keep this region");
+
+    public static string ResetCrop => T("Reset crop to the &full image");
+
+    public static string CropBoundsInvalid => T("The crop rectangle must lie wholly within the current {0} by {1} pixel image.");
+
     public static string LaneGreen => T("Staged materials or empty space — &Green (my attestation)");
 
     public static string LaneAmber => T("May include learners or their work — keep &Amber");
@@ -889,6 +923,20 @@ public static class UiStrings
     public static string StatusCaptureRefused => T("The capture operation was refused: {0}");
 
     public static string StatusRotated => T("Rotated.");
+
+    public static string StatusCropPending => T("Crop proposal pending. Apply it or reset to the full image before rotating or confirming the lane.");
+
+    public static string StatusCropRefused => T("Crop was not applied: {0} The proposal remains pending.");
+
+    public static string StatusCropped => T("Crop applied: {0} by {1} pixels. Reconfirm the data lane.");
+
+    public static string StatusCropReset => T("Crop proposal reset to the full {0} by {1} pixel image.");
+
+    public static string StatusPreviewRefused => T("The exact normalized preview is unavailable: {0} Lane confirmation remains locked.");
+
+    public static string StatusPreviewLoading => T("Loading the exact normalized preview. Safety Pause remains available.");
+
+    public static string StatusPreviewReady => T("Exact normalized preview ready: {0} by {1} pixels.");
 
     public static string StatusLaneConfirmed => T("Lane confirmed: {0}.");
 

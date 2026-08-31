@@ -2,6 +2,7 @@ using Foundry.Application;
 using Foundry.Contracts;
 using Foundry.Domain;
 using Foundry.Infrastructure.Simulated;
+using System.Security.Cryptography;
 
 namespace Foundry.Tests.Unit;
 
@@ -96,6 +97,254 @@ public class CaptureSourceTests
 
 public class CaptureSessionTests
 {
+    [Fact]
+    public async Task Authoritative_envelope_copy_is_detached_and_carries_its_identity_and_metadata()
+    {
+        var store = new InMemorySessionByteStore();
+        var session = new CaptureSession(
+            new ByteImportCaptureSource(store),
+            new RecordingNormalizer(),
+            store);
+        var captured = await session.CaptureAsync(
+            new CaptureRequest(ByteImportCaptureSource.Kind, "image/png", new byte[] { 10, 20, 30 }),
+            CancellationToken.None);
+
+        Assert.True(session.TryCopyAuthoritativeEnvelope(3, out var first));
+        Assert.NotNull(first);
+        try
+        {
+            Assert.Same(captured, first.Envelope);
+            Assert.Equal(captured.Bytes, first.Envelope.Bytes);
+            Assert.Equal(captured.SourceKind, first.Envelope.SourceKind);
+            Assert.Equal(captured.MimeType, first.Envelope.MimeType);
+            Assert.Equal(captured.PageCount, first.Envelope.PageCount);
+            Assert.Equal(captured.Lane, first.Envelope.Lane);
+            Assert.Equal(captured.MetadataStripped, first.Envelope.MetadataStripped);
+            Assert.Equal(captured.TeacherStatedRights, first.Envelope.TeacherStatedRights);
+            Assert.Equal(new byte[] { 10, 20, 30 }, first.Content);
+
+            first.Content[0] = 99;
+            Assert.True(session.TryCopyAuthoritativeEnvelope(3, out var second));
+            Assert.NotNull(second);
+            try
+            {
+                Assert.NotSame(first.Content, second.Content);
+                Assert.Equal(new byte[] { 10, 20, 30 }, second.Content);
+            }
+            finally
+            {
+                CryptographicOperations.ZeroMemory(second.Content);
+            }
+        }
+        finally
+        {
+            CryptographicOperations.ZeroMemory(first.Content);
+        }
+    }
+
+    [Theory]
+    [InlineData(-1)]
+    [InlineData(0)]
+    [InlineData(2)]
+    public async Task Authoritative_envelope_copy_refuses_nonpositive_or_undersized_bounds(int maximumByteCount)
+    {
+        var store = new InMemorySessionByteStore();
+        var session = new CaptureSession(
+            new ByteImportCaptureSource(store),
+            new RecordingNormalizer(),
+            store);
+        await session.CaptureAsync(
+            new CaptureRequest(ByteImportCaptureSource.Kind, "image/png", new byte[] { 1, 2, 3 }),
+            CancellationToken.None);
+
+        Assert.False(session.TryCopyAuthoritativeEnvelope(maximumByteCount, out var copy));
+        Assert.Null(copy);
+    }
+
+    [Fact]
+    public async Task Authoritative_envelope_copy_refuses_an_in_flight_operation()
+    {
+        var store = new InMemorySessionByteStore();
+        var normalizer = new DeferredRotationNormalizer();
+        var session = new CaptureSession(new ByteImportCaptureSource(store), normalizer, store);
+        await session.CaptureAsync(
+            new CaptureRequest(ByteImportCaptureSource.Kind, "image/png", new byte[] { 1, 2, 3 }),
+            CancellationToken.None);
+        await session.NormalizeAsync(new NormalizationRequest(), CancellationToken.None);
+
+        var rotation = session.NormalizeAsync(
+            new NormalizationRequest(RotationDegrees.Rotate90),
+            CancellationToken.None);
+        await normalizer.RotationStarted;
+
+        Assert.False(session.TryCopyAuthoritativeEnvelope(3, out var copy));
+        Assert.Null(copy);
+
+        normalizer.AllowRotation();
+        await rotation;
+    }
+
+    [Fact]
+    public async Task Authoritative_envelope_copy_refuses_missing_and_post_purge_bytes()
+    {
+        var store = new InMemorySessionByteStore();
+        var session = new CaptureSession(
+            new ByteImportCaptureSource(store),
+            new RecordingNormalizer(),
+            store);
+        var captured = await session.CaptureAsync(
+            new CaptureRequest(ByteImportCaptureSource.Kind, "image/png", new byte[] { 1, 2, 3 }),
+            CancellationToken.None);
+
+        store.Release(captured.Bytes);
+        Assert.False(session.TryCopyAuthoritativeEnvelope(3, out var missing));
+        Assert.Null(missing);
+
+        Assert.True(session.Cancel());
+        Assert.Equal(JobState.TransientSourcesPurged, session.Machine.State);
+        Assert.False(session.TryCopyAuthoritativeEnvelope(3, out var purged));
+        Assert.Null(purged);
+    }
+
+    [Fact]
+    public async Task Current_expected_reference_publishes_exactly_once()
+    {
+        var store = new InMemorySessionByteStore();
+        var session = new CaptureSession(
+            new ByteImportCaptureSource(store),
+            new StoreBackedGenerationNormalizer(store),
+            store);
+        await session.CaptureAsync(
+            new CaptureRequest(ByteImportCaptureSource.Kind, "image/png", new byte[] { 1, 2, 3 }),
+            CancellationToken.None);
+        var normalized = await session.NormalizeAsync(new NormalizationRequest(), CancellationToken.None);
+        var publicationCount = 0;
+
+        var published = session.TryPublishForAuthoritativeEnvelope(
+            normalized.Bytes,
+            () => publicationCount++);
+
+        Assert.True(published);
+        Assert.Equal(1, publicationCount);
+    }
+
+    [Fact]
+    public async Task Stale_expected_reference_refuses_publication_without_invoking_the_callback()
+    {
+        var store = new InMemorySessionByteStore();
+        var session = new CaptureSession(
+            new ByteImportCaptureSource(store),
+            new StoreBackedGenerationNormalizer(store),
+            store);
+        await session.CaptureAsync(
+            new CaptureRequest(ByteImportCaptureSource.Kind, "image/png", new byte[] { 1, 2, 3 }),
+            CancellationToken.None);
+        var firstGeneration = await session.NormalizeAsync(new NormalizationRequest(), CancellationToken.None);
+        await session.NormalizeAsync(
+            new NormalizationRequest(RotationDegrees.Rotate90),
+            CancellationToken.None);
+        var publicationCount = 0;
+
+        var published = session.TryPublishForAuthoritativeEnvelope(
+            firstGeneration.Bytes,
+            () => publicationCount++);
+
+        Assert.False(published);
+        Assert.Equal(0, publicationCount);
+    }
+
+    [Fact]
+    public async Task Current_expected_reference_acquires_normalization_against_that_generation()
+    {
+        var store = new InMemorySessionByteStore();
+        var normalizer = new StoreBackedGenerationNormalizer(store);
+        var session = new CaptureSession(new ByteImportCaptureSource(store), normalizer, store);
+        await session.CaptureAsync(
+            new CaptureRequest(ByteImportCaptureSource.Kind, "image/png", new byte[] { 1, 2, 3 }),
+            CancellationToken.None);
+        var firstGeneration = await session.NormalizeAsync(new NormalizationRequest(), CancellationToken.None);
+
+        var secondGeneration = await session.NormalizeAsync(
+            new NormalizationRequest(RotationDegrees.Rotate90),
+            firstGeneration.Bytes,
+            CancellationToken.None);
+
+        Assert.Equal(2, normalizer.CallCount);
+        Assert.NotEqual(firstGeneration.Bytes, secondGeneration.Bytes);
+        Assert.Same(secondGeneration, session.Envelope);
+        Assert.Equal(JobState.Normalized, session.Machine.State);
+    }
+
+    [Fact]
+    public async Task Stale_expected_reference_refuses_normalization_before_calling_the_normalizer()
+    {
+        var store = new InMemorySessionByteStore();
+        var normalizer = new StoreBackedGenerationNormalizer(store);
+        var session = new CaptureSession(new ByteImportCaptureSource(store), normalizer, store);
+        await session.CaptureAsync(
+            new CaptureRequest(ByteImportCaptureSource.Kind, "image/png", new byte[] { 1, 2, 3 }),
+            CancellationToken.None);
+        var firstGeneration = await session.NormalizeAsync(new NormalizationRequest(), CancellationToken.None);
+        var currentGeneration = await session.NormalizeAsync(
+            new NormalizationRequest(RotationDegrees.Rotate90),
+            CancellationToken.None);
+
+        await Assert.ThrowsAsync<CaptureGenerationChangedException>(
+            () => session.NormalizeAsync(
+                new NormalizationRequest(Crop: new CropRectangle(0, 0, 1, 1)),
+                firstGeneration.Bytes,
+                CancellationToken.None));
+
+        Assert.Equal(2, normalizer.CallCount);
+        Assert.Same(currentGeneration, session.Envelope);
+        Assert.Equal(JobState.Normalized, session.Machine.State);
+    }
+
+    [Fact]
+    public async Task Stale_expected_confirmation_throws_and_leaves_the_session_normalized()
+    {
+        var store = new InMemorySessionByteStore();
+        var session = new CaptureSession(
+            new ByteImportCaptureSource(store),
+            new StoreBackedGenerationNormalizer(store),
+            store);
+        await session.CaptureAsync(
+            new CaptureRequest(ByteImportCaptureSource.Kind, "image/png", new byte[] { 1, 2, 3 }),
+            CancellationToken.None);
+        var firstGeneration = await session.NormalizeAsync(new NormalizationRequest(), CancellationToken.None);
+        var currentGeneration = await session.NormalizeAsync(
+            new NormalizationRequest(RotationDegrees.Rotate90),
+            CancellationToken.None);
+
+        Assert.Throws<CaptureGenerationChangedException>(
+            () => session.ConfirmLane(DataLane.Green, firstGeneration.Bytes));
+
+        Assert.Equal(JobState.Normalized, session.Machine.State);
+        Assert.Same(currentGeneration, session.Envelope);
+        Assert.Equal(DataLane.Amber, currentGeneration.Lane);
+    }
+
+    [Fact]
+    public async Task Current_expected_confirmation_succeeds()
+    {
+        var store = new InMemorySessionByteStore();
+        var session = new CaptureSession(
+            new ByteImportCaptureSource(store),
+            new StoreBackedGenerationNormalizer(store),
+            store);
+        await session.CaptureAsync(
+            new CaptureRequest(ByteImportCaptureSource.Kind, "image/png", new byte[] { 1, 2, 3 }),
+            CancellationToken.None);
+        var normalized = await session.NormalizeAsync(new NormalizationRequest(), CancellationToken.None);
+
+        var confirmed = session.ConfirmLane(DataLane.Green, normalized.Bytes);
+
+        Assert.Equal(JobState.DataLaneConfirmed, session.Machine.State);
+        Assert.Equal(normalized.Bytes, confirmed.Bytes);
+        Assert.Equal(DataLane.Green, confirmed.Lane);
+        Assert.Same(confirmed, session.Envelope);
+    }
+
     [Fact]
     public async Task A_failed_capture_does_not_advance_state_and_can_be_retried()
     {
@@ -425,6 +674,29 @@ public class CaptureSessionTests
         {
             cancellationToken.ThrowIfCancellationRequested();
             return Task.FromResult(source with { TeacherStatedRights = $"rotation:{(int)request.Rotation}" });
+        }
+    }
+
+    private sealed class StoreBackedGenerationNormalizer(InMemorySessionByteStore store) : IDocumentNormalizer
+    {
+        private byte _generation;
+
+        public int CallCount { get; private set; }
+
+        public Task<SourceEnvelope> NormalizeAsync(
+            SourceEnvelope source,
+            NormalizationRequest request,
+            CancellationToken cancellationToken)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            CallCount++;
+            var reference = store.Put(new[] { ++_generation });
+            return Task.FromResult(source with
+            {
+                MetadataStripped = true,
+                TeacherStatedRights = $"generation:{_generation}",
+                Bytes = reference,
+            });
         }
     }
 

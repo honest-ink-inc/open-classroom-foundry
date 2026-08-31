@@ -5,6 +5,20 @@ using Foundry.Domain;
 namespace Foundry.Application;
 
 /// <summary>
+/// A point-in-time view of the capture session's authoritative envelope and a
+/// detached copy of its bytes. <see cref="Content"/> is owned by the caller;
+/// the caller must zero that array when it is no longer needed.
+/// </summary>
+internal sealed record CaptureEnvelopeByteCopy(SourceEnvelope Envelope, byte[] Content);
+
+/// <summary>
+/// The caller's displayed capture generation could not be bound atomically to
+/// the requested operation. Capture surfaces must discard that stale preview.
+/// </summary>
+internal sealed class CaptureGenerationChangedException()
+    : InvalidOperationException("The displayed capture generation is no longer authoritative.");
+
+/// <summary>
 /// The capture-side presenter (ADR-002): capture → normalize → teacher lane
 /// confirmation, with Gate C invokable at any moment and RC-18 lane inheritance
 /// at the exit. The teacher's lane confirmation is an attestation — staged
@@ -47,6 +61,69 @@ public sealed class CaptureSession
             {
                 return _envelope;
             }
+        }
+    }
+
+    /// <summary>
+    /// Tries to copy the current authoritative envelope without exposing the
+    /// session byte store. A copy is refused unless <paramref name="maximumByteCount"/>
+    /// is positive, the session is idle and active, and the referenced content
+    /// exists with a byte count from 1 through <paramref name="maximumByteCount"/>, inclusive.
+    /// On success, the returned content array is detached and caller-owned; the
+    /// caller must zero it after use.
+    /// </summary>
+    internal bool TryCopyAuthoritativeEnvelope(
+        int maximumByteCount,
+        out CaptureEnvelopeByteCopy? copy)
+    {
+        copy = null;
+        if (maximumByteCount <= 0)
+        {
+            return false;
+        }
+
+        lock (_gate)
+        {
+            if (_envelope is not { } envelope
+                || _operationsInFlight != 0
+                || _purgeRequested
+                || JobStateMachine.IsTerminal(Machine.State)
+                || !_store.TryGet(envelope.Bytes, out var content)
+                || content.IsEmpty
+                || content.Length > maximumByteCount)
+            {
+                return false;
+            }
+
+            copy = new CaptureEnvelopeByteCopy(envelope, content.ToArray());
+            return true;
+        }
+    }
+
+    /// <summary>
+    /// Runs a bounded publication step only while <paramref name="expectedReference"/>
+    /// is still the idle, active session generation. The action executes under the
+    /// same lock that commits normalization and purge, so a detached preview cannot
+    /// be published between a generation check and a competing state change.
+    /// </summary>
+    internal bool TryPublishForAuthoritativeEnvelope(
+        SessionByteReference expectedReference,
+        Action publish)
+    {
+        ArgumentNullException.ThrowIfNull(publish);
+        lock (_gate)
+        {
+            if (_envelope is not { } envelope
+                || envelope.Bytes != expectedReference
+                || _operationsInFlight != 0
+                || _purgeRequested
+                || Machine.State != JobState.Normalized)
+            {
+                return false;
+            }
+
+            publish();
+            return true;
         }
     }
 
@@ -105,7 +182,25 @@ public sealed class CaptureSession
         }
     }
 
-    public async Task<SourceEnvelope> NormalizeAsync(NormalizationRequest request, CancellationToken cancellationToken)
+    public Task<SourceEnvelope> NormalizeAsync(
+        NormalizationRequest request,
+        CancellationToken cancellationToken)
+        => NormalizeCoreAsync(request, expectedPreviewReference: null, cancellationToken);
+
+    /// <summary>
+    /// Normalizes only if the displayed preview reference is still the exact
+    /// idle normalized generation when operation ownership is acquired.
+    /// </summary>
+    internal Task<SourceEnvelope> NormalizeAsync(
+        NormalizationRequest request,
+        SessionByteReference expectedPreviewReference,
+        CancellationToken cancellationToken)
+        => NormalizeCoreAsync(request, expectedPreviewReference, cancellationToken);
+
+    private async Task<SourceEnvelope> NormalizeCoreAsync(
+        NormalizationRequest request,
+        SessionByteReference? expectedPreviewReference,
+        CancellationToken cancellationToken)
     {
         SourceEnvelope envelope;
         JobState state;
@@ -115,6 +210,15 @@ public sealed class CaptureSession
             cancellationToken.ThrowIfCancellationRequested();
             envelope = _envelope ?? throw new InvalidOperationException("Nothing has been captured.");
             state = Machine.State;
+            if (expectedPreviewReference is { } expected
+                && (state != JobState.Normalized
+                    || envelope.Bytes != expected
+                    || _purgeRequested
+                    || _operationsInFlight != 0))
+            {
+                throw new CaptureGenerationChangedException();
+            }
+
             if (state is not (JobState.Imported or JobState.Normalized)
                 || _purgeRequested
                 || _operationsInFlight != 0)
@@ -197,6 +301,20 @@ public sealed class CaptureSession
 
     /// <summary>The teacher attests the lane; the attestation is theirs to make and theirs to answer for.</summary>
     public SourceEnvelope ConfirmLane(DataLane teacherConfirmedLane)
+        => ConfirmLaneCore(teacherConfirmedLane, expectedPreviewReference: null);
+
+    /// <summary>
+    /// Confirms only the exact generation the capture surface most recently
+    /// published as its authoritative preview.
+    /// </summary>
+    internal SourceEnvelope ConfirmLane(
+        DataLane teacherConfirmedLane,
+        SessionByteReference expectedPreviewReference)
+        => ConfirmLaneCore(teacherConfirmedLane, expectedPreviewReference);
+
+    private SourceEnvelope ConfirmLaneCore(
+        DataLane teacherConfirmedLane,
+        SessionByteReference? expectedPreviewReference)
     {
         lock (_gate)
         {
@@ -204,6 +322,11 @@ public sealed class CaptureSession
             if (Machine.State != JobState.Normalized || _purgeRequested || _operationsInFlight != 0)
             {
                 throw new InvalidOperationException($"Cannot confirm a lane while the session is {Machine.State}.");
+            }
+
+            if (expectedPreviewReference is { } expected && envelope.Bytes != expected)
+            {
+                throw new CaptureGenerationChangedException();
             }
 
             var confirmed = envelope with { Lane = teacherConfirmedLane };
@@ -244,6 +367,35 @@ public sealed class CaptureSession
 
             RequestPurgeLocked();
             return true;
+        }
+    }
+
+    /// <summary>
+    /// Abandons a capture surface that is being disposed without a completed
+    /// owner-retained handoff. The transition and purge request are one locked
+    /// act, including a truthful retry from an explicit purge-incomplete state.
+    /// </summary>
+    internal bool AbandonAndPurge()
+    {
+        lock (_gate)
+        {
+            if (Machine.State == JobState.TransientSourcesPurged)
+            {
+                return true;
+            }
+
+            if (JobStateMachine.CanTransition(Machine.State, JobState.Cancelled))
+            {
+                Machine.Transition(JobState.Cancelled);
+            }
+            else if (Machine.State is not (JobState.Completed or JobState.Cancelled
+                or JobState.Blocked or JobState.Declined or JobState.PurgeIncomplete))
+            {
+                throw new InvalidOperationException(
+                    $"Cannot abandon and purge a capture while the session is {Machine.State}.");
+            }
+
+            return RequestPurgeLocked();
         }
     }
 

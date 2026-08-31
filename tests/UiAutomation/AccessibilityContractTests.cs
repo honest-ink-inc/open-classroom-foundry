@@ -3,6 +3,10 @@ using Foundry.App.WinForms;
 using Foundry.Application;
 using Foundry.Contracts;
 using Foundry.Domain;
+using Foundry.Infrastructure.Windows;
+using System.Drawing.Imaging;
+using System.IO;
+using System.Security.Cryptography;
 
 namespace Foundry.Tests.UiAutomation;
 
@@ -804,6 +808,131 @@ public class CaptureSurfaceContractTests
         });
 
     [Fact]
+    public void Exact_preview_exposes_named_keyboard_crop_fields_without_mirroring_the_pixel_basis()
+        => Sta.Run(() =>
+        {
+            UiLocale.Set(UiLocaleMode.Pseudo);
+            try
+            {
+                var (session, _, _) = NormalizedImageSession(7, 5);
+                using var form = new CaptureForm(session, DistrictPolicy.Offline);
+                ShowCaptureReady(form);
+
+                var preview = Assert.Single(ReviewSurfaceContractTests.Flatten(form).OfType<PictureBox>());
+                Assert.NotNull(preview.Image);
+                Assert.Equal(new Size(7, 5), preview.Image.Size);
+                Assert.True(form.RightToLeftLayout);
+                Assert.Equal(RightToLeft.No, preview.RightToLeft);
+
+                var values = ReviewSurfaceContractTests.Flatten(form).OfType<NumericUpDown>().ToList();
+                Assert.Equal(4, values.Count);
+                Assert.All(values, value =>
+                {
+                    Assert.False(string.IsNullOrWhiteSpace(value.AccessibilityObject.Name));
+                    Assert.NotEqual(AccessibleRole.None, value.AccessibilityObject.Role);
+                });
+                Assert.Equal(
+                    [0, 0, 7, 5],
+                    values.Select(value => value.Value));
+            }
+            finally
+            {
+                UiLocale.Set(UiLocaleMode.Neutral);
+            }
+        });
+
+    [Fact]
+    public void Invalid_crop_remains_a_pending_proposal_and_cannot_rotate_or_confirm()
+        => Sta.Run(() =>
+        {
+            var (session, normalized, _) = NormalizedImageSession(7, 5);
+            using var form = new CaptureForm(session, DistrictPolicy.Offline);
+            ShowCaptureReady(form);
+
+            CropValue(form, "Left X").Value = 6;
+            CropValue(form, "width").Value = 2;
+
+            Assert.False(ButtonContaining(form, "Rotate").Enabled);
+            Assert.False(ButtonContaining(form, "Confirm").Enabled);
+            Assert.True(ButtonContaining(form, "pause").Enabled);
+            ButtonContaining(form, "keep this region").PerformClick();
+
+            Assert.Equal(normalized.Bytes, session.Envelope!.Bytes);
+            Assert.Contains("not applied", StatusLabel(form).Text, StringComparison.Ordinal);
+            Assert.False(ButtonContaining(form, "Confirm").Enabled);
+
+            ButtonContaining(form, "full image").PerformClick();
+            Assert.Equal(0, CropValue(form, "Left X").Value);
+            Assert.Equal(7, CropValue(form, "width").Value);
+            Assert.True(ButtonContaining(form, "Rotate").Enabled);
+            Assert.True(ButtonContaining(form, "Confirm").Enabled);
+        });
+
+    [Fact]
+    public void Applied_crop_replaces_the_authoritative_derivative_and_resets_the_lane_attestation()
+        => Sta.Run(() =>
+        {
+            var (session, normalized, store) = NormalizedImageSession(7, 5);
+            using var form = new CaptureForm(session, DistrictPolicy.Offline);
+            ShowCaptureReady(form);
+
+            var green = ReviewSurfaceContractTests.Flatten(form).OfType<RadioButton>().Single(radio =>
+                radio.AccessibilityObject.Name!.Contains("Green", StringComparison.Ordinal));
+            var amber = ReviewSurfaceContractTests.Flatten(form).OfType<RadioButton>().Single(radio =>
+                radio.AccessibilityObject.Name!.Contains("Amber", StringComparison.Ordinal));
+            green.Checked = true;
+            CropValue(form, "Left X").Value = 2;
+            CropValue(form, "Top Y").Value = 1;
+            CropValue(form, "width").Value = 5;
+            CropValue(form, "height").Value = 4;
+
+            ButtonContaining(form, "keep this region").PerformClick();
+            PumpUntil(() =>
+                !form.OperationPending
+                    && session.Envelope!.Bytes != normalized.Bytes
+                    && ButtonContaining(form, "Confirm").Enabled);
+
+            var preview = Assert.Single(ReviewSurfaceContractTests.Flatten(form).OfType<PictureBox>());
+            Assert.Equal(new Size(5, 4), preview.Image!.Size);
+            Assert.Equal(Color.Red.ToArgb(), ((Bitmap)preview.Image).GetPixel(0, 0).ToArgb());
+            Assert.Equal(Color.Blue.ToArgb(), ((Bitmap)preview.Image).GetPixel(4, 3).ToArgb());
+            Assert.Equal(0, CropValue(form, "Left X").Value);
+            Assert.Equal(0, CropValue(form, "Top Y").Value);
+            Assert.Equal(5, CropValue(form, "width").Value);
+            Assert.Equal(4, CropValue(form, "height").Value);
+            Assert.False(green.Checked);
+            Assert.True(amber.Checked);
+            Assert.True(ButtonContaining(form, "Confirm").Enabled);
+            Assert.Equal(1, store.Count);
+            Assert.Contains("Crop applied", StatusLabel(form).Text, StringComparison.Ordinal);
+        });
+
+    [Fact]
+    public void Undecodable_normalized_bytes_keep_lane_confirmation_locked()
+        => Sta.Run(() =>
+        {
+            var store = new InMemorySessionByteStore();
+            var session = new CaptureSession(
+                new ByteImportCaptureSource(store),
+                new PassThroughInvalidPreviewNormalizer(),
+                store);
+            session.CaptureAsync(
+                    new CaptureRequest(ByteImportCaptureSource.Kind, "image/png", new byte[] { 1, 2, 3 }),
+                    CancellationToken.None)
+                .GetAwaiter().GetResult();
+            session.NormalizeAsync(new NormalizationRequest(), CancellationToken.None).GetAwaiter().GetResult();
+
+            using var form = new CaptureForm(session, DistrictPolicy.Offline);
+            ShowCaptureReady(form);
+
+            Assert.Null(Assert.Single(ReviewSurfaceContractTests.Flatten(form).OfType<PictureBox>()).Image);
+            Assert.False(ButtonContaining(form, "Rotate").Enabled);
+            Assert.False(ButtonContaining(form, "Confirm").Enabled);
+            Assert.True(ButtonContaining(form, "pause").Enabled);
+            Assert.Contains("preview is unavailable", StatusLabel(form).Text, StringComparison.Ordinal);
+        });
+
+    [Fact]
     public void Failed_initial_normalization_exposes_a_working_keyboard_retry_for_the_retained_capture()
         => Sta.Run(() =>
         {
@@ -813,7 +942,7 @@ public class CaptureSurfaceContractTests
                 new FailsOnceUiNormalizer(),
                 store);
             session.CaptureAsync(
-                    new CaptureRequest(ByteImportCaptureSource.Kind, "image/png", new byte[] { 1, 2, 3 }),
+                    new CaptureRequest(ByteImportCaptureSource.Kind, "image/png", SyntheticPng()),
                     CancellationToken.None)
                 .GetAwaiter().GetResult();
 
@@ -824,13 +953,13 @@ public class CaptureSurfaceContractTests
                     && button.Text.Contains("Retry", StringComparison.OrdinalIgnoreCase));
 
             import.PerformClick();
-            System.Windows.Forms.Application.DoEvents();
+            PumpUntil(() => !form.OperationPending);
             Assert.Equal(JobState.Imported, session.Machine.State);
             Assert.True(import.Enabled);
             Assert.Contains("Retry", import.AccessibilityObject.Name, StringComparison.OrdinalIgnoreCase);
 
             import.PerformClick();
-            System.Windows.Forms.Application.DoEvents();
+            PumpUntil(() => !form.OperationPending);
             Assert.Equal(JobState.Normalized, session.Machine.State);
             Assert.False(import.Enabled);
             Assert.True(ReviewSurfaceContractTests.ByName(form, "Rotate 90°").Enabled);
@@ -858,7 +987,7 @@ public class CaptureSurfaceContractTests
             retry.PerformClick();
             Assert.Equal(1, normalizer.CallCount);
             AssertInsideClientFloor(form, pause);
-            AssertInsideClientFloor(form, ReviewSurfaceContractTests.Flatten(form).OfType<Label>().Single());
+            AssertInsideClientFloor(form, StatusLabel(form));
 
             normalizer.Complete();
             PumpUntil(() => session.Machine.State == JobState.Normalized && ButtonContaining(form, "Rotate").Enabled);
@@ -877,7 +1006,7 @@ public class CaptureSurfaceContractTests
             var (session, _, _) = ImportedSession(normalizer);
             session.NormalizeAsync(new NormalizationRequest(), CancellationToken.None).GetAwaiter().GetResult();
             using var form = new CaptureForm(session, DistrictPolicy.Offline);
-            form.Show();
+            ShowCaptureReady(form);
             var rotate = ButtonContaining(form, "Rotate");
             var confirm = ButtonContaining(form, "Confirm");
 
@@ -892,14 +1021,41 @@ public class CaptureSurfaceContractTests
             Assert.Equal(JobState.Normalized, session.Machine.State);
 
             normalizer.CompleteRotation();
-            PumpUntil(() => rotate.Enabled);
+            PumpUntil(() => !form.OperationPending && rotate.Enabled && confirm.Enabled);
 
             Assert.Equal(JobState.Normalized, session.Machine.State);
             Assert.True(confirm.Enabled);
             Assert.Contains(
                 "Rotated",
-                ReviewSurfaceContractTests.Flatten(form).OfType<Label>().Single().Text,
+                StatusLabel(form).Text,
                 StringComparison.Ordinal);
+        });
+
+    [Fact]
+    public void Rotation_refuses_and_discards_a_preview_replaced_by_an_external_generation()
+        => Sta.Run(() =>
+        {
+            var (session, displayed, _) = NormalizedImageSession(7, 5);
+            using var form = new CaptureForm(session, DistrictPolicy.Offline);
+            ShowCaptureReady(form);
+            var preview = Assert.Single(ReviewSurfaceContractTests.Flatten(form).OfType<PictureBox>());
+            Assert.NotNull(preview.Image);
+
+            var current = session.NormalizeAsync(
+                    new NormalizationRequest(RotationDegrees.Rotate90),
+                    CancellationToken.None)
+                .GetAwaiter().GetResult();
+            Assert.NotEqual(displayed.Bytes, current.Bytes);
+
+            ButtonContaining(form, "Rotate").PerformClick();
+            PumpUntil(() => !form.OperationPending && preview.Image is null);
+
+            Assert.Equal(current.Bytes, session.Envelope!.Bytes);
+            Assert.Equal(JobState.Normalized, session.Machine.State);
+            Assert.False(ButtonContaining(form, "Rotate").Enabled);
+            Assert.False(ButtonContaining(form, "Confirm").Enabled);
+            Assert.True(ButtonContaining(form, "pause").Enabled);
+            Assert.Contains("changed or was purged", StatusLabel(form).Text, StringComparison.Ordinal);
         });
 
     [Fact]
@@ -910,18 +1066,18 @@ public class CaptureSurfaceContractTests
             var (session, _, _) = ImportedSession(normalizer);
             session.NormalizeAsync(new NormalizationRequest(), CancellationToken.None).GetAwaiter().GetResult();
             using var form = new CaptureForm(session, DistrictPolicy.Offline);
-            form.Show();
+            ShowCaptureReady(form);
             var rotate = ButtonContaining(form, "Rotate");
 
             rotate.PerformClick();
-            System.Windows.Forms.Application.DoEvents();
+            PumpUntil(() => !form.OperationPending);
 
             Assert.Equal(JobState.Normalized, session.Machine.State);
             Assert.True(rotate.Enabled);
             Assert.True(ButtonContaining(form, "Confirm").Enabled);
             Assert.Contains(
                 "Synthetic rotation refusal.",
-                ReviewSurfaceContractTests.Flatten(form).OfType<Label>().Single().Text,
+                StatusLabel(form).Text,
                 StringComparison.Ordinal);
         });
 
@@ -982,6 +1138,141 @@ public class CaptureSurfaceContractTests
         });
 
     [Fact]
+    public void Safety_pause_settles_pending_crop_and_purges_its_late_tentative_bytes_before_abort()
+        => Sta.Run(() =>
+        {
+            var store = new InMemorySessionByteStore();
+            var normalizer = new LateAllocatingDeferredCropUiNormalizer(store);
+            var session = new CaptureSession(new ByteImportCaptureSource(store), normalizer, store);
+            var input = SyntheticPng(4, 3);
+            try
+            {
+                session.CaptureAsync(
+                        new CaptureRequest(ByteImportCaptureSource.Kind, "image/png", input),
+                        CancellationToken.None)
+                    .GetAwaiter().GetResult();
+            }
+            finally
+            {
+                CryptographicOperations.ZeroMemory(input);
+            }
+
+            var normalized = session.NormalizeAsync(new NormalizationRequest(), CancellationToken.None)
+                .GetAwaiter().GetResult();
+            Assert.True(store.TryGet(normalized.Bytes, out var heldNormalizedBytes));
+            SafetyPauseResult? presented = null;
+            using var form = new CaptureForm(session, DistrictPolicy.Offline, result => presented = result);
+            form.Show();
+            var preview = Assert.Single(ReviewSurfaceContractTests.Flatten(form).OfType<PictureBox>());
+            PumpUntil(() => preview.Image is not null && ButtonContaining(form, "Rotate").Enabled);
+
+            CropValue(form, "Left X").Value = 1;
+            CropValue(form, "Top Y").Value = 0;
+            CropValue(form, "width").Value = 2;
+            CropValue(form, "height").Value = 2;
+            ButtonContaining(form, "keep this region").PerformClick();
+            PumpUntil(() => form.OperationPending && normalizer.CropCallCount == 1);
+            Assert.NotNull(preview.Image);
+
+            ButtonContaining(form, "pause").PerformClick();
+
+            Assert.NotNull(presented);
+            Assert.True(normalizer.ObservedToken.IsCancellationRequested);
+            Assert.False(normalizer.Finished);
+            Assert.Equal(JobState.Blocked, session.Machine.State);
+            Assert.True(form.Visible);
+            Assert.Equal(DialogResult.None, form.DialogResult);
+            Assert.Null(preview.Image);
+            Assert.Equal(0, store.Count);
+            Assert.All(heldNormalizedBytes.ToArray(), value => Assert.Equal(0, value));
+
+            normalizer.CompleteCrop();
+            PumpUntil(() => normalizer.Finished && !form.OperationPending && !form.Visible);
+
+            Assert.NotNull(normalizer.LateReference);
+            Assert.NotEqual(normalized.Bytes, normalizer.LateReference.Value);
+            Assert.Null(session.Envelope);
+            Assert.Equal(0, store.Count);
+            Assert.False(normalizer.HeldOutput.IsEmpty);
+            Assert.All(normalizer.HeldOutput.ToArray(), value => Assert.Equal(0, value));
+            Assert.Equal(JobState.TransientSourcesPurged, session.Machine.State);
+            Assert.Equal(DialogResult.Abort, form.DialogResult);
+        });
+
+    [Fact]
+    public void Direct_dispose_of_an_idle_normalized_capture_purges_and_zeroes_its_session()
+        => Sta.Run(() =>
+        {
+            var (session, normalized, store) = NormalizedImageSession(4, 3);
+            Assert.True(store.TryGet(normalized.Bytes, out var heldBytes));
+            var form = new CaptureForm(session, DistrictPolicy.Offline);
+
+            form.Dispose();
+
+            Assert.True(form.IsDisposed);
+            Assert.Null(session.Envelope);
+            Assert.Equal(0, store.Count);
+            Assert.All(heldBytes.ToArray(), value => Assert.Equal(0, value));
+            Assert.Equal(JobState.TransientSourcesPurged, session.Machine.State);
+        });
+
+    [Fact]
+    public void Direct_dispose_during_pending_crop_cancels_then_purges_the_late_generation()
+        => Sta.Run(() =>
+        {
+            var store = new InMemorySessionByteStore();
+            var normalizer = new LateAllocatingDeferredCropUiNormalizer(store);
+            var session = new CaptureSession(new ByteImportCaptureSource(store), normalizer, store);
+            var input = SyntheticPng(4, 3);
+            try
+            {
+                session.CaptureAsync(
+                        new CaptureRequest(ByteImportCaptureSource.Kind, "image/png", input),
+                        CancellationToken.None)
+                    .GetAwaiter().GetResult();
+            }
+            finally
+            {
+                CryptographicOperations.ZeroMemory(input);
+            }
+
+            var normalized = session.NormalizeAsync(new NormalizationRequest(), CancellationToken.None)
+                .GetAwaiter().GetResult();
+            Assert.True(store.TryGet(normalized.Bytes, out var heldNormalizedBytes));
+            var form = new CaptureForm(session, DistrictPolicy.Offline);
+            form.Show();
+            var preview = Assert.Single(ReviewSurfaceContractTests.Flatten(form).OfType<PictureBox>());
+            PumpUntil(() => preview.Image is not null && ButtonContaining(form, "Rotate").Enabled);
+
+            CropValue(form, "Left X").Value = 1;
+            CropValue(form, "Top Y").Value = 0;
+            CropValue(form, "width").Value = 2;
+            CropValue(form, "height").Value = 2;
+            ButtonContaining(form, "keep this region").PerformClick();
+            PumpUntil(() => form.OperationPending && normalizer.CropCallCount == 1);
+
+            form.Dispose();
+
+            Assert.True(form.IsDisposed);
+            Assert.True(normalizer.ObservedToken.IsCancellationRequested);
+            Assert.Equal(JobState.Cancelled, session.Machine.State);
+            Assert.Null(session.Envelope);
+            Assert.Equal(0, store.Count);
+            Assert.All(heldNormalizedBytes.ToArray(), value => Assert.Equal(0, value));
+
+            normalizer.CompleteCrop();
+            PumpUntil(() =>
+                normalizer.Finished
+                    && !form.OperationPending
+                    && session.Machine.State == JobState.TransientSourcesPurged);
+
+            Assert.NotNull(normalizer.LateReference);
+            Assert.False(normalizer.HeldOutput.IsEmpty);
+            Assert.All(normalizer.HeldOutput.ToArray(), value => Assert.Equal(0, value));
+            Assert.Equal(0, store.Count);
+        });
+
+    [Fact]
     public void Closing_during_normalization_keeps_a_late_failed_purge_visible_and_retryable()
         => Sta.Run(() =>
         {
@@ -989,7 +1280,7 @@ public class CaptureSurfaceContractTests
             var normalizer = new LateAllocatingDeferredUiNormalizer(store);
             var session = new CaptureSession(new ByteImportCaptureSource(store), normalizer, store);
             session.CaptureAsync(
-                    new CaptureRequest(ByteImportCaptureSource.Kind, "image/png", new byte[] { 1, 2, 3 }),
+                    new CaptureRequest(ByteImportCaptureSource.Kind, "image/png", SyntheticPng()),
                     CancellationToken.None)
                 .GetAwaiter()
                 .GetResult();
@@ -1033,7 +1324,7 @@ public class CaptureSurfaceContractTests
             Assert.True(store.TryGet(captured.Bytes, out var heldBytes));
             session.NormalizeAsync(new NormalizationRequest(), CancellationToken.None).GetAwaiter().GetResult();
             using var form = new CaptureForm(session, DistrictPolicy.Offline);
-            form.Show();
+            ShowCaptureReady(form);
 
             ButtonContaining(form, "Confirm").PerformClick();
             System.Windows.Forms.Application.DoEvents();
@@ -1053,14 +1344,14 @@ public class CaptureSurfaceContractTests
             var normalizer = new DeferredRotationUiNormalizer();
             var session = new CaptureSession(new ByteImportCaptureSource(store), normalizer, store);
             var captured = session.CaptureAsync(
-                    new CaptureRequest(ByteImportCaptureSource.Kind, "image/png", new byte[] { 1, 2, 3 }),
+                    new CaptureRequest(ByteImportCaptureSource.Kind, "image/png", SyntheticPng()),
                     CancellationToken.None)
                 .GetAwaiter()
                 .GetResult();
             Assert.True(store.TryGet(captured.Bytes, out var heldBytes));
             session.NormalizeAsync(new NormalizationRequest(), CancellationToken.None).GetAwaiter().GetResult();
             using var form = new CaptureForm(session, DistrictPolicy.Offline);
-            form.Show();
+            ShowCaptureReady(form);
 
             ButtonContaining(form, "Confirm").PerformClick();
             System.Windows.Forms.Application.DoEvents();
@@ -1089,7 +1380,7 @@ public class CaptureSurfaceContractTests
                 new DeferredRotationUiNormalizer(),
                 store);
             var captured = session.CaptureAsync(
-                    new CaptureRequest(ByteImportCaptureSource.Kind, "image/png", new byte[] { 1, 2, 3 }),
+                    new CaptureRequest(ByteImportCaptureSource.Kind, "image/png", SyntheticPng()),
                     CancellationToken.None)
                 .GetAwaiter()
                 .GetResult();
@@ -1123,7 +1414,7 @@ public class CaptureSurfaceContractTests
                 new DeferredRotationUiNormalizer(),
                 store);
             var captured = session.CaptureAsync(
-                    new CaptureRequest(ByteImportCaptureSource.Kind, "image/png", new byte[] { 1, 2, 3 }),
+                    new CaptureRequest(ByteImportCaptureSource.Kind, "image/png", SyntheticPng()),
                     CancellationToken.None)
                 .GetAwaiter()
                 .GetResult();
@@ -1153,7 +1444,7 @@ public class CaptureSurfaceContractTests
         var store = new InMemorySessionByteStore();
         var session = new CaptureSession(new ByteImportCaptureSource(store), normalizer, store);
         var captured = session.CaptureAsync(
-                new CaptureRequest(ByteImportCaptureSource.Kind, "image/png", new byte[] { 1, 2, 3 }),
+                new CaptureRequest(ByteImportCaptureSource.Kind, "image/png", SyntheticPng()),
                 CancellationToken.None)
             .GetAwaiter()
             .GetResult();
@@ -1164,6 +1455,13 @@ public class CaptureSurfaceContractTests
         => ReviewSurfaceContractTests.Flatten(form).OfType<Button>().Single(button =>
             button.Visible
                 && button.AccessibilityObject.Name?.Contains(text, StringComparison.OrdinalIgnoreCase) == true);
+
+    private static void ShowCaptureReady(CaptureForm form)
+    {
+        form.Show();
+        System.Windows.Forms.Application.DoEvents();
+        PumpUntil(() => !form.OperationPending);
+    }
 
     private static void AssertBusyControlsAreGated(CaptureForm form)
     {
@@ -1188,8 +1486,70 @@ public class CaptureSurfaceContractTests
         Assert.All(ReviewSurfaceContractTests.Flatten(form).OfType<RadioButton>(), radio => Assert.False(radio.Enabled));
         Assert.Contains(
             "could not be fully purged",
-            ReviewSurfaceContractTests.Flatten(form).OfType<Label>().Single().Text,
+            StatusLabel(form).Text,
             StringComparison.Ordinal);
+    }
+
+    private static Label StatusLabel(CaptureForm form)
+        => ReviewSurfaceContractTests.Flatten(form).OfType<Label>().Single(label =>
+            string.Equals(label.Name, "CaptureStatus", StringComparison.Ordinal));
+
+    private static NumericUpDown CropValue(CaptureForm form, string namePart)
+        => ReviewSurfaceContractTests.Flatten(form).OfType<NumericUpDown>().Single(value =>
+            value.AccessibilityObject.Name?.Contains(namePart, StringComparison.OrdinalIgnoreCase) == true);
+
+    private static (CaptureSession Session, SourceEnvelope Normalized, InMemorySessionByteStore Store)
+        NormalizedImageSession(int width, int height)
+    {
+        var store = new InMemorySessionByteStore();
+        var session = new CaptureSession(
+            new ByteImportCaptureSource(store),
+            new ImageNormalizer(store),
+            store);
+        var input = SyntheticPng(width, height);
+        try
+        {
+            session.CaptureAsync(
+                    new CaptureRequest(ByteImportCaptureSource.Kind, "image/png", input),
+                    CancellationToken.None)
+                .GetAwaiter().GetResult();
+        }
+        finally
+        {
+            CryptographicOperations.ZeroMemory(input);
+        }
+
+        var normalized = session.NormalizeAsync(new NormalizationRequest(), CancellationToken.None)
+            .GetAwaiter().GetResult();
+        return (session, normalized, store);
+    }
+
+    private static byte[] SyntheticPng(int width = 8, int height = 6)
+    {
+        using var bitmap = new Bitmap(width, height, PixelFormat.Format24bppRgb);
+        using var graphics = Graphics.FromImage(bitmap);
+        graphics.Clear(Color.White);
+        if (width > 2 && height > 1)
+        {
+            bitmap.SetPixel(2, 1, Color.Red);
+        }
+
+        bitmap.SetPixel(width - 1, height - 1, Color.Blue);
+        using var stream = new MemoryStream();
+        bitmap.Save(stream, ImageFormat.Png);
+        return stream.ToArray();
+    }
+
+    private sealed class PassThroughInvalidPreviewNormalizer : IDocumentNormalizer
+    {
+        public Task<SourceEnvelope> NormalizeAsync(
+            SourceEnvelope source,
+            NormalizationRequest request,
+            CancellationToken cancellationToken)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            return Task.FromResult(source with { MetadataStripped = true });
+        }
     }
 
     private static void AssertInsideClientFloor(Form form, Control control)
@@ -1364,6 +1724,69 @@ public class CaptureSurfaceContractTests
         }
     }
 
+    private sealed class LateAllocatingDeferredCropUiNormalizer(ISessionByteStore store) : IDocumentNormalizer
+    {
+        private readonly TaskCompletionSource _cropRelease = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        private int _finished;
+
+        public int CropCallCount { get; private set; }
+
+        public CancellationToken ObservedToken { get; private set; }
+
+        public SessionByteReference? LateReference { get; private set; }
+
+        public ReadOnlyMemory<byte> HeldOutput { get; private set; }
+
+        public bool Finished => Volatile.Read(ref _finished) == 1;
+
+        public Task<SourceEnvelope> NormalizeAsync(
+            SourceEnvelope source,
+            NormalizationRequest request,
+            CancellationToken cancellationToken)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            if (request.Crop is null)
+            {
+                return Task.FromResult(source with { MetadataStripped = true });
+            }
+
+            CropCallCount++;
+            ObservedToken = cancellationToken;
+            return CompleteCropWhenReleasedAsync(source);
+        }
+
+        public void CompleteCrop()
+            => _cropRelease.TrySetResult();
+
+        private async Task<SourceEnvelope> CompleteCropWhenReleasedAsync(SourceEnvelope source)
+        {
+            try
+            {
+                await _cropRelease.Task.ConfigureAwait(false);
+                var lateBytes = SyntheticPng(2, 2);
+                try
+                {
+                    LateReference = store.Put(lateBytes);
+                    if (!store.TryGet(LateReference.Value, out var heldOutput))
+                    {
+                        throw new InvalidOperationException("Synthetic late crop output was not retained.");
+                    }
+
+                    HeldOutput = heldOutput;
+                    return source with { Bytes = LateReference.Value, MetadataStripped = true };
+                }
+                finally
+                {
+                    CryptographicOperations.ZeroMemory(lateBytes);
+                }
+            }
+            finally
+            {
+                Volatile.Write(ref _finished, 1);
+            }
+        }
+    }
+
     private sealed class RefusesRotationUiNormalizer : IDocumentNormalizer
     {
         public Task<SourceEnvelope> NormalizeAsync(
@@ -1400,7 +1823,7 @@ public class CaptureSurfaceContractTests
             if (!_failed)
             {
                 _failed = true;
-                throw new System.IO.IOException("Synthetic purge failure.");
+                throw new IOException("Synthetic purge failure.");
             }
 
             _inner.PurgeAll();
@@ -1427,7 +1850,7 @@ public class CaptureSurfaceContractTests
             PurgeAttempts++;
             if (PurgeAttempts == 2)
             {
-                throw new System.IO.IOException("Synthetic late purge failure.");
+                throw new IOException("Synthetic late purge failure.");
             }
 
             _inner.PurgeAll();
