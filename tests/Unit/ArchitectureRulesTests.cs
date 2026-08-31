@@ -291,6 +291,117 @@ public class ArchitectureRulesTests
                 + "that everything else does not have to be Windows-coupled.",
         };
 
+    // D19 Q1 and Q2: the layering rule is the project's own (plan 6.2, src/README.md,
+    // ADR-001), but until now it was asserted a project at a time, and five of the
+    // fourteen were not asserted about at all. Scattered per-project rules are how
+    // those five gaps opened; completeness is the whole content of the rule, so this
+    // is one map rather than five more tests.
+    //
+    // Q2 -- "nothing references the application shell" -- falls out of an exact map,
+    // and is additionally asserted below so it reads as a rule rather than as an
+    // accident of the current data.
+    private static readonly Dictionary<string, string[]> AllowedProjectReferences =
+        new(StringComparer.Ordinal)
+        {
+            ["Foundry.Domain"] = [],
+            ["Foundry.Contracts"] = ["Foundry.Domain"],
+            ["Foundry.Inference.Abstractions"] = ["Foundry.Contracts", "Foundry.Domain"],
+            ["Foundry.Application"] = ["Foundry.Contracts", "Foundry.Domain", "Foundry.Inference.Abstractions"],
+            ["Foundry.Inference.AzureOpenAI"] = ["Foundry.Inference.Abstractions"],
+            ["Foundry.Inference.Local"] = ["Foundry.Inference.Abstractions"],
+            ["Foundry.Inference.Synthetic"] = ["Foundry.Inference.Abstractions"],
+            ["Foundry.Infrastructure.Simulated"] = ["Foundry.Contracts", "Foundry.Domain"],
+            ["Foundry.Infrastructure.Windows"] = ["Foundry.Contracts", "Foundry.Domain"],
+            ["Foundry.Modules.BuiltIn"] = ["Foundry.Contracts", "Foundry.Domain"],
+            ["Foundry.Modules.DeterministicPress"] = ["Foundry.Contracts", "Foundry.Domain"],
+            ["Foundry.Rendering"] = ["Foundry.Contracts", "Foundry.Domain"],
+            ["Foundry.Storage"] = ["Foundry.Contracts", "Foundry.Domain", "Foundry.Rendering"],
+            ["Foundry.App.WinForms"] =
+            [
+                "Foundry.Application",
+                "Foundry.Inference.AzureOpenAI",
+                "Foundry.Infrastructure.Windows",
+                "Foundry.Modules.BuiltIn",
+                "Foundry.Modules.DeterministicPress",
+                "Foundry.Rendering",
+                "Foundry.Storage",
+            ],
+        };
+
+    private const string ApplicationShell = "Foundry.App.WinForms";
+
+    [Fact]
+    public void Every_project_declares_its_full_reference_set()
+    {
+        var root = RepoRoot();
+        var found = new List<string>();
+        var wrong = new List<string>();
+
+        foreach (var csproj in Directory.EnumerateFiles(
+                     Path.Combine(root, "src"), "*.csproj", SearchOption.AllDirectories))
+        {
+            var project = Path.GetFileNameWithoutExtension(csproj);
+            found.Add(project);
+
+            if (!AllowedProjectReferences.TryGetValue(project, out var allowed))
+            {
+                // A new project with no entry must fail rather than inherit silence.
+                // This is the clause that stops the map going stale by addition.
+                wrong.Add($"{project}: no declared reference set");
+                continue;
+            }
+
+            // Read ProjectReference elements specifically. A text search for a
+            // project name would also match InternalsVisibleTo, which three engine
+            // projects grant to the shell -- the opposite direction, and not a
+            // reference at all.
+            var actual = XDocument.Load(csproj).Descendants("ProjectReference")
+                .Select(r => (string?)r.Attribute("Include") ?? string.Empty)
+                .Select(include => Path.GetFileNameWithoutExtension(include.Replace('\\', '/')))
+                .Where(name => name.Length > 0)
+                .OrderBy(name => name, StringComparer.Ordinal)
+                .ToArray();
+
+            var expected = allowed.OrderBy(name => name, StringComparer.Ordinal).ToArray();
+            if (!actual.SequenceEqual(expected, StringComparer.Ordinal))
+            {
+                wrong.Add(
+                    $"{project}: declared [{string.Join(", ", expected)}] but references [{string.Join(", ", actual)}]");
+            }
+        }
+
+        Assert.True(
+            wrong.Count == 0,
+            "A project's references do not equal its declared set. Adding or removing an "
+            + "edge is a layering decision; record it in AllowedProjectReferences:\n"
+            + string.Join('\n', wrong));
+
+        var vanished = AllowedProjectReferences.Keys.Where(p => !found.Contains(p)).ToArray();
+        Assert.True(
+            vanished.Length == 0,
+            "The reference map names projects that no longer exist under src/:\n"
+            + string.Join('\n', vanished));
+    }
+
+    [Fact]
+    public void Nothing_references_the_application_shell()
+    {
+        // Q2 stated as a rule rather than left implicit in the map's data, so that a
+        // future edit adding the shell to some project's set fails here too, with a
+        // message about layering rather than about a mismatched list.
+        var offenders = AllowedProjectReferences
+            .Where(entry => !string.Equals(entry.Key, ApplicationShell, StringComparison.Ordinal))
+            .Where(entry => entry.Value.Contains(ApplicationShell, StringComparer.Ordinal))
+            .Select(entry => entry.Key)
+            .ToArray();
+
+        Assert.True(
+            offenders.Length == 0,
+            $"Nothing may reference {ApplicationShell}: the shell depends on the engine, "
+            + "never the reverse.\n"
+            + string.Join('\n', offenders));
+    }
+
     [Fact]
     public void Only_the_shell_and_the_platform_adapter_target_a_platform()
     {
