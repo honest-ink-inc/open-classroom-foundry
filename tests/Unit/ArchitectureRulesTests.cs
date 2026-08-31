@@ -75,19 +75,40 @@ public class ArchitectureRulesTests
         Assert.DoesNotContain(references, r => r.Contains("App.WinForms", StringComparison.OrdinalIgnoreCase));
     }
 
+    // D19 Q4: the same scan, widened from the two module projects to the whole
+    // portable engine. The check was never module-specific in principle -- the
+    // rule is that platform reach belongs behind a service seam -- and running it
+    // over two of eight portable projects left six unscanned for no reason beyond
+    // where it was first written. Renamed because the scope changed, not the rule.
+    //
+    // Verified before widening: zero files in any of these eight trip the token
+    // list, while the two platform-coupled projects trip it heavily. The tokens
+    // below name specific sub-namespaces on purpose; a bare `System.IO` would flag
+    // `System.IO.Compression` over a MemoryStream, which is in-memory work and not
+    // platform reach. AccessibleHtmlRenderer uses exactly that today.
+    private static readonly string[] PortableEngineProjects =
+    [
+        "Foundry.Domain",
+        "Foundry.Contracts",
+        "Foundry.Application",
+        "Foundry.Inference.Abstractions",
+        "Foundry.Infrastructure.Simulated",
+        "Foundry.Modules.BuiltIn",
+        "Foundry.Modules.DeterministicPress",
+        "Foundry.Rendering",
+    ];
+
     [Fact]
-    public void Modules_do_not_use_known_direct_platform_api_vocabulary()
+    public void The_portable_engine_does_not_use_known_direct_platform_api_vocabulary()
     {
         // ProjectReference checks close the architectural door to adapters;
         // this bounded source vocabulary closes the BCL side doors that do not
         // require a project reference. It is deliberately narrower than a
         // claim that all System.IO is impure: in-memory streams are valid.
         var root = RepoRoot();
-        var moduleRoots = new[]
-        {
-            Path.Combine(root, "src", "Foundry.Modules.DeterministicPress"),
-            Path.Combine(root, "src", "Foundry.Modules.BuiltIn"),
-        };
+        var moduleRoots = PortableEngineProjects
+            .Select(project => Path.Combine(root, "src", project))
+            .ToArray();
         var offenders = new List<string>();
         foreach (var file in moduleRoots
                      .SelectMany(path => Directory.EnumerateFiles(path, "*.cs", SearchOption.AllDirectories))
@@ -104,7 +125,7 @@ public class ArchitectureRulesTests
 
         Assert.True(
             offenders.Count == 0,
-            "ADR-001 requires modules to use engine service seams rather than direct platform reach:\n"
+            "ADR-001 requires the portable engine to use service seams rather than direct platform reach:\n"
             + string.Join('\n', offenders));
     }
 
