@@ -2,6 +2,7 @@
 using System.IO;
 using Foundry.App.WinForms;
 using Foundry.Application;
+using Foundry.Contracts;
 using Foundry.Domain;
 using Foundry.Storage;
 
@@ -292,6 +293,28 @@ public class AllAboardContractTests
         });
 
     [Fact]
+    public void A_symbol_selection_keeps_the_exact_identity_from_the_displayed_catalog_snapshot()
+        => Sta.Run(() =>
+        {
+            var changing = new ReorderingCatalog(Catalog());
+            using var form = new AllAboardForm(changing, GateRespectingApprove);
+            form.Show();
+            Title(form).Text = "Getting help";
+            Step(form, 1).Text = "Raise your hand.";
+            Step(form, 2).Text = "Wait for the teacher.";
+            Step(form, 3).Text = "Say what you need.";
+            var symbol = Symbol(form, 1);
+            symbol.SelectedIndex = symbol.Items.IndexOf("Wait");
+
+            ((Button)ReviewSurfaceContractTests.ByName(form, "Review and approve…")).PerformClick();
+
+            Assert.NotNull(form.ApprovedResult);
+            var first = form.ApprovedResult.Revision.Document.Nodes.OfType<StepRow>().First();
+            Assert.Equal(new AssetId("agency.wait.v1"), first.Symbol?.Asset);
+            Assert.Equal(1, changing.AllReads);
+        });
+
+    [Fact]
     public void Part2_Step7_too_few_steps_is_refused_in_the_speaking_status()
         => WithForm(form =>
         {
@@ -418,4 +441,24 @@ public class AllAboardContractTests
             using var pressRoom = new PressRoomForm(_ => null);
             Assert.NotNull(ReviewSurfaceContractTests.ByName(pressRoom, "All Aboard task strip…"));
         });
+
+    private sealed class ReorderingCatalog(IAssetCatalog inner) : IAssetCatalog
+    {
+        public int AllReads { get; private set; }
+
+        public IReadOnlyList<AssetProvenance> All
+        {
+            get
+            {
+                AllReads++;
+                var snapshot = inner.All.ToArray();
+                return AllReads % 2 == 1 ? snapshot : [.. snapshot.Reverse()];
+            }
+        }
+
+        public AssetProvenance? Find(AssetId id) => inner.Find(id);
+
+        public bool TryGetContent(AssetId id, out ReadOnlyMemory<byte> content, out string mimeType)
+            => inner.TryGetContent(id, out content, out mimeType);
+    }
 }

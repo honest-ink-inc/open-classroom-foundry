@@ -70,10 +70,10 @@ public class RightsMetadataTests
             .Select(p => p.FileName)
             .ToHashSet(StringComparer.OrdinalIgnoreCase);
 
-        var orphans = Directory.EnumerateFiles(root)
-            .Select(Path.GetFileName)
-            .Where(name => name is not null
-                && !string.Equals(name, "manifest.json", StringComparison.OrdinalIgnoreCase)
+        var orphans = Directory.EnumerateFiles(root, "*", SearchOption.AllDirectories)
+            .Select(path => Path.GetRelativePath(root, path)
+                .Replace(Path.DirectorySeparatorChar, '/'))
+            .Where(name => !string.Equals(name, "manifest.json", StringComparison.OrdinalIgnoreCase)
                 && !declared.Contains(name))
             .ToList();
 

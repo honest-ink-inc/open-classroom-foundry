@@ -26,6 +26,7 @@ public sealed class AllAboardForm : Form
     private readonly TableLayoutPanel _grid;
     private readonly List<(TextBox Text, ComboBox Symbol)> _steps = [];
     private readonly List<(CheckBox Include, TextBox Override)> _agency = [];
+    private readonly IReadOnlyList<AssetProvenance> _symbols;
     private readonly List<string> _symbolNames;
     private TextBox? _title;
     private readonly Button _review;
@@ -70,9 +71,12 @@ public sealed class AllAboardForm : Form
         // The pack may hold two symbols with one meaning (it ships two Help
         // variants): meaning stays the name, and only duplicates append their
         // alt text — so every row a screen reader hears is distinct.
-        var duplicated = _catalog.All.GroupBy(p => p.IntendedMeaning)
+        // The picker and the resulting document share this one typed snapshot;
+        // a catalog changing order between reads must never change a selection.
+        _symbols = [.. _catalog.All];
+        var duplicated = _symbols.GroupBy(p => p.IntendedMeaning)
             .Where(g => g.Count() > 1).Select(g => g.Key).ToHashSet(StringComparer.Ordinal);
-        _symbolNames = [.. _catalog.All.Select(p => duplicated.Contains(p.IntendedMeaning)
+        _symbolNames = [.. _symbols.Select(p => duplicated.Contains(p.IntendedMeaning)
             ? UiStrings.FormatWithoutMnemonic(UiStrings.SymbolDisambiguation, p.IntendedMeaning, p.AltText)
             : p.IntendedMeaning)];
 
@@ -226,7 +230,7 @@ public sealed class AllAboardForm : Form
         // Each card: include it or not, and optionally override its printed
         // label — "Alto," not the catalog's English (RC-2). The MEANING still
         // names the row: never "image", never a filename.
-        for (var i = 0; i < _catalog.All.Count; i++)
+        for (var i = 0; i < _symbols.Count; i++)
         {
             var include = new CheckBox
             {
@@ -304,7 +308,7 @@ public sealed class AllAboardForm : Form
     }
 
     private AssetId? SymbolAt(int index)
-        => _steps[index].Symbol.SelectedIndex > 0 ? _catalog.All[_steps[index].Symbol.SelectedIndex - 1].Id : null;
+        => _steps[index].Symbol.SelectedIndex > 0 ? _symbols[_steps[index].Symbol.SelectedIndex - 1].Id : null;
 
     private CardSpec CardAt(int index)
         => new(_steps[index].Text.Text, Symbol: SymbolAt(index));
@@ -329,11 +333,11 @@ public sealed class AllAboardForm : Form
                 case 3:
                     var chosen = _agency.Select((row, i) => (row, i)).Where(pair => pair.row.Include.Checked).ToList();
                     outcome = AllAboardBuilders.BuildAgencyCards(
-                        [.. chosen.Select(pair => _catalog.All[pair.i].Id)],
+                        [.. chosen.Select(pair => _symbols[pair.i].Id)],
                         _catalog,
                         labels: chosen.Any(pair => !string.IsNullOrWhiteSpace(pair.row.Override.Text))
                             ? [.. chosen.Select(pair => string.IsNullOrWhiteSpace(pair.row.Override.Text)
-                                ? _catalog.All[pair.i].IntendedMeaning
+                                ? _symbols[pair.i].IntendedMeaning
                                 : pair.row.Override.Text)]
                             : null);
                     break;
@@ -342,7 +346,7 @@ public sealed class AllAboardForm : Form
                     var steps = _steps
                         .Where(s => !string.IsNullOrWhiteSpace(s.Text.Text) || s.Symbol.SelectedIndex > 0)
                         .Select(s => new StepSpec(s.Text.Text,
-                            s.Symbol.SelectedIndex > 0 ? _catalog.All[s.Symbol.SelectedIndex - 1].Id : null))
+                            s.Symbol.SelectedIndex > 0 ? _symbols[s.Symbol.SelectedIndex - 1].Id : null))
                         .ToList();
                     outcome = AllAboardBuilders.BuildTaskStrip(_title!.Text, steps, _catalog);
                     break;

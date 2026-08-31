@@ -309,10 +309,111 @@ public class LocalSymbolStoreTests : IDisposable
         Assert.Equal(pack.All.Count + 1, composite.All.Count);
     }
 
+    [Fact]
+    public void A_composite_catalog_refuses_an_exact_identity_collision()
+    {
+        var first = SyntheticProvenance("family-a.shared.v1");
+        var second = SyntheticProvenance("family-a.shared.v1") with { Source = "family-b" };
+
+        var exception = Assert.Throws<InvalidDataException>(() => new CompositeAssetCatalog(
+            new SyntheticCatalog(first),
+            new SyntheticCatalog(second)));
+
+        Assert.Contains("collides", exception.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void A_composite_catalog_refuses_a_portable_case_confusable_identity_collision()
+    {
+        var first = SyntheticProvenance("family-a.shared.v1");
+        var second = SyntheticProvenance("FAMILY-A.SHARED.V1") with { Source = "family-b" };
+
+        var exception = Assert.Throws<InvalidDataException>(() => new CompositeAssetCatalog(
+            new SyntheticCatalog(first),
+            new SyntheticCatalog(second)));
+
+        Assert.Contains("collides", exception.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void A_composite_catalog_snapshots_each_inventory_once_and_preserves_declared_order()
+    {
+        var first = SyntheticProvenance("family-a.first.v1");
+        var second = SyntheticProvenance("family-a.second.v1");
+        var changing = new ReorderingSyntheticCatalog(first, second);
+
+        var composite = new CompositeAssetCatalog(changing);
+        var firstRead = composite.All.Select(asset => asset.Id).ToArray();
+        var secondRead = composite.All.Select(asset => asset.Id).ToArray();
+
+        Assert.Equal([first.Id, second.Id], firstRead);
+        Assert.Equal(firstRead, secondRead);
+        Assert.Equal(1, changing.AllReads);
+        Assert.Equal(second, composite.Find(second.Id));
+        Assert.True(composite.TryGetContent(second.Id, out var content, out var mimeType));
+        Assert.Equal("image/svg+xml", mimeType);
+        Assert.NotEmpty(content.ToArray());
+    }
+
     private void RewriteManifest(IReadOnlyList<AssetProvenance> records)
     {
         File.WriteAllText(
             Path.Combine(_directory, LocalSymbolStore.ManifestFileName),
             JsonSerializer.Serialize(records, StorageJson.Options));
+    }
+
+    private static AssetProvenance SyntheticProvenance(string id) => new(
+        new AssetId(id),
+        ConceptId: "synthetic.concept",
+        Version: "1.0.0",
+        FileName: $"{id}.svg",
+        MimeType: "image/svg+xml",
+        Source: "family-a",
+        Creator: "Synthetic test fixture",
+        License: "CC0-1.0",
+        Sha256: new string('A', 64),
+        IntendedMeaning: id,
+        AltText: $"Synthetic symbol {id}",
+        Redistributable: true);
+
+    private sealed class SyntheticCatalog(params AssetProvenance[] assets) : IAssetCatalog
+    {
+        private static readonly byte[] Svg = Encoding.UTF8.GetBytes(
+            "<svg xmlns=\"http://www.w3.org/2000/svg\"/>");
+
+        public IReadOnlyList<AssetProvenance> All { get; } = [.. assets];
+
+        public AssetProvenance? Find(AssetId id)
+            => All.SingleOrDefault(asset => asset.Id == id);
+
+        public bool TryGetContent(AssetId id, out ReadOnlyMemory<byte> content, out string mimeType)
+        {
+            if (Find(id) is not null)
+            {
+                content = Svg;
+                mimeType = "image/svg+xml";
+                return true;
+            }
+
+            content = default;
+            mimeType = string.Empty;
+            return false;
+        }
+    }
+
+    private sealed class ReorderingSyntheticCatalog(params AssetProvenance[] assets) : IAssetCatalog
+    {
+        private readonly SyntheticCatalog _content = new(assets);
+        private readonly AssetProvenance[] _assets = [.. assets];
+
+        public int AllReads { get; private set; }
+
+        public IReadOnlyList<AssetProvenance> All
+            => ++AllReads % 2 == 1 ? [.. _assets] : [.. _assets.Reverse()];
+
+        public AssetProvenance? Find(AssetId id) => _content.Find(id);
+
+        public bool TryGetContent(AssetId id, out ReadOnlyMemory<byte> content, out string mimeType)
+            => _content.TryGetContent(id, out content, out mimeType);
     }
 }

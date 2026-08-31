@@ -500,26 +500,68 @@ public sealed class LocalSymbolStore : IAssetCatalog
         => new([.. value.Where(c => char.IsLetterOrDigit(c) || c is '-' or '.' or '_')]);
 }
 
-/// <summary>One lookup across the libre pack and the teacher's shelf, first match wins.</summary>
-public sealed class CompositeAssetCatalog(params IAssetCatalog[] catalogs) : IAssetCatalog
+/// <summary>
+/// One stable lookup across explicitly supplied catalogs. Identities must be
+/// globally unique: composition refuses exact and portable case-confusable
+/// collisions instead of letting catalog order silently choose the bytes.
+/// </summary>
+public sealed class CompositeAssetCatalog : IAssetCatalog
 {
-    public IReadOnlyList<AssetProvenance> All => [.. catalogs.SelectMany(c => c.All)];
+    private readonly Dictionary<AssetId, CatalogEntry> _entries;
+
+    public CompositeAssetCatalog(params IAssetCatalog[] catalogs)
+    {
+        ArgumentNullException.ThrowIfNull(catalogs);
+
+        var all = new List<AssetProvenance>();
+        var entries = new Dictionary<AssetId, CatalogEntry>();
+        var portableIds = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+        foreach (var catalog in catalogs)
+        {
+            ArgumentNullException.ThrowIfNull(catalog);
+            var snapshot = catalog.All
+                ?? throw new InvalidDataException("An asset catalog returned no inventory.");
+
+            foreach (var provenance in snapshot)
+            {
+                if (provenance is null || string.IsNullOrWhiteSpace(provenance.Id.Value))
+                {
+                    throw new InvalidDataException("An asset catalog contains an invalid asset identity.");
+                }
+
+                if (!portableIds.Add(provenance.Id.Value)
+                    || !entries.TryAdd(provenance.Id, new CatalogEntry(catalog, provenance)))
+                {
+                    throw new InvalidDataException(
+                        $"Asset identity '{provenance.Id.Value}' collides across composed catalogs.");
+                }
+
+                all.Add(provenance);
+            }
+        }
+
+        All = [.. all];
+        _entries = entries;
+    }
+
+    public IReadOnlyList<AssetProvenance> All { get; }
 
     public AssetProvenance? Find(AssetId id)
-        => catalogs.Select(c => c.Find(id)).FirstOrDefault(p => p is not null);
+        => _entries.TryGetValue(id, out var entry) ? entry.Provenance : null;
 
     public bool TryGetContent(AssetId id, out ReadOnlyMemory<byte> content, out string mimeType)
     {
-        foreach (var catalog in catalogs)
+        if (_entries.TryGetValue(id, out var entry)
+            && entry.Catalog.TryGetContent(id, out content, out mimeType))
         {
-            if (catalog.TryGetContent(id, out content, out mimeType))
-            {
-                return true;
-            }
+            return true;
         }
 
         content = default;
         mimeType = string.Empty;
         return false;
     }
+
+    private sealed record CatalogEntry(IAssetCatalog Catalog, AssetProvenance Provenance);
 }

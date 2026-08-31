@@ -25,14 +25,16 @@ First-pass search of the visual-schedule/autism app space (Goally, Lil Planner, 
 No product named "Symbol Commons" surfaced. The adjacent ecosystem is an implementation gift, not a conflict:
 
 - **OpenSymbols** (opensymbols.org, open-aac/opensymbols on GitHub) indexes 50,000+ AAC symbols from multiple repositories and returns source-specific licence and attribution metadata — prior art to learn from and interoperate with, not compete with.
-- **Mulberry Symbols** (~3,000, CC BY-SA) and **OpenMoji** (~3,000, CC BY-SA) are license-compatible candidates for the bundled libre core (plan §9 prefers CC0/CC BY/CC BY-SA).
+- **Mulberry Symbols** and **OpenMoji** are CC BY-SA graphics candidates for protected review, not blanket-cleared or adopted sources. Exact measured release pins, corpus sizes, engine blockers, and review fields are in the [symbol-source candidate packet](council/symbol-source-candidate-packet.md).
 - **ARASAAC** (~13,000, CC BY-NC-SA) and **Sclera** (~11,000, CC BY-NC) are **noncommercial-licensed: never bundled** as a universally free commons — import-only for entitled educators, technically isolated from public export, exactly as the plan's invariants require.
 
-**Recommendation:** record Mulberry + OpenMoji as the candidate bundled core for plan §20 decision 6, and add "interoperability with OpenSymbols identifiers" to Symbol Commons' design considerations.
+**Recommendation:** evaluate Mulberry + OpenMoji as a complementary candidate pair for plan §20 decision 6, using the product-owner role hypothesis and protected-seat gates in the [candidate packet](council/symbol-source-candidate-packet.md); keep "interoperability with OpenSymbols identifiers" as a Symbol Commons design consideration.
 
 ### OpenSymbols candidate note — 30 August 2026
 
 The typist has expressly noted that OpenSymbols may be used for AAC features. That makes it a recorded candidate, not a blanket asset approval or a substitute for the AAC/SLP and rights seats.
+
+The typist has also proposed complementary roles for Mulberry, OpenMoji, and future Honest Ink originals. That proposal is preserved—without being activated—in the [Mulberry and OpenMoji candidate packet](council/symbol-source-candidate-packet.md).
 
 The current [catalog](https://www.opensymbols.org/search) aggregates repositories under different licences; each admitted symbol therefore needs its own provider, repository key, symbol key, source/detail URL, acquisition date, author, exact licence metadata, attribution, and content hash carried into Honest Ink's existing rights ledger. Remote identifiers alone are not durable provenance. The API's fields may be absent and do not supply Honest Ink's required modification history, attribution disposition, commercial-use decision, or release/consent record. The MIT licence on the [OpenSymbols server source](https://github.com/open-aac/opensymbols) licenses that server code, not every indexed image.
 
