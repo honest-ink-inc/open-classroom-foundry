@@ -260,4 +260,83 @@ public class ArchitectureRulesTests
             "The network allowlist names files that no longer reach the network; remove them:\n"
             + string.Join('\n', stale));
     }
+
+    // D5 / D19 Q3: the portable engine is a contract, not an aspiration. CI now
+    // proves the generated samples are byte-identical between Windows and Linux,
+    // and that proof silently assumes the engine stays platform-neutral -- an
+    // assumption nothing checked, because no test in this repository inspected a
+    // target framework. A third project quietly acquiring a -windows TFM would
+    // erode the portable core and the cross-platform gate would not notice.
+    //
+    // Scoped to src/ deliberately. Three test projects target Windows because the
+    // shell they exercise does; that is correct and is not this rule's business.
+    //
+    // What this does NOT claim: for most of the graph, NuGet already refuses the
+    // mistake. A project with portable consumers cannot become Windows-coupled --
+    // restore fails with NU1201 before any test runs. This check earns its place
+    // on the cases NU1201 cannot see: a leaf nothing references yet (today
+    // Foundry.Inference.Local has no consumers at all), a project whose consumers
+    // are themselves platform-coupled, a newly added project, and a refactor that
+    // centralizes TargetFramework into Directory.Build.props -- which builds
+    // perfectly and would hide the value from a naive reader. All four were
+    // exercised before this test was committed.
+    private static readonly Dictionary<string, string> PlatformCoupledProjects =
+        new(StringComparer.OrdinalIgnoreCase)
+        {
+            ["Foundry.App.WinForms"] =
+                "The application shell itself: WinForms, printing, and the platform "
+                + "surfaces a kiosk needs.",
+            ["Foundry.Infrastructure.Windows"] =
+                "The platform adapter behind the engine's service seams. It exists so "
+                + "that everything else does not have to be Windows-coupled.",
+        };
+
+    [Fact]
+    public void Only_the_shell_and_the_platform_adapter_target_a_platform()
+    {
+        var root = RepoRoot();
+        var coupled = new List<string>();
+
+        foreach (var csproj in Directory.EnumerateFiles(
+                     Path.Combine(root, "src"), "*.csproj", SearchOption.AllDirectories))
+        {
+            var document = XDocument.Load(csproj);
+            var frameworks = document.Descendants()
+                .Where(e => e.Name.LocalName is "TargetFramework" or "TargetFrameworks")
+                .SelectMany(e => e.Value.Split(';', StringSplitOptions.RemoveEmptyEntries))
+                .Select(value => value.Trim())
+                .Where(value => value.Length > 0)
+                .ToArray();
+
+            var project = Path.GetFileNameWithoutExtension(csproj);
+
+            // A project that declares no target framework would slip past the check
+            // below without ever being read. Say so rather than skipping it.
+            Assert.True(
+                frameworks.Length > 0,
+                $"{project} declares no TargetFramework, so its platform coupling cannot be read.");
+
+            if (frameworks.Any(framework => framework.Contains("-windows", StringComparison.OrdinalIgnoreCase)))
+            {
+                coupled.Add(project);
+            }
+        }
+
+        var undeclared = coupled.Where(p => !PlatformCoupledProjects.ContainsKey(p)).ToArray();
+        Assert.True(
+            undeclared.Length == 0,
+            "A project outside the declared platform-coupled set targets a platform. The "
+            + "portable engine is what the cross-platform sample gate rests on; if this is "
+            + "intended, add it to PlatformCoupledProjects with the reason:\n"
+            + string.Join('\n', undeclared));
+
+        // If a project stops being platform-coupled that is good news, and the list
+        // should shrink to say so rather than keeping a name it no longer needs.
+        var stalePlatform = PlatformCoupledProjects.Keys.Where(p => !coupled.Contains(p)).ToArray();
+        Assert.True(
+            stalePlatform.Length == 0,
+            "The platform-coupled list names projects that no longer target a platform; "
+            + "remove them:\n"
+            + string.Join('\n', stalePlatform));
+    }
 }
