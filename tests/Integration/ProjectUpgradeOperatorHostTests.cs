@@ -18,6 +18,7 @@ using Xunit.Abstractions;
 
 namespace Foundry.Tests.Integration;
 
+[Collection(ConsoleProcessTestGroup.Name)]
 public sealed class ProjectUpgradeOperatorHostTests : IDisposable
 {
     private const string PriorEngineVersion = "0.1.0-dev";
@@ -584,6 +585,16 @@ public sealed class ProjectUpgradeOperatorHostTests : IDisposable
 
         var senderOutput = await sender.StandardOutput.ReadToEndAsync();
         var senderError = await sender.StandardError.ReadToEndAsync();
+        if (sender.ExitCode != 0)
+        {
+            var candidateEntries = Directory
+                .EnumerateFileSystemEntries(_candidateRoot, "*", SearchOption.TopDirectoryOnly)
+                .Take(ProjectCount + 1)
+                .Count();
+            _testOutput.WriteLine(
+                $"upgrade-console-sender-failure: senderExit={sender.ExitCode}; hostExited={host.HasExited}; candidateEntries={candidateEntries}; lockExists={File.Exists(batchLockPath)}; hostStdoutEmpty={new FileInfo(outputPath).Length == 0}; hostStderrEmpty={new FileInfo(errorPath).Length == 0}");
+        }
+
         Assert.Empty(senderOutput);
         Assert.Empty(senderError);
         Assert.Equal(0, sender.ExitCode);

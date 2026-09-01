@@ -4,8 +4,9 @@
 **Integration branch:** `codex/forge-integration-2026-09-01`
 **Base:** `96e37e9` (`main`)
 **State:** current branch repository-state handover; Option A is ratified through
-the exact pushed C1/C2 sequence; PR 5 remains unmerged while measured hosted
-failures are repaired after C2
+the exact pushed C1/C2 sequence; C3 is pushed; the C4 candidate has completed
+its local close; PR 5 remains unmerged pending hosted proof of the scheduling-
+isolation candidate
 
 This is the compact successor record for the forge continuation accumulated in
 the [kiosk-plan evaluation](2026-08-30-kiosk-plan-evaluation.md). It inherits
@@ -57,9 +58,14 @@ could be completed without pretending a protected review had occurred:
   diagnoses**. Bounded reproduction instruments retain names, messages, source
   identity, process-tree cleanup, and partial evidence. Passing alone or in a
   later broad run does not prove a cause or a cure.
-- Hosted PR run `33497314978` added one separate console-control lock-observation
-  timeout to the sighting record. It passed five immediate isolated local reruns,
-  but that is only a current-code non-reproduction; no cause or cure is claimed.
+- Hosted PR runs `33497314978` and `33504105140` reproduced the same
+  console-control lock-observation timeout. The second run left that test as the
+  only failure and the hardened C3 collector retained its exact failed TRX. A
+  forensic comparison identified a test scheduling/readiness candidate rather
+  than evidence of failed product cancellation; the C4 candidate isolates the
+  real console exercise from parallel Integration collections without extending
+  its deadline and adds content-free lock-probe diagnostics. Hosted C4 proof
+  remains pending.
 - Provider and district-policy boundaries now fail closed around target
   construction, bearer acquisition, redirects, deadlines, status handling,
   response size and shape, strict UTF-8 JSON, endpoint inventory, and cancellation
@@ -244,6 +250,90 @@ evidence was not rerun or repurposed as new C3 evidence. This closing note chang
 only the governed handover record and is followed by the document-governance Unit
 suite before commit.
 
+### C3 hosted rerun and console-process scheduling-isolation candidate
+
+C3 `4754637b6c98ccd8daf357bea7a0505a61b449ea` was committed with C2 as
+its sole parent and pushed to pull request 5. CodeQL run `33504105104`
+completed successfully. CI run `33504105140` completed red at the bounded test
+step, so the branch was not merged and the workflow was not rerun blindly.
+Release build, formatting, secret scan, and every suite except one Integration
+case passed. The exact failure remained
+`ProjectUpgradeOperatorHostTests.Real_console_ctrl_c_cancels_the_process_and_cleans_the_synthetic_batch`
+with `Assert.Empty() Failure: String was not empty` and
+`console-signal.lock-observation-timeout`; Integration measured 297/298.
+
+C3's repaired failure collector worked as intended. Its receipt
+`20260901T114837Z-73edf7b6ab8d42ec8ee3d26fac1c7bda` retained all seven
+TRXs and all seven coverage files, recorded the failed Integration TRX as
+coherent and diagnostically retainable but success-invalid, preserved its exact
+298/298 executed and 297/298 passed counters, and kept the overall exit at 1.
+The curated and raw Integration TRXs were byte-identical at SHA-256
+`04DDB040A9C8BA4F620B65EE02CE95F0FA3B16EF7EA891992B9EAD3681C1D262`.
+There was no outer timeout, source or assembly identity drift, stranded active
+marker, or stream/snapshot error. This is instrumentation proof, not a green
+test result.
+
+Comparison of both hosted failures established the bounded distinction the
+first record could not. In each, the sender had attached to the isolated console,
+installed its own ignore handler, polled for at least 15 seconds without
+observing the lock's exclusive sharing violation, and still observed the target
+process alive at the deadline. The failures lasted 28.7749389 and 23.9197687
+seconds and both overlapped the same two-export Edge PDF exercise while xUnit ran
+up to four Integration tests concurrently. Ten retained isolated local passes
+took 0.5643130–0.6035544 seconds; the same case took 1.4728911 and 1.1427937
+seconds in the two full local C3 closes. The signal was never sent in either
+hosted failure, so those records cannot diagnose the product's console handler,
+cancellation, or cleanup behavior.
+
+The C4 candidate therefore changes only the test scheduling and diagnostic
+seams. `ProjectUpgradeOperatorHostTests` belongs to a dedicated xUnit collection
+whose parallelization is disabled, keeping the real production executable,
+isolated console, exclusive-lock observation, `CTRL_C_EVENT`, 15-second
+observation boundary, cooperative exit, cleanup, and source-immutability checks
+unchanged while preventing the measured intra-assembly PDF co-scheduling. A
+future timeout retains only content-free state: target liveness, last lock-probe
+classification and counts, attempt count, maximum inter-poll gap, elapsed
+milliseconds, bounded candidate-entry count, lock existence, and empty/nonempty
+host-stream state. It emits no path, PID, plan/package identity, or raw stream
+content. A synthetic live-target/missing-lock exercise reached the unchanged
+deadline at exit 5 and emitted only `lastLockState=missing`, 1,034 matching
+missing observations, zero openable/access-refused/other-I/O observations, a
+31 ms maximum poll gap, and 15,010 ms elapsed.
+
+The exact real-signal test passed locally in 609 ms; the two direct
+cancellation/cleanup tests passed 2/2; and the complete coverage-enabled
+Integration assembly passed 298/298, with the console collection running after
+the parallel-capable PDF tests.
+
+### C4 local close
+
+The final C4 working state completed a warnings-as-errors Release build across
+all 26 projects with zero warnings and errors. `dotnet format` completed its fix
+pass and the subsequent full `--verify-no-changes` pass exited 0. Two fresh,
+unchanged-state solution-wide bounded runs then passed **1,989/1,989** each:
+
+- `20260901T121158Z-cdfed2aec90a4c1d9ebbd22004ef8271`
+- `20260901T121606Z-ed553cc107284325befeb4a4c4cded1f`
+
+Each receipt records Accessibility 26, Contract 152, Instructional Evals 336,
+Integration 298, Rendering 81, UI Automation 261, and Unit 835; seven current
+TRXs and seven direct coverage files; runner and test-process exits 0; no outer
+timeout; observed parent exit and drained streams; stable five-entry source and
+Release-assembly identities; no identity, completeness, snapshot, or stream
+error; permission for the next runner; and a cleared active marker. The
+console-control exercise passed in both broad runs after the Integration
+scheduler seam changed.
+
+The ratification-history verifier again confirmed exact C1
+`5cae09dcb40628265d51912aea98304557abfda6`, its immediately following
+single-parent record-only C2
+`94f128cddd5cdbd00a6f7097b470e4defdebaa47`, the exact governed six-file C2
+diff, and both commits in current ancestry. C4 changes no deterministic-press
+source, recipe, fixture, or sample input, so the C1 SampleGenerator evidence is
+not rerun or relabeled. This final evidence note changes only the governed
+handover record and is followed by the full document-governance Unit suite
+before commit. No C4 commit ID, hosted C4 conclusion, or merge claim exists yet.
+
 ## Future work, in authority order
 
 1. Have the multilingual seat supply and review one exact real chrome catalog;
@@ -285,9 +375,12 @@ a cleared active marker. The final pre-C2 closing note changed only the governed
 handover record, and the document-governance Unit suite was rerun before C2 was
 committed.
 
-C1 and exact C2 `94f128cddd5cdbd00a6f7097b470e4defdebaa47` are now pushed
-on `codex/forge-integration-2026-09-01`, and pull request 5 remains open and
-unmerged. The post-C2 working tree has completed the measured local C3 close
-recorded above. No C3 commit ID, rerun hosted conclusion, merge commit, ancestry
-proof, or main-branch workflow conclusion exists yet. Until those results exist,
-this handover makes no hosted-green or merged claim.
+C1, exact C2 `94f128cddd5cdbd00a6f7097b470e4defdebaa47`, and C3
+`4754637b6c98ccd8daf357bea7a0505a61b449ea` are pushed on
+`codex/forge-integration-2026-09-01`; pull request 5 remains open and unmerged.
+C3 CodeQL is green, but C3 CI is red for the exact repeated console-process case
+recorded above. The C4 working tree has completed its focused, Integration, and
+two-run full local close recorded above. No C4 commit, hosted C4 conclusion,
+merge commit, post-merge ancestry proof, or main-branch workflow conclusion
+exists yet. Until those results exist, this handover makes no hosted-green or
+merged claim.

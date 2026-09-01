@@ -70,8 +70,45 @@ try
     }
 
     var observationWatch = Stopwatch.StartNew();
-    while (!IsHeldBatchLock(batchLockPath))
+    var observationAttempts = 0;
+    var missingObservations = 0;
+    var openableObservations = 0;
+    var accessRefusedObservations = 0;
+    var otherIoObservations = 0;
+    var lastObservationElapsedMilliseconds = 0L;
+    var maximumPollGapMilliseconds = 0L;
+    var lastLockState = BatchLockState.Missing;
+    while (true)
     {
+        var observationElapsedMilliseconds = observationWatch.ElapsedMilliseconds;
+        maximumPollGapMilliseconds = Math.Max(
+            maximumPollGapMilliseconds,
+            observationElapsedMilliseconds - lastObservationElapsedMilliseconds);
+        lastObservationElapsedMilliseconds = observationElapsedMilliseconds;
+        observationAttempts++;
+        lastLockState = ObserveBatchLock(batchLockPath);
+        if (lastLockState == BatchLockState.Held)
+        {
+            break;
+        }
+
+        if (lastLockState == BatchLockState.Missing)
+        {
+            missingObservations++;
+        }
+        else if (lastLockState == BatchLockState.Openable)
+        {
+            openableObservations++;
+        }
+        else if (lastLockState == BatchLockState.AccessRefused)
+        {
+            accessRefusedObservations++;
+        }
+        else
+        {
+            otherIoObservations++;
+        }
+
         var targetWait = NativeMethods.WaitForSingleObject(targetProcess, milliseconds: 0);
         if (targetWait == NativeMethods.WaitObject0)
         {
@@ -87,7 +124,8 @@ try
 
         if (observationWatch.Elapsed >= lockObservationTimeout)
         {
-            Console.Error.WriteLine("console-signal.lock-observation-timeout");
+            Console.Error.WriteLine(
+                $"console-signal.lock-observation-timeout; target=running; lastLockState={LockStateReceipt(lastLockState)}; attempts={observationAttempts.ToString(CultureInfo.InvariantCulture)}; missing={missingObservations.ToString(CultureInfo.InvariantCulture)}; openable={openableObservations.ToString(CultureInfo.InvariantCulture)}; accessRefused={accessRefusedObservations.ToString(CultureInfo.InvariantCulture)}; otherIo={otherIoObservations.ToString(CultureInfo.InvariantCulture)}; maxPollGapMs={maximumPollGapMilliseconds.ToString(CultureInfo.InvariantCulture)}; elapsedMs={observationWatch.ElapsedMilliseconds.ToString(CultureInfo.InvariantCulture)}");
             return 5;
         }
 
@@ -123,7 +161,7 @@ finally
     _ = NativeMethods.FreeConsole();
 }
 
-static bool IsHeldBatchLock(string path)
+static BatchLockState ObserveBatchLock(string path)
 {
     try
     {
@@ -132,21 +170,70 @@ static bool IsHeldBatchLock(string path)
             FileMode.Open,
             FileAccess.Read,
             FileShare.ReadWrite | FileShare.Delete);
-        return false;
+        return BatchLockState.Openable;
     }
     catch (IOException exception) when ((exception.HResult & 0xFFFF) == NativeMethods.ErrorSharingViolation)
     {
-        return true;
+        return BatchLockState.Held;
     }
-    catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
+    catch (IOException exception) when ((exception.HResult & 0xFFFF) is NativeMethods.ErrorFileNotFound or NativeMethods.ErrorPathNotFound)
     {
-        return false;
+        return BatchLockState.Missing;
     }
+
+    catch (UnauthorizedAccessException)
+    {
+        return BatchLockState.AccessRefused;
+    }
+
+    catch (IOException exception)
+    {
+        return new BatchLockState(exception.HResult & 0xFFFF);
+    }
+}
+
+static string LockStateReceipt(BatchLockState state)
+{
+    if (state == BatchLockState.Missing)
+    {
+        return "missing";
+    }
+
+    if (state == BatchLockState.Openable)
+    {
+        return "openable";
+    }
+
+    if (state == BatchLockState.Held)
+    {
+        return "held";
+    }
+
+    if (state == BatchLockState.AccessRefused)
+    {
+        return "access-refused";
+    }
+
+    return $"io-error-{state.ErrorCode.ToString(CultureInfo.InvariantCulture)}";
+}
+
+internal readonly record struct BatchLockState(int ErrorCode)
+{
+    internal static BatchLockState Missing { get; } = new(NativeMethods.ErrorFileNotFound);
+
+    internal static BatchLockState Openable { get; } = new(0);
+
+    internal static BatchLockState Held { get; } = new(NativeMethods.ErrorSharingViolation);
+
+    internal static BatchLockState AccessRefused { get; } = new(NativeMethods.ErrorAccessDenied);
 }
 
 internal static partial class NativeMethods
 {
     internal const uint CtrlCEvent = 0;
+    internal const int ErrorFileNotFound = 2;
+    internal const int ErrorPathNotFound = 3;
+    internal const int ErrorAccessDenied = 5;
     internal const int ErrorSharingViolation = 32;
     internal const uint Synchronize = 0x00100000;
     internal const uint WaitObject0 = 0;
