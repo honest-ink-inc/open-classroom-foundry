@@ -49,4 +49,5 @@ Code contributions are active. Start with an issue and the current handover or r
 
 - Discuss substantive changes in an issue before a large pull request.
 - Keep commits focused; reference the ADR or plan section your change serves.
+- Merge with a merge commit; never squash-merge, rebase-merge, or force-push `main`. CI's ratification-history guard depends on exact ancestry, and [AGENTS.md](AGENTS.md) records why.
 - The implementation plan's stop-ship conditions (§19) are non-negotiable review criteria.

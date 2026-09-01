@@ -122,7 +122,7 @@ function Enter-LoadReproEvidenceLock {
         [Parameter(Mandatory)][string]$HarnessName
     )
 
-    # This is deliberately a cooperative lock shared by the two load-reproduction
+    # This is deliberately a cooperative lock shared by the load-reproduction
     # harnesses. An arbitrary builder does not honor it, so the harnesses also
     # compare source and output identities after every completed batch.
     $resolvedRepositoryRoot = [IO.Path]::GetFullPath($RepositoryRoot)
@@ -186,7 +186,7 @@ function New-LoadReproEvidenceDirectory {
     param(
         [Parameter(Mandatory)][string]$RepositoryRoot,
         [Parameter(Mandatory)]
-        [ValidateSet("uia-load-repro", "image-load-repro")]
+        [ValidateSet("uia-load-repro", "image-load-repro", "console-signal-load-repro")]
         [string]$EvidenceBaseName,
         [Parameter(Mandatory)]
         [ValidatePattern('^[A-Za-z0-9][A-Za-z0-9._-]*$')]

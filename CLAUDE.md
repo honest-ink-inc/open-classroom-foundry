@@ -9,6 +9,7 @@ Do not copy AGENTS.md's content here. One canonical file cannot drift out of ste
 - **Never commit** student data, credentials, or blind-study instruments (the seeded-error definitions and facilitator key).
 - **Never do without a human saying so in that session:** change repository visibility, publish, point a domain, tag or distribute a release, send correspondence, file anything public, or create accounts and accept terms.
 - **Install the hook first:** `pwsh tools/install-hooks.ps1`. It refuses commits carrying secrets. If it refuses yours, fix the content, never the hook.
+- **Merge commits only.** Never squash-merge, rebase-merge, or force-push `main`; CI's ratification-history guard depends on exact ancestry. AGENTS.md records why.
 - **Report what you measured.** Read a CI run's `conclusion`, not a watcher's exit code. Keep failure messages, not just names. Never call something green without running it.
 
 ## Claude Code specifics
