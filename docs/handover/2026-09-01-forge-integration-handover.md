@@ -4,9 +4,11 @@
 **Integration branch:** `codex/forge-integration-2026-09-01`
 **Base:** `96e37e9` (`main`)
 **State:** current branch repository-state handover; Option A is ratified through
-the exact pushed C1/C2 sequence; C3 is pushed; the C4 candidate has completed
-its local close; PR 5 remains unmerged pending hosted proof of the scheduling-
-isolation candidate
+the exact pushed C1/C2 sequence; C4 `5cf24a86249b35c44c557f3240455157e57e80e9`
+is pushed; its CodeQL run is green but its CI run is red on a newly named
+FlashCap lifecycle timeout; the test-only C5 bounded-native-lifecycle isolation
+candidate has completed its local close; C5 commit, push, and hosted proof remain
+pending; PR 5 remains unmerged
 
 This is the compact successor record for the forge continuation accumulated in
 the [kiosk-plan evaluation](2026-08-30-kiosk-plan-evaluation.md). It inherits
@@ -62,10 +64,20 @@ could be completed without pretending a protected review had occurred:
   console-control lock-observation timeout. The second run left that test as the
   only failure and the hardened C3 collector retained its exact failed TRX. A
   forensic comparison identified a test scheduling/readiness candidate rather
-  than evidence of failed product cancellation; the C4 candidate isolates the
-  real console exercise from parallel Integration collections without extending
-  its deadline and adds content-free lock-probe diagnostics. Hosted C4 proof
-  remains pending.
+  than evidence of failed product cancellation; C4 isolated the real console
+  exercise from parallel Integration collections without extending its deadline
+  and added content-free lock-probe diagnostics.
+- C4-head PR CodeQL run `33507671111` completed successfully. C4-head PR CI run
+  `33507671099` passed the console-control case in 1.7700168 seconds but stopped
+  on one newly named FlashCap lifecycle timeout: the test expected cancellation
+  and its five-second outer observation instead reported `TimeoutException`.
+  Both run records name C4 as `headSha` and checked out PR merge ref
+  `291b048c052de3b5cc9713b5dc470c091e56035d`; neither is mislabeled as a
+  direct C4 checkout. The retained receipt and byte-identical raw/curated TRX
+  make the failure a sighting, not a diagnosis of FlashCap or cleanup. C5
+  generalizes the nonparallel collection to both bounded native-lifecycle
+  classes without changing product code or any deadline; hosted proof remains
+  open.
 - Provider and district-policy boundaries now fail closed around target
   construction, bearer acquisition, redirects, deadlines, status handling,
   response size and shape, strict UTF-8 JSON, endpoint inventory, and cancellation
@@ -332,7 +344,83 @@ diff, and both commits in current ancestry. C4 changes no deterministic-press
 source, recipe, fixture, or sample input, so the C1 SampleGenerator evidence is
 not rerun or relabeled. This final evidence note changes only the governed
 handover record and is followed by the full document-governance Unit suite
-before commit. No C4 commit ID, hosted C4 conclusion, or merge claim exists yet.
+before commit. C4 was then committed as
+`5cf24a86249b35c44c557f3240455157e57e80e9` and pushed; its hosted outcome is
+recorded immediately below. No merge claim exists.
+
+### C4 hosted result and C5 bounded native-lifecycle isolation candidate
+
+CodeQL run `33507671111` completed successfully and CI run `33507671099`
+completed red. Both PR run records identify C4
+`5cf24a86249b35c44c557f3240455157e57e80e9` as `headSha` and checked out PR
+merge ref `291b048c052de3b5cc9713b5dc470c091e56035d`. PR 5 therefore remained
+unmerged and the CI run was not blindly retried. Ratification history, secret
+scan, warnings-as-errors build, and format succeeded. The bounded test step
+executed every test, with
+Accessibility 26/26, Contract 152/152, Instructional Evals 336/336, Rendering
+81/81, UI Automation 261/261, Unit 835/835, and Integration 297/298. The sole
+failure was
+`FlashCapCameraSourceTests.A_late_successful_start_is_stopped_and_disposed_again_after_immediate_cleanup`:
+the assertion expected `OperationCanceledException` but the outer five-second
+`WaitAsync` produced `TimeoutException: The operation has timed out.` The
+determinism, coverage-threshold, dependency, vulnerability, SBOM,
+distributable, and portable-sample gates were consequently skipped and are not
+inferred.
+
+Receipt `20260901T122927Z-9ced1d172cc9405ba728cd2ea3fa7cb7`
+records native and wrapper exits 1, no outer-process timeout, stable source and
+Release-assembly identities, observed parent exit, drained streams, permission
+for the next runner, all seven TRXs and all seven direct coverage files, and no
+identity, snapshot, or stream error. The raw and curated Integration TRXs are
+byte-identical at 463,583 bytes and SHA-256
+`6D9C9163DA96762AFD63319F828B5321FED64855580510235437DD3A5CAFD519`.
+The failing case lasted 11.6735845 seconds and overlapped a 38.3016974-second
+real-PDF test, a 37.3553761-second floor test, and an 11.6050305-second capture
+test. The exact C4 console-control case passed hosted in 1.7700168 seconds. This
+is one hosted non-reproduction of its prior timeout, not proof of cure.
+
+The FlashCap case passed in 20/20 fresh isolated local processes, passed within
+the coverage-enabled Integration assembly at 298/298 when the invoking shell set
+`DOTNET_PROCESSOR_COUNT=4`, and passed in 0.0055481 seconds within full bounded
+receipt `20260901T124002Z-94cdd0b0c53e40a4a13e0ce31c4e1370` under the same
+invocation context. That receipt measured clean C4, its recorded command and
+identities, and 1,989/1,989 with complete evidence and no timeout or identity
+error; it does **not** record environment variables or processor count, so it is
+not processor-count evidence. These are non-reproductions; neither the overlap
+nor the passes establish whether cancellation propagation, cleanup, or
+continuation scheduling caused the hosted delay.
+
+The C5 candidate makes the smallest evidence-led test change. It renames the
+test-only collection to `BoundedNativeLifecycleTestGroup`, places both the
+operator-host and FlashCap classes in that single disabled-parallelization
+collection, and adds a reflection contract that fails if either class leaves it
+or if parallelization is re-enabled. Production code and every lifecycle and
+test deadline remain unchanged. The coverage-enabled focused batch passed
+52/52. The complete coverage-enabled Integration assembly then passed 299/299;
+direct TRX interval comparison counted all 52 native-lifecycle cases and zero
+overlap with any of the other 247 Integration cases.
+
+The final C5 source state completed a warnings-as-errors Release build across all
+26 projects with zero warnings and errors. `dotnet format` completed its fixing
+pass and the full `--verify-no-changes` pass exited 0. Two independent
+solution-wide bounded runs then passed **1,990/1,990** each:
+
+- `20260901T125323Z-04c131a7ec8f44b785d1040b4beaed84`
+- `20260901T125714Z-c15a2b4114c545d9a1dbda10b562bc32`
+
+Each receipt records Accessibility 26, Contract 152, Instructional Evals 336,
+Integration 299, Rendering 81, UI Automation 261, and Unit 835; seven current
+TRXs and seven direct coverage files; wrapper and native test exits 0; no outer
+timeout; observed parent exit and drained streams; permission for the next
+runner; stable six-entry working-state and Release-assembly identities; no
+identity, completeness, snapshot, or stream error; and a cleared active marker.
+The ratification verifier again confirmed exact C1 and single-parent record-only
+C2 in current ancestry. No deterministic-press source, recipe, fixture, or sample
+input changed, so the C1 SampleGenerator proof is neither rerun nor relabeled.
+This final evidence note changes only governed documentation after the broad
+receipts and is followed by the full Unit/document-governance suite and format
+verification before commit. C5 commit, push, hosted conclusions, and merge remain
+pending.
 
 ## Future work, in authority order
 
@@ -375,12 +463,13 @@ a cleared active marker. The final pre-C2 closing note changed only the governed
 handover record, and the document-governance Unit suite was rerun before C2 was
 committed.
 
-C1, exact C2 `94f128cddd5cdbd00a6f7097b470e4defdebaa47`, and C3
-`4754637b6c98ccd8daf357bea7a0505a61b449ea` are pushed on
+C1, exact C2 `94f128cddd5cdbd00a6f7097b470e4defdebaa47`, C3
+`4754637b6c98ccd8daf357bea7a0505a61b449ea`, and C4
+`5cf24a86249b35c44c557f3240455157e57e80e9` are pushed on
 `codex/forge-integration-2026-09-01`; pull request 5 remains open and unmerged.
-C3 CodeQL is green, but C3 CI is red for the exact repeated console-process case
-recorded above. The C4 working tree has completed its focused, Integration, and
-two-run full local close recorded above. No C4 commit, hosted C4 conclusion,
-merge commit, post-merge ancestry proof, or main-branch workflow conclusion
-exists yet. Until those results exist, this handover makes no hosted-green or
+C4 CodeQL is green, but C4 CI is red for the distinct FlashCap lifecycle timeout
+recorded above. The C5 working tree has completed its focused, Integration, and
+two-run full local close recorded above. Its commit, push, hosted conclusions,
+merge commit, post-merge ancestry proof, and main-branch workflow conclusions do
+not yet exist. Until those results exist, this handover makes no hosted-green or
 merged claim.

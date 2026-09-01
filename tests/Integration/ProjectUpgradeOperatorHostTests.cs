@@ -18,7 +18,7 @@ using Xunit.Abstractions;
 
 namespace Foundry.Tests.Integration;
 
-[Collection(ConsoleProcessTestGroup.Name)]
+[Collection(BoundedNativeLifecycleTestGroup.Name)]
 public sealed class ProjectUpgradeOperatorHostTests : IDisposable
 {
     private const string PriorEngineVersion = "0.1.0-dev";

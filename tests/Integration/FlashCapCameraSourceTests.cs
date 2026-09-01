@@ -9,6 +9,7 @@ using Foundry.Infrastructure.Windows;
 
 namespace Foundry.Tests.Integration;
 
+[Collection(BoundedNativeLifecycleTestGroup.Name)]
 public class FlashCapCameraSourceTests
 {
     [Fact]
