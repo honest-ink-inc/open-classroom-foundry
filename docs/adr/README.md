@@ -18,4 +18,4 @@ Numbered, immutable once ratified, superseded only by a later ADR. Format: [temp
 
 | Packet | Purpose | Status |
 |---|---|---|
-| [Recipe identity disposition packet](recipe-identity-disposition-packet.md) | Records Option A for all 23 alpha-tag recipe identities plus the same-commit first-admission freeze for 15 candidate-only identities; retains the independent schema-1 `recipeHash` release stop without reopening ADR-001 | **DECIDED — OPTION A; local C1 hash pending, transitional state must not be pushed** |
+| [Recipe identity disposition packet](recipe-identity-disposition-packet.md) | Records Option A for all 23 alpha-tag recipe identities plus the same-commit first-admission freeze for 15 candidate-only identities; retains the independent schema-1 `recipeHash` release stop without reopening ADR-001 | **RATIFIED — OPTION A** |

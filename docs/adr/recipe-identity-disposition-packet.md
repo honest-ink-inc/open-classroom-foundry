@@ -1,6 +1,6 @@
 # Recipe identity disposition packet
 
-**Status:** DECIDED — OPTION A; candidate freeze hash pending in local C1; do not push this transitional state
+**Status:** RATIFIED — OPTION A
 
 **Measured:** 1 September 2026
 
@@ -248,16 +248,16 @@ changing their shared schema. An unlisted or ambiguous identity remains held. If
 any row selects Option B, one exact candidate engine identity applies to the
 whole build.
 
-## Disposition record — Option A complete except for C1's self-reference
+## Disposition record — Option A ratified through C1/C2
 
-A commit cannot contain its own Git object ID. The only honest completion route
-is therefore deliberately two-step:
+A commit cannot contain its own Git object ID. Ratification therefore used the
+following deliberately two-step route:
 
-1. The exact written owner decision and all fields below are completed first.
-2. The ordered closing rites run on this exact tree, which is committed once as
+1. The exact written owner decision and all fields below were completed first.
+2. The ordered closing rites ran on that exact tree, which was committed once as
    local, unpushed C1. C1 is the candidate freeze.
-3. An immediately following record-only C2 replaces `PENDING-C1-COMMIT-HASH`
-   with C1's full commit ID and changes the status to `RATIFIED`. C2 may update
+3. This immediately following record-only C2 names C1's full commit ID and
+   changes the status to `RATIFIED`. C2 may update
    only `README.md`, `docs/README.md`, `docs/adr/README.md`, this packet,
    `docs/handover/2026-09-01-forge-integration-handover.md`, and
    `tests/Unit/RecipeIdentityDispositionPacketTests.cs`; all six, and exactly
@@ -289,12 +289,12 @@ sample manifest supply those separate surfaces.
 
 | Record field | Explicit disposition |
 |---|---|
-| Status | `DECIDED — OPTION A; candidate freeze hash pending in local C1; do not push this transitional state` |
+| Status | `RATIFIED — OPTION A` |
 | Product owner / typist (private identity may be recorded outside the public repository) | Product owner / typist, this Codex session; private identity kept outside the public repository |
 | Decision instant | `2026-09-01T07:55:28.9491461Z` |
 | Exact written disposition | “Ratify Option A for all 23 outgoing recipe rows; treat `v0.7.0-alpha` tuples as pre-admission; freeze the 15 candidate-only identities with the same exact commit; retain schema 1’s missing `recipeHash` as a release stop pending a separately authorized schema-2 route; leave ADR-007 Proposed.” |
 | Exact outgoing snapshot | `a64abead04e56085b82ac632180ca1a362eb8bc3` via tag object `380a0e5c3b768bdaa655825b35a25307fe89c0e5` |
-| Exact candidate freeze state | `PENDING-C1-COMMIT-HASH` — local-only transitional marker; C2 must replace it with C1's full commit ID |
+| Exact candidate freeze state | `5cae09dcb40628265d51912aea98304557abfda6` — local C1, immediately followed by record-only C2 |
 | Treatment of unsigned `v0.7.0-alpha` recipe tuples | Development/pre-admission under Option A for all 23 rows; none is an admitted compatibility baseline |
 | Candidate engine identity, if any row uses Option B | Not applicable; no row uses Option B |
 | Candidate-only 15-identity first-admission freeze | The exact v2 manifest table below; the exact identity-to-definition/default-semantic-output regression in `RecipeIdentityDispositionPacketTests`; and the sorted 40-file `tests/Rendering/Fixtures/recipe-first-admission-samples.sha256` manifest (SHA-256 `DEF10A3258A2F2ABA922DF8F1BC38FC3A3209065B36F81F44C41B4FE047F4A90`), all contained by C1 |
@@ -372,8 +372,9 @@ Ratifying this packet does not authorize or supply any of the following:
 - trademark clearance, human AT/physical-device evidence, pilot evidence,
   district approval, rights review, or any other protected-seat act.
 
-Exactly one local, unpushed C1 is permitted by the transitional protocol above
-after the route is implemented and the ordered closing rites and repository hook
-accept the exact tree. No push is permitted until record-only C2 names C1's full
-commit ID, marks this packet `RATIFIED`, and passes the same closing rites. A
-green neighboring test cannot substitute for either exact record.
+The single candidate freeze is C1
+`5cae09dcb40628265d51912aea98304557abfda6`; its ordered closing rites and
+repository hook accepted the exact committed tree. This immediately following
+record-only C2 names that commit and marks the packet `RATIFIED`. C1 and C2 may
+be pushed only together after C2 passes the same closing rites. A green
+neighboring test cannot substitute for either exact record.

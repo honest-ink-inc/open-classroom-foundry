@@ -3,9 +3,8 @@
 **Prepared:** 1 September 2026
 **Integration branch:** `codex/forge-integration-2026-09-01`
 **Base:** `96e37e9` (`main`)
-**State:** candidate handover; it becomes the current repository-state record only
-after the governed recipe-identity disposition, exact-tree closing rites, and
-merge
+**State:** current branch repository-state handover; Option A is ratified through
+the exact local C1/C2 sequence, with hosted integration still pending
 
 This is the compact successor record for the forge continuation accumulated in
 the [kiosk-plan evaluation](2026-08-30-kiosk-plan-evaluation.md). It inherits
@@ -101,10 +100,9 @@ as a release stop pending a separately authorized schema-2 route, and ADR-007
 remains Proposed.
 
 The [recipe-identity disposition packet](../adr/recipe-identity-disposition-packet.md)
-records every exact row and the executable/evidence freeze. Its current local
-state is deliberately transitional because a commit cannot contain its own Git
-object ID. After the complete closing rites, local unpushed C1 freezes the exact
-candidate. Record-only C2 must then name C1's full hash and mark the packet
+records every exact row and the executable/evidence freeze. Local, unpushed C1
+`5cae09dcb40628265d51912aea98304557abfda6` freezes the exact candidate. This
+immediately following record-only C2 names that full hash and marks the packet
 `RATIFIED` without changing any frozen product or evidence surface. C2 must pass
 the same close before C1 and C2 are pushed together. No version, tag, signing,
 installation, distribution, publication, or deployment act is authorized.
@@ -117,11 +115,11 @@ review-notice and Module Studio paths. Focused exhaustive regressions bind that
 mechanical behavior; acknowledgement is not specialist or protected-seat
 approval, and no recipe/runtime hash changed to invent a second source of truth.
 
-C1 also contains the executable Git-history guard for the later record-only C2.
+C1 also contains the executable Git-history guard for record-only C2.
 Hosted CI requires full history, locates RATIFIED C2 even from a later regular
 merge commit, requires C1 as its sole immediate parent, requires both commits in
 `HEAD` ancestry, and requires exactly the governed six record files to differ.
-The current explicit pending C1 state can only produce a local skipped receipt;
+C1's historical pending state produced only its permitted local skipped receipt;
 CI invokes the guard with RATIFIED state required and retains its bounded JSON
 receipt. Squash and rebase would destroy the proof and are not permitted.
 
@@ -143,44 +141,43 @@ contract failure caused by literal diagnostic text in those helpers; the helpers
 now throw parameter-only exceptions. Neither failed run is erased or relabeled as
 a flake.
 
-After those repairs, two unchanged-source solution-wide runs completed with exit
-0, no outer timeout, stable source and Release-assembly identities, complete
-coverage/TRX evidence, and **1,985/1,985 passed** each:
+After those repairs, exact committed C1
+`5cae09dcb40628265d51912aea98304557abfda6` completed two solution-wide runs
+with exit 0, no outer timeout, stable source and Release-assembly identities,
+complete coverage/TRX evidence, and **1,985/1,985 passed** each:
 
-- `20260901T093822Z-57193c8511e54ea98f974d75e18e41e0`
-- `20260901T094215Z-f93c623684234fa7a48c1fbd82378a5d`
+- `20260901T100347Z-fe5a557bb19f42808f8e9ce0a0e2cca1`
+- `20260901T100741Z-c2db4365b28d4ecc979da76cb1315811`
 
 Each run measured Accessibility 25, Contract 152, Instructional Evals 336,
 Integration 298, Rendering 81, UI Automation 261, and Unit 832. The
-SampleGenerator then ran twice from the same candidate implementation: both runs
+SampleGenerator then ran twice from that exact C1: both runs
 produced exactly 40 files and 773,759 bytes, their inventories and every file
 hash matched, and the expected first-admission manifest matched SHA-256
 `DEF10A3258A2F2ABA922DF8F1BC38FC3A3209065B36F81F44C41B4FE047F4A90`.
-These are local candidate results, not a commit, hosted CI conclusion, release,
-or protected-seat act. C1 and record-only C2 still require their governed Git
-identity and post-commit verification.
+These are local C1 results, not a hosted CI conclusion, release, or protected-
+seat act. Record-only C2 still requires its own close and governed Git-history
+verification before the pair may be pushed.
 
 ## Future work, in authority order
 
-1. Complete the local C1/C2 ratification protocol, rerun the ordered close on
-   each exact tree, push both together, and merge only after hosted CI succeeds.
-2. Have the multilingual seat supply and review one exact real chrome catalog;
+1. Have the multilingual seat supply and review one exact real chrome catalog;
    only a separate authorized build may pin its digest and activate it.
-3. Run the real needs-first Atlas council session, freeze the participant record,
+2. Run the real needs-first Atlas council session, freeze the participant record,
    keep feasibility separate, and obtain written product-owner disposition.
-4. Review Mulberry/OpenMoji exact assets and mappings one by one across AAC/SLP,
+3. Review Mulberry/OpenMoji exact assets and mappings one by one across AAC/SLP,
    rights, and accessibility; admit nothing by family-wide assumption.
-5. Resolve the documented module acceptance gaps under honest new or frozen
+4. Resolve the documented module acceptance gaps under honest new or frozen
    recipe identities: SequenceSlate reorder and bilingual authoring UI; Board
    perspective/glare handling, multi-page PDF/slide intake, DOCX/ODT, and native
    print-PDF; Scaffold source comparison, checkpoint cards, and the task-entry
    blank-fade defect; Forumwright available-time fit and protected sensitive-topic
    evidence; and Inquirywright excerpt binding, role-bound exact facts, and
    unresolved-rights sink enforcement.
-6. Ratify or reject the managed-upgrade design, then obtain District IT's exact
+5. Ratify or reject the managed-upgrade design, then obtain District IT's exact
    roots, detection, retention, deployment, smoke, and rollback policy and prove
    it on managed devices.
-7. Complete human keyboard/AT and physical-device evidence, print inspection,
+6. Complete human keyboard/AT and physical-device evidence, print inspection,
    the six-week staff pilot, rights review, and all remaining release gates.
 
 The protected seats' territory remains non-waivable from the keyboard. More time
@@ -188,10 +185,21 @@ does not grant authority. Versioning, tagging, signing, installing, distributing
 publishing, filing, correspondence, protected reviews, and human evidence remain
 their named owners' acts unless that owner gives exact authority in the session.
 
-## Evidence rule for the eventual merge
+## Remaining integration evidence
 
-The merge record must name the exact Release build, format verification, two
-complete solution-wide test receipts, SampleGenerator comparison when its inputs
-changed, pre-commit result, branch commit, pull request, merge commit, and GitHub
-workflow conclusions. Until those exact results exist for the final tree, this
-handover makes no new green or merged claim.
+C1's exact local build, format, two complete solution-wide receipts,
+SampleGenerator comparison, hook result, and full commit ID are recorded above.
+The record-only C2 working state then completed a second 26-project Release
+build with zero warnings and errors, both formatting passes at exit 0, and two
+unchanged-state solution-wide receipts at **1,985/1,985 passed** each:
+`20260901T101453Z-e55ead923b494dbeb74a5853e22fa685` and
+`20260901T101842Z-f43d3fe2886f48dea4bde251e77fcfa1`. Each receipt records
+exactly six changed status entries, stable source and Release-assembly
+identities, all seven suites, no outer timeout, no identity/evidence errors, and
+a cleared active marker. This closing note changes only the governed handover
+record; the document-governance Unit suite is rerun before commit.
+
+C2 still requires the repository hook and committed exact-history guard before
+branch push. The session's integration record must then name C2, the pull
+request, merge commit, ancestry proof, and GitHub workflow conclusions. Until
+those results exist, this handover makes no hosted-green or merged claim.

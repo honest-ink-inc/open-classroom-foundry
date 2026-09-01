@@ -245,20 +245,28 @@ public sealed partial class RecipeIdentityDispositionPacketTests
     }
 
     [Fact]
-    public void Transitional_option_a_packet_exhaustively_freezes_all_recipe_contracts()
+    public void Ratified_option_a_packet_exhaustively_freezes_all_recipe_contracts()
     {
         var packet = PacketText();
+        const string candidateFreeze = "5cae09dcb40628265d51912aea98304557abfda6";
+        const string exactDisposition =
+            "“Ratify Option A for all 23 outgoing recipe rows; treat `v0.7.0-alpha` tuples as pre-admission; " +
+            "freeze the 15 candidate-only identities with the same exact commit; retain schema 1’s missing " +
+            "`recipeHash` as a release stop pending a separately authorized schema-2 route; leave ADR-007 Proposed.”";
 
         Assert.Contains(
-            "**Status:** DECIDED — OPTION A; candidate freeze hash pending in local C1; do not push this transitional state",
+            "**Status:** RATIFIED — OPTION A",
             packet,
             StringComparison.Ordinal);
+        Assert.Contains("| Status | `RATIFIED — OPTION A` |", packet, StringComparison.Ordinal);
         Assert.Contains("2026-09-01T07:55:28.9491461Z", packet, StringComparison.Ordinal);
+        Assert.Contains(exactDisposition, packet, StringComparison.Ordinal);
         Assert.Contains(
-            "Ratify Option A for all 23 outgoing recipe rows",
+            $"| Exact candidate freeze state | `{candidateFreeze}` — local C1, immediately followed by record-only C2 |",
             packet,
             StringComparison.Ordinal);
-        Assert.Contains("PENDING-C1-COMMIT-HASH", packet, StringComparison.Ordinal);
+        Assert.DoesNotContain("PENDING-C1-COMMIT-HASH", packet, StringComparison.Ordinal);
+        Assert.DoesNotContain("candidate freeze hash pending", packet, StringComparison.Ordinal);
         Assert.Contains("record-only C2", packet, StringComparison.Ordinal);
         Assert.Contains("Still Proposed", packet, StringComparison.Ordinal);
         Assert.Contains("separately authorized ADR defines schema 2", packet, StringComparison.Ordinal);
