@@ -2,13 +2,18 @@
 
 **Prepared:** 1 September 2026
 **Source integration branch:** `codex/forge-integration-2026-09-01`
+**Current corrective branch:** `codex/console-attach-readiness-2026-09-01`
 **Original base:** `96e37e9854861cc2a6098a9fbf05add708732e03` (`main`)
 **State:** current repository-state handover; Option A is ratified through the
 exact C1/C2 sequence; C5 `522b1a15bd58b3f4d1c4af1f3131fa246540c6ae`
 completed its local and hosted close; pull request 5 was regularly merged on 1
 September 2026 as `85a2d695aa6f48558addce324299f4c67915a28d` with the
-original base and exact C5 as its two parents; and the resulting `main` CI and
-CodeQL push runs are green
+original base and exact C5 as its two parents; documentation-only pull request 6
+was then regularly merged as `8c901709853ba44837d1e0132baef127f4b5ac5f`;
+pull request 6 CI and CodeQL were green, but its exact `main` push CI is red on a
+first-seen console-attachment sub-sighting while the separate `main` CodeQL run
+is green; the current narrow correction has completed its final local close in
+this change but has no push or hosted conclusion yet
 
 This is the compact successor record for the forge continuation accumulated in
 the [kiosk-plan evaluation](2026-08-30-kiosk-plan-evaluation.md). It inherits
@@ -83,6 +88,21 @@ occurred:
   ref `e55bdd929fea261e5910ba7e352d4a8a2c7e7fc8`. The green CI test receipt is one
   non-reproduction in the later hosted PR run, not a diagnosis or proof of cure;
   CodeQL is static-analysis evidence, not a test reproduction.
+- Documentation-only pull request 6 passed CI `33516013705` and CodeQL
+  `33516013782` on synthetic merge ref
+  `7d22a7e78310c1b4844aab9e242431a40807eff5`, then merged regularly as
+  `8c901709853ba44837d1e0132baef127f4b5ac5f`. Its exact `main` push CodeQL run
+  `33517101459` passed, but CI `33517101369` measured 1,989/1,990 when the real
+  console-control test's sender reported `console-signal.attach-failed`. This is
+  the first retained observation of that exact signature and an attachment-phase
+  sub-sighting distinct from the earlier lock-observation timeouts. It did not
+  deliver a signal or reach the product-cancellation assertions and supplies no
+  diagnosis. The current test-support correction records native attach and
+  target-watch results separately and retries only `ERROR_INVALID_HANDLE` (6)
+  while the target remains alive and time remains in one unchanged, absolute
+  15-second attachment-plus-lock-readiness budget. The final local build, format,
+  and two bounded stability runs recorded below are green; corrective-branch
+  push and hosted proof remain pending.
 - Provider and district-policy boundaries now fail closed around target
   construction, bearer acquisition, redirects, deadlines, status handling,
   response size and shape, strict UTF-8 JSON, endpoint inventory, and cancellation
@@ -491,10 +511,14 @@ publication, filing, protected-seat review, or release.
 5. Ratify or reject the managed-upgrade design, then obtain District IT's exact
    roots, detection, retention, deployment, smoke, and rollback policy and prove
    it on managed devices.
-6. Keep all recorded under-load sightings open as sightings and use retained
+6. Push the locally closed console-attachment corrective branch, then require
+   exact-commit pull-request and post-merge hosted conclusions before any hosted-
+   green or cure claim.
+7. Keep all recorded sightings and their distinct signatures open as sightings
+   and use retained
    receipts to seek equivalent-load reproduction before any causal fix, timeout
    increase, or closure claim.
-7. Complete human keyboard/AT and physical-device evidence, print inspection,
+8. Complete human keyboard/AT and physical-device evidence, print inspection,
    the six-week staff pilot, rights review, and all remaining release gates.
 
 The protected seats' territory remains non-waivable from the keyboard. More time
@@ -528,3 +552,124 @@ CodeQL `33512198619` both passed on that exact merge commit. This closes the
 authorized integration path measured in this handover while leaving the stated
 release stops, future work, protected reviews, and all non-diagnostic under-load
 sightings open.
+
+## Pull request 6, exact-main failure, and locally closed correction
+
+Documentation-only pull request 6 had head
+`43f155374459cf260fe604a9f600b4df29d88e0a` and base
+`85a2d695aa6f48558addce324299f4c67915a28d`. Pull-request CI run
+`33516013705` completed successfully: build-and-test job `99883098460`, secret
+scan job `99883098948`, and portable-samples job `99886204673` all passed. Its
+bounded receipt `20260901T135527Z-1e6adbf35dd04c2fa61c8a3f59ac0eb2` binds the
+checked-out synthetic merge ref
+`7d22a7e78310c1b4844aab9e242431a40807eff5` and records **1,990/1,990 passed**:
+Accessibility 26, Contract 152, Instructional Evals 336, Integration 299,
+Rendering 81, UI Automation 261, and Unit 835. Pull-request CodeQL run
+`33516013782`, job `99883098596`, also passed on that synthetic merge ref. Those
+`pull_request` runs name exact pull-request head
+`43f155374459cf260fe604a9f600b4df29d88e0a` as `headSha`; the synthetic checkout
+is not the later repository merge commit.
+
+Pull request 6 merged regularly at 2026-09-01T14:02:57Z as
+`8c901709853ba44837d1e0132baef127f4b5ac5f`, with exact first parent
+`85a2d695aa6f48558addce324299f4c67915a28d` and exact second parent
+`43f155374459cf260fe604a9f600b4df29d88e0a`. Its tree differs from the first
+parent only in the three governed documentation files named by the pull request.
+Main push CodeQL run `33517101459`, job `99886767781`, completed successfully on
+exact `headSha` and checkout `8c901709853ba44837d1e0132baef127f4b5ac5f`,
+including the clean-SARIF requirement. Main
+push CI run `33517101369` did not: build-and-test job `99886767578` failed,
+secret-scan job `99886767909` passed, and dependent portable-samples job
+`99889067410` was skipped. The green pull-request runs and green main CodeQL run
+do not override the red main CI conclusion.
+
+The failed bounded receipt
+`20260901T140524Z-8ff4cc52be4044b3a1021b7165ad5e95` binds clean exact commit
+`8c901709853ba44837d1e0132baef127f4b5ac5f`, stable source and Release-assembly
+identities, no outer timeout, and **1,989/1,990 passed**. Accessibility measured
+26/26, Contract 152/152,
+Instructional Evals 336/336, Integration 298/299, Rendering 81/81, UI Automation
+261/261, and Unit 835/835. The retained Integration TRX SHA-256 is
+`E85F112C74467AE09DEB1B020D158477046ED626F282B53007E4EE119B0B0AAD`. The exact
+failure was
+`ProjectUpgradeOperatorHostTests.Real_console_ctrl_c_cancels_the_process_and_cleans_the_synthetic_batch`
+at 0.6326650 seconds with `Assert.Empty() Failure: String was not empty` and
+`console-signal.attach-failed`. Its content-free snapshot was
+`senderExit=3; hostExited=False; candidateEntries=0; lockExists=False;
+hostStdoutEmpty=True; hostStderrEmpty=True`.
+
+That token existed as a fail-closed sender branch from C1 onward, but no earlier
+repository record, retained local evidence, supplied review bundle, issue or pull
+request comment, or hosted CI log since C1 records it as an observed failure.
+The two prior failures of this same test in runs `33497314978` and `33504105140`
+were later-phase `console-signal.lock-observation-timeout` sightings after the
+sender had attached and installed its ignore handler. In the new record,
+`AttachConsole` returned false before handler installation, lock observation,
+signal delivery, or product-cancellation and cleanup assertions. It is therefore
+a first-seen, distinct attachment-phase sub-sighting—not a recurrence of the
+lock timeout, one of the original three sightings (two headed UIA and one
+burned-region image), a diagnosis, or evidence that product cancellation failed.
+The green PR receipt followed by the red exact-main receipt also does not identify
+the host, scheduler, load, or documentation merge as a cause.
+
+At this checkpoint the corrective implementation in this change affects only the
+Windows test-support sender, its test visibility, and deterministic Integration
+tests. Its content-free receipt separately retains the inherited-console detach
+result/error, `lastAttachError`, whether any attachment succeeded, the most recent
+target-wait classification and `targetWaitError`, and bounded attempt/poll timing.
+The readiness helper consumes its caller's absolute shared-stopwatch elapsed value
+and 15-second deadline; it does not rebase a fresh attachment allowance. After an
+attachment error it re-observes the already-opened target handle before assigning
+any terminal timeout or nontransient-attach classification. It retries only exact
+`ERROR_INVALID_HANDLE` (6), and only while the target still reports running and
+budget remains; every other attach error fails after that same target observation.
+Target exit or target-watch failure stops the path. A successful attachment at
+the deadline is not admitted as ready, remains recorded as attached, and is
+detached by the outer `finally`. The existing exclusive-lock observation consumes
+whatever remains of the same stopwatch and 15-second total budget, so no product
+or test deadline is extended. Because the failed hosted receipt did not retain a
+native error code, this correction does not claim that the observed failure was
+`ERROR_INVALID_HANDLE` or that its cause is known.
+
+Measured local evidence on the revised corrective diff is bounded accordingly.
+A clean focused Release build completed with zero warnings and zero errors. Eight
+deterministic attachment-readiness cases plus the real
+console-control case passed **9/9**, with the real case at 577 ms. The eight cases
+cover bounded `ERROR_INVALID_HANDLE` retry, a running-target nontransient error,
+the existing readiness bound, the caller's absolute shared budget, target-state
+reobservation at the deadline, a successful attachment exactly at the deadline,
+target exit, and target-watch failure with its separate native error. Ten
+fresh-process executions of the real case on the same code passed **10/10** at
+571–669 ms. Full Integration passed **307/307**, with the real case at 549 ms.
+These are deterministic seam evidence and local non-reproductions, not a
+diagnosis or proof of cure.
+
+The final closing sequence then completed on one unchanged corrective state. The
+full 26-project Release build measured zero warnings and zero errors. Full
+`dotnet format` fix and `dotnet format --verify-no-changes` both exited 0. Two
+unchanged-state solution-wide bounded runs passed **1,998/1,998** each:
+
+- `20260901T144210Z-5cd7272a1847462fad734ec398f606c1` in 193,342 ms;
+- `20260901T144618Z-168807b0baa84e90a9fa6841a3c74138` in 188,530 ms.
+
+Each receipt records wrapper and native test-process exits 0, no outer timeout,
+observed parent exit, complete output drain, permission for another runner,
+stable source and Release-assembly identities, no identity or evidence-
+completeness errors, seven current TRXs, and seven direct coverage files. Each
+measured Accessibility 26, Contract 152, Instructional Evals 336, Integration
+307, Rendering 81, UI Automation 261, and Unit 835. These complete local passes
+remain non-reproductions, not a diagnosis or proof of cure. The corrective branch
+has not been pushed, tested by pull-request CI or CodeQL, merged, or observed on
+a post-merge `main` push; a hosted green is therefore not claimed. No
+deterministic-press source, recipe, fixture, or sample input changed, so the
+conditional SampleGenerator rite did not apply, was not rerun, and no earlier
+sample proof is relabeled.
+
+Nothing in pull request 6, the main failure, or this correction changes the
+ratified Option-A disposition for all 23 outgoing rows, the pre-admission status
+of the `v0.7.0-alpha` tuples, the exact-C1 freeze of all 15 candidate-only
+identities, schema 1's missing project `recipeHash` release stop, or ADR-007's
+Proposed status. It is not a version, tag, signature, installation, distribution,
+publication, filing, protected-seat review, or release. The typist's acts and all
+AAC/SLP, multilingual, district, rights, safeguarding, and other protected-seat
+territory remain unchanged.
