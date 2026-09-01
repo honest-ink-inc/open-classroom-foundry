@@ -102,6 +102,30 @@ public sealed class MinimumHardwareFloorTests
                 "authored");
         });
 
+    [Fact]
+    public void Board_default_size_absorbs_ambient_typography_growth_without_manufactured_scrollbars()
+        => RunSta(() =>
+        {
+            UiLocale.Set(UiLocaleMode.Neutral);
+            var fixture = CreateBoardIntakeFloorFixture();
+            using var ambientFont = new Font(
+                "Segoe UI",
+                10.25f,
+                FontStyle.Regular,
+                GraphicsUnit.Point);
+            Assert.Equal("Segoe UI", ambientFont.FontFamily.Name);
+            Assert.Equal(10.25f, ambientFont.SizeInPoints, precision: 2);
+            using var form = fixture.Form;
+            form.Font = ambientFont;
+            using var floor = PrepareAtFloor(
+                form,
+                scale: 1.0f,
+                maximize: false,
+                new Rectangle(0, 0, 1366, 728));
+
+            AssertBoardDefaultUsesItsAvailableViewport(floor);
+        });
+
     [Theory]
     [InlineData(UiLocaleMode.Neutral, 1.0f, 728)]
     [InlineData(UiLocaleMode.Pseudo, 1.25f, 728)]
@@ -283,12 +307,13 @@ public sealed class MinimumHardwareFloorTests
                     && control.RowCount == 3
                     && control.MinimumSize.Height == 350);
             var viewport = Assert.IsType<Panel>(comparison.Parent);
+            var trace = BoardDefaultViewportTrace(floor, comparison, viewport);
             Assert.False(
                 viewport.HorizontalScroll.Visible,
-                "Board to Brief manufactured a horizontal body scrollbar at its neutral default size.");
+                "Board to Brief manufactured a horizontal body scrollbar at its neutral default size. " + trace);
             Assert.False(
                 viewport.VerticalScroll.Visible,
-                "Board to Brief manufactured a vertical body scrollbar at its neutral default size.");
+                "Board to Brief manufactured a vertical body scrollbar at its neutral default size. " + trace);
         }
         finally
         {
@@ -297,6 +322,33 @@ public sealed class MinimumHardwareFloorTests
         }
 
         AssertFloor(floor);
+    }
+
+    private static string BoardDefaultViewportTrace(
+        FloorHost floor,
+        TableLayoutPanel comparison,
+        Panel viewport)
+    {
+        var body = Assert.IsType<TableLayoutPanel>(viewport.Parent);
+        var roles = Assert.IsType<GroupBox>(body.GetControlFromPosition(0, 2));
+        var outerActions = floor.ClientCanvas.Controls.OfType<FlowLayoutPanel>().Single();
+        var status = floor.ClientCanvas.Controls.OfType<Label>()
+            .Single(control => string.Equals(
+                control.Name,
+                BoardToBriefIntakeForm.StatusName,
+                StringComparison.Ordinal));
+        var intro = Descendants(body).OfType<Label>()
+            .Single(control => string.Equals(
+                control.AccessibleName,
+                UiStrings.WithoutMnemonic(UiStrings.BoardIntakeIntroduction),
+                StringComparison.Ordinal));
+        return $"surfaceClient={floor.Surface.ClientSize}; hostClient={floor.ClientCanvas.ClientSize}; " +
+            $"font={floor.ClientCanvas.Font.Name}/{floor.ClientCanvas.Font.SizeInPoints}; " +
+            $"bodyClient={body.ClientSize}; bodyRows=[{string.Join(',', body.GetRowHeights())}]; " +
+            $"introBounds={intro.Bounds}; rolesBounds={roles.Bounds}; rolesMinimum={roles.MinimumSize}; " +
+            $"rolesMargin={roles.Margin}; actionsBounds={outerActions.Bounds}; statusBounds={status.Bounds}; " +
+            $"viewportClient={viewport.ClientSize}; viewportDisplay={viewport.DisplayRectangle}; " +
+            $"comparisonBounds={comparison.Bounds}; comparisonMinimum={comparison.MinimumSize}.";
     }
 
     private static void AssertLoadedPreflightExpandsItsDocumentRow(FloorHost floor)

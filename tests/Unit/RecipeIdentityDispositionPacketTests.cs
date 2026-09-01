@@ -321,6 +321,10 @@ public sealed partial class RecipeIdentityDispositionPacketTests
 
         var candidateRows = CandidateOnlyRow().Matches(packet).ToArray();
         Assert.Equal(CandidateOnlyRecipeIds, candidateRows.Select(match => match.Groups["id"].Value));
+        Assert.Equal(
+            CandidateOnlyRecipeIds,
+            CandidateOnlyRow().Matches(packet.ReplaceLineEndings("\r\n"))
+                .Select(match => match.Groups["id"].Value));
         foreach (var row in candidateRows)
         {
             var recipeId = row.Groups["id"].Value;
@@ -343,6 +347,7 @@ public sealed partial class RecipeIdentityDispositionPacketTests
         }
 
         AssertHistoricalV1Evidence(packet);
+        AssertHistoricalV1Evidence(packet.ReplaceLineEndings("\r\n"));
     }
 
     [Fact]
@@ -520,7 +525,7 @@ public sealed partial class RecipeIdentityDispositionPacketTests
     private static partial Regex DispositionRow();
 
     [GeneratedRegex(
-        @"^\| `(?<id>press\.[^`]+)` \| `(?<candidate>[0-9A-F]{64})` \| `(?<version>[^`]+)` \| `(?<schema>[^`]+)` \| `(?<evaluation>[^`]+)` \| (?<definitions>[^|]+) \|$",
+        @"^\| `(?<id>press\.[^`]+)` \| `(?<candidate>[0-9A-F]{64})` \| `(?<version>[^`]+)` \| `(?<schema>[^`]+)` \| `(?<evaluation>[^`]+)` \| (?<definitions>[^|]+) \|\r?$",
         RegexOptions.Multiline | RegexOptions.CultureInvariant)]
     private static partial Regex CandidateOnlyRow();
 
@@ -530,7 +535,7 @@ public sealed partial class RecipeIdentityDispositionPacketTests
     private static partial Regex ManifestEvidenceRow();
 
     [GeneratedRegex(
-        @"^\| `(?<id>[^`]+)` \| `(?<outgoing>[0-9A-F]{64})` \| `(?<current>[0-9A-F]{64})` \|$",
+        @"^\| `(?<id>[^`]+)` \| `(?<outgoing>[0-9A-F]{64})` \| `(?<current>[0-9A-F]{64})` \|\r?$",
         RegexOptions.Multiline | RegexOptions.CultureInvariant)]
     private static partial Regex FingerprintEvidenceRow();
 

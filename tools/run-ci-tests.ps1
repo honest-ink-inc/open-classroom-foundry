@@ -514,82 +514,31 @@ try {
     $evidenceSnapshotError = $null
     if ($parentExitObserved) {
         try {
-            $trxEvidenceRoot = Join-Path $evidenceRoot "trx"
-            $coverageEvidenceRoot = Join-Path $evidenceRoot "coverage"
-            foreach ($snapshotRoot in @($trxEvidenceRoot, $coverageEvidenceRoot)) {
-                Assert-CiPathContained `
-                    -ContainmentRoot $evidenceRoot `
-                    -Path $snapshotRoot `
-                    -Description "curated evidence directory"
-                [void][IO.Directory]::CreateDirectory($snapshotRoot)
-                Assert-CiPathContained `
-                    -ContainmentRoot $evidenceRoot `
-                    -Path $snapshotRoot `
-                    -Description "curated evidence directory"
-            }
-
-            $suiteEvidence = @(Get-CiTestEvidenceDelta -Suites $testSuites -Baseline $evidenceBaseline)
-            $completenessErrors = @(Get-CiTestEvidenceCompletenessErrors -EvidenceDelta $suiteEvidence)
-            if (-not $timedOut -and $nativeTestProcessExitCode -eq 0 -and $completenessErrors.Count -gt 0) {
-                throw "A successful test process did not retain exactly one valid current TRX and one " +
-                    "valid new direct coverage report per expected suite: " +
-                    ($completenessErrors -join " ")
-            }
-
-            foreach ($currentSuite in $suiteEvidence) {
-                if ($currentSuite.TrxIsCurrent -and $currentSuite.TrxValidation.Valid) {
-                    $trxName = $currentSuite.EvidenceStem + ".trx"
-                    $trxDestination = Join-Path $trxEvidenceRoot $trxName
-                    $trxCopy = Copy-CiEvidenceFile `
-                        -SourcePath $currentSuite.TrxPath `
-                        -SourceContainmentRoot $repositoryRoot `
-                        -DestinationPath $trxDestination `
-                        -DestinationContainmentRoot $evidenceRoot `
-                        -ExpectedSourceSha256 $currentSuite.TrxSha256
-                    $trxRelativePath = Join-Path "trx" $trxName
-                    $trxEvidenceFiles += $trxRelativePath
-                    $evidenceCopies += [pscustomobject]@{
-                        SuiteName = $currentSuite.SuiteName; Kind = "TRX"; EvidenceFile = $trxRelativePath
-                        SourceSha256 = $trxCopy.SourceSha256; CopiedSha256 = $trxCopy.CopiedSha256
-                        CopyMatchesSource = $trxCopy.CopyMatchesSource
-                    }
-                }
-
-                foreach ($coverageEvidence in @($currentSuite.NewCoverageEvidence |
-                        Where-Object { $_.Validation.Valid })) {
-                    $coveragePath = $coverageEvidence.Path
-                    $coverageDirectoryName = [IO.Path]::GetFileName([IO.Path]::GetDirectoryName($coveragePath))
-                    $coverageName = $currentSuite.EvidenceStem + "-" + $coverageDirectoryName + ".cobertura.xml"
-                    $coverageDestination = Join-Path $coverageEvidenceRoot $coverageName
-                    $coverageCopy = Copy-CiEvidenceFile `
-                        -SourcePath $coveragePath `
-                        -SourceContainmentRoot $repositoryRoot `
-                        -DestinationPath $coverageDestination `
-                        -DestinationContainmentRoot $evidenceRoot `
-                        -ExpectedSourceSha256 $coverageEvidence.Sha256
-                    $coverageRelativePath = Join-Path "coverage" $coverageName
-                    $coverageEvidenceFiles += $coverageRelativePath
-                    $evidenceCopies += [pscustomobject]@{
-                        SuiteName = $currentSuite.SuiteName; Kind = "Cobertura"; EvidenceFile = $coverageRelativePath
-                        SourceSha256 = $coverageCopy.SourceSha256; CopiedSha256 = $coverageCopy.CopiedSha256
-                        CopyMatchesSource = $coverageCopy.CopyMatchesSource
-                    }
-                }
-            }
-            $trxEvidenceFiles = @($trxEvidenceFiles | Sort-Object)
-            $coverageEvidenceFiles = @($coverageEvidenceFiles | Sort-Object)
-            $evidenceCopies = @($evidenceCopies | Sort-Object -Property SuiteName, Kind, EvidenceFile)
+            $evidenceSnapshot = Save-CiTestEvidenceSnapshot `
+                -Suites $testSuites `
+                -Baseline $evidenceBaseline `
+                -RepositoryRoot $repositoryRoot `
+                -EvidenceRoot $evidenceRoot `
+                -TimedOut $timedOut `
+                -NativeTestProcessExitCode $nativeTestProcessExitCode
+            $trxEvidenceFiles = @($evidenceSnapshot.TrxEvidenceFiles)
+            $coverageEvidenceFiles = @($evidenceSnapshot.CoverageEvidenceFiles)
+            $evidenceCopies = @($evidenceSnapshot.EvidenceCopies)
+            $suiteEvidence = @($evidenceSnapshot.SuiteEvidence)
+            $completenessErrors = @($evidenceSnapshot.CompletenessErrors)
+            $evidenceSnapshotError = $evidenceSnapshot.EvidenceSnapshotError
         }
         catch {
             $evidenceSnapshotError = $_.Exception.Message
         }
     }
 
-    $runnerExitCode = if (-not $safeToStartAnotherRunner) { 125 }
-    elseif ($timedOut) { 124 }
-    elseif ($null -ne $evidenceSnapshotError -or $identityErrors.Count -gt 0) { 126 }
-    elseif ($null -eq $nativeTestProcessExitCode) { 125 }
-    else { $nativeTestProcessExitCode }
+    $runnerExitCode = Get-CiTestRunnerExitCode `
+        -SafeToStartAnotherRunner $safeToStartAnotherRunner `
+        -TimedOut $timedOut `
+        -NativeTestProcessExitCode $nativeTestProcessExitCode `
+        -EvidenceSnapshotError $evidenceSnapshotError `
+        -IdentityErrorCount $identityErrors.Count
 
     $receipt = [ordered]@{
         RunId = $runId
@@ -648,9 +597,17 @@ try {
                     TrxSourceSha256 = $_.TrxSha256
                     TrxValidation = if ($null -eq $_.TrxValidation) { $null } else {
                         [ordered]@{
-                            Valid = $_.TrxValidation.Valid; Error = $_.TrxValidation.Error
+                            Valid = $_.TrxValidation.Valid; Retainable = $_.TrxValidation.Retainable
+                            Error = $_.TrxValidation.Error
+                            ResultSummaryOutcome = $_.TrxValidation.ResultSummaryOutcome
                             Total = $_.TrxValidation.Total; Executed = $_.TrxValidation.Executed
-                            Passed = $_.TrxValidation.Passed
+                            Passed = $_.TrxValidation.Passed; Failed = $_.TrxValidation.Failed
+                            Failures = @($_.TrxValidation.Failures | ForEach-Object {
+                                    [ordered]@{
+                                        TestName = $_.TestName
+                                        Message = $_.Message
+                                    }
+                                })
                         }
                     }
                     NewDirectCoverageCount = @($_.NewCoverageEvidence).Count

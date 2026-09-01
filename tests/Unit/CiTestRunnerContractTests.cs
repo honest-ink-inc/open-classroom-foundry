@@ -265,6 +265,7 @@ public sealed class CiTestRunnerContractTests
             "run: pwsh -NoProfile -File tools/run-ci-tests.ps1",
             testStep.Text,
             StringComparison.Ordinal);
+        Assert.DoesNotContain("continue-on-error", testStep.Text, StringComparison.OrdinalIgnoreCase);
         Assert.Equal(1, CountOccurrences(activeWorkflow, "tools/run-ci-tests.ps1"));
         var activeTokens = activeWorkflow.Split(
             (char[]?)null,
@@ -313,16 +314,22 @@ public sealed class CiTestRunnerContractTests
         Assert.Contains("Get-CiTestSuiteInventory", runner, StringComparison.Ordinal);
         Assert.Contains("-RepositoryRoot $repositoryRoot", runner, StringComparison.Ordinal);
         Assert.Contains("Get-CiTestEvidenceBaseline -Suites $testSuites", runner, StringComparison.Ordinal);
-        Assert.Contains("Get-CiTestEvidenceDelta -Suites $testSuites", runner, StringComparison.Ordinal);
-        Assert.Contains("Get-CiTestEvidenceCompletenessErrors", runner, StringComparison.Ordinal);
+        Assert.Contains("Get-CiTestEvidenceDelta -Suites $Suites", evidenceModule, StringComparison.Ordinal);
+        Assert.Contains("Get-CiTestEvidenceCompletenessErrors", evidenceModule, StringComparison.Ordinal);
         Assert.Contains("[IO.FileShare]::None", runner, StringComparison.Ordinal);
         Assert.Contains("BoundRunId = $runId", runner, StringComparison.Ordinal);
         Assert.Contains("-TrxFileName $trxFileName", runner, StringComparison.Ordinal);
-        Assert.Contains("$trxEvidenceRoot = Join-Path $evidenceRoot \"trx\"", runner, StringComparison.Ordinal);
-        Assert.Contains("$coverageEvidenceRoot = Join-Path $evidenceRoot \"coverage\"", runner, StringComparison.Ordinal);
+        Assert.Contains("$trxEvidenceRoot = Join-Path $EvidenceRoot \"trx\"", evidenceModule, StringComparison.Ordinal);
+        Assert.Contains("$coverageEvidenceRoot = Join-Path $EvidenceRoot \"coverage\"", evidenceModule, StringComparison.Ordinal);
         Assert.DoesNotContain("GetLastWriteTimeUtc", runner, StringComparison.Ordinal);
         Assert.DoesNotContain("Get-ChildItem -LiteralPath $testsRoot -Directory", runner, StringComparison.Ordinal);
-        Assert.Contains("Copy-CiEvidenceFile", runner, StringComparison.Ordinal);
+        Assert.Contains("Save-CiTestEvidenceSnapshot", runner, StringComparison.Ordinal);
+        Assert.Contains("Get-CiTestRunnerExitCode", runner, StringComparison.Ordinal);
+        Assert.Contains("Copy-CiEvidenceFile", evidenceModule, StringComparison.Ordinal);
+        Assert.Contains(
+            "$currentSuite.TrxIsCurrent -and $currentSuite.TrxValidation.Retainable",
+            evidenceModule,
+            StringComparison.Ordinal);
         Assert.Contains("ExpectedTestProjects = @($testSuites.ProjectPath)", runner, StringComparison.Ordinal);
         Assert.Contains("TrxEvidenceFiles = $trxEvidenceFiles", runner, StringComparison.Ordinal);
         Assert.Contains("CoverageEvidenceFiles = $coverageEvidenceFiles", runner, StringComparison.Ordinal);
@@ -331,10 +338,14 @@ public sealed class CiTestRunnerContractTests
         Assert.Contains("TestAssembliesBefore = $testAssembliesBefore", runner, StringComparison.Ordinal);
         Assert.Contains("TestAssembliesAfter = $testAssembliesAfter", runner, StringComparison.Ordinal);
         Assert.Contains("SourceContentSha256", runner, StringComparison.Ordinal);
-        Assert.Contains("SourceSha256 = $trxCopy.SourceSha256", runner, StringComparison.Ordinal);
-        Assert.Contains("CopiedSha256 = $trxCopy.CopiedSha256", runner, StringComparison.Ordinal);
-        Assert.Contains("CopyMatchesSource = $trxCopy.CopyMatchesSource", runner, StringComparison.Ordinal);
+        Assert.Contains("SourceSha256 = $trxCopy.SourceSha256", evidenceModule, StringComparison.Ordinal);
+        Assert.Contains("CopiedSha256 = $trxCopy.CopiedSha256", evidenceModule, StringComparison.Ordinal);
+        Assert.Contains("CopyMatchesSource = $trxCopy.CopyMatchesSource", evidenceModule, StringComparison.Ordinal);
         Assert.Contains("SuiteEvidence = @($suiteEvidence", runner, StringComparison.Ordinal);
+        Assert.Contains("Retainable = $_.TrxValidation.Retainable", runner, StringComparison.Ordinal);
+        Assert.Contains("ResultSummaryOutcome = $_.TrxValidation.ResultSummaryOutcome", runner, StringComparison.Ordinal);
+        Assert.Contains("Passed = $_.TrxValidation.Passed; Failed = $_.TrxValidation.Failed", runner, StringComparison.Ordinal);
+        Assert.Contains("Failures = @($_.TrxValidation.Failures", runner, StringComparison.Ordinal);
 
         Assert.Contains("$solution.SelectNodes(\"//*[local-name()='Project']\")", evidenceModule, StringComparison.Ordinal);
         Assert.Contains("$declaresTestsPath = $normalizedPath.StartsWith(", evidenceModule, StringComparison.Ordinal);
@@ -357,6 +368,9 @@ public sealed class CiTestRunnerContractTests
         Assert.Contains("unsupported project kind", evidenceModule, StringComparison.Ordinal);
         Assert.Contains("[IO.FileAttributes]::ReparsePoint", evidenceModule, StringComparison.Ordinal);
         Assert.Contains("Test-CiTrxFile", evidenceModule, StringComparison.Ordinal);
+        Assert.Contains("Retainable = $true", evidenceModule, StringComparison.Ordinal);
+        Assert.Contains("Retainable = $false", evidenceModule, StringComparison.Ordinal);
+        Assert.Contains("-not $suiteEvidence.TrxValidation.Valid", evidenceModule, StringComparison.Ordinal);
         Assert.Contains("Test-CiCoberturaFile", evidenceModule, StringComparison.Ordinal);
         Assert.Contains("CopyMatchesSource", evidenceModule, StringComparison.Ordinal);
         Assert.Contains("TrxSha256 = Get-Sha256", evidenceModule, StringComparison.Ordinal);
@@ -368,13 +382,20 @@ public sealed class CiTestRunnerContractTests
         var lockAcquisition = runner.IndexOf("[IO.FileShare]::None", StringComparison.Ordinal);
         var baseline = runner.IndexOf("$evidenceBaseline =", StringComparison.Ordinal);
         var processStart = runner.IndexOf("$process.Start()", StringComparison.Ordinal);
-        var snapshot = runner.IndexOf("$suiteEvidence = @(Get-CiTestEvidenceDelta", StringComparison.Ordinal);
+        var snapshot = runner.IndexOf("$evidenceSnapshot = Save-CiTestEvidenceSnapshot", StringComparison.Ordinal);
+        var snapshotError = runner.IndexOf(
+            "$evidenceSnapshotError = $evidenceSnapshot.EvidenceSnapshotError",
+            snapshot,
+            StringComparison.Ordinal);
+        var exitCode = runner.IndexOf("$runnerExitCode = Get-CiTestRunnerExitCode", snapshotError, StringComparison.Ordinal);
         var receipt = runner.IndexOf("$receipt = [ordered]@{", StringComparison.Ordinal);
         Assert.True(
             lockAcquisition < baseline
             && baseline < processStart
             && processStart < snapshot
-            && snapshot < receipt);
+            && snapshot < snapshotError
+            && snapshotError < exitCode
+            && exitCode < receipt);
     }
 
     [Fact]
@@ -413,6 +434,13 @@ public sealed class CiTestRunnerContractTests
             {
                 Assert.True(suite.GetProperty("TrxIsCurrent").GetBoolean());
                 Assert.True(suite.GetProperty("TrxValid").GetBoolean());
+                Assert.True(suite.GetProperty("TrxRetainable").GetBoolean());
+                Assert.Equal("Completed", suite.GetProperty("TrxOutcome").GetString());
+                Assert.Equal(1, suite.GetProperty("TrxTotal").GetInt64());
+                Assert.Equal(1, suite.GetProperty("TrxExecuted").GetInt64());
+                Assert.Equal(1, suite.GetProperty("TrxPassed").GetInt64());
+                Assert.Equal(0, suite.GetProperty("TrxFailed").GetInt64());
+                Assert.Empty(suite.GetProperty("TrxFailures").EnumerateArray());
                 Assert.Equal(1, suite.GetProperty("NewCoverageCount").GetInt32());
                 Assert.True(suite.GetProperty("CoverageValid")[0].GetBoolean());
             });
@@ -505,7 +533,7 @@ public sealed class CiTestRunnerContractTests
     }
 
     [Fact]
-    public void Evidence_snapshot_rejects_malformed_or_semantically_failed_xml()
+    public void Evidence_snapshot_rejects_malformed_xml_but_retains_a_coherent_failed_trx_as_red()
     {
         var repository = CreateSyntheticEvidenceRepository("Alpha", "Beta", "Gamma");
         try
@@ -540,10 +568,33 @@ public sealed class CiTestRunnerContractTests
                 .EnumerateArray()
                 .ToDictionary(item => item.GetProperty("SuiteName").GetString()!);
             Assert.False(evidence["Alpha"].GetProperty("TrxValid").GetBoolean());
+            Assert.False(evidence["Alpha"].GetProperty("TrxRetainable").GetBoolean());
+            Assert.Equal(JsonValueKind.Null, evidence["Alpha"].GetProperty("TrxOutcome").ValueKind);
+            Assert.Equal(JsonValueKind.Null, evidence["Alpha"].GetProperty("TrxTotal").ValueKind);
+            Assert.Empty(evidence["Alpha"].GetProperty("TrxFailures").EnumerateArray());
             Assert.True(evidence["Alpha"].GetProperty("CoverageValid")[0].GetBoolean());
+
             Assert.False(evidence["Beta"].GetProperty("TrxValid").GetBoolean());
+            Assert.True(
+                evidence["Beta"].GetProperty("TrxRetainable").GetBoolean(),
+                evidence["Beta"].GetProperty("TrxError").GetString());
+            Assert.Equal("Failed", evidence["Beta"].GetProperty("TrxOutcome").GetString());
+            Assert.Equal(1, evidence["Beta"].GetProperty("TrxTotal").GetInt64());
+            Assert.Equal(1, evidence["Beta"].GetProperty("TrxExecuted").GetInt64());
+            Assert.Equal(0, evidence["Beta"].GetProperty("TrxPassed").GetInt64());
+            Assert.Equal(1, evidence["Beta"].GetProperty("TrxFailed").GetInt64());
+            var betaFailure = Assert.Single(
+                evidence["Beta"].GetProperty("TrxFailures").EnumerateArray());
+            Assert.Equal("Beta.Synthetic_failure", betaFailure.GetProperty("TestName").GetString());
+            Assert.Equal(
+                "Beta exact synthetic failure message.",
+                betaFailure.GetProperty("Message").GetString());
             Assert.False(evidence["Beta"].GetProperty("CoverageValid")[0].GetBoolean());
+
             Assert.True(evidence["Gamma"].GetProperty("TrxValid").GetBoolean());
+            Assert.True(evidence["Gamma"].GetProperty("TrxRetainable").GetBoolean());
+            Assert.Equal("Completed", evidence["Gamma"].GetProperty("TrxOutcome").GetString());
+            Assert.Empty(evidence["Gamma"].GetProperty("TrxFailures").EnumerateArray());
             Assert.False(evidence["Gamma"].GetProperty("CoverageValid")[0].GetBoolean());
 
             var errors = result.RootElement.GetProperty("Errors")
@@ -558,12 +609,165 @@ public sealed class CiTestRunnerContractTests
             Assert.Contains(
                 errors,
                 error => error.StartsWith("Beta:", StringComparison.Ordinal)
-                    && error.Contains("TRX validation failed", StringComparison.Ordinal)
+                    && error.Contains(
+                        "TRX records a failed complete run (total=1, executed=1, passed=0, failed=1)",
+                        StringComparison.Ordinal)
+                    && !error.Contains("TRX validation failed", StringComparison.Ordinal)
                     && error.Contains("Cobertura validation failed", StringComparison.Ordinal));
             Assert.Contains(
                 errors,
                 error => error.StartsWith("Gamma:", StringComparison.Ordinal)
                     && error.Contains("Cobertura validation failed", StringComparison.Ordinal));
+        }
+        finally
+        {
+            Directory.Delete(repository, recursive: true);
+        }
+    }
+
+    [Fact]
+    public void Evidence_semantics_rejects_a_result_name_not_bound_to_its_definition()
+    {
+        var repository = CreateSyntheticEvidenceRepository("Alpha");
+        try
+        {
+            using var result = RunEvidenceScenario(
+                repository,
+                """
+                $suite = $inventory[0]
+                Write-FailedTrx -Path $suite.TrxPath -SuiteName $suite.SuiteName -AssemblyPath $suite.TestAssemblyPath
+                [xml]$trx = [IO.File]::ReadAllText($suite.TrxPath)
+                $failedResult = $trx.SelectSingleNode(
+                    "/*[local-name()='TestRun']/*[local-name()='Results']/*[local-name()='UnitTestResult']")
+                $failedResult.SetAttribute("testName", "Alpha.Unbound_failure_name")
+                $trx.Save($suite.TrxPath)
+
+                $coverageDirectory = Join-Path $suite.TestResultsRoot ([Guid]::NewGuid().ToString("D"))
+                New-Item -ItemType Directory -Path $coverageDirectory | Out-Null
+                Write-ValidCoverage -Path (Join-Path $coverageDirectory "coverage.cobertura.xml")
+                """);
+
+            var evidence = Assert.Single(result.RootElement.GetProperty("Evidence").EnumerateArray());
+            Assert.False(evidence.GetProperty("TrxValid").GetBoolean());
+            Assert.False(evidence.GetProperty("TrxRetainable").GetBoolean());
+            Assert.Equal(JsonValueKind.Null, evidence.GetProperty("TrxOutcome").ValueKind);
+            Assert.Empty(evidence.GetProperty("TrxFailures").EnumerateArray());
+            var error = Assert.Single(result.RootElement.GetProperty("Errors").EnumerateArray());
+            Assert.Contains(
+                "TRX UnitTestResult testName values must exactly match their UnitTest definition names",
+                error.GetString(),
+                StringComparison.Ordinal);
+        }
+        finally
+        {
+            Directory.Delete(repository, recursive: true);
+        }
+    }
+
+    [Theory]
+    [InlineData(1, 1, false)]
+    [InlineData(0, 126, true)]
+    public void Runner_snapshot_retains_a_coherent_failed_trx_before_preserving_a_red_exit(
+        int nativeExitCode,
+        int expectedRunnerExitCode,
+        bool expectsProcessAgreementError)
+    {
+        var repository = CreateSyntheticEvidenceRepository("Alpha");
+        try
+        {
+            var mutation =
+                """
+                $suite = $inventory[0]
+                Write-FailedTrx -Path $suite.TrxPath -SuiteName $suite.SuiteName -AssemblyPath $suite.TestAssemblyPath
+                $coverageDirectory = Join-Path $suite.TestResultsRoot ([Guid]::NewGuid().ToString("D"))
+                New-Item -ItemType Directory -Path $coverageDirectory | Out-Null
+                Write-ValidCoverage -Path (Join-Path $coverageDirectory "coverage.cobertura.xml")
+
+                $snapshotRoot = Join-Path $env:OCF_TEST_REPOSITORY_ROOT "out/ci-test-run/synthetic"
+                $snapshot = Save-CiTestEvidenceSnapshot `
+                    -Suites $inventory `
+                    -Baseline $baseline `
+                    -RepositoryRoot $env:OCF_TEST_REPOSITORY_ROOT `
+                    -EvidenceRoot $snapshotRoot `
+                    -TimedOut $false `
+                    -NativeTestProcessExitCode __NATIVE_EXIT__
+                $runnerExit = Get-CiTestRunnerExitCode `
+                    -SafeToStartAnotherRunner $true `
+                    -TimedOut $false `
+                    -NativeTestProcessExitCode __NATIVE_EXIT__ `
+                    -EvidenceSnapshotError $snapshot.EvidenceSnapshotError `
+                    -IdentityErrorCount 0
+                """.Replace(
+                    "__NATIVE_EXIT__",
+                    nativeExitCode.ToString(System.Globalization.CultureInfo.InvariantCulture),
+                    StringComparison.Ordinal);
+            using var result = RunEvidenceScenario(repository, mutation);
+
+            var snapshot = result.RootElement.GetProperty("Snapshot");
+            var actualRunnerExitCode = result.RootElement.GetProperty("RunnerExit").GetInt32();
+            Assert.True(
+                actualRunnerExitCode == expectedRunnerExitCode,
+                $"Expected runner exit {expectedRunnerExitCode}, received {actualRunnerExitCode}; " +
+                $"snapshot error: {snapshot.GetProperty("EvidenceSnapshotError").GetString()}");
+            var completenessError = Assert.Single(
+                snapshot.GetProperty("CompletenessErrors").EnumerateArray());
+            Assert.Contains(
+                "TRX records a failed complete run (total=1, executed=1, passed=0, failed=1)",
+                completenessError.GetString(),
+                StringComparison.Ordinal);
+
+            var suite = Assert.Single(snapshot.GetProperty("SuiteEvidence").EnumerateArray());
+            var validation = suite.GetProperty("TrxValidation");
+            Assert.False(validation.GetProperty("Valid").GetBoolean());
+            Assert.True(validation.GetProperty("Retainable").GetBoolean());
+            Assert.Equal("Failed", validation.GetProperty("ResultSummaryOutcome").GetString());
+            Assert.Equal(1, validation.GetProperty("Total").GetInt64());
+            Assert.Equal(1, validation.GetProperty("Executed").GetInt64());
+            Assert.Equal(0, validation.GetProperty("Passed").GetInt64());
+            Assert.Equal(1, validation.GetProperty("Failed").GetInt64());
+            var failure = Assert.Single(validation.GetProperty("Failures").EnumerateArray());
+            Assert.Equal("Alpha.Synthetic_failure", failure.GetProperty("TestName").GetString());
+            Assert.Equal(
+                "Alpha exact synthetic failure message.",
+                failure.GetProperty("Message").GetString());
+
+            var relativeTrxPath = Assert.Single(
+                snapshot.GetProperty("TrxEvidenceFiles").EnumerateArray()).GetString()!;
+            Assert.Single(snapshot.GetProperty("CoverageEvidenceFiles").EnumerateArray());
+            var trxCopy = Assert.Single(
+                snapshot.GetProperty("EvidenceCopies").EnumerateArray(),
+                copy => string.Equals(
+                        copy.GetProperty("Kind").GetString(),
+                        "TRX",
+                        StringComparison.Ordinal));
+            Assert.True(trxCopy.GetProperty("CopyMatchesSource").GetBoolean());
+            Assert.Equal(
+                trxCopy.GetProperty("SourceSha256").GetString(),
+                trxCopy.GetProperty("CopiedSha256").GetString());
+
+            var sourceTrxPath = Path.Combine(repository, "tests", "Alpha", "TestResults", "test-results.trx");
+            var copiedTrxPath = Path.Combine(
+                repository,
+                "out",
+                "ci-test-run",
+                "synthetic",
+                relativeTrxPath);
+            Assert.True(
+                File.ReadAllBytes(sourceTrxPath).SequenceEqual(File.ReadAllBytes(copiedTrxPath)),
+                "The retained coherent failed TRX differed from its validated source bytes.");
+
+            var snapshotError = snapshot.GetProperty("EvidenceSnapshotError");
+            if (expectsProcessAgreementError)
+            {
+                Assert.Contains(
+                    "A zero-exit test process did not produce exactly one all-passed current TRX",
+                    snapshotError.GetString(),
+                    StringComparison.Ordinal);
+            }
+            else
+            {
+                Assert.Equal(JsonValueKind.Null, snapshotError.ValueKind);
+            }
         }
         finally
         {
@@ -602,6 +806,7 @@ public sealed class CiTestRunnerContractTests
 
             var evidence = Assert.Single(result.RootElement.GetProperty("Evidence").EnumerateArray());
             Assert.False(evidence.GetProperty("TrxValid").GetBoolean());
+            Assert.False(evidence.GetProperty("TrxRetainable").GetBoolean());
             Assert.False(evidence.GetProperty("CoverageValid")[0].GetBoolean());
             var error = Assert.Single(result.RootElement.GetProperty("Errors").EnumerateArray());
             Assert.Contains("TRX validation failed", error.GetString(), StringComparison.Ordinal);
@@ -1451,12 +1656,14 @@ public sealed class CiTestRunnerContractTests
             <?xml version="1.0" encoding="utf-8"?>
             <TestRun xmlns="http://microsoft.com/schemas/VisualStudio/TeamTest/2010">
               <Results>
-                <UnitTestResult testId="00000000-0000-0000-0000-000000000001" testName="__SUITE__.Synthetic_failure" outcome="Failed" />
+                <UnitTestResult testId="00000000-0000-0000-0000-000000000001" testName="__SUITE__.Synthetic_failure" outcome="Failed">
+                  <Output><ErrorInfo><Message>__MESSAGE__</Message></ErrorInfo></Output>
+                </UnitTestResult>
               </Results>
               <TestDefinitions>
                 <UnitTest id="00000000-0000-0000-0000-000000000001" storage="__ASSEMBLY__" name="__SUITE__.Synthetic_failure" />
               </TestDefinitions>
-              <ResultSummary outcome="Completed">
+              <ResultSummary outcome="Failed">
                 <Counters total="1" executed="1" passed="0" failed="1" error="0" timeout="0" aborted="0" inconclusive="0" passedButRunAborted="0" notRunnable="0" notExecuted="0" disconnected="0" warning="0" completed="0" inProgress="0" pending="0" />
               </ResultSummary>
             </TestRun>
@@ -1483,9 +1690,13 @@ public sealed class CiTestRunnerContractTests
             }
             function Write-FailedTrx([string]$Path, [string]$SuiteName, [string]$AssemblyPath) {
                 $xmlAssembly = [Security.SecurityElement]::Escape($AssemblyPath)
+                $xmlMessage = [Security.SecurityElement]::Escape("$SuiteName exact synthetic failure message.")
+                $failedXml = $failedTrx.Replace("__SUITE__", $SuiteName)
+                $failedXml = $failedXml.Replace("__ASSEMBLY__", $xmlAssembly)
+                $failedXml = $failedXml.Replace("__MESSAGE__", $xmlMessage)
                 [IO.File]::WriteAllText(
                     $Path,
-                    $failedTrx.Replace("__SUITE__", $SuiteName).Replace("__ASSEMBLY__", $xmlAssembly))
+                    $failedXml)
             }
             function Write-ValidCoverage([string]$Path) {
                 [IO.File]::WriteAllText($Path, $validCoverage)
@@ -1493,6 +1704,8 @@ public sealed class CiTestRunnerContractTests
 
             $inventory = @(Get-CiTestSuiteInventory -RepositoryRoot $env:OCF_TEST_REPOSITORY_ROOT)
             $baseline = @(Get-CiTestEvidenceBaseline -Suites $inventory)
+            $snapshot = $null
+            $runnerExit = $null
 
             {{mutation}}
 
@@ -1509,6 +1722,35 @@ public sealed class CiTestRunnerContractTests
                             } else {
                                 $_.TrxValidation.Valid
                             }
+                            TrxRetainable = if ($null -eq $_.TrxValidation) {
+                                $null
+                            } else {
+                                $_.TrxValidation.Retainable
+                            }
+                            TrxOutcome = if ($null -eq $_.TrxValidation) {
+                                $null
+                            } else {
+                                $_.TrxValidation.ResultSummaryOutcome
+                            }
+                            TrxError = if ($null -eq $_.TrxValidation) {
+                                $null
+                            } else {
+                                $_.TrxValidation.Error
+                            }
+                            TrxTotal = if ($null -eq $_.TrxValidation) { $null } else { $_.TrxValidation.Total }
+                            TrxExecuted = if ($null -eq $_.TrxValidation) { $null } else { $_.TrxValidation.Executed }
+                            TrxPassed = if ($null -eq $_.TrxValidation) { $null } else { $_.TrxValidation.Passed }
+                            TrxFailed = if ($null -eq $_.TrxValidation) { $null } else { $_.TrxValidation.Failed }
+                            TrxFailures = @(
+                                if ($null -ne $_.TrxValidation) {
+                                    $_.TrxValidation.Failures | ForEach-Object {
+                                        [ordered]@{
+                                            TestName = $_.TestName
+                                            Message = $_.Message
+                                        }
+                                    }
+                                }
+                            )
                             NewCoverageCount = @($_.NewCoveragePaths).Count
                             CoverageValid = @($_.NewCoverageEvidence | ForEach-Object {
                                     $_.Validation.Valid
@@ -1516,7 +1758,9 @@ public sealed class CiTestRunnerContractTests
                         }
                     })
                 Errors = $errors
-            } | ConvertTo-Json -Depth 6 -Compress
+                Snapshot = $snapshot
+                RunnerExit = $runnerExit
+            } | ConvertTo-Json -Depth 8 -Compress
             """;
         var process = RunPowerShell(repository, script);
         Assert.True(
@@ -1541,11 +1785,15 @@ public sealed class CiTestRunnerContractTests
         startInfo.ArgumentList.Add("-NonInteractive");
         startInfo.ArgumentList.Add("-Command");
         startInfo.ArgumentList.Add(
+            "$PSStyle.OutputRendering = 'PlainText'; " +
             "$ErrorActionPreference = 'Stop'; " +
             "Import-Module -Name $env:OCF_TEST_EVIDENCE_MODULE -Force; " +
             script);
         startInfo.Environment["OCF_TEST_EVIDENCE_MODULE"] = EvidenceModulePath;
         startInfo.Environment["OCF_TEST_REPOSITORY_ROOT"] = repository;
+        // Exercise the color-capable hosted-shell path while requiring the
+        // captured contract text itself to remain deterministic plain text.
+        startInfo.Environment["TERM"] = "xterm";
 
         using var process = new Process { StartInfo = startInfo };
         Assert.True(process.Start(), "The PowerShell evidence-fixture process did not start.");

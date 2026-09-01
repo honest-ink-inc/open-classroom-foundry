@@ -4,7 +4,8 @@
 **Integration branch:** `codex/forge-integration-2026-09-01`
 **Base:** `96e37e9` (`main`)
 **State:** current branch repository-state handover; Option A is ratified through
-the exact local C1/C2 sequence, with hosted integration still pending
+the exact pushed C1/C2 sequence; PR 5 remains unmerged while measured hosted
+failures are repaired after C2
 
 This is the compact successor record for the forge continuation accumulated in
 the [kiosk-plan evaluation](2026-08-30-kiosk-plan-evaluation.md). It inherits
@@ -42,7 +43,7 @@ could be completed without pretending a protected review had occurred:
   bounded operator-host seam. This is preparation, not a version bump, packaged
   updater, managed-device deployment, or rollback proof. ADR-007 remains
   Proposed and District IT still owns deployment particulars.
-- `tests/Accessibility` is no longer an empty build-only signpost. Its 25-case
+- `tests/Accessibility` is no longer an empty build-only signpost. Its 26-case
   hermetic geometry-and-font-scaled floor suite covers reachability, essential
   visual viewports, long status paths, and layout mechanics while explicitly
   declining to claim physical DPI/device, keyboard, screen-reader, contrast,
@@ -56,6 +57,9 @@ could be completed without pretending a protected review had occurred:
   diagnoses**. Bounded reproduction instruments retain names, messages, source
   identity, process-tree cleanup, and partial evidence. Passing alone or in a
   later broad run does not prove a cause or a cure.
+- Hosted PR run `33497314978` added one separate console-control lock-observation
+  timeout to the sighting record. It passed five immediate isolated local reruns,
+  but that is only a current-code non-reproduction; no cause or cure is claimed.
 - Provider and district-policy boundaries now fail closed around target
   construction, bearer acquisition, redirects, deadlines, status handling,
   response size and shape, strict UTF-8 JSON, endpoint inventory, and cancellation
@@ -100,12 +104,13 @@ as a release stop pending a separately authorized schema-2 route, and ADR-007
 remains Proposed.
 
 The [recipe-identity disposition packet](../adr/recipe-identity-disposition-packet.md)
-records every exact row and the executable/evidence freeze. Local, unpushed C1
-`5cae09dcb40628265d51912aea98304557abfda6` freezes the exact candidate. This
-immediately following record-only C2 names that full hash and marks the packet
-`RATIFIED` without changing any frozen product or evidence surface. C2 must pass
-the same close before C1 and C2 are pushed together. No version, tag, signing,
-installation, distribution, publication, or deployment act is authorized.
+records every exact row and the executable/evidence freeze. Before either commit
+was pushed, C1 `5cae09dcb40628265d51912aea98304557abfda6` froze the exact
+candidate. Its immediately following record-only C2 named that full hash and
+marked the packet `RATIFIED` without changing any frozen product or evidence
+surface. C2 then passed the same close, and the exact C1/C2 pair was pushed
+together. No version, tag, signing, installation, distribution, publication, or
+deployment act is authorized.
 
 Implementation-plan §6.6's combined “Warnings and confirmations” concern does
 not require a second duplicate manifest list. The exact ordered `Warnings` text
@@ -156,8 +161,88 @@ produced exactly 40 files and 773,759 bytes, their inventories and every file
 hash matched, and the expected first-admission manifest matched SHA-256
 `DEF10A3258A2F2ABA922DF8F1BC38FC3A3209065B36F81F44C41B4FE047F4A90`.
 These are local C1 results, not a hosted CI conclusion, release, or protected-
-seat act. Record-only C2 still requires its own close and governed Git-history
-verification before the pair may be pushed.
+seat act. At that point, record-only C2 still required its own close and governed
+Git-history verification; those requirements were subsequently completed before
+the exact pair was pushed.
+
+## Hosted PR finding and post-C2 repair
+
+C1 and record-only C2 `94f128cddd5cdbd00a6f7097b470e4defdebaa47`
+were pushed together on `codex/forge-integration-2026-09-01`; pull request 5
+retains both exact commits and allows a regular merge. CodeQL run `33497315024`
+completed successfully. CI run `33497314978` was red and therefore stopped the
+merge.
+
+The first reading of the bounded receipt saw only the Accessibility failure.
+Inspection of the always-retained raw TRXs corrected that report: the hosted run
+contained four failures across three suites—Accessibility 24/25, Integration
+297/298, and Unit 830/832. Contract, Instructional Evals, Rendering, and UI
+Automation all passed, including UI Automation 261/261. The runner did not time
+out and its source/Release-assembly identity remained stable.
+
+Three findings are deterministic and repaired after C2 without rewriting C1 or
+C2:
+
+- Board to Brief's default comparison viewport had only 13 px of local
+  typography slack above its 350 px content minimum. A deterministic Segoe UI
+  10.25 pt regression reproduced the hosted vertical scrollbar at 340 px. The
+  repair reclaims 16 decorative bottom-margin pixels while preserving the stock
+  controls, the 160 px roles-group minimum, the right scrollbar gutter, and the
+  no-scroll oracle. Failure output now records exact font, row, viewport,
+  display-rectangle, margin, and control geometry.
+- The ratification packet is checked out as CRLF, but two line-anchored test
+  regexes admitted LF only. Both now accept the optional carriage return and the
+  regression evaluates an explicit CRLF copy. Recipe bytes, identities, C1, C2,
+  and the ratified disposition are unchanged.
+- Hosted PowerShell inserted ANSI reset/recolor sequences between `Release` and
+  `TargetPath` in a diagnostic contract. The test subprocess now forces plain
+  text while explicitly exercising a color-capable `TERM=xterm` host. The
+  underlying duplicate-target-path refusal was correct.
+
+The fourth failure,
+`ProjectUpgradeOperatorHostTests.Real_console_ctrl_c_cancels_the_process_and_cleans_the_synthetic_batch`,
+reported only `console-signal.lock-observation-timeout`: its helper did not
+observe the exclusive batch lock within 15 seconds while the hosted solution ran
+under load. That record does not establish whether acquisition was late,
+transiently missed, or absent, and it does not establish a product cancellation
+failure. Five isolated local reruns passed in 565–602 ms each; the item therefore
+remains a new sighting, not a diagnosis.
+
+The same run exposed an instrumentation defect: each red suite had a coherent,
+current, identity-bound TRX with `ResultSummary outcome="Failed"`, but the curated
+collector treated only `Completed` as retainable, nulled the counters, and copied
+only four of seven TRXs. The post-C2 correction separates trustworthy retention
+from an all-passed result: coherent failed TRXs retain exact counters and failure
+names/messages while remaining invalid for success, coverage, release, or merge.
+The raw failure upload remains the fallback for malformed, partial, or interrupted
+evidence.
+
+### Post-C2 local close
+
+The corrected post-C2 working state completed a 26-project Release build with
+zero warnings and errors, followed by `dotnet format` in fix mode and
+`--verify-no-changes`, both at exit 0. The hardened runner contracts passed
+30/30; the full Unit suite passed 835/835. Applying the stricter validator to
+all seven raw hosted TRXs retained all seven, while the three red suites remained
+success-invalid with their exact counters and definition-bound failure
+names/messages.
+
+Two fresh solution-wide bounded runs then passed **1,989/1,989** each:
+`20260901T113007Z-eaf877baf57744b9aa66db1077723039` and
+`20260901T113357Z-f7cf21eb2a5e43019e2357463a31ddc3`. Each receipt records
+Accessibility 26, Contract 152, Instructional Evals 336, Integration 298,
+Rendering 81, UI Automation 261, and Unit 835; exactly seven current TRXs and
+seven direct coverage files; both process exit codes 0; no timeout; stable source
+and Release-assembly identity; no identity, completeness, snapshot, or stream
+error; and a cleared active marker. The console-control sighting passed in both
+full runs, which remains non-reproduction rather than diagnosis or cure.
+
+The ratification history guard again verified exact C1 and single-parent,
+record-only C2 in current ancestry. No deterministic-press source, recipe,
+fixture, or sample input changed after C2, so the C1 byte-for-byte SampleGenerator
+evidence was not rerun or repurposed as new C3 evidence. This closing note changes
+only the governed handover record and is followed by the document-governance Unit
+suite before commit.
 
 ## Future work, in authority order
 
@@ -196,10 +281,13 @@ unchanged-state solution-wide receipts at **1,985/1,985 passed** each:
 `20260901T101842Z-f43d3fe2886f48dea4bde251e77fcfa1`. Each receipt records
 exactly six changed status entries, stable source and Release-assembly
 identities, all seven suites, no outer timeout, no identity/evidence errors, and
-a cleared active marker. This closing note changes only the governed handover
-record; the document-governance Unit suite is rerun before commit.
+a cleared active marker. The final pre-C2 closing note changed only the governed
+handover record, and the document-governance Unit suite was rerun before C2 was
+committed.
 
-C2 still requires the repository hook and committed exact-history guard before
-branch push. The session's integration record must then name C2, the pull
-request, merge commit, ancestry proof, and GitHub workflow conclusions. Until
-those results exist, this handover makes no hosted-green or merged claim.
+C1 and exact C2 `94f128cddd5cdbd00a6f7097b470e4defdebaa47` are now pushed
+on `codex/forge-integration-2026-09-01`, and pull request 5 remains open and
+unmerged. The post-C2 working tree has completed the measured local C3 close
+recorded above. No C3 commit ID, rerun hosted conclusion, merge commit, ancestry
+proof, or main-branch workflow conclusion exists yet. Until those results exist,
+this handover makes no hosted-green or merged claim.

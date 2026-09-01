@@ -1025,7 +1025,11 @@ public sealed class BoardToBriefIntakeForm : Form
         // comparison rather than turning the whole form into a fixed canvas.
         comparisonViewport.Margin = new Padding(3, 3, 24, 3);
         roles.MinimumSize = new Size(0, 160);
-        roles.Margin = new Padding(3, 3, 24, 24);
+        // Keep the right gutter available for a scrollbar without spending the
+        // same width again below the grid. The smaller decorative bottom inset
+        // leaves the comparison row enough typography slack at the default
+        // window size while preserving the role grid's full 160 px minimum.
+        roles.Margin = new Padding(3, 3, 24, 8);
         body.Controls.Add(intro, 0, 0);
         body.Controls.Add(comparisonViewport, 0, 1);
         body.Controls.Add(roles, 0, 2);

@@ -728,12 +728,21 @@ function Test-CiTrxFile {
 
         $summaries = @($document.SelectNodes(
                 "/*[local-name()='TestRun']/*[local-name()='ResultSummary']"))
-        if ($summaries.Count -ne 1 -or
-            -not [string]::Equals(
-                [string]$summaries[0].Attributes["outcome"].Value,
-                "Completed",
-                [StringComparison]::OrdinalIgnoreCase)) {
-            throw "TRX must contain exactly one completed ResultSummary."
+        if ($summaries.Count -ne 1) {
+            throw "TRX must contain exactly one ResultSummary."
+        }
+
+        $summaryOutcome = [string]$summaries[0].Attributes["outcome"].Value
+        $summaryCompleted = [string]::Equals(
+            $summaryOutcome,
+            "Completed",
+            [StringComparison]::OrdinalIgnoreCase)
+        $summaryFailed = [string]::Equals(
+            $summaryOutcome,
+            "Failed",
+            [StringComparison]::OrdinalIgnoreCase)
+        if (-not $summaryCompleted -and -not $summaryFailed) {
+            throw "TRX ResultSummary outcome must be Completed or Failed."
         }
 
         $counterNodes = @($summaries[0].SelectNodes("./*[local-name()='Counters']"))
@@ -745,16 +754,17 @@ function Test-CiTrxFile {
         $total = Get-RequiredCounter -Counters $counters -Name "total"
         $executed = Get-RequiredCounter -Counters $counters -Name "executed"
         $passed = Get-RequiredCounter -Counters $counters -Name "passed"
-        if ($total -le 0 -or $executed -le 0 -or $passed -le 0) {
-            throw "TRX total, executed, and passed counters must all be nonzero."
+        $failed = Get-RequiredCounter -Counters $counters -Name "failed"
+        if ($total -le 0 -or $executed -le 0) {
+            throw "TRX total and executed counters must both be nonzero."
         }
 
-        if ($executed -ne $total -or $passed -ne $total) {
-            throw "TRX is not an all-passed complete run (total=$total, executed=$executed, passed=$passed)."
+        if ($executed -ne $total -or ($passed + $failed) -ne $total) {
+            throw "TRX is not a complete passed/failed run " +
+                "(total=$total, executed=$executed, passed=$passed, failed=$failed)."
         }
 
         $rejectedCounters = @(
-            "failed",
             "error",
             "timeout",
             "aborted",
@@ -794,7 +804,7 @@ function Test-CiTrxFile {
             throw "TRX must contain exactly one TestDefinitions element and one UnitTest definition per result."
         }
 
-        $definitionIds = [Collections.Generic.HashSet[string]]::new(
+        $definitionNamesById = [Collections.Generic.Dictionary[string,string]]::new(
             [StringComparer]::OrdinalIgnoreCase)
         $expectedAssembly = if ([string]::IsNullOrWhiteSpace($ExpectedTestAssemblyPath)) {
             $null
@@ -805,9 +815,15 @@ function Test-CiTrxFile {
         foreach ($definition in $definitions) {
             $definitionId = [string]$definition.Attributes["id"].Value
             if ([string]::IsNullOrWhiteSpace($definitionId) -or
-                -not $definitionIds.Add($definitionId)) {
+                $definitionNamesById.ContainsKey($definitionId)) {
                 throw "TRX UnitTest definitions require unique nonempty ids."
             }
+
+            $definitionName = [string]$definition.Attributes["name"].Value
+            if ([string]::IsNullOrWhiteSpace($definitionName)) {
+                throw "TRX UnitTest definitions require nonempty names."
+            }
+            $definitionNamesById.Add($definitionId, $definitionName)
 
             if ($null -ne $expectedAssembly) {
                 $storage = [string]$definition.Attributes["storage"].Value
@@ -828,36 +844,90 @@ function Test-CiTrxFile {
             $resultId = [string]$result.Attributes["testId"].Value
             if ([string]::IsNullOrWhiteSpace($resultId) -or
                 -not $resultIds.Add($resultId) -or
-                -not $definitionIds.Contains($resultId)) {
+                -not $definitionNamesById.ContainsKey($resultId)) {
                 throw "TRX results require unique nonempty testIds matching their UnitTest definitions."
+            }
+
+            $resultName = [string]$result.Attributes["testName"].Value
+            if ([string]::IsNullOrWhiteSpace($resultName) -or
+                -not [string]::Equals(
+                    $resultName,
+                    $definitionNamesById[$resultId],
+                    [StringComparison]::Ordinal)) {
+                throw "TRX UnitTestResult testName values must exactly match their UnitTest definition names."
             }
         }
 
-        $nonPassed = @($results | Where-Object {
-                -not [string]::Equals(
+        $passedResults = @($results | Where-Object {
+                [string]::Equals(
                     [string]$_.Attributes["outcome"].Value,
                     "Passed",
                     [StringComparison]::OrdinalIgnoreCase)
             })
-        if ($nonPassed.Count -ne 0) {
-            throw "TRX contains $($nonPassed.Count) non-passed UnitTestResult elements."
+        $failedResults = @($results | Where-Object {
+                [string]::Equals(
+                    [string]$_.Attributes["outcome"].Value,
+                    "Failed",
+                    [StringComparison]::OrdinalIgnoreCase)
+            })
+        if (($passedResults.Count + $failedResults.Count) -ne $results.Count) {
+            throw "TRX UnitTestResult outcomes must all be Passed or Failed."
         }
 
+        if ($passedResults.Count -ne $passed -or $failedResults.Count -ne $failed) {
+            throw "TRX UnitTestResult outcomes do not agree with the passed/failed counters."
+        }
+
+        if (($failed -eq 0 -and -not $summaryCompleted) -or
+            ($failed -gt 0 -and -not $summaryFailed)) {
+            throw "TRX ResultSummary outcome does not agree with the failed counter."
+        }
+
+        $failures = @($failedResults | ForEach-Object {
+                $testName = [string]$_.Attributes["testName"].Value
+                if ([string]::IsNullOrWhiteSpace($testName)) {
+                    throw "Failed TRX results require a nonempty testName."
+                }
+
+                $messageNodes = @($_.SelectNodes(
+                        "./*[local-name()='Output']/*[local-name()='ErrorInfo']/*[local-name()='Message']"))
+                if ($messageNodes.Count -ne 1 -or
+                    [string]::IsNullOrWhiteSpace([string]$messageNodes[0].InnerText)) {
+                    throw "Failed TRX results require exactly one nonempty ErrorInfo Message."
+                }
+
+                [pscustomobject]@{
+                    TestName = $testName
+                    Message = [string]$messageNodes[0].InnerText
+                }
+            })
+        $allPassed = $failed -eq 0
         [pscustomobject]@{
-            Valid = $true
-            Error = $null
+            Valid = $allPassed
+            Retainable = $true
+            Error = if ($allPassed) { $null } else {
+                "TRX records a failed complete run " +
+                "(total=$total, executed=$executed, passed=$passed, failed=$failed)."
+            }
+            ResultSummaryOutcome = $summaryOutcome
             Total = $total
             Executed = $executed
             Passed = $passed
+            Failed = $failed
+            Failures = $failures
         }
     }
     catch {
         [pscustomobject]@{
             Valid = $false
+            Retainable = $false
             Error = $_.Exception.Message
+            ResultSummaryOutcome = $null
             Total = $null
             Executed = $null
             Passed = $null
+            Failed = $null
+            Failures = @()
         }
     }
 }
@@ -1077,7 +1147,12 @@ function Get-CiTestEvidenceCompletenessErrors {
         }
 
         if ($trxCount -eq 1 -and -not $suiteEvidence.TrxValidation.Valid) {
-            $problems += "TRX validation failed: $($suiteEvidence.TrxValidation.Error)"
+            if ($suiteEvidence.TrxValidation.Retainable) {
+                $problems += $suiteEvidence.TrxValidation.Error
+            }
+            else {
+                $problems += "TRX validation failed: $($suiteEvidence.TrxValidation.Error)"
+            }
         }
 
         foreach ($coverageEvidence in @($suiteEvidence.NewCoverageEvidence)) {
@@ -1165,6 +1240,161 @@ function Copy-CiEvidenceFile {
     }
 }
 
+function Save-CiTestEvidenceSnapshot {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory)]
+        [object[]]$Suites,
+
+        [Parameter(Mandatory)]
+        [object[]]$Baseline,
+
+        [Parameter(Mandatory)]
+        [string]$RepositoryRoot,
+
+        [Parameter(Mandatory)]
+        [string]$EvidenceRoot,
+
+        [Parameter(Mandatory)]
+        [bool]$TimedOut,
+
+        [AllowNull()]
+        [Nullable[int]]$NativeTestProcessExitCode
+    )
+
+    $trxEvidenceFiles = @()
+    $coverageEvidenceFiles = @()
+    $evidenceCopies = @()
+    $suiteEvidence = @()
+    $completenessErrors = @()
+    $evidenceSnapshotError = $null
+    try {
+        Assert-CiPathContained `
+            -ContainmentRoot $RepositoryRoot `
+            -Path $EvidenceRoot `
+            -Description "run evidence root"
+        [void][IO.Directory]::CreateDirectory($EvidenceRoot)
+        Assert-CiPathContained `
+            -ContainmentRoot $RepositoryRoot `
+            -Path $EvidenceRoot `
+            -Description "run evidence root"
+
+        $trxEvidenceRoot = Join-Path $EvidenceRoot "trx"
+        $coverageEvidenceRoot = Join-Path $EvidenceRoot "coverage"
+        foreach ($snapshotRoot in @($trxEvidenceRoot, $coverageEvidenceRoot)) {
+            Assert-CiPathContained `
+                -ContainmentRoot $EvidenceRoot `
+                -Path $snapshotRoot `
+                -Description "curated evidence directory"
+            [void][IO.Directory]::CreateDirectory($snapshotRoot)
+            Assert-CiPathContained `
+                -ContainmentRoot $EvidenceRoot `
+                -Path $snapshotRoot `
+                -Description "curated evidence directory"
+        }
+
+        $suiteEvidence = @(Get-CiTestEvidenceDelta -Suites $Suites -Baseline $Baseline)
+        $completenessErrors = @(Get-CiTestEvidenceCompletenessErrors -EvidenceDelta $suiteEvidence)
+
+        foreach ($currentSuite in $suiteEvidence) {
+            if ($currentSuite.TrxIsCurrent -and $currentSuite.TrxValidation.Retainable) {
+                $trxName = $currentSuite.EvidenceStem + ".trx"
+                $trxDestination = Join-Path $trxEvidenceRoot $trxName
+                $trxCopy = Copy-CiEvidenceFile `
+                    -SourcePath $currentSuite.TrxPath `
+                    -SourceContainmentRoot $RepositoryRoot `
+                    -DestinationPath $trxDestination `
+                    -DestinationContainmentRoot $EvidenceRoot `
+                    -ExpectedSourceSha256 $currentSuite.TrxSha256
+                $trxRelativePath = Join-Path "trx" $trxName
+                $trxEvidenceFiles += $trxRelativePath
+                $evidenceCopies += [pscustomobject]@{
+                    SuiteName = $currentSuite.SuiteName
+                    Kind = "TRX"
+                    EvidenceFile = $trxRelativePath
+                    SourceSha256 = $trxCopy.SourceSha256
+                    CopiedSha256 = $trxCopy.CopiedSha256
+                    CopyMatchesSource = $trxCopy.CopyMatchesSource
+                }
+            }
+
+            foreach ($coverageEvidence in @($currentSuite.NewCoverageEvidence |
+                    Where-Object { $_.Validation.Valid })) {
+                $coveragePath = $coverageEvidence.Path
+                $coverageDirectoryName = [IO.Path]::GetFileName([IO.Path]::GetDirectoryName($coveragePath))
+                $coverageName = $currentSuite.EvidenceStem + "-" +
+                    $coverageDirectoryName + ".cobertura.xml"
+                $coverageDestination = Join-Path $coverageEvidenceRoot $coverageName
+                $coverageCopy = Copy-CiEvidenceFile `
+                    -SourcePath $coveragePath `
+                    -SourceContainmentRoot $RepositoryRoot `
+                    -DestinationPath $coverageDestination `
+                    -DestinationContainmentRoot $EvidenceRoot `
+                    -ExpectedSourceSha256 $coverageEvidence.Sha256
+                $coverageRelativePath = Join-Path "coverage" $coverageName
+                $coverageEvidenceFiles += $coverageRelativePath
+                $evidenceCopies += [pscustomobject]@{
+                    SuiteName = $currentSuite.SuiteName
+                    Kind = "Cobertura"
+                    EvidenceFile = $coverageRelativePath
+                    SourceSha256 = $coverageCopy.SourceSha256
+                    CopiedSha256 = $coverageCopy.CopiedSha256
+                    CopyMatchesSource = $coverageCopy.CopyMatchesSource
+                }
+            }
+        }
+
+        $trxEvidenceFiles = @($trxEvidenceFiles | Sort-Object)
+        $coverageEvidenceFiles = @($coverageEvidenceFiles | Sort-Object)
+        $evidenceCopies = @($evidenceCopies | Sort-Object -Property SuiteName, Kind, EvidenceFile)
+        if (-not $TimedOut -and
+            $NativeTestProcessExitCode -eq 0 -and
+            $completenessErrors.Count -gt 0) {
+            $evidenceSnapshotError = "A zero-exit test process did not produce exactly one " +
+                "all-passed current TRX and one valid new direct coverage report per expected suite: " +
+                ($completenessErrors -join " ")
+        }
+    }
+    catch {
+        $evidenceSnapshotError = $_.Exception.Message
+    }
+
+    [pscustomobject]@{
+        TrxEvidenceFiles = $trxEvidenceFiles
+        CoverageEvidenceFiles = $coverageEvidenceFiles
+        EvidenceCopies = $evidenceCopies
+        SuiteEvidence = $suiteEvidence
+        CompletenessErrors = $completenessErrors
+        EvidenceSnapshotError = $evidenceSnapshotError
+    }
+}
+
+function Get-CiTestRunnerExitCode {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory)]
+        [bool]$SafeToStartAnotherRunner,
+
+        [Parameter(Mandatory)]
+        [bool]$TimedOut,
+
+        [AllowNull()]
+        [Nullable[int]]$NativeTestProcessExitCode,
+
+        [AllowNull()]
+        [object]$EvidenceSnapshotError,
+
+        [ValidateRange(0, [int]::MaxValue)]
+        [int]$IdentityErrorCount = 0
+    )
+
+    if (-not $SafeToStartAnotherRunner) { return 125 }
+    if ($TimedOut) { return 124 }
+    if ($null -ne $EvidenceSnapshotError -or $IdentityErrorCount -gt 0) { return 126 }
+    if ($null -eq $NativeTestProcessExitCode) { return 125 }
+    [int]$NativeTestProcessExitCode
+}
+
 Export-ModuleMember -Function @(
     "Assert-CiPathContained",
     "Get-CiRepositoryState",
@@ -1176,5 +1406,7 @@ Export-ModuleMember -Function @(
     "Get-CiTestEvidenceCompletenessErrors",
     "Test-CiTrxFile",
     "Test-CiCoberturaFile",
-    "Copy-CiEvidenceFile"
+    "Copy-CiEvidenceFile",
+    "Save-CiTestEvidenceSnapshot",
+    "Get-CiTestRunnerExitCode"
 )
