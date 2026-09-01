@@ -2,7 +2,8 @@
 
 **Prepared:** 1 September 2026
 **Source integration branch:** `codex/forge-integration-2026-09-01`
-**Current corrective branch:** `codex/console-attach-readiness-2026-09-01`
+**Corrective implementation branch:** `codex/console-attach-readiness-2026-09-01`
+**Documentation closure branch:** `codex/console-attach-closure-2026-09-01`
 **Original base:** `96e37e9854861cc2a6098a9fbf05add708732e03` (`main`)
 **State:** current repository-state handover; Option A is ratified through the
 exact C1/C2 sequence; C5 `522b1a15bd58b3f4d1c4af1f3131fa246540c6ae`
@@ -10,10 +11,12 @@ completed its local and hosted close; pull request 5 was regularly merged on 1
 September 2026 as `85a2d695aa6f48558addce324299f4c67915a28d` with the
 original base and exact C5 as its two parents; documentation-only pull request 6
 was then regularly merged as `8c901709853ba44837d1e0132baef127f4b5ac5f`;
-pull request 6 CI and CodeQL were green, but its exact `main` push CI is red on a
+pull request 6 CI and CodeQL were green, but its exact `main` push CI recorded a
 first-seen console-attachment sub-sighting while the separate `main` CodeQL run
-is green; the current narrow correction has completed its final local close in
-this change but has no push or hosted conclusion yet
+was green; the narrow correction completed its local close, pull request 7 CI and
+CodeQL, regular merge `c910caeb458bb783d833fac47a6bb490e444ea0f`, and exact-
+main CI and CodeQL successfully; those later passes are non-reproductions and the
+sighting remains open
 
 This is the compact successor record for the forge continuation accumulated in
 the [kiosk-plan evaluation](2026-08-30-kiosk-plan-evaluation.md). It inherits
@@ -100,9 +103,10 @@ occurred:
   diagnosis. The current test-support correction records native attach and
   target-watch results separately and retries only `ERROR_INVALID_HANDLE` (6)
   while the target remains alive and time remains in one unchanged, absolute
-  15-second attachment-plus-lock-readiness budget. The final local build, format,
-  and two bounded stability runs recorded below are green; corrective-branch
-  push and hosted proof remain pending.
+  15-second attachment-plus-lock-readiness budget. Its final local close, pull
+  request 7 CI and CodeQL, and exact-merge main CI and CodeQL recorded below are
+  green. Those later passes are non-reproductions, not a diagnosis, proof of cure,
+  or closure of the sighting.
 - Provider and district-policy boundaries now fail closed around target
   construction, bearer acquisition, redirects, deadlines, status handling,
   response size and shape, strict UTF-8 JSON, endpoint inventory, and cancellation
@@ -511,9 +515,9 @@ publication, filing, protected-seat review, or release.
 5. Ratify or reject the managed-upgrade design, then obtain District IT's exact
    roots, detection, retention, deployment, smoke, and rollback policy and prove
    it on managed devices.
-6. Push the locally closed console-attachment corrective branch, then require
-   exact-commit pull-request and post-merge hosted conclusions before any hosted-
-   green or cure claim.
+6. Retain the exact pull-request 7 and post-merge receipts as non-reproductions,
+   keep the console-attachment sub-sighting open, and require every later change
+   to earn its own local and hosted closing evidence without a cure claim.
 7. Keep all recorded sightings and their distinct signatures open as sightings
    and use retained
    receipts to seek equivalent-load reproduction before any causal fix, timeout
@@ -658,12 +662,11 @@ stable source and Release-assembly identities, no identity or evidence-
 completeness errors, seven current TRXs, and seven direct coverage files. Each
 measured Accessibility 26, Contract 152, Instructional Evals 336, Integration
 307, Rendering 81, UI Automation 261, and Unit 835. These complete local passes
-remain non-reproductions, not a diagnosis or proof of cure. The corrective branch
-has not been pushed, tested by pull-request CI or CodeQL, merged, or observed on
-a post-merge `main` push; a hosted green is therefore not claimed. No
-deterministic-press source, recipe, fixture, or sample input changed, so the
-conditional SampleGenerator rite did not apply, was not rerun, and no earlier
-sample proof is relabeled.
+remain non-reproductions, not a diagnosis or proof of cure. Exact pull-request 7,
+regular-merge, and post-merge evidence is recorded below. No deterministic-press
+source, recipe, fixture, or sample input changed, so the conditional
+SampleGenerator rite did not apply, was not rerun, and no earlier sample proof is
+relabeled.
 
 Nothing in pull request 6, the main failure, or this correction changes the
 ratified Option-A disposition for all 23 outgoing rows, the pre-admission status
@@ -673,3 +676,55 @@ Proposed status. It is not a version, tag, signature, installation, distribution
 publication, filing, protected-seat review, or release. The typist's acts and all
 AAC/SLP, multilingual, district, rights, safeguarding, and other protected-seat
 territory remain unchanged.
+
+## Pull request 7 and exact-main hosted evidence
+
+Pull request 7 had exact base
+`8c901709853ba44837d1e0132baef127f4b5ac5f`, exact head
+`d2a04cdf5ddebba67867987db4a2a9c083b4b4f2`, and synthetic merge checkout
+`783357a799b8f5dde48f806f5f856659b539760c`. Pull-request CI run
+`33522404031` completed successfully: build-and-test job `99904669394`, secret-
+scan job `99904669716`, and portable-samples job `99907918147` all passed. Its
+bounded receipt `20260901T145716Z-deb8b124b5334f3599f839a7a2051bf8` binds that
+synthetic merge, completed in 302,296 ms, and records stable source and Release-
+assembly identities, no timeout or identity/evidence-completeness error, seven
+current TRXs, seven direct coverage files, and **1,998/1,998 passed**:
+Accessibility 26, Contract 152, Instructional Evals 336, Integration 307,
+Rendering 81, UI Automation 261, and Unit 835.
+
+Pull-request CodeQL run `33522404004`, job `99904669102`, completed successfully
+on the same synthetic merge. Its clean SARIF contained zero results at SHA-256
+`539E2E1D15922A418F8C184914650707F935244F8C16B9871A4DCF3358AF73A1`.
+That static-analysis conclusion is separate from the test receipt.
+
+Pull request 7 merged regularly at 2026-09-01T15:05:02Z as
+`c910caeb458bb783d833fac47a6bb490e444ea0f`, with exact first parent
+`8c901709853ba44837d1e0132baef127f4b5ac5f` and exact second parent
+`d2a04cdf5ddebba67867987db4a2a9c083b4b4f2`. The head and regular merge share
+exact tree object `ad0866c8119c06dc0219b25c0b167db60a4092e9`; the recorded
+base-relative patch hashes for base-to-head and base-to-merge are likewise equal
+at `6d21e64019949eda60df464b378c68ccfd5e3d16`. The pull-request merge ref,
+head commit, and regular merge commit remain distinct identities even though the
+measured implementation trees agree.
+
+Main push CI run `33523542939` completed successfully on exact repository commit
+`c910caeb458bb783d833fac47a6bb490e444ea0f`: build-and-test job `99908503980`,
+secret-scan job `99908503633`, and portable-samples job `99912082705` all passed.
+Bounded receipt `20260901T150823Z-4d6b213977bc495197300c64aacb7ec7` binds exact
+`c910caeb458bb783d833fac47a6bb490e444ea0f`, completed in 339,792 ms, and records
+the same stable source/Release-
+assembly identities, no timeout or identity/evidence-completeness error, seven
+TRXs, seven coverage files, suite counts, and **1,998/1,998 passed** as the
+pull-request receipt. Main push CodeQL run `33523542863`, job `99908501902`, also
+completed successfully on exact
+`c910caeb458bb783d833fac47a6bb490e444ea0f`; its clean SARIF contained zero results
+at SHA-256
+`BA23496F56F37FF30990FF3D15C3E01F42C8DEC97D3BED14C469E989A64EBB62`.
+
+These later hosted passes are non-reproductions of the first-seen
+`console-signal.attach-failed` sub-sighting. They do not identify its cause,
+diagnose a product failure, prove the correction cured it, or close the sighting.
+They do not change Option A, schema 1's missing project `recipeHash` release stop,
+ADR-007's Proposed status, or any typist or protected-seat boundary. This
+documentation-only closure change must earn its own applicable local and hosted
+closing evidence; no such later result is predeclared or inferred in this record.
