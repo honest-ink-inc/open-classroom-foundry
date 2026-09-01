@@ -84,7 +84,7 @@ public sealed class ModuleStudioContractTests : IDisposable
             ["scaffold-smith.packet"] = "scaffold-smith-packet",
             ["scaffold-smith.task-entry"] = "scaffold-smith-task-entry",
             ["talk-moves-studio"] = "forumwright",
-            ["lesson-loom"] = "gridlesson",
+            ["lesson-loom"] = "strandplan",
             ["exit-lens"] = "reteachsignal",
             ["rubric-relay"] = "rubric-relay",
             ["source-lens"] = "inquirywright",
@@ -138,7 +138,7 @@ public sealed class ModuleStudioContractTests : IDisposable
         });
 
     [Fact]
-    public void All_eight_synthetic_modes_cold_start_to_typed_approval_with_catalog_defaults()
+    public void All_eight_synthetic_modes_reach_typed_approval_after_required_bounded_confirmations()
         => WithForm(GateRespectingApprove, form =>
         {
             var syntheticModes = ModuleStudioCatalog.All.SelectMany(door => door.Modes)
@@ -149,6 +149,7 @@ public sealed class ModuleStudioContractTests : IDisposable
             foreach (var mode in syntheticModes)
             {
                 SelectMode(form, mode.Key);
+                ConfirmLockedInventoryIfRequired(form);
                 ReviewButton(form).PerformClick();
 
                 Assert.NotNull(form.ApprovedResult);
@@ -158,6 +159,63 @@ public sealed class ModuleStudioContractTests : IDisposable
                 Assert.Contains("Approved", form.StatusText, StringComparison.Ordinal);
                 AssertSinks(form, enabled: true);
             }
+        });
+
+    [Theory]
+    [InlineData("directions-duet")]
+    [InlineData("family-bridge")]
+    public void Locked_fact_inventory_confirmation_is_explicit_and_stales_after_content_edits(string modeKey)
+        => WithForm(GateRespectingApprove, form =>
+        {
+            SelectMode(form, modeKey);
+            var confirmation = LockedInventoryConfirmation(form);
+
+            Assert.False(confirmation.Checked);
+            Assert.False(ReviewButton(form).Enabled);
+            Assert.Contains("source inventory", form.StatusText, StringComparison.Ordinal);
+            Assert.Contains("not language", confirmation.AccessibilityObject.Name, StringComparison.Ordinal);
+            Assert.Contains("specialist review", confirmation.AccessibilityObject.Name, StringComparison.Ordinal);
+
+            confirmation.Checked = true;
+            Assert.True(ReviewButton(form).Enabled);
+
+            var locked = (DataGridView)FieldControl(form, "Locked facts");
+            locked.Rows.Clear();
+            Assert.False(confirmation.Checked);
+            Assert.False(GreenConfirmation(form).Checked);
+            Assert.False(ReviewButton(form).Enabled);
+
+            GreenConfirmation(form).Checked = true;
+            Assert.False(ReviewButton(form).Enabled);
+            Assert.Contains("source inventory", form.StatusText, StringComparison.Ordinal);
+
+            confirmation.Checked = true;
+            Assert.True(ReviewButton(form).Enabled);
+            ReviewButton(form).PerformClick();
+            Assert.NotNull(form.ApprovedResult);
+            AssertSinks(form, enabled: true);
+        });
+
+    [Theory]
+    [InlineData("")]
+    [InlineData("   ")]
+    public void Family_translated_only_fields_hide_for_empty_or_whitespace_target_language(string targetLocale)
+        => WithForm(GateRespectingApprove, form =>
+        {
+            SelectMode(form, "family-bridge");
+            var translatedFields = new[]
+            {
+                FieldControl(form, "Working target action - not approved"),
+                FieldControl(form, "Working target contact - not approved"),
+                FieldControl(form, "Working target deadline - not approved"),
+                FieldControl(form, "Working glossary version - not approved"),
+                FieldControl(form, "Working glossary - not approved"),
+            };
+            Assert.All(translatedFields, field => Assert.True(field.Parent!.Visible));
+
+            ((TextBox)FieldControl(form, "Target language")).Text = targetLocale;
+
+            Assert.All(translatedFields, field => Assert.False(field.Parent!.Visible));
         });
 
     [Fact]
@@ -252,6 +310,7 @@ public sealed class ModuleStudioContractTests : IDisposable
             SelectMode(form, "directions-duet");
             ((TextBox)FieldControl(form, "Source language")).Text = "e n";
             GreenConfirmation(form).Checked = true;
+            ConfirmLockedInventoryIfRequired(form);
 
             Assert.True(ReviewButton(form).Enabled);
             ReviewButton(form).PerformClick();
@@ -259,6 +318,175 @@ public sealed class ModuleStudioContractTests : IDisposable
             Assert.Equal(0, reviews);
             Assert.Null(form.ApprovedResult);
             Assert.Contains("structurally valid language tag", form.StatusText, StringComparison.Ordinal);
+            AssertSinks(form, enabled: false);
+        });
+
+    [Fact]
+    public void Directions_lock_moved_between_rows_during_GateB_cannot_approve_or_unlock_outputs()
+        => Sta.Run(() =>
+        {
+            var reviews = 0;
+            using var form = new ModuleStudioForm(session =>
+            {
+                reviews++;
+                var indexedPairs = session.Draft.Revision.Document.Nodes
+                    .Select((node, index) => (node, index))
+                    .Where(item => item.node is BilingualPair)
+                    .ToList();
+                var first = (BilingualPair)indexedPairs[0].node;
+                var second = (BilingualPair)indexedPairs[1].node;
+
+                session.ReplaceNode(
+                    indexedPairs[0].index,
+                    new BilingualPair(first.SourceText, "Abra la carpeta.", first.SourceLocale, first.TargetLocale));
+                session.ReplaceNode(
+                    indexedPairs[1].index,
+                    new BilingualPair("Read the page.", second.TargetText, second.SourceLocale, second.TargetLocale));
+                session.SetRequiredIssuesAcknowledged(acknowledged: true);
+
+                Assert.Contains(session.Issues, issue =>
+                    issue.Code == "duet.locked"
+                    && issue.Severity == ValidationSeverity.Blocking
+                    && issue.Message.Contains("aligned item 1", StringComparison.OrdinalIgnoreCase));
+                Assert.False(session.CanApprove);
+                return null;
+            });
+            form.Show();
+            SelectMode(form, "directions-duet");
+            ConfirmLockedInventoryIfRequired(form);
+
+            ReviewButton(form).PerformClick();
+
+            Assert.Equal(1, reviews);
+            Assert.Null(form.ApprovedResult);
+            AssertSinks(form, enabled: false);
+        });
+
+    [Fact]
+    public void Directions_number_embedded_in_a_changed_number_during_GateB_cannot_approve_or_unlock_outputs()
+        => Sta.Run(() =>
+        {
+            var reviews = 0;
+            using var form = new ModuleStudioForm(session =>
+            {
+                reviews++;
+                var replacements = session.Draft.Revision.Document.Nodes
+                    .Select((node, index) => (node, index))
+                    .Where(item => item.node is BilingualPair)
+                    .ToList();
+                foreach (var (node, index) in replacements)
+                {
+                    var pair = (BilingualPair)node;
+                    session.ReplaceNode(
+                        index,
+                        new BilingualPair(
+                            pair.SourceText,
+                            pair.TargetText.Replace("3", "13", StringComparison.Ordinal),
+                            pair.SourceLocale,
+                            pair.TargetLocale));
+                }
+
+                session.SetRequiredIssuesAcknowledged(acknowledged: true);
+                Assert.Contains(session.Issues, issue =>
+                    issue.Code == "duet.locked"
+                    && issue.Severity == ValidationSeverity.Blocking);
+                Assert.False(session.CanApprove);
+                return null;
+            });
+            form.Show();
+            SelectMode(form, "directions-duet");
+            ConfirmLockedInventoryIfRequired(form);
+
+            ReviewButton(form).PerformClick();
+
+            Assert.Equal(1, reviews);
+            Assert.Null(form.ApprovedResult);
+            AssertSinks(form, enabled: false);
+        });
+
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public void Directions_GateB_source_edits_stale_inventory_but_target_only_edits_remain_eligible(bool editSource)
+        => Sta.Run(() =>
+        {
+            var reviews = 0;
+            using var form = new ModuleStudioForm(session =>
+            {
+                reviews++;
+                var indexedPair = session.Draft.Revision.Document.Nodes
+                    .Select((node, index) => (node, index))
+                    .First(item => item.node is BilingualPair);
+                var pair = (BilingualPair)indexedPair.node;
+                session.ReplaceNode(
+                    indexedPair.index,
+                    new BilingualPair(
+                        editSource ? pair.SourceText + " New exact value 7." : pair.SourceText,
+                        editSource ? pair.TargetText : pair.TargetText + " Nota adicional.",
+                        pair.SourceLocale,
+                        pair.TargetLocale));
+                session.SetRequiredIssuesAcknowledged(acknowledged: true);
+
+                if (editSource)
+                {
+                    Assert.Contains(session.Issues, issue =>
+                        issue.Code == "locked.inventory-review-stale"
+                        && issue.Severity == ValidationSeverity.Blocking);
+                    Assert.False(session.CanApprove);
+                    return null;
+                }
+
+                Assert.DoesNotContain(session.Issues, issue => issue.Code == "locked.inventory-review-stale");
+                Assert.True(session.CanApprove);
+                return session.Approve("Synthetic test teacher", ApprovalInstant);
+            });
+            form.Show();
+            SelectMode(form, "directions-duet");
+            ConfirmLockedInventoryIfRequired(form);
+
+            ReviewButton(form).PerformClick();
+
+            Assert.Equal(1, reviews);
+            Assert.Equal(!editSource, form.ApprovedResult is not null);
+            AssertSinks(form, enabled: !editSource);
+        });
+
+    [Fact]
+    public void Directions_GateB_cannot_relabel_target_locale_or_unlock_outputs()
+        => Sta.Run(() =>
+        {
+            var reviews = 0;
+            using var form = new ModuleStudioForm(session =>
+            {
+                reviews++;
+                var indexedPair = session.Draft.Revision.Document.Nodes
+                    .Select((node, index) => (node, index))
+                    .First(item => item.node is BilingualPair);
+                var pair = (BilingualPair)indexedPair.node;
+                session.ReplaceNode(
+                    indexedPair.index,
+                    new BilingualPair(
+                        pair.SourceText,
+                        pair.TargetText,
+                        pair.SourceLocale,
+                        "fr"));
+                session.SetRequiredIssuesAcknowledged(acknowledged: true);
+
+                Assert.Contains(session.Issues, issue =>
+                    issue.Code == "duet.locale"
+                    && issue.Severity == ValidationSeverity.Blocking);
+                Assert.DoesNotContain(session.Issues, issue => issue.Code == "locked.inventory-review-stale");
+                Assert.False(session.CanApprove);
+                return null;
+            });
+            form.Show();
+            SelectMode(form, "directions-duet");
+            ConfirmLockedInventoryIfRequired(form);
+
+            ReviewButton(form).PerformClick();
+
+            Assert.Equal(1, reviews);
+            Assert.Null(form.ApprovedResult);
             AssertSinks(form, enabled: false);
         });
 
@@ -426,6 +654,7 @@ public sealed class ModuleStudioContractTests : IDisposable
                 .FindIndex(item => string.Equals(item.ToString(), "Learner copy", StringComparison.Ordinal));
             TextScale(form).Value = 175;
             TargetLanguageFirst(form).Checked = true;
+            ConfirmLockedInventoryIfRequired(form);
             ReviewButton(form).PerformClick();
             Assert.NotNull(form.ApprovedResult);
 
@@ -481,6 +710,7 @@ public sealed class ModuleStudioContractTests : IDisposable
                 });
             form.Show();
             SelectMode(form, "directions-duet");
+            ConfirmLockedInventoryIfRequired(form);
             ReviewButton(form).PerformClick();
 
             var export = ExportButton(form);
@@ -509,6 +739,130 @@ public sealed class ModuleStudioContractTests : IDisposable
         });
 
     [Fact]
+    public void Unrequested_writer_cancellation_reaches_the_UI_fault_boundary_and_recovers_controls()
+        => Sta.Run(() =>
+        {
+            var destination = Path.Combine(_temporaryDirectory, "existing-unrequested.html");
+            File.WriteAllText(destination, "original exact bytes");
+            var writerFailure = new OperationCanceledException(
+                "Synthetic unrequested Module Studio writer cancellation.");
+            Exception? escapedThreadException = null;
+            void captureThreadException(object _, ThreadExceptionEventArgs args)
+            {
+                escapedThreadException ??= args.Exception;
+            }
+
+            System.Windows.Forms.Application.ThreadException += captureThreadException;
+            try
+            {
+                using var form = new ModuleStudioForm(
+                    GateRespectingApprove,
+                    exportPicker: () => new ModuleStudioForm.ExportChoice(
+                        destination,
+                        RenderTarget.AccessibleHtml),
+                    exportWriter: (_, content, cancellationToken) =>
+                    {
+                        Assert.False(content.IsEmpty);
+                        Assert.False(cancellationToken.IsCancellationRequested);
+                        return Task.FromException(writerFailure);
+                    });
+                form.Show();
+                SelectMode(form, "directions-duet");
+                ConfirmLockedInventoryIfRequired(form);
+                ReviewButton(form).PerformClick();
+
+                var export = ExportButton(form);
+                var cancel = ActionButton(form, "Cancel export");
+                export.PerformClick();
+                PumpUntil(() => escapedThreadException is not null
+                    && export.Enabled
+                    && !cancel.Enabled);
+
+                Assert.Same(writerFailure, escapedThreadException);
+                Assert.Equal("original exact bytes", File.ReadAllText(destination));
+                Assert.Empty(Directory.EnumerateFiles(_temporaryDirectory, ".honest-ink-*.stage"));
+                Assert.DoesNotContain("cancelled", form.StatusText, StringComparison.OrdinalIgnoreCase);
+                Assert.True(DoorList(form).Enabled);
+                Assert.True(OutputAudience(form).Enabled);
+                Assert.True(ReviewButton(form).Enabled);
+            }
+            finally
+            {
+                System.Windows.Forms.Application.ThreadException -= captureThreadException;
+            }
+        });
+
+    [Fact]
+    public void Live_cancel_callback_fault_reaches_the_UI_boundary_after_writer_cleanup_and_control_recovery()
+        => Sta.Run(() =>
+        {
+            var destination = Path.Combine(_temporaryDirectory, "existing-callback-fault.html");
+            File.WriteAllText(destination, "original exact bytes");
+            var writerStarted = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+            var callbackInvoked = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+            var writerFinished = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+            Exception? escapedThreadException = null;
+            void captureThreadException(object _, ThreadExceptionEventArgs args)
+            {
+                escapedThreadException ??= args.Exception;
+            }
+
+            System.Windows.Forms.Application.ThreadException += captureThreadException;
+            try
+            {
+                using var form = new ModuleStudioForm(
+                    GateRespectingApprove,
+                    exportPicker: () => new ModuleStudioForm.ExportChoice(
+                        destination,
+                        RenderTarget.AccessibleHtml),
+                    exportWriter: async (_, _, cancellationToken) =>
+                    {
+                        using var registration = cancellationToken.Register(() =>
+                        {
+                            callbackInvoked.TrySetResult(true);
+                            throw new SyntheticCancellationCallbackException();
+                        });
+                        writerStarted.TrySetResult(true);
+                        try
+                        {
+                            await Task.Delay(Timeout.InfiniteTimeSpan, cancellationToken).ConfigureAwait(false);
+                        }
+                        finally
+                        {
+                            writerFinished.TrySetResult(true);
+                        }
+                    });
+                form.Show();
+                SelectMode(form, "directions-duet");
+                ConfirmLockedInventoryIfRequired(form);
+                ReviewButton(form).PerformClick();
+
+                var export = ExportButton(form);
+                var cancel = ActionButton(form, "Cancel export");
+                export.PerformClick();
+                PumpUntil(() => writerStarted.Task.IsCompleted);
+                cancel.BeginInvoke(new Action(cancel.PerformClick));
+                PumpUntil(() => escapedThreadException is not null
+                    && callbackInvoked.Task.IsCompleted
+                    && writerFinished.Task.IsCompleted
+                    && export.Enabled
+                    && !cancel.Enabled);
+
+                Assert.True(ContainsSyntheticCancellationCallbackFailure(escapedThreadException!));
+                Assert.Equal("original exact bytes", File.ReadAllText(destination));
+                Assert.Empty(Directory.EnumerateFiles(_temporaryDirectory, ".honest-ink-*.stage"));
+                Assert.Contains("cancelled", form.StatusText, StringComparison.OrdinalIgnoreCase);
+                Assert.True(DoorList(form).Enabled);
+                Assert.True(OutputAudience(form).Enabled);
+                Assert.True(ReviewButton(form).Enabled);
+            }
+            finally
+            {
+                System.Windows.Forms.Application.ThreadException -= captureThreadException;
+            }
+        });
+
+    [Fact]
     public void Export_preserves_an_existing_destination_and_removes_its_stage_when_promotion_fails()
         => Sta.Run(() =>
         {
@@ -521,6 +875,7 @@ public sealed class ModuleStudioContractTests : IDisposable
                     RenderTarget.AccessibleHtml));
             form.Show();
             SelectMode(form, "directions-duet");
+            ConfirmLockedInventoryIfRequired(form);
             ReviewButton(form).PerformClick();
 
             using (var destinationLock = new FileStream(
@@ -563,6 +918,7 @@ public sealed class ModuleStudioContractTests : IDisposable
             {
                 form.Show();
                 SelectMode(form, "directions-duet");
+                ConfirmLockedInventoryIfRequired(form);
                 ReviewButton(form).PerformClick();
 
                 ExportButton(form).PerformClick();
@@ -610,6 +966,7 @@ public sealed class ModuleStudioContractTests : IDisposable
 
             form.Show();
             SelectMode(form, "directions-duet");
+            ConfirmLockedInventoryIfRequired(form);
             ReviewButton(form).PerformClick();
             ExportButton(form).PerformClick();
             PumpUntil(() => started.Task.IsCompleted);
@@ -668,6 +1025,7 @@ public sealed class ModuleStudioContractTests : IDisposable
             {
                 form.Show();
                 SelectMode(form, "directions-duet");
+                ConfirmLockedInventoryIfRequired(form);
                 ReviewButton(form).PerformClick();
                 ExportButton(form).PerformClick();
                 PumpUntil(() => writerStarted.Task.IsCompleted);
@@ -743,6 +1101,7 @@ public sealed class ModuleStudioContractTests : IDisposable
 
                 form.Show();
                 SelectMode(form, "directions-duet");
+                ConfirmLockedInventoryIfRequired(form);
                 ReviewButton(form).PerformClick();
                 ExportButton(form).PerformClick();
                 PumpUntil(() => writerStarted.Task.IsCompleted);
@@ -784,6 +1143,7 @@ public sealed class ModuleStudioContractTests : IDisposable
                     throw new IOException("synthetic print-view refusal"));
             form.Show();
             SelectMode(form, "directions-duet");
+            ConfirmLockedInventoryIfRequired(form);
             ReviewButton(form).PerformClick();
 
             ActionButton(form, "Open print view").PerformClick();
@@ -806,6 +1166,7 @@ public sealed class ModuleStudioContractTests : IDisposable
                 printViewOpener: (_, _, _, _, _, _) => release.Task);
             form.Show();
             SelectMode(form, "directions-duet");
+            ConfirmLockedInventoryIfRequired(form);
             ReviewButton(form).PerformClick();
 
             var printView = ActionButton(form, "Open print view");
@@ -912,9 +1273,26 @@ public sealed class ModuleStudioContractTests : IDisposable
 
     private static void ApproveAndAssertSinks(ModuleStudioForm form)
     {
+        ConfirmLockedInventoryIfRequired(form);
         ReviewButton(form).PerformClick();
         Assert.NotNull(form.ApprovedResult);
         AssertSinks(form, enabled: true);
+    }
+
+    private static void ConfirmLockedInventoryIfRequired(ModuleStudioForm form)
+    {
+        if (form.SelectedMode?.Fields.Any(field =>
+            string.Equals(field.Key, ModuleStudioCatalog.LockedFactsReviewedKey, StringComparison.Ordinal)) == true)
+        {
+            LockedInventoryConfirmation(form).Checked = true;
+        }
+    }
+
+    private static CheckBox LockedInventoryConfirmation(ModuleStudioForm form)
+    {
+        var field = Assert.Single(form.SelectedMode!.Fields, candidate =>
+            string.Equals(candidate.Key, ModuleStudioCatalog.LockedFactsReviewedKey, StringComparison.Ordinal));
+        return Assert.IsType<CheckBox>(FieldControl(form, field.Display.Fallback));
     }
 
     private static void AssertMutationRevokes(ModuleStudioForm form, string modeKey, Action mutate)

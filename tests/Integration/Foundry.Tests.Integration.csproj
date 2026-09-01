@@ -6,6 +6,7 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <IsPackable>false</IsPackable>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
   </PropertyGroup>
 
   <ItemGroup>
@@ -26,6 +27,7 @@
     <ProjectReference Include="..\..\src\Foundry.Infrastructure.Windows\Foundry.Infrastructure.Windows.csproj" />
     <ProjectReference Include="..\..\src\Foundry.Infrastructure.Simulated\Foundry.Infrastructure.Simulated.csproj" />
     <ProjectReference Include="..\..\src\Foundry.Modules.BuiltIn\Foundry.Modules.BuiltIn.csproj" />
+    <ProjectReference Include="..\..\tools\ConsoleControlSignalSender\Foundry.Tools.ConsoleControlSignalSender.csproj" />
     <ProjectReference Include="..\..\tools\ProjectUpgradeHost\Foundry.Tools.ProjectUpgradeHost.csproj" />
   </ItemGroup>
 

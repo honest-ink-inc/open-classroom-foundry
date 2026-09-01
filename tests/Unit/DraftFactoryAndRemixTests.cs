@@ -13,7 +13,8 @@ public class DraftFactoryTests
     [Fact]
     public void A_hand_passed_green_cannot_underride_inherited_amber()
     {
-        // RC-18, the binding test: the caller asks for Green; the sources say Amber.
+        // Product-owner-enacted RC-18 lane test: the caller asks for Green; the
+        // sources say Amber. The fictional rehearsal supplied no council authority.
         var draft = DraftFactory.CreateFromSources(
             ArtifactDocument.Empty, [Source(DataLane.Green), Source(DataLane.Amber)], DataLane.Green);
 

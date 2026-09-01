@@ -20,7 +20,8 @@ public sealed record ModulePublicName(
 }
 
 /// <summary>
-/// The single code registry for module names adopted by ADR-008. Internal
+/// The single code registry for module names adopted by ADR-008 and the
+/// lesson-design correction in ADR-009. Internal
 /// classes and wire identities deliberately retain their established names.
 /// </summary>
 public static class ModulePublicIdentity
@@ -33,9 +34,9 @@ public static class ModulePublicIdentity
 
     public static ModulePublicName LessonDesign { get; } = new(
         "lesson-loom",
-        "GridLesson",
+        "StrandPlan",
         "Lesson Design Studio",
-        "gridlesson");
+        "strandplan");
 
     public static ModulePublicName DiscussionDesign { get; } = new(
         "talk-moves",

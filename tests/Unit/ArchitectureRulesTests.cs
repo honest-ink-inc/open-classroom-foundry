@@ -226,7 +226,7 @@ public class ArchitectureRulesTests
         new(StringComparer.OrdinalIgnoreCase)
         {
             ["src/Foundry.Inference.AzureOpenAI/AzureOpenAIProvider.cs"] =
-                "The only outbound path. Council finding R2-12 makes an endpoint off the "
+                "The only outbound path. Product-owner-adopted rehearsal requirement R2-12 makes an endpoint off the "
                 + "district allowlist unconstructable; redirects are disabled and any 3xx "
                 + "is refused rather than followed.",
             ["src/Foundry.App.WinForms/AppServices.PrintViewHandoff.cs"] =

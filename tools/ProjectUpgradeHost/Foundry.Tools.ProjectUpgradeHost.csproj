@@ -8,8 +8,15 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\..\src\Foundry.Contracts\Foundry.Contracts.csproj" />
     <ProjectReference Include="..\..\src\Foundry.Domain\Foundry.Domain.csproj" />
+    <ProjectReference Include="..\..\src\Foundry.Modules.BuiltIn\Foundry.Modules.BuiltIn.csproj" />
+    <ProjectReference Include="..\..\src\Foundry.Modules.DeterministicPress\Foundry.Modules.DeterministicPress.csproj" />
     <ProjectReference Include="..\..\src\Foundry.Storage\Foundry.Storage.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="Foundry.Tests.Integration" />
   </ItemGroup>
 
 </Project>

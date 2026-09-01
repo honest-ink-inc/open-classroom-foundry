@@ -7,6 +7,7 @@ using Foundry.App.WinForms;
 using Foundry.Application;
 using Foundry.Contracts;
 using Foundry.Domain;
+using Foundry.Storage;
 using Microsoft.Win32.SafeHandles;
 
 namespace Foundry.Tests.UiAutomation;
@@ -394,7 +395,7 @@ public sealed class ReviewPreviewContractTests
     }
 
     [Fact]
-    public void Production_catalog_open_fails_before_use_when_required_provenance_is_blank()
+    public void Production_catalog_open_fails_at_the_build_identity_fence_when_manifest_content_changes()
     {
         var source = Path.Combine(AppContext.BaseDirectory, "assets", "symbols");
         var directory = Path.Combine(Path.GetTempPath(), "ocf-tests", Guid.NewGuid().ToString("N"));
@@ -411,8 +412,111 @@ public sealed class ReviewPreviewContractTests
             manifest[0]!["source"] = string.Empty;
             File.WriteAllText(manifestPath, manifest.ToJsonString());
 
+            Assert.Contains(
+                new JsonAssetCatalog(directory).VerifyIntegrity(),
+                issue => issue.Code == "asset.incomplete-provenance");
             var refusal = Assert.Throws<InvalidDataException>(() => AppServices.OpenSymbolCatalog(directory));
-            Assert.Contains("asset.incomplete-provenance", refusal.Message, StringComparison.Ordinal);
+            Assert.Contains("asset.unexpected-build-identity", refusal.Message, StringComparison.Ordinal);
+            Assert.DoesNotContain(directory, refusal.Message, StringComparison.OrdinalIgnoreCase);
+        }
+        finally
+        {
+            Directory.Delete(directory, recursive: true);
+        }
+    }
+
+    [Fact]
+    public void Current_shipped_symbol_manifest_matches_the_exact_build_identity_fence()
+    {
+        var directory = Path.Combine(AppContext.BaseDirectory, "assets", "symbols");
+        var catalog = new JsonAssetCatalog(directory);
+
+        // This is a known-answer identity check for the already-shipped 13
+        // originals. It does not assert protected review and admits no candidate.
+        Assert.Equal(AppServices.ExpectedShippedSymbolManifestSha256, catalog.ManifestSha256);
+        Assert.Equal(13, catalog.All.Count);
+        Assert.Empty(catalog.VerifyIntegrity());
+        Assert.Empty(catalog.VerifyClosedDeploymentRoot());
+        Assert.IsType<JsonAssetCatalog>(AppServices.SymbolCatalog());
+    }
+
+    [Fact]
+    public void Semantic_validity_cannot_turn_raw_manifest_byte_drift_into_a_shipped_catalog()
+    {
+        var directory = CopyShippedSymbolPack();
+        try
+        {
+            var manifestPath = Path.Combine(directory, JsonAssetCatalog.ManifestFileName);
+            File.AppendAllText(manifestPath, "\n");
+
+            var generic = new JsonAssetCatalog(directory);
+            Assert.Empty(generic.VerifyIntegrity());
+            Assert.Empty(generic.VerifyClosedDeploymentRoot());
+            Assert.NotEqual(AppServices.ExpectedShippedSymbolManifestSha256, generic.ManifestSha256);
+
+            var refusal = Assert.Throws<InvalidDataException>(() => AppServices.OpenSymbolCatalog(directory));
+            Assert.Contains("asset.unexpected-build-identity", refusal.Message, StringComparison.Ordinal);
+            Assert.DoesNotContain(directory, refusal.Message, StringComparison.OrdinalIgnoreCase);
+            Assert.DoesNotContain(JsonAssetCatalog.ManifestFileName, refusal.Message, StringComparison.OrdinalIgnoreCase);
+        }
+        finally
+        {
+            Directory.Delete(directory, recursive: true);
+        }
+    }
+
+    [Fact]
+    public void A_semantically_valid_provenance_record_change_cannot_enter_the_shipped_catalog()
+    {
+        var directory = CopyShippedSymbolPack();
+        try
+        {
+            var manifestPath = Path.Combine(directory, JsonAssetCatalog.ManifestFileName);
+            var manifest = JsonNode.Parse(File.ReadAllText(manifestPath))!.AsArray();
+            manifest[0]!["source"] = "synthetic-current-pack-drift";
+            File.WriteAllText(manifestPath, manifest.ToJsonString());
+
+            var generic = new JsonAssetCatalog(directory);
+            Assert.Empty(generic.VerifyIntegrity());
+            Assert.Empty(generic.VerifyClosedDeploymentRoot());
+            Assert.NotEqual(AppServices.ExpectedShippedSymbolManifestSha256, generic.ManifestSha256);
+
+            var refusal = Assert.Throws<InvalidDataException>(() => AppServices.OpenSymbolCatalog(directory));
+            Assert.Contains("asset.unexpected-build-identity", refusal.Message, StringComparison.Ordinal);
+            Assert.DoesNotContain(directory, refusal.Message, StringComparison.OrdinalIgnoreCase);
+            Assert.DoesNotContain("synthetic-current-pack-drift", refusal.Message, StringComparison.Ordinal);
+        }
+        finally
+        {
+            Directory.Delete(directory, recursive: true);
+        }
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void Shipped_catalog_open_refuses_top_level_and_nested_unlisted_entries_without_leaking_paths(bool nested)
+    {
+        var directory = CopyShippedSymbolPack();
+        const string UnlistedName = "unlisted-synthetic-entry";
+        try
+        {
+            var unlistedPath = nested
+                ? Path.Combine(directory, UnlistedName, "fixture.bin")
+                : Path.Combine(directory, UnlistedName + ".bin");
+            Directory.CreateDirectory(Path.GetDirectoryName(unlistedPath)!);
+            File.WriteAllText(unlistedPath, "synthetic unlisted bytes");
+
+            var generic = new JsonAssetCatalog(directory);
+            Assert.Empty(generic.VerifyIntegrity());
+            Assert.Contains(
+                generic.VerifyClosedDeploymentRoot(),
+                issue => issue.Code == "asset.unexpected-deployment-entry");
+
+            var refusal = Assert.Throws<InvalidDataException>(() => AppServices.OpenSymbolCatalog(directory));
+            Assert.Contains("asset.unexpected-deployment-entry", refusal.Message, StringComparison.Ordinal);
+            Assert.DoesNotContain(directory, refusal.Message, StringComparison.OrdinalIgnoreCase);
+            Assert.DoesNotContain(UnlistedName, refusal.Message, StringComparison.OrdinalIgnoreCase);
         }
         finally
         {
@@ -667,6 +771,19 @@ public sealed class ReviewPreviewContractTests
             AppServices.MachineAtReview(),
             new DefaultArtifactValidator(),
             context);
+
+    private static string CopyShippedSymbolPack()
+    {
+        var source = Path.Combine(AppContext.BaseDirectory, "assets", "symbols");
+        var directory = Path.Combine(Path.GetTempPath(), "ocf-tests", Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(directory);
+        foreach (var file in Directory.GetFiles(source))
+        {
+            File.Copy(file, Path.Combine(directory, Path.GetFileName(file)));
+        }
+
+        return directory;
+    }
 
     private static string AwaitDocument(WebBrowser browser, string expected)
     {

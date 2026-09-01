@@ -4,9 +4,16 @@
 
 **Plan version:** 2.0 — regenerated 29 August 2026, applying The Master's Review 1.0 (amendments 1–7; findings F2, F5–F11 incorporated)  
 **Date:** 29 August 2026  
-**Status (30 August 2026):** Foundation, the deterministic press, SequenceSlate, and the reachable Green built-in studios are implemented; protected-seat review, pilot evidence, packaging, release, and the remaining roadmap stay open. ADR-008 fixes current public display names while preserving all stable internal identifiers. See the [forge closeout](handover/2026-08-30-forge-closeout.md).
+**Status (31 August 2026):** Foundation, the deterministic press, SequenceSlate, and the reachable Green built-in studios are implemented; protected-seat review, pilot evidence, packaging, release, and the remaining roadmap stay open. ADR-008 fixes current public display names and ADR-009 corrects the lesson-design display to StrandPlan, while preserving all stable internal identifiers. See the [current handover](handover/2026-08-30-kiosk-plan-evaluation.md).
 **License intention:** Application code and first-party recipes under GNU GPL-3.0-or-later; other content and assets governed by explicit, compatible licenses  
 **Initial operating environment:** .NET 10 on managed Windows 10/11 devices, local-first authoring, optional district-governed Azure OpenAI inference  
+
+The current runtime taxonomy is narrower than the twelve-item product roadmap:
+Built-in Studios exposes **10 doors and 11 modes**, because Scaffold Smith owns
+two modes. Eight modes are mechanically buildable from synthetic Green
+starters; Access Remix and the two district-governed modes remain held.
+SequenceSlate is a separate authoring surface, while Module Zero and Symbol
+Commons are outside the Built-in Studios door count.
 
 This is a design, engineering, instructional, privacy, accessibility, licensing, and deployment audit of a proposed implementation. It is not legal advice, a district authorization, a completed security assessment, an accessibility certification, or a claim that unbuilt software has passed the gates described here.
 
@@ -28,7 +35,7 @@ The public-facing priority sequence remains inspiring:
 4. Access Remix
 5. Directions Duet
 6. ReteachSignal — Formative Evidence
-7. GridLesson — Lesson Design Studio
+7. StrandPlan — Lesson Design Studio
 8. Rubric Relay
 9. Forumwright — Discussion Design
 10. KinDispatch — Bilingual & Family Press
@@ -45,7 +52,7 @@ The **engineering and release sequence must differ**:
 4. SequenceSlate vertical slice
 5. Board to Brief and Directions Duet
 6. Access Remix
-7. Scaffold Smith (including its task-entry scaffold), GridLesson, and Forumwright
+7. Scaffold Smith (including its task-entry scaffold), StrandPlan, and Forumwright
 8. Full Symbol Commons and the complete Deterministic Press studio
 9. Inquirywright and Green-only KinDispatch
 10. ReteachSignal and Rubric Relay only after the complete Amber architecture and written district approval
@@ -816,7 +823,7 @@ Unlimited unsupported languages, speech interpretation, dialect guarantees, pers
 
 Named grouping, longitudinal dashboards, grading, SIS/LMS integration, student histories, subgroup comparison, and response-level export.
 
-## 10.7 GridLesson — Lesson Design Studio
+## 10.7 StrandPlan — Lesson Design Studio
 
 **Lane:** Green.  
 **Problem:** Plans often become lists of activities rather than coherent target-evidence-instruction-decision sequences.
@@ -1167,6 +1174,17 @@ Live Azure smoke tests use synthetic inputs in an authorized release environment
 
 ## Hardware bench
 
+The 1366×768 covenant is a **practical functional floor**, not a fixed layout
+canvas, design target, or startup cutoff. At that screen size, after ordinary
+operating-system chrome, every supported core authoring, review, status, and
+recovery path must remain readable and reachable. Reflow, wrapping, and genuine
+scrolling are valid. Smaller displays may still work, but they are outside the
+current support evidence rather than mechanically blocked.
+
+“Practical” describes permitted adaptation, not optionality: a supported core
+path that becomes unreadable, unreachable, or unrecoverable at either reference
+working-area profile fails the floor.
+
 - Camera simulator in CI and physical camera before release
 - Virtual print sink and physical printers
 - Camera loss/reconnect, low light, rotation, and multi-page capture
@@ -1256,7 +1274,7 @@ An honest educator alpha is plausible five to seven months after foundation work
 **Estimate:** 12–18 weeks
 
 - Scaffold Smith, including its task-entry scaffold (ADR-005)
-- GridLesson — Lesson Design Studio
+- StrandPlan — Lesson Design Studio
 - Forumwright — Discussion Design
 - Complete Deterministic Press studio (all eight presses)
 - Shared target, evidence, access-route, and instructional-decision contracts
@@ -1548,10 +1566,13 @@ Do not release if:
 11. Pilot success thresholds and observation period
 12. Long-term maintainer, security contact, and end-of-life promise
 13. Local inference posture: Foundry.Inference.Local target hardware and first supported local model family
-14. Minimum supported hardware floor and its permanent test-bench machine
+14. Minimum supported hardware floor — **functional covenant decided 31 August
+    2026: 1366×768 is the practical, firm floor defined in §12; acquiring and
+    maintaining the permanent physical bench machine and recording physical-
+    device evidence remain open**
 15. Amber teacher-edit-only journaling: whether, and under what district-approved retention rule, pending pilot fragility data
 16. Ratification of ADR-005: TaskDock absorption into Scaffold Smith — **decided: ratified 29 August 2026**
-17. Public display names for the six screened modules — **decided 30 August 2026 by ADR-008: SequenceSlate, GridLesson, Forumwright, ReteachSignal, Inquirywright, and KinDispatch; legacy identifiers remain stable and counsel review remains a pre-release checkpoint**
+17. Public display names for the six screened modules — **decided 30 August 2026 by ADR-008 and corrected 31 August by ADR-009: SequenceSlate, StrandPlan, Forumwright, ReteachSignal, Inquirywright, and KinDispatch; legacy identifiers remain stable and counsel review remains a pre-release checkpoint**
 
 ---
 
@@ -1563,7 +1584,7 @@ This plan draws upon:
 - Writer’s Kiosk source and test suite at audited commit c2b670b
 - The Honest Ink 227-Idea Atlas (version 2.0; repository document `docs/idea-atlas.md`)
 - The Master's Review 1.0 (open-classroom-foundry-davinci-review.md), whose amendments this version applies
-- Accepted ADR-005, ADR-006, and ADR-008, plus the Deterministic Press module specification
+- Accepted ADR-005, ADR-006, ADR-008, and ADR-009, plus the Deterministic Press module specification
 - U.S. Department of Education FERPA guidance on direct and indirect identifiers
 - Official PECS description establishing it as a specific six-phase protocol
 - Provider capability documentation, cited per configured deployment at Gate 3 (for district Azure OpenAI, Microsoft's Azure OpenAI documentation)

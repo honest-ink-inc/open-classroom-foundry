@@ -2,6 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://honest-ink.org/schemas/managed-pilot-upgrade-plan-1.json",
   "title": "Honest Ink managed pilot upgrade plan",
+  "description": "Portable structural preflight for a managed pilot upgrade plan. ProjectUpgradeOperatorHost remains authoritative for Unicode normalization, platform filesystem semantics, root identity and containment, existing paths, and reparse-point checks.",
   "type": "object",
   "additionalProperties": false,
   "required": [
@@ -18,17 +19,20 @@
     "sourceLibraryRoot": {
       "type": "string",
       "minLength": 1,
-      "maxLength": 1024
+      "maxLength": 1024,
+      "description": "The exact source-library root. Absolute-path and platform filesystem validation is performed by ProjectUpgradeOperatorHost."
     },
     "candidateLibraryRoot": {
       "type": "string",
       "minLength": 1,
-      "maxLength": 1024
+      "maxLength": 1024,
+      "description": "The exact candidate-library root. Absolute-path and platform filesystem validation is performed by ProjectUpgradeOperatorHost."
     },
     "targetEngineVersion": {
       "type": "string",
       "minLength": 1,
-      "maxLength": 64
+      "maxLength": 64,
+      "pattern": "^[0-9A-Za-z._+\\-]{1,64}$"
     },
     "projects": {
       "type": "array",
@@ -49,23 +53,27 @@
             "type": "string",
             "minLength": 1,
             "maxLength": 512,
-            "pattern": "^[^\\\\*?]+\\.ocfproj$"
+            "description": "A portable forward-slash .ocfproj address. The host remains authoritative for Unicode normalization and platform filesystem semantics.",
+            "pattern": "^(?!/)(?![\\s\\S]*//)(?![\\s\\S]*(?:^|/)\\.{1,2}(?:/|$))(?![\\s\\S]*[\\\\*?<>:\"|\\u0000-\\u001F\\u007F-\\u009F\\u2028\\u2029])(?![\\s\\S]*(?:^|/)[^/]*[ .](?:/|$))(?:[^/\\\\*?<>:\"|\\u0000-\\u001F\\u007F-\\u009F\\u2028\\u2029]+/)*[^/\\\\*?<>:\"|\\u0000-\\u001F\\u007F-\\u009F\\u2028\\u2029]+\\.[oO][cC][fF][pP][rR][oO][jJ]$"
           },
           "destinationRelativePath": {
             "type": "string",
             "minLength": 1,
             "maxLength": 512,
-            "pattern": "^[^\\\\*?]+\\.ocfproj$"
+            "description": "A portable forward-slash .ocfproj address. The host remains authoritative for Unicode normalization and platform filesystem semantics.",
+            "pattern": "^(?!/)(?![\\s\\S]*//)(?![\\s\\S]*(?:^|/)\\.{1,2}(?:/|$))(?![\\s\\S]*[\\\\*?<>:\"|\\u0000-\\u001F\\u007F-\\u009F\\u2028\\u2029])(?![\\s\\S]*(?:^|/)[^/]*[ .](?:/|$))(?:[^/\\\\*?<>:\"|\\u0000-\\u001F\\u007F-\\u009F\\u2028\\u2029]+/)*[^/\\\\*?<>:\"|\\u0000-\\u001F\\u007F-\\u009F\\u2028\\u2029]+\\.[oO][cC][fF][pP][rR][oO][jJ]$"
           },
           "sourceEngineVersion": {
             "type": "string",
             "minLength": 1,
-            "maxLength": 64
+            "maxLength": 64,
+            "pattern": "^[0-9A-Za-z._+\\-]{1,64}$"
           },
           "sourceSchemaVersion": {
             "type": "string",
             "minLength": 1,
-            "maxLength": 32
+            "maxLength": 32,
+            "pattern": "^[0-9]{1,32}$"
           },
           "sourceSha256": {
             "type": "string",

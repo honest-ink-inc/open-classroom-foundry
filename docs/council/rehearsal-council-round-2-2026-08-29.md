@@ -19,7 +19,7 @@
 
 ## Session 8 — Privacy, legal, records (L. chairing)
 
-**Verified:** no Amber module exists to worry about yet; session bytes are ephemeral and purge-tested; the RC-18 lane-inheritance law landed with its binding test; Green saves carry teacher-managed retention.
+**Verified:** no Amber module exists to worry about yet; session bytes are ephemeral and purge-tested; the product-owner-enacted RC-18 lane-inheritance constraint landed with its acceptance test; Green saves carry teacher-managed retention. The fictional rehearsal supplied no council or privacy-seat authority.
 
 **Findings:**
 - **R2-9 (verified design decision, now recorded).** Approval and egress receipts carry the teacher's identity — and they are **deliberately excluded from the .ocfproj package**, whose snapshot renders for the learner audience. A shareable Green project therefore spreads no teacher PII. This was true by construction; it is now true *on the record*, so a future contributor doesn't "helpfully" add the receipt to the manifest.
@@ -61,9 +61,9 @@ The Owner heard all five seats and set the order of march:
 3. Then 0.5: Source Lens, Green-only Family Bridge with the readability lint, the provenance/citation editor — every multilingual element passing the council's new stewardship check.
 4. The human gates remain the human gates. Push the repository (R2-7), seat the second maintainer (R2-13), and let the two accepted educators put their hands on the samples.
 
-## Ratification by the educator council (29 August 2026)
+## Product-owner adoption of rehearsal-derived findings (29 August 2026)
 
-The educator council, through the product owner, **agrees with all findings of sessions 7–12**. The dispositions in the register below stand as accepted; the binding items (R2-8, R2-12) bind, and R2-7 was satisfied the same day — the repository now lives at github.com/Spacejunk-io/open-classroom-foundry and CI runs in earnest.
+The product owner accepted the engineering dispositions from fictional sessions 7–12. This was **not educator-council ratification**, a vote, district or counsel approval, or protected-seat evidence. The product-owner requirements R2-8 and R2-12 remain implementation constraints pending their named human gates, and R2-7 was satisfied the same day — the repository moved to GitHub and CI began running in earnest.
 
 ## Findings register
 

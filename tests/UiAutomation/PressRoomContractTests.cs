@@ -206,6 +206,55 @@ public class PressRoomContractTests
         });
 
     [Fact]
+    public void Unrequested_exporter_cancellation_reaches_the_UI_fault_boundary_and_recovers_controls()
+        => Sta.Run(() =>
+        {
+            var destination = Path.Combine(Path.GetTempPath(), $"press-room-unrequested-{Guid.NewGuid():N}.pdf");
+            File.WriteAllText(destination, "original exact bytes");
+            Exception? escapedThreadException = null;
+            void captureThreadException(object _, ThreadExceptionEventArgs args)
+            {
+                escapedThreadException ??= args.Exception;
+            }
+
+            System.Windows.Forms.Application.ThreadException += captureThreadException;
+            try
+            {
+                var exporterFailure = new OperationCanceledException(
+                    "Synthetic unrequested Press Room exporter cancellation.");
+                using var form = new PressRoomForm(
+                    AutoApprove,
+                    exportPicker: () => new PressRoomForm.ExportChoice(destination, 1),
+                    pdfExporter: (_, _, _, cancellationToken) =>
+                    {
+                        Assert.False(cancellationToken.IsCancellationRequested);
+                        return Task.FromException(exporterFailure);
+                    });
+                form.Show();
+                SelectPress(form, "graph-paper");
+                ((Button)ReviewSurfaceContractTests.ByName(form, "Review and approve…")).PerformClick();
+
+                var export = (Button)ReviewSurfaceContractTests.ByName(form, "Export…");
+                var cancel = (Button)ReviewSurfaceContractTests.ByName(form, "Cancel export");
+                export.PerformClick();
+                PumpUntil(() => escapedThreadException is not null
+                    && export.Enabled
+                    && !cancel.Enabled);
+
+                Assert.Same(exporterFailure, escapedThreadException);
+                Assert.Equal("original exact bytes", File.ReadAllText(destination));
+                Assert.DoesNotContain("cancelled", form.StatusText, StringComparison.OrdinalIgnoreCase);
+                Assert.True(ReviewSurfaceContractTests.ByName(form, "Presses").Enabled);
+                Assert.True(ReviewSurfaceContractTests.ByName(form, "Open from library…").Enabled);
+            }
+            finally
+            {
+                System.Windows.Forms.Application.ThreadException -= captureThreadException;
+                File.Delete(destination);
+            }
+        });
+
+    [Fact]
     public void Export_picker_failure_is_announced_instead_of_escaping_the_ui_dispatch()
         => Sta.Run(() =>
         {

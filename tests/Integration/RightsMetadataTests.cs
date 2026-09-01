@@ -66,17 +66,8 @@ public class RightsMetadataTests
     public void No_orphan_file_ships_without_a_provenance_record()
     {
         var root = AssetsRoot();
-        var declared = new JsonAssetCatalog(root).All
-            .Select(p => p.FileName)
-            .ToHashSet(StringComparer.OrdinalIgnoreCase);
+        var catalog = new JsonAssetCatalog(root);
 
-        var orphans = Directory.EnumerateFiles(root, "*", SearchOption.AllDirectories)
-            .Select(path => Path.GetRelativePath(root, path)
-                .Replace(Path.DirectorySeparatorChar, '/'))
-            .Where(name => !string.Equals(name, "manifest.json", StringComparison.OrdinalIgnoreCase)
-                && !declared.Contains(name))
-            .ToList();
-
-        Assert.True(orphans.Count == 0, "Files with no rights record: " + string.Join(", ", orphans));
+        Assert.Empty(catalog.VerifyClosedDeploymentRoot());
     }
 }

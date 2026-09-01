@@ -223,6 +223,102 @@ public class HostilePackageDepthTests : IDisposable
     }
 
     [Fact]
+    public async Task Package_provenance_required_text_uses_the_catalog_safety_policy()
+    {
+        (string Hint, Func<AssetProvenance, AssetProvenance> Mutate)[] hostileCases =
+        [
+            ("invisible-required-provenance", provenance => provenance with { Source = "\u200B" }),
+            ("directional-required-provenance", provenance => provenance with { Creator = "Synthetic\u202Ecreator" }),
+            ("punctuation-required-provenance", provenance => provenance with { License = "---" }),
+            ("oversized-mime-provenance", provenance => provenance with { MimeType = new string('m', 65) }),
+        ];
+
+        foreach (var (hint, mutate) in hostileCases)
+        {
+            MutateProvenance(hint, mutate);
+
+            var exception = await Assert.ThrowsAsync<InvalidOperationException>(
+                () => _store.LoadProjectAsync(hint, CancellationToken.None));
+
+            Assert.Contains("provenance record has invalid", exception.Message, StringComparison.Ordinal);
+        }
+    }
+
+    [Fact]
+    public async Task Every_optional_package_provenance_field_uses_the_catalog_safety_policy()
+    {
+        (string Hint, Func<AssetProvenance, AssetProvenance> Mutate)[] hostileCases =
+        [
+            ("oversized-ambiguity-provenance", provenance => provenance with
+            {
+                AmbiguityNotes = new string('a', 2049),
+            }),
+            ("control-attribution-provenance", provenance => provenance with
+            {
+                RequiredAttribution = "Synthetic credit\nsecond line",
+            }),
+            ("format-modification-provenance", provenance => provenance with
+            {
+                Modifications = "Synthetic\u2066modification",
+            }),
+        ];
+
+        foreach (var (hint, mutate) in hostileCases)
+        {
+            MutateProvenance(hint, mutate);
+
+            var exception = await Assert.ThrowsAsync<InvalidOperationException>(
+                () => _store.LoadProjectAsync(hint, CancellationToken.None));
+
+            Assert.Contains("provenance record has invalid", exception.Message, StringComparison.Ordinal);
+        }
+    }
+
+    [Fact]
+    public async Task Safe_optional_package_provenance_survives_load_and_resave_exactly()
+    {
+        MutateProvenance(
+            "safe-optional-provenance",
+            provenance => provenance with
+            {
+                AmbiguityNotes = "May resemble another synthetic classroom marker.",
+                RequiredAttribution = "Synthetic attribution: Example Artist.",
+                Modifications = "Re-encoded as a passive SVG for this synthetic fixture.",
+            });
+
+        var loaded = await _store.LoadProjectAsync("safe-optional-provenance", CancellationToken.None);
+        var loadedAssets = Assert.IsType<IAssetCatalog>(loaded.Assets, exactMatch: false);
+        var loadedProvenance = Assert.IsType<AssetProvenance>(
+            loadedAssets.Find(new AssetId("agency.help.v1")));
+
+        var reopenedApproval = ApprovalGate.Approve(
+            DraftArtifact.New(loaded.Document, DataLane.Green),
+            "teacher@example.org",
+            DocumentValidator.Validate(loaded.Document),
+            SomeInstant);
+        var resavedStore = new OcfprojProjectStore(
+            Path.Combine(_root, "safe-optional-resaved"),
+            new AccessibleHtmlRenderer(),
+            loadedAssets);
+        await resavedStore.SaveGreenProjectAsync(
+            reopenedApproval,
+            new ProjectSaveRequest(
+                "resaved",
+                loaded.Manifest.ModuleId,
+                loaded.Manifest.RecipeId,
+                loaded.Manifest.RecipeVersion,
+                SomeInstant),
+            CancellationToken.None);
+
+        var reopened = await resavedStore.LoadProjectAsync("resaved", CancellationToken.None);
+        var reopenedAssets = Assert.IsType<IAssetCatalog>(reopened.Assets, exactMatch: false);
+        var reopenedProvenance = Assert.IsType<AssetProvenance>(
+            reopenedAssets.Find(new AssetId("agency.help.v1")));
+
+        Assert.Equal(loadedProvenance, reopenedProvenance);
+    }
+
+    [Fact]
     public async Task A_structurally_valid_png_preview_is_admitted()
     {
         var path = CopyValid("valid-preview");

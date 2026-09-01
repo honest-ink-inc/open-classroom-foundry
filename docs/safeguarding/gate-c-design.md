@@ -1,6 +1,6 @@
-# Gate C, version 1 — design (implements council finding RC-19)
+# Gate C, version 1 — design (plan requirement cross-checked by fictional rehearsal note RC-19)
 
-**Date:** 29 August 2026 · Reviewed by the rehearsal safeguarding seat (session 11); a real safeguarding lead reviews before any classroom deployment. Implementation lands with the capture UI, against the acceptance criteria below.
+**Date:** 29 August 2026 · A fictional rehearsal safeguarding persona cross-checked this design in session 11; that was not council or safeguarding approval. A real safeguarding lead reviews before any classroom deployment. Implementation lands with the capture UI, against the acceptance criteria below.
 
 ## The one decision that shapes everything
 

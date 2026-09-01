@@ -1,27 +1,54 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
+using System.Buffers.Binary;
 using System.Globalization;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
+using Foundry.Contracts;
 using Foundry.Domain;
+using Foundry.Modules.BuiltIn;
+using Foundry.Modules.BuiltIn.AllAboard;
+using Foundry.Modules.DeterministicPress;
 using Foundry.Storage;
 
 namespace Foundry.Tools.ProjectUpgradeHost;
 
 /// <summary>
 /// A deliberately narrow operator host for ADR-007 project preparation. It
-/// reviews one exact plan or prepares that exact, SHA-256-confirmed plan. It
+/// reviews one exact plan and two executing recipe inventories or prepares only
+/// that exact combination after all three SHA-256 values are confirmed. It
 /// never discovers a package, build, or destination; and it never installs,
 /// launches, versions, signs, distributes, deletes, or publishes software.
 /// </summary>
 public static class ProjectUpgradeOperatorHost
 {
     public const string PlanSchemaVersion = "1";
+    internal const string CandidateRecipeIdentityInventoryFramingVersion =
+        "candidate-recipe-identity-inventory.v1";
+    internal const string CandidateRecipeContractInventoryFramingVersion =
+        "candidate-recipe-contract-inventory.v2";
 
-    public static async Task<int> RunAsync(
+    private static readonly UTF8Encoding StrictUtf8 = new(
+        encoderShouldEmitUTF8Identifier: false,
+        throwOnInvalidBytes: true);
+
+    public static Task<int> RunAsync(
         string[] args,
         TextWriter output,
         TextWriter error,
+        CancellationToken cancellationToken)
+        => RunOnPlatformAsync(
+            args,
+            output,
+            error,
+            OperatingSystem.IsWindows(),
+            cancellationToken);
+
+    internal static async Task<int> RunOnPlatformAsync(
+        string[] args,
+        TextWriter output,
+        TextWriter error,
+        bool isWindows,
         CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(args);
@@ -30,14 +57,30 @@ public static class ProjectUpgradeOperatorHost
 
         try
         {
+            if (!isWindows)
+            {
+                throw OperatorFailure(
+                    OperatorUpgradeFailureCodes.PlatformUnsupported,
+                    "The operator host requires Windows file-identity semantics.");
+            }
+
             var command = ParseCommand(args);
             var heldPlan = await ReadExactPlanAsync(command.PlanPath, cancellationToken).ConfigureAwait(false);
             var request = ParsePlan(heldPlan.Bytes);
             ValidateClosedPlan(request);
+            var candidateRecipesSha256 = CandidateRecipesSha256(request.CandidateRecipes);
+            var candidateRecipeContracts = ExecutingCandidateRecipeContracts();
+            var candidateRecipeContractsSha256 = CandidateRecipeContractsSha256(candidateRecipeContracts);
 
             if (command.Kind == OperatorCommandKind.Review)
             {
-                WritePlanReview(output, heldPlan.Sha256, request.Projects.Count);
+                WritePlanReview(
+                    output,
+                    heldPlan.Sha256,
+                    candidateRecipesSha256,
+                    candidateRecipeContractsSha256,
+                    candidateRecipeContracts,
+                    request.Projects.Count);
                 return 0;
             }
 
@@ -48,13 +91,38 @@ public static class ProjectUpgradeOperatorHost
                     "The exact upgrade plan SHA-256 was not confirmed.");
             }
 
+            if (!string.Equals(
+                    command.ConfirmedCandidateRecipesSha256,
+                    candidateRecipesSha256,
+                    StringComparison.OrdinalIgnoreCase))
+            {
+                throw OperatorFailure(
+                    OperatorUpgradeFailureCodes.CandidateRecipesNotConfirmed,
+                    "The exact candidate recipe inventory SHA-256 was not confirmed.");
+            }
+
+            if (!string.Equals(
+                    command.ConfirmedCandidateRecipeContractsSha256,
+                    candidateRecipeContractsSha256,
+                    StringComparison.OrdinalIgnoreCase))
+            {
+                throw OperatorFailure(
+                    OperatorUpgradeFailureCodes.CandidateRecipeContractsNotConfirmed,
+                    "The exact candidate recipe-contract inventory SHA-256 was not confirmed.");
+            }
+
             // Exactly one call crosses the preparation boundary. The request
             // preserves the plan's closed array order; no retry or inferred
             // per-project call exists in this host.
             var receipt = await OcfprojUpgradeService.PrepareCompatibleBatchAsync(
                 request,
                 cancellationToken).ConfigureAwait(false);
-            WriteReceipt(output, heldPlan.Sha256, receipt);
+            WriteReceipt(
+                output,
+                heldPlan.Sha256,
+                candidateRecipesSha256,
+                candidateRecipeContractsSha256,
+                receipt);
             return 0;
         }
         catch (OperatorUpgradeException refusal)
@@ -106,18 +174,22 @@ public static class ProjectUpgradeOperatorHost
             return new OperatorCommand(OperatorCommandKind.Review, args[2], null);
         }
 
-        if (args.Length == 5
+        if (args.Length == 9
             && string.Equals(args[0], "prepare", StringComparison.Ordinal)
             && string.Equals(args[1], "--plan", StringComparison.Ordinal)
             && string.Equals(args[3], "--confirm-plan-sha256", StringComparison.Ordinal)
-            && IsSha256(args[4]))
+            && IsSha256(args[4])
+            && string.Equals(args[5], "--confirm-candidate-recipes-sha256", StringComparison.Ordinal)
+            && IsSha256(args[6])
+            && string.Equals(args[7], "--confirm-candidate-recipe-contracts-sha256", StringComparison.Ordinal)
+            && IsSha256(args[8]))
         {
-            return new OperatorCommand(OperatorCommandKind.Prepare, args[2], args[4]);
+            return new OperatorCommand(OperatorCommandKind.Prepare, args[2], args[4], args[6], args[8]);
         }
 
         throw OperatorFailure(
             OperatorUpgradeFailureCodes.UsageInvalid,
-            "Use 'review --plan <absolute-plan-file>' or 'prepare --plan <absolute-plan-file> --confirm-plan-sha256 <SHA-256>'.");
+            "Use 'review --plan <absolute-plan-file>' or 'prepare --plan <absolute-plan-file> --confirm-plan-sha256 <SHA-256> --confirm-candidate-recipes-sha256 <SHA-256> --confirm-candidate-recipe-contracts-sha256 <SHA-256>'.");
     }
 
     private static async Task<HeldPlan> ReadExactPlanAsync(
@@ -213,7 +285,8 @@ public static class ProjectUpgradeOperatorHost
                 RequiredString(root, "sourceLibraryRoot"),
                 RequiredString(root, "candidateLibraryRoot"),
                 RequiredString(root, "targetEngineVersion"),
-                projects);
+                projects,
+                ExecutingCandidateRecipes());
         }
         catch (Exception exception) when (exception is JsonException
                                              or InvalidDataException
@@ -250,6 +323,13 @@ public static class ProjectUpgradeOperatorHost
             throw OperatorFailure(
                 OperatorUpgradeFailureCodes.RootInvalid,
                 "The plan library roots are invalid.");
+        }
+
+        if (!PathSegments(candidateRoot).Contains(EngineIdentity.EngineVersion, StringComparer.Ordinal))
+        {
+            throw OperatorFailure(
+                OperatorUpgradeFailureCodes.CandidateVersionSegmentMissing,
+                "The candidate library root does not contain this engine's literal version segment.");
         }
 
         if (Directory.EnumerateFileSystemEntries(candidateRoot).Any())
@@ -472,23 +552,59 @@ public static class ProjectUpgradeOperatorHost
             : throw new InvalidDataException();
     }
 
-    private static void WritePlanReview(TextWriter output, string planSha256, int projectCount)
+    private static void WritePlanReview(
+        TextWriter output,
+        string planSha256,
+        string candidateRecipesSha256,
+        string candidateRecipeContractsSha256,
+        IReadOnlyList<ProjectUpgradeRecipeContract> candidateRecipeContracts,
+        int projectCount)
     {
         output.WriteLine("Managed project-upgrade plan review");
         output.WriteLine($"Plan schema: {PlanSchemaVersion}");
         output.WriteLine($"Target engine: {EngineIdentity.EngineVersion}");
         output.WriteLine($"Closed project count: {projectCount.ToString(CultureInfo.InvariantCulture)}");
         output.WriteLine($"Exact plan SHA-256: {planSha256}");
+        output.WriteLine(
+            $"Candidate recipe inventory framing: {CandidateRecipeIdentityInventoryFramingVersion}");
+        output.WriteLine($"Candidate recipe inventory SHA-256: {candidateRecipesSha256}");
+        output.WriteLine(
+            $"Candidate recipe-contract inventory framing: {CandidateRecipeContractInventoryFramingVersion}");
+        output.WriteLine(
+            $"Recipe contract fingerprint framing: {RecipeContractFingerprint.FramingVersion}");
+        output.WriteLine($"Candidate recipe-contract inventory SHA-256: {candidateRecipeContractsSha256}");
+        output.WriteLine(
+            $"Candidate recipe constituent count: {candidateRecipeContracts.Count.ToString(CultureInfo.InvariantCulture)}");
+        foreach (var recipe in candidateRecipeContracts)
+        {
+            output.Write("Candidate recipe constituent: ");
+            output.WriteLine(JsonSerializer.Serialize(new CandidateRecipeReviewConstituent(
+                recipe.RecipeId,
+                recipe.RecipeVersion,
+                recipe.ManifestSha256,
+                recipe.ManifestSha256 is null)));
+        }
+
         output.WriteLine("No project path or project content is displayed. Preparation has not run.");
     }
 
     private static void WriteReceipt(
         TextWriter output,
         string planSha256,
+        string candidateRecipesSha256,
+        string candidateRecipeContractsSha256,
         ProjectUpgradeBatchReceipt receipt)
     {
         output.WriteLine("Managed project-upgrade preparation receipt");
         output.WriteLine($"Exact plan SHA-256: {planSha256}");
+        output.WriteLine(
+            $"Candidate recipe inventory framing: {CandidateRecipeIdentityInventoryFramingVersion}");
+        output.WriteLine($"Candidate recipe inventory SHA-256: {candidateRecipesSha256}");
+        output.WriteLine(
+            $"Candidate recipe-contract inventory framing: {CandidateRecipeContractInventoryFramingVersion}");
+        output.WriteLine(
+            $"Recipe contract fingerprint framing: {RecipeContractFingerprint.FramingVersion}");
+        output.WriteLine($"Candidate recipe-contract inventory SHA-256: {candidateRecipeContractsSha256}");
         output.WriteLine($"Target engine: {receipt.TargetEngineVersion}");
         output.WriteLine($"Target project schema: {receipt.TargetSchemaVersion}");
         output.WriteLine($"Prepared project count: {receipt.Projects.Count.ToString(CultureInfo.InvariantCulture)}");
@@ -562,6 +678,158 @@ public static class ProjectUpgradeOperatorHost
         return fullPath.StartsWith(fullRoot + Path.DirectorySeparatorChar, PathComparison);
     }
 
+    internal static IReadOnlyList<ProjectUpgradeRecipeIdentity> ExecutingCandidateRecipes()
+        => [.. ExecutingCandidateRecipeContracts()
+            .Select(recipe => new ProjectUpgradeRecipeIdentity(recipe.RecipeId, recipe.RecipeVersion))];
+
+    internal static string ExecutingCandidateRecipesSha256()
+        => CandidateRecipesSha256(ExecutingCandidateRecipes());
+
+    internal static IReadOnlyList<ProjectUpgradeRecipeContract> ExecutingCandidateRecipeContracts()
+        => NormalizeCandidateRecipeContracts(ExecutingManifestBackedRecipes()
+            .Select(recipe => new ProjectUpgradeRecipeContract(
+                recipe.Id,
+                recipe.Version,
+                RecipeContractFingerprint.ComputeSha256(recipe)))
+            .Append(new ProjectUpgradeRecipeContract(
+                PortableProjectIdentity.RecipeId,
+                PortableProjectIdentity.RecipeVersion,
+                ManifestSha256: null)));
+
+    internal static string ExecutingCandidateRecipeContractsSha256()
+        => CandidateRecipeContractsSha256(ExecutingCandidateRecipeContracts());
+
+    internal static string CandidateRecipesSha256(
+        IEnumerable<ProjectUpgradeRecipeIdentity> recipes)
+    {
+        var normalized = NormalizeCandidateRecipes(recipes);
+        using var hash = IncrementalHash.CreateHash(HashAlgorithmName.SHA256);
+        AppendFramedString(hash, CandidateRecipeIdentityInventoryFramingVersion);
+        AppendFramedInt32(hash, normalized.Count);
+        foreach (var recipe in normalized)
+        {
+            AppendFramedString(hash, recipe.RecipeId);
+            AppendFramedString(hash, recipe.RecipeVersion);
+        }
+
+        return Convert.ToHexString(hash.GetHashAndReset());
+    }
+
+    internal static IReadOnlyList<ProjectUpgradeRecipeIdentity> NormalizeCandidateRecipes(
+        IEnumerable<ProjectUpgradeRecipeIdentity> recipes)
+    {
+        ArgumentNullException.ThrowIfNull(recipes);
+        var materialized = recipes.Select(recipe =>
+        {
+            ArgumentNullException.ThrowIfNull(recipe);
+            if (recipe.RecipeId is null
+                || recipe.RecipeVersion is null
+                || !RequiredText(recipe.RecipeId, 128)
+                || !IsVersionToken(recipe.RecipeVersion))
+            {
+                throw new InvalidOperationException("The executing candidate recipe identity inventory is invalid.");
+            }
+
+            return recipe;
+        }).ToArray();
+
+        return [.. materialized
+            .Distinct()
+            .OrderBy(recipe => recipe.RecipeId, StringComparer.Ordinal)
+            .ThenBy(recipe => recipe.RecipeVersion, StringComparer.Ordinal)];
+    }
+
+    internal static string CandidateRecipeContractsSha256(
+        IEnumerable<ProjectUpgradeRecipeContract> recipes)
+    {
+        var normalized = NormalizeCandidateRecipeContracts(recipes);
+        using var hash = IncrementalHash.CreateHash(HashAlgorithmName.SHA256);
+        AppendFramedString(hash, CandidateRecipeContractInventoryFramingVersion);
+        AppendFramedString(hash, RecipeContractFingerprint.FramingVersion);
+        AppendFramedInt32(hash, normalized.Count);
+        foreach (var recipe in normalized)
+        {
+            AppendFramedString(hash, recipe.RecipeId);
+            AppendFramedString(hash, recipe.RecipeVersion);
+            AppendFramedInt32(hash, recipe.ManifestSha256 is null ? 0 : 1);
+            if (recipe.ManifestSha256 is not null)
+            {
+                AppendFramedString(hash, recipe.ManifestSha256);
+            }
+        }
+
+        return Convert.ToHexString(hash.GetHashAndReset());
+    }
+
+    internal static IReadOnlyList<ProjectUpgradeRecipeContract> NormalizeCandidateRecipeContracts(
+        IEnumerable<ProjectUpgradeRecipeContract> recipes)
+    {
+        ArgumentNullException.ThrowIfNull(recipes);
+        var materialized = recipes.Select(recipe =>
+        {
+            ArgumentNullException.ThrowIfNull(recipe);
+            if (string.IsNullOrWhiteSpace(recipe.RecipeId)
+                || string.IsNullOrWhiteSpace(recipe.RecipeVersion)
+                || (recipe.ManifestSha256 is not null && !IsSha256(recipe.ManifestSha256)))
+            {
+                throw new InvalidOperationException("The executing candidate recipe-contract inventory is invalid.");
+            }
+
+            return recipe with { ManifestSha256 = recipe.ManifestSha256?.ToUpperInvariant() };
+        }).ToArray();
+
+        var normalized = new List<ProjectUpgradeRecipeContract>();
+        foreach (var identityGroup in materialized.GroupBy(
+                     recipe => (recipe.RecipeId, recipe.RecipeVersion)))
+        {
+            var distinctContracts = identityGroup.Distinct().ToArray();
+            if (distinctContracts.Length != 1)
+            {
+                throw new InvalidOperationException(
+                    "One executing candidate recipe identity maps to different declarative contracts.");
+            }
+
+            normalized.Add(distinctContracts[0]);
+        }
+
+        return [.. normalized
+            .OrderBy(recipe => recipe.RecipeId, StringComparer.Ordinal)
+            .ThenBy(recipe => recipe.RecipeVersion, StringComparer.Ordinal)];
+    }
+
+    private static void AppendFramedString(IncrementalHash hash, string value)
+    {
+        var bytes = StrictUtf8.GetBytes(value);
+        AppendFramedInt32(hash, bytes.Length);
+        hash.AppendData(bytes);
+    }
+
+    private static void AppendFramedInt32(IncrementalHash hash, int value)
+    {
+        Span<byte> bytes = stackalloc byte[sizeof(int)];
+        BinaryPrimitives.WriteInt32BigEndian(bytes, value);
+        hash.AppendData(bytes);
+    }
+
+    private static IEnumerable<RecipeManifest> ExecutingManifestBackedRecipes()
+        => DeterministicPressRecipes.All
+            .Concat(AllAboardRecipes.All)
+            .Concat(ModuleStudioCatalog.All.SelectMany(door => door.Modes).Select(mode => mode.Recipe));
+
+    private static IEnumerable<string> PathSegments(string path)
+    {
+        var current = new DirectoryInfo(path);
+        while (current is not null)
+        {
+            if (!string.IsNullOrEmpty(current.Name))
+            {
+                yield return current.Name;
+            }
+
+            current = current.Parent;
+        }
+    }
+
     private static StringComparison PathComparison
         => OperatingSystem.IsWindows() ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal;
 
@@ -580,9 +848,17 @@ public static class ProjectUpgradeOperatorHost
     private sealed record OperatorCommand(
         OperatorCommandKind Kind,
         string PlanPath,
-        string? ConfirmedSha256);
+        string? ConfirmedSha256,
+        string? ConfirmedCandidateRecipesSha256 = null,
+        string? ConfirmedCandidateRecipeContractsSha256 = null);
 
     private sealed record HeldPlan(byte[] Bytes, string Sha256);
+
+    private sealed record CandidateRecipeReviewConstituent(
+        string RecipeId,
+        string RecipeVersion,
+        string? ManifestSha256,
+        bool IdentityOnly);
 }
 
 public static class OperatorUpgradeFailureCodes
@@ -591,12 +867,21 @@ public static class OperatorUpgradeFailureCodes
     public const string PlanFileInvalid = "operator.plan-file-invalid";
     public const string PlanInvalid = "operator.plan-invalid";
     public const string PlanNotConfirmed = "operator.plan-not-confirmed";
+    public const string CandidateRecipesNotConfirmed = "operator.candidate-recipes-not-confirmed";
+    public const string CandidateRecipeContractsNotConfirmed = "operator.candidate-recipe-contracts-not-confirmed";
     public const string TargetVersionMismatch = "operator.target-version-mismatch";
+    public const string PlatformUnsupported = "operator.platform-unsupported";
     public const string RootInvalid = "operator.root-invalid";
+    public const string CandidateVersionSegmentMissing = "operator.candidate-version-segment-missing";
     public const string CandidateNotEmpty = "operator.candidate-not-empty";
     public const string InventoryNotClosed = "operator.inventory-not-closed";
     public const string HostFailure = "operator.host-failure";
 }
+
+internal sealed record ProjectUpgradeRecipeContract(
+    string RecipeId,
+    string RecipeVersion,
+    string? ManifestSha256);
 
 public sealed class OperatorUpgradeException(string code, string message) : Exception(message)
 {

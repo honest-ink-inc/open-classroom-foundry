@@ -26,6 +26,7 @@
     <ProjectReference Include="..\..\src\Foundry.Modules.DeterministicPress\Foundry.Modules.DeterministicPress.csproj" />
     <ProjectReference Include="..\..\src\Foundry.Modules.BuiltIn\Foundry.Modules.BuiltIn.csproj" />
     <ProjectReference Include="..\..\src\Foundry.Infrastructure.Simulated\Foundry.Infrastructure.Simulated.csproj" />
+    <ProjectReference Include="..\..\tools\AtlasCouncilRecords\Foundry.Tools.AtlasCouncilRecords.csproj" />
     <ProjectReference Include="..\..\tools\SiteGenerator\Foundry.Tools.SiteGenerator.csproj" />
     <ProjectReference Include="..\..\tools\SampleGenerator\Foundry.Tools.SampleGenerator.csproj" />
   </ItemGroup>

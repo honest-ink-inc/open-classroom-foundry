@@ -54,6 +54,11 @@ public class SymbolPackExporterTests : IDisposable
         var reopened = new JsonAssetCatalog(target);
         Assert.Single(reopened.All);
         Assert.Empty(reopened.VerifyIntegrity());
+        // ATTRIBUTIONS.md is valid generic-pack metadata. The application does
+        // not mistake that broader topology for its exact shipped deployment.
+        Assert.Contains(
+            reopened.VerifyClosedDeploymentRoot(),
+            issue => issue.Code == "asset.unexpected-deployment-entry");
         var report = File.ReadAllText(Path.Combine(target, SymbolPackExporter.AttributionsFileName));
         Assert.Contains("complete.symbol.v1", report, StringComparison.Ordinal);
         Assert.Contains("Source: synthetic-test", report, StringComparison.Ordinal);

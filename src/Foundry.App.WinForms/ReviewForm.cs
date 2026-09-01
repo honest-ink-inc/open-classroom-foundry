@@ -59,6 +59,7 @@ public sealed class ReviewForm : Form
         {
             Dock = DockStyle.Fill,
             AccessibleName = UiStrings.WithoutMnemonic(UiStrings.DraftElements),
+            HorizontalScrollbar = true,
         };
         _nodeList.SelectedIndexChanged += (_, _) => SelectionChanged();
 
@@ -87,15 +88,13 @@ public sealed class ReviewForm : Form
             ScrollBars = ScrollBars.Vertical,
             AccessibleName = UiStrings.WithoutMnemonic(UiStrings.SelectedValidationIssueDetail),
         };
-        _editStatus = new Label
-        {
-            AutoSize = false,
-            Dock = DockStyle.Bottom,
-            Height = 36,
-            AccessibleRole = AccessibleRole.StatusBar,
-            UseMnemonic = false,
-            Visible = false,
-        };
+        _editStatus = ReflowingStatusLabel.Attach(
+            new Label
+            {
+                AccessibleRole = AccessibleRole.StatusBar,
+                Visible = false,
+            },
+            minimumHeight: 36);
 
         _applyEdit = MakeButton(UiStrings.ApplyEdit, (_, _) => ApplyEdit());
         _editElement = MakeButton(UiStrings.EditElement, (_, _) => EditSelectedElement());
@@ -165,23 +164,23 @@ public sealed class ReviewForm : Form
         var comparisonPage = TabPage(UiStrings.SourceComparisonTab);
         comparisonPage.Controls.Add(comparison);
 
-        _previewStatus = new Label
-        {
-            Dock = DockStyle.Top,
-            AutoSize = true,
-            Padding = new Padding(6),
-            Text = UiStrings.WithoutMnemonic(UiStrings.UnapprovedPreviewStatus),
-            AccessibleName = UiStrings.WithoutMnemonic(UiStrings.UnapprovedPreviewStatus),
-            AccessibleRole = AccessibleRole.StatusBar,
-            UseMnemonic = false,
-        };
-        _previewProfile = new Label
-        {
-            Dock = DockStyle.Top,
-            AutoSize = true,
-            Padding = new Padding(6),
-            UseMnemonic = false,
-        };
+        _previewStatus = ReflowingStatusLabel.Attach(
+            new Label
+            {
+                Padding = new Padding(6),
+                Text = UiStrings.WithoutMnemonic(UiStrings.UnapprovedPreviewStatus),
+                AccessibleName = UiStrings.WithoutMnemonic(UiStrings.UnapprovedPreviewStatus),
+                AccessibleRole = AccessibleRole.StatusBar,
+            },
+            minimumHeight: 28,
+            dock: DockStyle.Top);
+        _previewProfile = ReflowingStatusLabel.Attach(
+            new Label
+            {
+                Padding = new Padding(6),
+            },
+            minimumHeight: 28,
+            dock: DockStyle.Top);
         _previewBrowser = new WebBrowser
         {
             Dock = DockStyle.Fill,

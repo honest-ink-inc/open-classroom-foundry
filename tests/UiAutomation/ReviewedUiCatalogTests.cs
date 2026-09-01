@@ -15,6 +15,8 @@ namespace Foundry.Tests.UiAutomation;
 
 public class ReviewedUiCatalogTests
 {
+    private static readonly string[] SchemaDirections = ["ltr", "rtl"];
+
     [Fact]
     public void Inventory_covers_every_static_property_and_every_dynamic_press_and_module_label()
     {
@@ -70,6 +72,7 @@ public class ReviewedUiCatalogTests
         {
             "All Aboard",
             "Lesson Loom",
+            "GridLesson",
             "Talk Moves Studio",
             "Exit Lens",
             "Source Lens",
@@ -104,6 +107,123 @@ public class ReviewedUiCatalogTests
         var refusal = Assert.Throws<InvalidDataException>(() => UiCatalogLoader.LoadReviewed(file.Path));
         Assert.Contains("draft", refusal.Message, StringComparison.OrdinalIgnoreCase);
         Assert.Equal(UiLocaleMode.Neutral, UiLocale.Mode);
+    }
+
+    [Fact]
+    public void Published_schema_generated_template_and_runtime_loader_share_one_structural_contract()
+    {
+        var schemaPath = Path.Combine(
+            FindRepositoryRoot(),
+            "docs",
+            "localization",
+            "ui-catalog.schema.json");
+        using var schemaDocument = JsonDocument.Parse(
+            File.ReadAllBytes(schemaPath),
+            new JsonDocumentOptions
+            {
+                AllowTrailingCommas = false,
+                CommentHandling = JsonCommentHandling.Disallow,
+                MaxDepth = 32,
+            });
+        using var templateDocument = JsonDocument.Parse(
+            UiCatalogInventory.CreateTemplateJson(),
+            new JsonDocumentOptions
+            {
+                AllowTrailingCommas = false,
+                CommentHandling = JsonCommentHandling.Disallow,
+                MaxDepth = 32,
+            });
+
+        var schema = schemaDocument.RootElement;
+        var template = templateDocument.RootElement;
+        var schemaProperties = schema.GetProperty("properties");
+        var templateReview = template.GetProperty("review");
+        var templateProvenance = template.GetProperty("provenance");
+        AssertSchemaObjectMatchesTemplate(
+            schema,
+            template,
+            ["schemaVersion", "languageTag", "direction", "review", "provenance", "neutralStrings", "strings"]);
+        AssertSchemaObjectMatchesTemplate(
+            schemaProperties.GetProperty("review"),
+            templateReview,
+            ["status", "reviewerName", "reviewerRole", "reviewedAtUtc", "sourceDigestSha256"]);
+        AssertSchemaObjectMatchesTemplate(
+            schemaProperties.GetProperty("provenance"),
+            templateProvenance,
+            ["catalogId", "creator", "source", "license", "modificationHistory"]);
+
+        Assert.Equal(
+            UiCatalogInventory.SchemaVersion,
+            schemaProperties.GetProperty("schemaVersion").GetProperty("const").GetInt32());
+        Assert.Equal(UiCatalogInventory.SchemaVersion, template.GetProperty("schemaVersion").GetInt32());
+        Assert.Equal(
+            new[] { UiCatalogInventory.DraftStatus, UiCatalogInventory.ReviewedStatus },
+            SchemaStringValues(schemaProperties.GetProperty("review").GetProperty("properties").GetProperty("status"), "enum"));
+        Assert.Equal(UiCatalogInventory.DraftStatus, templateReview.GetProperty("status").GetString());
+        Assert.Equal(
+            SchemaDirections,
+            SchemaStringValues(schemaProperties.GetProperty("direction"), "enum"));
+        Assert.Equal("ltr", template.GetProperty("direction").GetString());
+        Assert.Equal(
+            UiCatalogInventory.RequiredReviewerRole,
+            schemaProperties.GetProperty("review").GetProperty("properties")
+                .GetProperty("reviewerRole").GetProperty("const").GetString());
+        Assert.Equal(
+            UiCatalogInventory.RequiredReviewerRole,
+            templateReview.GetProperty("reviewerRole").GetString());
+        Assert.Equal(
+            "^[0-9a-f]{64}$",
+            schemaProperties.GetProperty("review").GetProperty("properties")
+                .GetProperty("sourceDigestSha256").GetProperty("pattern").GetString());
+        Assert.Equal(
+            UiCatalogInventory.SourceDigestSha256,
+            templateReview.GetProperty("sourceDigestSha256").GetString());
+        Assert.Equal(
+            "#/$defs/stringTable",
+            schemaProperties.GetProperty("neutralStrings").GetProperty("$ref").GetString());
+        Assert.Equal(
+            "#/$defs/stringTable",
+            schemaProperties.GetProperty("strings").GetProperty("$ref").GetString());
+        var stringTable = schema.GetProperty("$defs").GetProperty("stringTable");
+        Assert.Equal("object", stringTable.GetProperty("type").GetString());
+        Assert.Equal(
+            "string",
+            stringTable.GetProperty("additionalProperties").GetProperty("type").GetString());
+        AssertTemplateTableEqualsInventory(template.GetProperty("neutralStrings"));
+        AssertTemplateTableEqualsInventory(template.GetProperty("strings"));
+
+        using var reviewed = ReviewedCatalog();
+        var loaded = UiCatalogLoader.LoadReviewed(reviewed.Path);
+        Assert.Equal("en-US", loaded.LanguageTag);
+        Assert.Equal(UiTextDirection.LeftToRight, loaded.Direction);
+        Assert.Equal(UiCatalogInventory.RequiredReviewerRole, loaded.Review.ReviewerRole);
+        Assert.Equal(UiCatalogInventory.SourceDigestSha256, loaded.Review.SourceDigestSha256);
+        Assert.Equal("synthetic-test-catalog", loaded.Provenance.CatalogId);
+    }
+
+    [Fact]
+    public void Locale_activation_mutators_are_assembly_only()
+    {
+        var mutators = new[]
+        {
+            typeof(UiLocale).GetMethod(
+                nameof(UiLocale.Configure),
+                BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Static),
+            typeof(UiLocale).GetMethod(
+                nameof(UiLocale.Set),
+                BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Static),
+            typeof(UiLocale).GetMethod(
+                "ConfigureForTest",
+                BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Static),
+        };
+
+        Assert.All(mutators, method =>
+        {
+            Assert.NotNull(method);
+            Assert.True(
+                method.IsAssembly,
+                $"{method.Name} must not expose process-global locale activation outside the app assembly.");
+        });
     }
 
     [Fact]
@@ -760,6 +880,57 @@ public class ReviewedUiCatalogTests
             Environment.SetEnvironmentVariable(UiLocale.CatalogEnvironmentVariable, previousCatalog);
             UiLocale.Set(UiLocaleMode.Neutral);
         }
+    }
+
+    private static void AssertSchemaObjectMatchesTemplate(
+        JsonElement schema,
+        JsonElement template,
+        string[] expectedNames)
+    {
+        Assert.Equal("object", schema.GetProperty("type").GetString());
+        Assert.False(schema.GetProperty("additionalProperties").GetBoolean());
+        var expected = expectedNames.Order(StringComparer.Ordinal).ToArray();
+        Assert.Equal(expected, SchemaStringValues(schema, "required"));
+        Assert.Equal(
+            expected,
+            schema.GetProperty("properties").EnumerateObject()
+                .Select(property => property.Name)
+                .Order(StringComparer.Ordinal)
+                .ToArray());
+        Assert.Equal(
+            expected,
+            template.EnumerateObject()
+                .Select(property => property.Name)
+                .Order(StringComparer.Ordinal)
+                .ToArray());
+    }
+
+    private static string[] SchemaStringValues(JsonElement schema, string propertyName)
+        => [.. schema.GetProperty(propertyName).EnumerateArray()
+            .Select(value => Assert.IsType<string>(value.GetString()))
+            .Order(StringComparer.Ordinal)];
+
+    private static void AssertTemplateTableEqualsInventory(JsonElement table)
+    {
+        var actual = table.EnumerateObject().ToArray();
+        Assert.Equal(UiCatalogInventory.NeutralStrings.Keys, actual.Select(property => property.Name));
+        foreach (var pair in UiCatalogInventory.NeutralStrings)
+        {
+            Assert.Equal(pair.Value, table.GetProperty(pair.Key).GetString());
+        }
+    }
+
+    private static string FindRepositoryRoot()
+    {
+        var directory = new DirectoryInfo(AppContext.BaseDirectory);
+        while (directory is not null
+            && !File.Exists(Path.Combine(directory.FullName, "OpenClassroomFoundry.slnx")))
+        {
+            directory = directory.Parent;
+        }
+
+        return directory?.FullName
+            ?? throw new InvalidOperationException("Could not locate repository root for UI-catalog schema tests.");
     }
 
     private static IEnumerable<ModuleDisplayText> ModuleDisplays()

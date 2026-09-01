@@ -4,7 +4,8 @@ using Foundry.Domain;
 namespace Foundry.Contracts;
 
 /// <summary>
-/// Proof that a teacher symbol has completed the binding R2-8 privacy preflight.
+/// Proof that a teacher symbol has completed the product-owner-adopted R2-8
+/// privacy-preflight constraint. This is not council or specialist approval.
 /// Production callers can receive this capability from <c>SymbolPreflight</c>,
 /// but cannot mint one, replace its normalized bytes, or rewrite its provenance.
 /// </summary>

@@ -24,6 +24,10 @@ public sealed record DuetResult(ArtifactDocument Document, IReadOnlyList<Validat
 /// </summary>
 public static class DirectionsDuetBuilder
 {
+    /// <summary>
+    /// Compatibility route for callers compiled against the original builder.
+    /// It deliberately fails closed on the newly required source-inventory act.
+    /// </summary>
     public static DuetResult Build(
         string title,
         IReadOnlyList<DuetStep> steps,
@@ -31,6 +35,27 @@ public static class DirectionsDuetBuilder
         string targetLocale,
         Glossary glossary,
         IReadOnlyList<LockedField> lockedFields,
+        string? reviewedBy = null,
+        string? comprehensionCheck = null)
+        => Build(
+            title,
+            steps,
+            sourceLocale,
+            targetLocale,
+            glossary,
+            lockedFields,
+            lockedFieldInventoryReviewed: false,
+            reviewedBy,
+            comprehensionCheck);
+
+    public static DuetResult Build(
+        string title,
+        IReadOnlyList<DuetStep> steps,
+        string sourceLocale,
+        string targetLocale,
+        Glossary glossary,
+        IReadOnlyList<LockedField> lockedFields,
+        bool lockedFieldInventoryReviewed,
         string? reviewedBy = null,
         string? comprehensionCheck = null)
     {
@@ -49,6 +74,8 @@ public static class DirectionsDuetBuilder
         }
 
         var issues = new List<ValidationIssue>();
+
+        issues.AddRange(LockedFieldValidator.ValidateInventoryReview(lockedFieldInventoryReviewed));
 
         if (steps.Count == 0)
         {
@@ -77,17 +104,11 @@ public static class DirectionsDuetBuilder
             }
         }
 
-        foreach (var field in lockedFields)
-        {
-            var inSource = steps.Any(s => s.SourceText.Contains(field.ExactValue, StringComparison.Ordinal));
-            var inTarget = steps.Any(s => s.TargetText?.Contains(field.ExactValue, StringComparison.Ordinal) == true);
-            if (!inSource || !inTarget)
-            {
-                issues.Add(ValidationIssue.Blocking(
-                    "duet.locked",
-                    $"Locked {field.Kind} '{field.ExactValue}' must appear verbatim in both languages; it is missing from the {(inSource ? "translation" : "source")}."));
-            }
-        }
+        issues.AddRange(LockedFieldValidator.ValidateAlignedPairs(
+            [.. steps.Select(step => (step.SourceText, TargetText: (string?)step.TargetText))],
+            lockedFields,
+            "duet.locked",
+            "Step"));
 
         var nodes = new List<DocumentNode> { new Heading(1, title) };
         nodes.AddRange(steps.Select(s => new BilingualPair(s.SourceText, s.TargetText, sourceLocale, targetLocale)));
@@ -96,6 +117,8 @@ public static class DirectionsDuetBuilder
         {
             nodes.Add(new Card("Show me", comprehensionCheck));
         }
+
+        nodes.Add(new TeacherOnlyNotice(LockedInventorySummary(lockedFields)));
 
         // The status speaks only to review, never to origin (RC-6): a teacher-typed
         // translation is not "machine-drafted," and a tool named Honest Ink does not
@@ -110,6 +133,9 @@ public static class DirectionsDuetBuilder
 
         return new DuetResult(document, issues);
     }
+
+    private static string LockedInventorySummary(IReadOnlyList<LockedField> lockedFields)
+        => LockedFieldValidator.FormatInventorySummary(lockedFields);
 
     public static RecipeManifest Recipe { get; } = new(
         Id: "directions-duet",

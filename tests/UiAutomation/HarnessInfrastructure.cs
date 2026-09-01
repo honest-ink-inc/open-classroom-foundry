@@ -1,8 +1,42 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
+using System.Diagnostics;
+
 // Headed windows and STA form fixtures must not race each other: one at a time.
 [assembly: CollectionBehavior(DisableTestParallelization = true)]
 
 namespace Foundry.Tests.UiAutomation;
+
+/// <summary>
+/// Owns the bounded shutdown contract for real headed child processes. Sending
+/// a kill request is not evidence that the child has exited; every caller must
+/// observe termination before the next headed fixture may start.
+/// </summary>
+public static class HeadedProcessLifetime
+{
+    public static void TerminateAndWait(Process process, int timeoutMs = 5000)
+    {
+        ArgumentNullException.ThrowIfNull(process);
+        ArgumentOutOfRangeException.ThrowIfNegativeOrZero(timeoutMs);
+
+        if (!process.HasExited)
+        {
+            try
+            {
+                process.Kill(entireProcessTree: true);
+            }
+            catch (InvalidOperationException) when (process.HasExited)
+            {
+                // The child exited between the state check and the kill request.
+            }
+        }
+
+        if (!process.WaitForExit(timeoutMs))
+        {
+            throw new TimeoutException(
+                $"Headed child process {process.Id} did not exit within {timeoutMs} ms after shutdown was requested.");
+        }
+    }
+}
 
 /// <summary>
 /// Marks a test that must drive real windows through UI Automation. It runs by

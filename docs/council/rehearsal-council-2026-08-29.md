@@ -30,7 +30,7 @@ V. opened with the samples printed and scissors on the table, which is where vis
 - **RC-6 (accuracy defect, fix now).** The Duet status notice says **"machine-drafted"** even when the teacher typed every translation themselves — a false claim in a tool named for honesty. The truthful statement is about *review status only*: "drafted — not yet language-reviewed by a qualified reviewer."
 - **RC-7 (defect, fix now).** Glossary matching is case-sensitive: "Folder" at sentence start escapes the "folder → carpeta" rule. Match case-insensitively on both sides; determinism is unharmed.
 - **RC-8 (option, schedule 0.4).** Pairs always render source-first. A classroom whose room language is Arabic may want target-first on the learner page. Make pair order a teacher choice.
-- **RC-9 (advisory for 0.5).** Family Bridge should measure its plain-language claim deterministically (sentence length, syllable proxies) and lint for more than one requested action — already in the plan's refinements; the council re-affirms both.
+- **RC-9 (advisory for 0.5).** Family Bridge should measure its plain-language claim deterministically (sentence length, syllable proxies) and lint for more than one requested action — already in the plan's refinements; the fictional rehearsal reinforced both.
 
 ## Session 3 — Accessibility and assistive technology (K. chairing)
 
@@ -57,7 +57,7 @@ V. opened with the samples printed and scissors on the table, which is where vis
 **Verified:** provenance-or-nothing enforced at build and at save; the CC0 dedication clean; the canary suite; policy failing closed to offline; the Amber refusals.
 
 **Findings:**
-- **RC-18 (binding requirement for 0.4, schedule).** Builders currently receive their lane from the caller; the tests pass Green by hand. When the capture-to-brief session flow is wired, **the draft's lane must be computed as `LanePolicy.Inherit` over every source envelope in the flow** — a photographed board with a student's name on it is Amber, and its brief must be born Amber. The council records this as a binding acceptance criterion for the 0.4 flow work, to be enforced by a test that a hand-passed Green lane cannot underride inherited Amber.
+- **RC-18 (product-owner-enacted engineering constraint for 0.4, surfaced by the fictional rehearsal).** Builders currently receive their lane from the caller; the tests pass Green by hand. When the capture-to-brief session flow is wired, **the draft's lane must be computed as `LanePolicy.Inherit` over every source envelope in the flow** — a photographed board with a student's name on it is Amber, and its brief must be born Amber. The rehearsal records the requirement; its fictional personas did not grant council, privacy, or records authority. The acceptance test proves that a hand-passed Green lane cannot underride inherited Amber.
 - **RC-19 (schedule with capture UI).** Gate C (direct-source adult safety review) exists as architecture and prose but not yet as code; it lands with the capture workflow, before any real classroom photograph.
 - **RC-20 (advisory).** For decision 6: keep CC0 for geometric basics; adopt CC BY-SA when the design system grows expressive original art worth copyleft. Counsel confirms at pre-release.
 
@@ -88,18 +88,18 @@ V. opened with the samples printed and scissors on the table, which is where vis
 | RC-4 | Pack v2: yes/no/more/do-not-know/consent; open-hand help | Content | Scheduled: pack v2 |
 | RC-8 | Pair-order choice for RTL classrooms | Option | Scheduled: 0.4 |
 | RC-15 | Fractional number lines; clock minute ticks | Enhancement | Scheduled |
-| RC-18 | Draft lane must inherit from source envelopes in flow | **Binding** | Scheduled: 0.4 acceptance criterion with test |
+| RC-18 | Draft lane must inherit from source envelopes in flow | **Engineering constraint** | Product-owner-enacted for 0.4 with an acceptance test; not council or privacy-seat approval |
 | RC-19 | Gate C implementation | Safety | Scheduled: with capture UI, before real photographs |
 | RC-9, RC-20 | Family Bridge readability lint; symbol-license posture | Advisory | Carried into 0.5 and decision 6 |
 | RC-12, RC-22, RC-23 | NVDA walkthrough; think-alouds on samples; human council overturns rehearsal | **Human** | Standing — the release gates |
 
-## Ratification by the educator council (29 August 2026)
+## Product-owner adoption of rehearsal-derived findings (29 August 2026)
 
-The forming educator council, through the product owner, **agrees with all rehearsal findings** and adds two directives, both accepted as binding:
+The product owner accepted the following two rehearsal-derived directions for implementation. This was **not educator-council ratification**, a vote, protected-seat evidence, or authority for the fictional personas above:
 
-1. **Symbol growth and teacher authorship.** Many more symbols must be encoded for All Aboard over time — and, more fundamentally, teachers must be empowered to create and add their own symbols to meet the individual needs of those they work with. *Enacted in Release 0.4:* the `LocalSymbolStore` gives every teacher a provenance-first symbol shelf (meaning, alt text, and teacher-stated rights required at submission; local-only by default, redistributable solely under an explicitly declared open license), resolved alongside the libre pack through one composite catalog. Pack v2 ships the council's requested concepts: yes, no, more, do-not-know, consent, and the open-hand help variant.
-2. **Multilingual stewardship.** The council will ensure future coordination, audits, and checks for all multilingual elements of the Honest Ink suite. Recorded as a standing council responsibility: glossary governance, language-pair reviewer assignments (plan §20 decision 5), translation-status auditing, and RTL/script verification belong to this coordination, and every multilingual feature lands with a council check.
+1. **Symbol growth and teacher authorship.** Many more symbols must be encoded for All Aboard over time — and, more fundamentally, teachers must be empowered to create and add their own symbols to meet the individual needs of those they work with. *Enacted in Release 0.4:* the `LocalSymbolStore` gives every teacher a provenance-first symbol shelf (meaning, alt text, and teacher-stated rights required at submission; local-only by default, redistributable solely under an explicitly declared open license), resolved alongside the libre pack through one composite catalog. Pack v2 carries the product-owner-adopted rehearsal concepts: yes, no, more, do-not-know, consent, and the open-hand help variant. Their presence is not AAC/SLP approval.
+2. **Multilingual stewardship.** The product owner recorded a proposal that a real council coordinate future multilingual audits and checks. Glossary governance, language-pair reviewer assignments (plan §20 decision 5), translation-status auditing, and RTL/script verification remain with the named human seats until those people enact an actual process; this rehearsal assigned none of that authority.
 
 ## Closing word
 
-The rehearsal found eight things worth fixing today, one binding law for the next release, and nothing rotten in the foundations — the gates, lanes, and invariants held under six adversarial readings. What it cannot find is what only real hands can: whether a four-year-old reaches for the life-ring, whether a teacher trusts the review screen at 3:40 p.m., whether the strips survive lamination. That evidence belongs to the seven who were invited. This council was built to be dismantled by them.
+The rehearsal found eight things worth fixing today, one engineering constraint for the next release, and nothing rotten in the foundations — the gates, lanes, and invariants held under six adversarial readings. What it cannot find is what only real hands can: whether a four-year-old reaches for the life-ring, whether a teacher trusts the review screen at 3:40 p.m., whether the strips survive lamination. That evidence belongs to the seven who were invited. This rehearsal was built to be dismantled by them.

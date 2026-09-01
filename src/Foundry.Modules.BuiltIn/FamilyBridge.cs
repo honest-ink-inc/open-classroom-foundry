@@ -21,6 +21,10 @@ public static class FamilyBridgeBuilder
 {
     public const int MaxAverageSentenceWords = 20;
 
+    /// <summary>
+    /// Compatibility route for callers compiled against the original builder.
+    /// It deliberately fails closed on the newly required source-inventory act.
+    /// </summary>
     public static FamilyBridgeResult Build(
         string title,
         IReadOnlyList<BridgeParagraph> paragraphs,
@@ -32,6 +36,34 @@ public static class FamilyBridgeBuilder
         string sourceLocale = "en",
         string? targetLocale = null,
         string? reviewedBy = null)
+        => Build(
+            title,
+            paragraphs,
+            requestedAction,
+            contact,
+            glossary,
+            lockedFields,
+            lockedFieldInventoryReviewed: false,
+            deadline,
+            sourceLocale,
+            targetLocale,
+            reviewedBy);
+
+    public static FamilyBridgeResult Build(
+        string title,
+        IReadOnlyList<BridgeParagraph> paragraphs,
+        string requestedAction,
+        string contact,
+        Glossary glossary,
+        IReadOnlyList<LockedField> lockedFields,
+        bool lockedFieldInventoryReviewed,
+        string? deadline = null,
+        string sourceLocale = "en",
+        string? targetLocale = null,
+        string? reviewedBy = null,
+        string? targetRequestedAction = null,
+        string? targetContact = null,
+        string? targetDeadline = null)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(title);
         ArgumentNullException.ThrowIfNull(paragraphs);
@@ -51,6 +83,19 @@ public static class FamilyBridgeBuilder
         }
 
         var issues = new List<ValidationIssue>();
+
+        issues.AddRange(LockedFieldValidator.ValidateInventoryReview(lockedFieldInventoryReviewed));
+
+        if (targetLocale is null
+            && (paragraphs.Any(paragraph => !string.IsNullOrWhiteSpace(paragraph.TargetText))
+                || !string.IsNullOrWhiteSpace(targetRequestedAction)
+                || !string.IsNullOrWhiteSpace(targetContact)
+                || !string.IsNullOrWhiteSpace(targetDeadline)))
+        {
+            issues.Add(ValidationIssue.Blocking(
+                "bridge.target-without-locale",
+                "Target-language content cannot be used without an explicit target language."));
+        }
 
         if (paragraphs.Count == 0)
         {
@@ -82,38 +127,82 @@ public static class FamilyBridgeBuilder
                 "This reads like more than one ask; one action per communication travels best."));
         }
 
+        var translatedFields = new List<(string SourceText, string? TargetText, string MissingCode, string MissingMessage)>();
+        var bodyFields = new List<(string SourceText, string? TargetText)>();
+        var structuredFields = new List<(string SourceText, string? TargetText, string RoleLabel)>();
         if (targetLocale is not null)
         {
             for (var i = 0; i < paragraphs.Count; i++)
             {
-                if (string.IsNullOrWhiteSpace(paragraphs[i].TargetText))
+                bodyFields.Add((paragraphs[i].SourceText, paragraphs[i].TargetText));
+                translatedFields.Add((
+                    paragraphs[i].SourceText,
+                    paragraphs[i].TargetText,
+                    "bridge.target-missing",
+                    $"Paragraph {i + 1} has no translation; alignment is one-to-one."));
+            }
+
+            if (!string.IsNullOrWhiteSpace(requestedAction))
+            {
+                structuredFields.Add((requestedAction, targetRequestedAction, "requested action"));
+                translatedFields.Add((
+                    requestedAction,
+                    targetRequestedAction,
+                    "bridge.target-action-missing",
+                    "The explicit requested action has no target-language version."));
+            }
+
+            if (!string.IsNullOrWhiteSpace(deadline))
+            {
+                structuredFields.Add((deadline, targetDeadline, "deadline"));
+                translatedFields.Add((
+                    deadline,
+                    targetDeadline,
+                    "bridge.target-deadline-missing",
+                    "The explicit deadline has no target-language version."));
+            }
+            else if (!string.IsNullOrWhiteSpace(targetDeadline))
+            {
+                issues.Add(ValidationIssue.Blocking(
+                    "bridge.target-deadline-without-source",
+                    "A target-language deadline cannot exist without an explicit source deadline."));
+            }
+
+            if (!string.IsNullOrWhiteSpace(contact))
+            {
+                structuredFields.Add((contact, targetContact, "help contact"));
+                translatedFields.Add((
+                    contact,
+                    targetContact,
+                    "bridge.target-contact-missing",
+                    "The explicit help contact has no target-language version."));
+            }
+
+            foreach (var (SourceText, TargetText, MissingCode, MissingMessage) in translatedFields)
+            {
+                if (string.IsNullOrWhiteSpace(TargetText))
                 {
-                    issues.Add(ValidationIssue.Blocking("bridge.target-missing",
-                        $"Paragraph {i + 1} has no translation; alignment is one-to-one."));
+                    issues.Add(ValidationIssue.Blocking(MissingCode, MissingMessage));
                     continue;
                 }
 
                 foreach (var entry in glossary.Entries)
                 {
-                    if (paragraphs[i].SourceText.Contains(entry.SourceTerm, StringComparison.OrdinalIgnoreCase)
-                        && !paragraphs[i].TargetText!.Contains(entry.TargetTerm, StringComparison.OrdinalIgnoreCase))
+                    if (SourceText.Contains(entry.SourceTerm, StringComparison.OrdinalIgnoreCase)
+                        && !TargetText.Contains(entry.TargetTerm, StringComparison.OrdinalIgnoreCase))
                     {
                         issues.Add(ValidationIssue.Blocking("bridge.glossary",
-                            $"Paragraph {i + 1} uses '{entry.SourceTerm}' but its translation lacks working glossary term '{entry.TargetTerm}' (working glossary {glossary.Version}, not approved by this application)."));
+                            $"Source content uses '{entry.SourceTerm}' but its translation lacks working glossary term '{entry.TargetTerm}' (working glossary {glossary.Version}, not approved by this application)."));
                     }
                 }
             }
 
-            foreach (var field in lockedFields)
-            {
-                var inSource = paragraphs.Any(p => p.SourceText.Contains(field.ExactValue, StringComparison.Ordinal));
-                var inTarget = paragraphs.Any(p => p.TargetText?.Contains(field.ExactValue, StringComparison.Ordinal) == true);
-                if (!inSource || !inTarget)
-                {
-                    issues.Add(ValidationIssue.Blocking("bridge.locked",
-                        $"Locked {field.Kind} '{field.ExactValue}' must appear verbatim in both languages; it is missing from the {(inSource ? "translation" : "source")}."));
-                }
-            }
+            issues.AddRange(LockedFieldValidator.ValidateBilingualContent(
+                bodyFields,
+                [.. structuredFields.Select(field => (field.RoleLabel, field.SourceText, field.TargetText))],
+                lockedFields,
+                "bridge.locked",
+                "message paragraphs"));
         }
 
         var nodes = new List<DocumentNode> { new Heading(1, title) };
@@ -130,34 +219,90 @@ public static class FamilyBridgeBuilder
             }
         }
 
-        if (!string.IsNullOrWhiteSpace(requestedAction))
+        if (targetLocale is null)
         {
-            nodes.Add(new Card("What we ask", requestedAction));
+            if (!string.IsNullOrWhiteSpace(requestedAction))
+            {
+                nodes.Add(new Card("What we ask", requestedAction));
+            }
+
+            if (!string.IsNullOrWhiteSpace(deadline))
+            {
+                nodes.Add(new Card("By when", deadline));
+            }
+
+            if (!string.IsNullOrWhiteSpace(contact))
+            {
+                nodes.Add(new Card("Questions? Contact", contact));
+            }
+        }
+        else
+        {
+            AddBilingualSection(nodes, "What we ask", requestedAction, targetRequestedAction, sourceLocale, targetLocale);
+            if (!string.IsNullOrWhiteSpace(deadline))
+            {
+                AddBilingualSection(nodes, "By when", deadline, targetDeadline, sourceLocale, targetLocale);
+            }
+
+            AddBilingualSection(nodes, "Questions? Contact", contact, targetContact, sourceLocale, targetLocale);
         }
 
-        if (!string.IsNullOrWhiteSpace(deadline))
-        {
-            nodes.Add(new Card("By when", deadline));
-        }
-
-        if (!string.IsNullOrWhiteSpace(contact))
-        {
-            nodes.Add(new Card("Questions? Contact", contact));
-        }
+        var lockedInventorySummary = LockedInventorySummary(lockedFields);
+        nodes.Add(new TeacherOnlyNotice(lockedInventorySummary));
 
         if (targetLocale is not null)
         {
-            nodes.Add(new TeacherOnlyNotice(
+            var translationStatus =
                 $"Working glossary {glossary.Version} (not approved by this application). " +
-                "Translation status: drafted - NOT yet language-reviewed by a qualified reviewer."));
+                "Translation status: drafted - NOT yet language-reviewed by a qualified reviewer.";
+            nodes.Add(new TeacherOnlyNotice(translationStatus));
         }
 
-        nodes.Add(new TeacherOnlyNotice(
-            "This application holds no recipient list and sends nothing; addressing and delivery are yours, under your school's rules."));
+        const string deliveryNotice =
+            "This application holds no recipient list and sends nothing; addressing and delivery are yours, under your school's rules.";
+        nodes.Add(new TeacherOnlyNotice(deliveryNotice));
 
         var document = new ArtifactDocument(nodes, sourceLocale);
+        if (targetLocale is null)
+        {
+            issues.AddRange(LockedFieldValidator.Validate(
+                SelectTeacherAuthoredSourceContent(document),
+                lockedFields));
+        }
+
         issues.AddRange(DocumentValidator.Validate(document));
         return new FamilyBridgeResult(document, issues);
+    }
+
+    internal static ArtifactDocument SelectTeacherAuthoredSourceContent(ArtifactDocument document)
+    {
+        ArgumentNullException.ThrowIfNull(document);
+        var nodes = new List<DocumentNode>();
+        var inMessageBody = true;
+
+        foreach (var node in document.Nodes)
+        {
+            switch (node)
+            {
+                case Heading { Level: 1 } heading:
+                    nodes.Add(heading);
+                    break;
+                case Heading { Level: 2 }:
+                    inMessageBody = false;
+                    break;
+                case Paragraph paragraph when inMessageBody:
+                    nodes.Add(paragraph);
+                    break;
+                case BilingualPair pair when inMessageBody:
+                    nodes.Add(new Paragraph(pair.SourceText));
+                    break;
+                case Card card:
+                    nodes.Add(new Paragraph(card.Body));
+                    break;
+            }
+        }
+
+        return new ArtifactDocument(nodes, document.Language);
     }
 
     private static double AverageSentenceWords(IEnumerable<string> texts)
@@ -177,6 +322,26 @@ public static class FamilyBridgeBuilder
             .Count(s => !string.IsNullOrWhiteSpace(s));
         return sentenceCount > 1 || action.Contains(" and ", StringComparison.OrdinalIgnoreCase);
     }
+
+    private static void AddBilingualSection(
+        List<DocumentNode> nodes,
+        string heading,
+        string sourceText,
+        string? targetText,
+        string sourceLocale,
+        string targetLocale)
+    {
+        if (string.IsNullOrWhiteSpace(sourceText))
+        {
+            return;
+        }
+
+        nodes.Add(new Heading(2, heading));
+        nodes.Add(new BilingualPair(sourceText, targetText ?? "", sourceLocale, targetLocale));
+    }
+
+    private static string LockedInventorySummary(IReadOnlyList<LockedField> lockedFields)
+        => LockedFieldValidator.FormatInventorySummary(lockedFields);
 
     public static RecipeManifest Recipe { get; } = new(
         Id: "family-bridge",

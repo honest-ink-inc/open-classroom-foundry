@@ -211,6 +211,34 @@ public class TalkMovesTests
     }
 
     [Fact]
+    public void Repeated_participation_labels_do_not_satisfy_three_distinct_modes()
+    {
+        var result = TalkMovesBuilder.Build(
+            "Topic", Questions(), ["Speak", " speak ", "SPEAK"], "i", "b", "p", "r", "s");
+
+        Assert.Contains(result.Issues, i => i.Code == "talk.modes");
+    }
+
+    [Fact]
+    public void The_automatic_wait_or_pass_option_is_not_counted_or_printed_twice()
+    {
+        var result = TalkMovesBuilder.Build(
+            "Topic",
+            Questions(),
+            ["Speak", "Write", "Point", TalkMovesBuilder.PassOption],
+            "i",
+            "b",
+            "p",
+            "r",
+            "s");
+
+        Assert.Contains(result.Issues, i => i.Code == "talk.modes");
+        var modes = result.Document.Nodes.OfType<UnorderedList>()
+            .Single(list => list.Items.Contains(TalkMovesBuilder.PassOption));
+        Assert.Equal(1, modes.Items.Count(item => item == TalkMovesBuilder.PassOption));
+    }
+
+    [Fact]
     public void A_question_without_purpose_or_evidence_blocks()
     {
         var result = TalkMovesBuilder.Build(

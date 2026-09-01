@@ -22,6 +22,7 @@ public sealed class ModuleStudioForm : Form
     private readonly Func<ReviewSession, ApprovedArtifact?> _reviewRunner;
     private readonly Func<ExportChoice?>? _exportPicker;
     private readonly Func<string, ReadOnlyMemory<byte>, CancellationToken, Task> _exportWriter;
+    private readonly Func<Func<Task>, CancellationToken, Task> _exportWorkRunner;
     private readonly Func<ApprovedArtifact, string, RenderAudience, double, bool, IAssetCatalog?, Task> _printViewOpener;
     private readonly Func<IWin32Window, IReadOnlyList<BriefLine>?> _boardIntakeRunner;
     private readonly bool _modalReview;
@@ -78,6 +79,23 @@ public sealed class ModuleStudioForm : Form
         Func<string, ReadOnlyMemory<byte>, CancellationToken, Task>? exportWriter = null,
         Func<ApprovedArtifact, string, RenderAudience, double, bool, IAssetCatalog?, Task>? printViewOpener = null,
         Func<IWin32Window, IReadOnlyList<BriefLine>?>? boardIntakeRunner = null)
+        : this(
+            reviewRunner,
+            exportPicker,
+            exportWriter,
+            printViewOpener,
+            boardIntakeRunner,
+            RunExportWorkInBackground)
+    {
+    }
+
+    internal ModuleStudioForm(
+        Func<ReviewSession, ApprovedArtifact?>? reviewRunner,
+        Func<ExportChoice?>? exportPicker,
+        Func<string, ReadOnlyMemory<byte>, CancellationToken, Task>? exportWriter,
+        Func<ApprovedArtifact, string, RenderAudience, double, bool, IAssetCatalog?, Task>? printViewOpener,
+        Func<IWin32Window, IReadOnlyList<BriefLine>?>? boardIntakeRunner,
+        Func<Func<Task>, CancellationToken, Task> exportWorkRunner)
     {
         _modalReview = reviewRunner is null;
         _reviewRunner = reviewRunner ?? RunModalReview;
@@ -85,6 +103,7 @@ public sealed class ModuleStudioForm : Form
         _exportWriter = exportWriter
             ?? ((destination, content, cancellationToken) =>
                 AppServices.WriteExportBytesAsync(destination, content, cancellationToken));
+        _exportWorkRunner = exportWorkRunner;
         _printViewOpener = printViewOpener ?? AppServices.OpenPrintViewAsync;
         _boardIntakeRunner = boardIntakeRunner ?? RunBoardIntake;
 
@@ -183,10 +202,10 @@ public sealed class ModuleStudioForm : Form
         _print = MakeButton(UiStrings.PrintButton, (_, _) => PrintApproved());
         _printView = MakeButton(UiStrings.OpenPrintView, async (_, _) => await OpenPrintViewAsync());
         _export = MakeButton(UiStrings.ExportEllipsis, (_, _) => QueueExport());
-        _cancelExport = MakeButton(UiStrings.CancelExport, (_, _) => _ = RequestExportCancellation());
+        _cancelExport = MakeButton(UiStrings.CancelExport, async (_, _) => await RequestExportCancellation());
         _save = MakeButton(UiStrings.SaveToLibrary, (_, _) => SaveToLibrary());
 
-        _status = new Label { Dock = DockStyle.Bottom, AutoSize = false, Height = 34, UseMnemonic = false };
+        _status = ReflowingStatusLabel.Attach(new Label(), minimumHeight: 34);
         SetStatus(UiStrings.StatusModuleReady);
 
         var modeRow = new TableLayoutPanel
@@ -377,11 +396,15 @@ public sealed class ModuleStudioForm : Form
     private void AddField(ModuleFieldDefinition field)
     {
         var label = Display(field.Display);
+        var initialHeight = field.Kind is ModuleFieldKind.Multiline or ModuleFieldKind.Lines or ModuleFieldKind.RecordTable
+            ? 170
+            : 78;
         var group = new GroupBox
         {
             AutoSize = false,
             Width = 780,
-            Height = field.Kind is ModuleFieldKind.Multiline or ModuleFieldKind.Lines or ModuleFieldKind.RecordTable ? 170 : 78,
+            Height = initialHeight,
+            MinimumSize = new Size(780, initialHeight),
             // GroupBox has no UseMnemonic switch, so escape the native prefix
             // marker while preserving the exact catalog text for accessibility.
             Text = EscapeMnemonicMarkers(label),
@@ -411,6 +434,12 @@ public sealed class ModuleStudioForm : Form
         }
 
         group.Controls.Add(control);
+        group.Layout += (_, _) => ReflowFieldGroup(group);
+        if (field.Kind is not (ModuleFieldKind.Multiline or ModuleFieldKind.Lines or ModuleFieldKind.RecordTable))
+        {
+            group.Layout += (_, _) => ReflowSingleLineField(group, control);
+        }
+
         _parameterPanel.Controls.Add(group);
     }
 
@@ -444,18 +473,58 @@ public sealed class ModuleStudioForm : Form
 
     private CheckBox ToggleInput(ModuleFieldDefinition field)
     {
-        var check = new CheckBox
-        {
-            AutoSize = true,
-            Text = Display(field.Display),
-            Checked = string.Equals(field.DefaultValue?.ToString(), "true", StringComparison.Ordinal),
-            // Dynamic module labels treat '&' literally; access keys belong
-            // only to the separately validated static chrome inventory.
-            UseMnemonic = false,
-        };
+        var check = ReflowingCheckBox.Attach(
+            new CheckBox
+            {
+                Text = Display(field.Display),
+                Checked = string.Equals(field.DefaultValue?.ToString(), "true", StringComparison.Ordinal),
+                // Dynamic module labels treat '&' literally; access keys belong
+                // only to the separately validated static chrome inventory.
+                UseMnemonic = false,
+            },
+            minimumHeight: 36);
         check.CheckedChanged += (_, _) => BoundedInputChanged();
         _valueReaders[field.Key] = () => check.Checked ? "true" : "false";
         return check;
+    }
+
+    private static void ReflowFieldGroup(GroupBox group)
+    {
+        var caption = group.AccessibleName ?? UiStrings.WithoutMnemonic(group.Text);
+        var captionWidth = TextRenderer.MeasureText(
+            caption,
+            group.Font,
+            Size.Empty,
+            TextFormatFlags.NoPadding | TextFormatFlags.SingleLine).Width;
+        var desiredWidth = Math.Max(group.MinimumSize.Width, captionWidth + 16);
+        if (group.Width != desiredWidth)
+        {
+            group.Width = desiredWidth;
+        }
+    }
+
+    private static void ReflowSingleLineField(GroupBox group, Control control)
+    {
+        var contentHeight = control switch
+        {
+            CheckBox check => ReflowingCheckBox.RequiredCaptionHeight(check),
+            Label label => TextRenderer.MeasureText(
+                UiStrings.WithoutMnemonic(label.Text),
+                label.Font,
+                new Size(Math.Max(1, label.ClientSize.Width), int.MaxValue),
+                TextFormatFlags.WordBreak |
+                TextFormatFlags.TextBoxControl |
+                TextFormatFlags.NoPadding |
+                TextFormatFlags.NoPrefix).Height,
+            _ => control.PreferredSize.Height,
+        };
+        var desiredHeight = Math.Max(
+            group.MinimumSize.Height,
+            contentHeight + group.Font.Height + group.Padding.Vertical + 8);
+        if (group.Height != desiredHeight)
+        {
+            group.Height = desiredHeight;
+        }
     }
 
     private ComboBox ChoiceInput(ModuleFieldDefinition field)
@@ -482,6 +551,7 @@ public sealed class ModuleStudioForm : Form
             AllowUserToDeleteRows = true,
             RowHeadersVisible = false,
             AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.Fill,
+            ColumnHeadersHeightSizeMode = DataGridViewColumnHeadersHeightSizeMode.AutoSize,
             AccessibleDescription = UiStrings.WithoutMnemonic(UiStrings.RecordTableHint),
         };
 
@@ -570,6 +640,12 @@ public sealed class ModuleStudioForm : Form
         if (!_greenInput.Checked)
         {
             SetStatus(UiStrings.StatusModuleGreenRequired);
+            return;
+        }
+
+        if (!IsLockedFactsInventoryReviewed())
+        {
+            SetStatus(UiStrings.StatusModuleLockInventoryReviewRequired);
             return;
         }
 
@@ -822,7 +898,7 @@ public sealed class ModuleStudioForm : Form
         }
     }
 
-    private async Task ExportAsync()
+    internal async Task ExportAsync()
     {
         if (_exportInProgress)
         {
@@ -877,8 +953,13 @@ public sealed class ModuleStudioForm : Form
                 SelectedAudience(),
                 (double)_textScale.Value,
                 _targetLanguageFirst.Checked);
-            var bytes = await Task.Run(
-                () => AppServices.Render(approved, request, cancellationToken: exportToken),
+            byte[] bytes = null!;
+            await _exportWorkRunner(
+                () =>
+                {
+                    bytes = AppServices.Render(approved, request, cancellationToken: exportToken);
+                    return Task.CompletedTask;
+                },
                 exportToken);
             exportToken.ThrowIfCancellationRequested();
             if (_formClosing || IsDisposed || Disposing)
@@ -890,7 +971,7 @@ public sealed class ModuleStudioForm : Form
             // retain the operation itself. Dispose can then cancel and drain
             // the writer's stage cleanup without deadlocking on a continuation
             // that needs the UI thread.
-            var exportWork = Task.Run(
+            var exportWork = _exportWorkRunner(
                 () => _exportWriter(choice.Path, bytes, exportToken),
                 CancellationToken.None);
             Volatile.Write(ref _activeExportWork, exportWork);
@@ -903,7 +984,7 @@ public sealed class ModuleStudioForm : Form
                 _ = Interlocked.CompareExchange(ref _activeExportWork, null, exportWork);
             }
         }
-        catch (OperationCanceledException)
+        catch (OperationCanceledException) when (exportCancellation.IsCancellationRequested)
         {
             SetStatus(UiStrings.StatusExportCancelled);
             return;
@@ -926,6 +1007,11 @@ public sealed class ModuleStudioForm : Form
 
         SetStatus(UiStrings.StatusExported, Path.GetFileName(choice.Path));
     }
+
+    private static Task RunExportWorkInBackground(
+        Func<Task> work,
+        CancellationToken cancellationToken)
+        => Task.Run(work, cancellationToken);
 
     private void QueueExport()
     {
@@ -1066,6 +1152,7 @@ public sealed class ModuleStudioForm : Form
         _stateGeneration++;
         _loadingFields = true;
         _greenInput.Checked = false;
+        ResetLockedFactsInventoryReview();
         _loadingFields = false;
         ClearApproval();
         UpdateConditions();
@@ -1137,7 +1224,9 @@ public sealed class ModuleStudioForm : Form
             var actual = _valueReaders.TryGetValue(condition.FieldKey, out var reader)
                 ? reader()?.ToString()
                 : null;
-            var equals = string.Equals(actual, condition.SubmittedValue, StringComparison.Ordinal);
+            var equals = condition.SubmittedValue.Length == 0
+                ? string.IsNullOrWhiteSpace(actual)
+                : string.Equals(actual, condition.SubmittedValue, StringComparison.Ordinal);
             _fieldContainers[field.Key].Visible = condition.EqualsSubmittedValue ? equals : !equals;
         }
     }
@@ -1151,11 +1240,27 @@ public sealed class ModuleStudioForm : Form
         UpdateGatedButtons();
     }
 
-    private bool IsInputReady() => _greenInput.Checked;
+    private bool IsInputReady()
+        => _greenInput.Checked && IsLockedFactsInventoryReviewed();
+
+    private bool IsLockedFactsInventoryReviewed()
+        => !_valueReaders.TryGetValue(ModuleStudioCatalog.LockedFactsReviewedKey, out var reader)
+            || string.Equals(reader()?.ToString(), "true", StringComparison.Ordinal);
+
+    private void ResetLockedFactsInventoryReview()
+    {
+        if (_fieldContainers.TryGetValue(ModuleStudioCatalog.LockedFactsReviewedKey, out var container)
+            && container.Controls.OfType<CheckBox>().SingleOrDefault() is { } confirmation)
+        {
+            confirmation.Checked = false;
+        }
+    }
 
     private string ReadinessStatus()
         => !_greenInput.Checked
             ? UiStrings.StatusModuleGreenRequired
+            : !IsLockedFactsInventoryReviewed()
+                ? UiStrings.StatusModuleLockInventoryReviewRequired
             : UiStrings.StatusModuleReady;
 
     private void UpdateGatedButtons()

@@ -206,44 +206,76 @@ public sealed partial class HeadedUiaWalkTests
             }
 
             Process = Process.Start(new ProcessStartInfo(exe, arguments))!;
-            var matchingWindows = 0;
-            Window = WaitFor(() =>
+            try
             {
-                var found = AutomationElement.RootElement.FindFirst(
-                    TreeScope.Children,
-                    new PropertyCondition(AutomationElement.ProcessIdProperty, Process.Id));
-                matchingWindows = found is null ? 0 : 1;
-                return found;
-            },
-                expectation: $"the top-level window for harness mode '{harnessMode}' (process {Process.Id})",
-                diagnosticSnapshot: () => CachedWaitSnapshot(
-                    Process,
-                    "process launched",
-                    ControlType.Window.ProgrammaticName,
-                    candidates: null,
-                    matches: matchingWindows));
+                var matchingWindows = 0;
+                Window = WaitFor(() =>
+                {
+                    var found = AutomationElement.RootElement.FindFirst(
+                        TreeScope.Children,
+                        new PropertyCondition(AutomationElement.ProcessIdProperty, Process.Id));
+                    matchingWindows = found is null ? 0 : 1;
+                    return found;
+                },
+                    expectation: $"the top-level window for harness mode '{harnessMode}' (process {Process.Id})",
+                    diagnosticSnapshot: () => CachedWaitSnapshot(
+                        Process,
+                        "process launched",
+                        ControlType.Window.ProgrammaticName,
+                        candidates: null,
+                        matches: matchingWindows));
+            }
+            catch (Exception startupFailure)
+            {
+                try
+                {
+                    HeadedProcessLifetime.TerminateAndWait(Process);
+                }
+                catch (Exception cleanupFailure)
+                {
+                    throw new AggregateException(
+                        "The headed fixture failed during startup and its child-process cleanup also failed.",
+                        startupFailure,
+                        cleanupFailure);
+                }
+                finally
+                {
+                    Process.Dispose();
+                    CleanupOwnedRehearsalRoot();
+                }
+
+                throw;
+            }
         }
 
         public void Dispose()
         {
-            if (!Process.HasExited)
+            try
             {
-                Process.Kill(entireProcessTree: true);
-                _ = Process.WaitForExit(5000);
+                HeadedProcessLifetime.TerminateAndWait(Process);
+            }
+            finally
+            {
+                Process.Dispose();
+                CleanupOwnedRehearsalRoot();
+            }
+        }
+
+        private void CleanupOwnedRehearsalRoot()
+        {
+            if (_ownedRehearsalRoot is null)
+            {
+                return;
             }
 
-            Process.Dispose();
-            if (_ownedRehearsalRoot is not null)
+            try
             {
-                try
-                {
-                    Directory.Delete(_ownedRehearsalRoot, recursive: true);
-                }
-                catch (Exception failure) when (failure is IOException or UnauthorizedAccessException)
-                {
-                    // The process is already gone; temp cleanup must not hide
-                    // the headed assertion that owns this fixture.
-                }
+                Directory.Delete(_ownedRehearsalRoot, recursive: true);
+            }
+            catch (Exception failure) when (failure is IOException or UnauthorizedAccessException)
+            {
+                // The process is already gone; temp cleanup must not hide
+                // the headed assertion that owns this fixture.
             }
         }
     }

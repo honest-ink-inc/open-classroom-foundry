@@ -93,6 +93,7 @@ public sealed class PressRoomForm : Form
         {
             Dock = DockStyle.Fill,
             AccessibleName = UiStrings.WithoutMnemonic(UiStrings.PressList),
+            HorizontalScrollbar = true,
         };
         foreach (var definition in PressRoomCatalog.All)
         {
@@ -115,6 +116,7 @@ public sealed class PressRoomForm : Form
         };
         _parameterPanel.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
         _parameterPanel.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
+        _parameterPanel.Layout += (_, _) => RefreshParameterScrollExtent();
 
         _review = MakeButton(UiStrings.ReviewAndApprove, (_, _) => ReviewAndApprove());
         _print = MakeButton(UiStrings.PrintButton, (_, _) => PrintApproved());
@@ -131,7 +133,7 @@ public sealed class PressRoomForm : Form
 
         // The message itself must be what a screen reader hears, not the word
         // "Status" (a harness finding, 29 Aug 2026).
-        _status = new Label { Dock = DockStyle.Bottom, AutoSize = false, Height = 28, UseMnemonic = false };
+        _status = ReflowingStatusLabel.Attach(new Label(), minimumHeight: 28);
         SetStatus(UiStrings.StatusReady);
 
         var buttons = new FlowLayoutPanel { Dock = DockStyle.Bottom, AutoSize = true, FlowDirection = FlowDirection.LeftToRight };
@@ -148,6 +150,7 @@ public sealed class PressRoomForm : Form
         var layout = new TableLayoutPanel { Dock = DockStyle.Fill, ColumnCount = 2, RowCount = 1 };
         layout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 34));
         layout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 66));
+        layout.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
         layout.Controls.Add(_pressList, 0, 0);
         layout.Controls.Add(right, 1, 0);
 
@@ -224,13 +227,19 @@ public sealed class PressRoomForm : Form
                     Increment = number.DecimalPlaces > 0 ? 0.5m : 1m,
                     Value = (decimal)number.Default,
                     Width = 110,
+                    MinimumSize = new Size(110, 0),
                 };
                 _valueReaders[parameter.Key] = () => spinner.Value.ToString(System.Globalization.CultureInfo.InvariantCulture);
                 control = spinner;
                 break;
 
             case ChoiceParameter choice:
-                var combo = new ComboBox { DropDownStyle = ComboBoxStyle.DropDownList, Width = 160 };
+                var combo = new ComboBox
+                {
+                    DropDownStyle = ComboBoxStyle.DropDownList,
+                    Width = 160,
+                    MinimumSize = new Size(160, 0),
+                };
                 for (var optionIndex = 0; optionIndex < choice.Options.Count; optionIndex++)
                 {
                     var value = choice.Options[optionIndex];
@@ -239,21 +248,24 @@ public sealed class PressRoomForm : Form
                         UiStrings.Localize(UiCatalogIds.PressChoice(pressId, parameter.Key, value), value)));
                 }
 
+                ComboBoxReadingPath.EnsureEveryItemFits(combo);
                 combo.SelectedIndex = choice.Options.ToList().IndexOf(choice.Default);
                 _valueReaders[parameter.Key] = () => ((ChoiceDisplayItem)combo.SelectedItem!).Value;
                 control = combo;
                 break;
 
             case ToggleParameter toggle:
-                var check = new CheckBox
-                {
-                    Text = label,
-                    AutoSize = true,
-                    Checked = toggle.Default,
-                    // Dynamic catalog labels treat '&' as authored text. Only
-                    // static UiStrings chrome participates in access keys.
-                    UseMnemonic = false,
-                };
+                var check = ReflowingCheckBox.Attach(
+                    new CheckBox
+                    {
+                        Text = label,
+                        Checked = toggle.Default,
+                        // Dynamic catalog labels treat '&' as authored text. Only
+                        // static UiStrings chrome participates in access keys.
+                        UseMnemonic = false,
+                    },
+                    minimumWidth: 160,
+                    minimumHeight: 36);
                 _valueReaders[parameter.Key] = () => check.Checked ? "true" : "false";
                 control = check;
                 break;
@@ -265,6 +277,7 @@ public sealed class PressRoomForm : Form
                     ScrollBars = ScrollBars.Vertical,
                     Height = 96,
                     Width = 320,
+                    MinimumSize = new Size(320, 96),
                     Text = lines.DefaultText,
                     AcceptsReturn = true,
                 };
@@ -273,7 +286,12 @@ public sealed class PressRoomForm : Form
                 break;
 
             case TextParameter text:
-                var box = new TextBox { Width = 220, Text = text.Default };
+                var box = new TextBox
+                {
+                    Width = 220,
+                    MinimumSize = new Size(220, 0),
+                    Text = text.Default,
+                };
                 _valueReaders[parameter.Key] = () => box.Text;
                 control = box;
                 break;
@@ -317,6 +335,52 @@ public sealed class PressRoomForm : Form
                 UseMnemonic = false,
             }, 0, row);
             _parameterPanel.Controls.Add(control, 1, row);
+        }
+    }
+
+    private void RefreshParameterScrollExtent()
+    {
+        var visible = _parameterPanel.Controls.Cast<Control>()
+            .Where(control => control.Visible)
+            .ToArray();
+
+        // Bounds are display coordinates and move whenever AutoScroll moves;
+        // a bound-derived minimum therefore chases the scrollbar, especially
+        // in a mirrored layout. Derive the logical extent from the intrinsic
+        // requirement of each table row and column instead. This stays stable
+        // across scrolling while still reacting to font and locale changes.
+        var columnWidths = new int[_parameterPanel.ColumnCount];
+        var rowHeights = new int[_parameterPanel.RowCount];
+        foreach (var control in visible)
+        {
+            var preferred = control.GetPreferredSize(Size.Empty);
+            var requiredWidth = control is CheckBox
+                ? control.MinimumSize.Width
+                : Math.Max(control.MinimumSize.Width, preferred.Width);
+            var requiredHeight = Math.Max(control.MinimumSize.Height, preferred.Height);
+            var column = _parameterPanel.GetColumn(control);
+            var row = _parameterPanel.GetRow(control);
+            if ((uint)column < (uint)columnWidths.Length)
+            {
+                columnWidths[column] = Math.Max(
+                    columnWidths[column],
+                    checked(requiredWidth + control.Margin.Horizontal));
+            }
+
+            if ((uint)row < (uint)rowHeights.Length)
+            {
+                rowHeights[row] = Math.Max(
+                    rowHeights[row],
+                    checked(requiredHeight + control.Margin.Vertical));
+            }
+        }
+
+        var desired = new Size(
+            checked(columnWidths.Sum() + 16),
+            checked(rowHeights.Sum() + 16));
+        if (_parameterPanel.AutoScrollMinSize != desired)
+        {
+            _parameterPanel.AutoScrollMinSize = desired;
         }
     }
 
@@ -460,7 +524,7 @@ public sealed class PressRoomForm : Form
         }
     }
 
-    private async Task ExportAsync()
+    internal async Task ExportAsync()
     {
         if (_exportInProgress)
         {
@@ -505,7 +569,7 @@ public sealed class PressRoomForm : Form
                 await AppServices.WriteExportBytesAsync(choice.Path, bytes, exportToken);
             }
         }
-        catch (OperationCanceledException)
+        catch (OperationCanceledException) when (_exportCancellation?.IsCancellationRequested == true)
         {
             SetStatus(UiStrings.StatusExportCancelled);
             return;
