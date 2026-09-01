@@ -4,7 +4,8 @@ using System.Globalization;
 using System.Runtime.InteropServices;
 using Microsoft.Win32.SafeHandles;
 
-var lockObservationTimeout = TimeSpan.FromSeconds(15);
+var readinessTimeout = TimeSpan.FromSeconds(15);
+var readinessPollInterval = TimeSpan.FromMilliseconds(2);
 
 if (!OperatingSystem.IsWindows())
 {
@@ -54,33 +55,76 @@ if (targetProcess.IsInvalid)
 // is still held, and then delivers one real CTRL+C console event. Keeping this
 // wait in the already-attached sender minimizes—but cannot eliminate—the race
 // between the filesystem observation and asynchronous console delivery.
-_ = NativeMethods.FreeConsole();
-if (!NativeMethods.AttachConsole(targetProcessId))
-{
-    Console.Error.WriteLine("console-signal.attach-failed");
-    return 3;
-}
-
+var detachedFromInheritedConsole = NativeMethods.FreeConsole();
+var detachError = detachedFromInheritedConsole ? 0 : Marshal.GetLastPInvokeError();
+var readinessWatch = Stopwatch.StartNew();
+var attachedToTarget = false;
 try
 {
+    var attachment = ConsoleAttachmentReadiness.Wait(
+        () =>
+        {
+            var attached = NativeMethods.AttachConsole(targetProcessId);
+            attachedToTarget |= attached;
+            return new ConsoleAttachmentAttempt(
+                attached,
+                attached ? 0 : Marshal.GetLastPInvokeError());
+        },
+        () =>
+        {
+            var waitResult = NativeMethods.WaitForSingleObject(targetProcess, milliseconds: 0);
+            return new ConsoleTargetObservation(
+                waitResult,
+                waitResult == NativeMethods.WaitFailed ? Marshal.GetLastPInvokeError() : 0);
+        },
+        () => readinessWatch.ElapsedMilliseconds,
+        () => Thread.Sleep(readinessPollInterval),
+        checked((long)readinessTimeout.TotalMilliseconds));
+    if (attachment.Outcome != ConsoleAttachmentOutcome.Attached)
+    {
+        var detachReceipt = detachedFromInheritedConsole ? "true" : "false";
+        var attachmentReceipt =
+            $"attempts={attachment.Attempts.ToString(CultureInfo.InvariantCulture)}; lastAttachError={attachment.LastAttachError.ToString(CultureInfo.InvariantCulture)}; attachedToTarget={attachment.AttachedToTarget.ToString().ToLowerInvariant()}; inheritedConsoleDetached={detachReceipt}; inheritedDetachError={detachError.ToString(CultureInfo.InvariantCulture)}; targetWait={TargetWaitReceipt(attachment.LastTargetObservation)}; targetWaitError={attachment.LastTargetObservation.ErrorCode.ToString(CultureInfo.InvariantCulture)}; maxPollGapMs={attachment.MaximumPollGapMilliseconds.ToString(CultureInfo.InvariantCulture)}; elapsedMs={attachment.ElapsedMilliseconds.ToString(CultureInfo.InvariantCulture)}";
+        if (attachment.Outcome == ConsoleAttachmentOutcome.TargetExited)
+        {
+            Console.Error.WriteLine($"console-signal.target-exited; phase=attach; {attachmentReceipt}");
+            return 5;
+        }
+
+        if (attachment.Outcome == ConsoleAttachmentOutcome.TargetWatchFailed)
+        {
+            Console.Error.WriteLine($"console-signal.target-watch-failed; phase=attach; {attachmentReceipt}");
+            return 5;
+        }
+
+        if (attachment.Outcome == ConsoleAttachmentOutcome.TimedOut)
+        {
+            Console.Error.WriteLine($"console-signal.attach-timeout; {attachmentReceipt}");
+            return 3;
+        }
+
+        Console.Error.WriteLine($"console-signal.attach-failed; {attachmentReceipt}");
+        return 3;
+    }
+
     if (!NativeMethods.SetConsoleCtrlHandler(IntPtr.Zero, add: true))
     {
         Console.Error.WriteLine("console-signal.ignore-failed");
         return 4;
     }
 
-    var observationWatch = Stopwatch.StartNew();
+    var attachmentElapsedMilliseconds = readinessWatch.ElapsedMilliseconds;
     var observationAttempts = 0;
     var missingObservations = 0;
     var openableObservations = 0;
     var accessRefusedObservations = 0;
     var otherIoObservations = 0;
-    var lastObservationElapsedMilliseconds = 0L;
+    var lastObservationElapsedMilliseconds = attachmentElapsedMilliseconds;
     var maximumPollGapMilliseconds = 0L;
     var lastLockState = BatchLockState.Missing;
     while (true)
     {
-        var observationElapsedMilliseconds = observationWatch.ElapsedMilliseconds;
+        var observationElapsedMilliseconds = readinessWatch.ElapsedMilliseconds;
         maximumPollGapMilliseconds = Math.Max(
             maximumPollGapMilliseconds,
             observationElapsedMilliseconds - lastObservationElapsedMilliseconds);
@@ -122,14 +166,14 @@ try
             return 5;
         }
 
-        if (observationWatch.Elapsed >= lockObservationTimeout)
+        if (readinessWatch.Elapsed >= readinessTimeout)
         {
             Console.Error.WriteLine(
-                $"console-signal.lock-observation-timeout; target=running; lastLockState={LockStateReceipt(lastLockState)}; attempts={observationAttempts.ToString(CultureInfo.InvariantCulture)}; missing={missingObservations.ToString(CultureInfo.InvariantCulture)}; openable={openableObservations.ToString(CultureInfo.InvariantCulture)}; accessRefused={accessRefusedObservations.ToString(CultureInfo.InvariantCulture)}; otherIo={otherIoObservations.ToString(CultureInfo.InvariantCulture)}; maxPollGapMs={maximumPollGapMilliseconds.ToString(CultureInfo.InvariantCulture)}; elapsedMs={observationWatch.ElapsedMilliseconds.ToString(CultureInfo.InvariantCulture)}");
+                $"console-signal.lock-observation-timeout; target=running; lastLockState={LockStateReceipt(lastLockState)}; attempts={observationAttempts.ToString(CultureInfo.InvariantCulture)}; missing={missingObservations.ToString(CultureInfo.InvariantCulture)}; openable={openableObservations.ToString(CultureInfo.InvariantCulture)}; accessRefused={accessRefusedObservations.ToString(CultureInfo.InvariantCulture)}; otherIo={otherIoObservations.ToString(CultureInfo.InvariantCulture)}; maxPollGapMs={maximumPollGapMilliseconds.ToString(CultureInfo.InvariantCulture)}; attachAttempts={attachment.Attempts.ToString(CultureInfo.InvariantCulture)}; attachElapsedMs={attachmentElapsedMilliseconds.ToString(CultureInfo.InvariantCulture)}; elapsedMs={readinessWatch.ElapsedMilliseconds.ToString(CultureInfo.InvariantCulture)}");
             return 5;
         }
 
-        Thread.Sleep(TimeSpan.FromMilliseconds(2));
+        Thread.Sleep(readinessPollInterval);
     }
 
     var deliveryWait = NativeMethods.WaitForSingleObject(targetProcess, milliseconds: 0);
@@ -158,7 +202,10 @@ try
 }
 finally
 {
-    _ = NativeMethods.FreeConsole();
+    if (attachedToTarget)
+    {
+        _ = NativeMethods.FreeConsole();
+    }
 }
 
 static BatchLockState ObserveBatchLock(string path)
@@ -217,6 +264,26 @@ static string LockStateReceipt(BatchLockState state)
     return $"io-error-{state.ErrorCode.ToString(CultureInfo.InvariantCulture)}";
 }
 
+static string TargetWaitReceipt(ConsoleTargetObservation observation)
+{
+    if (observation.WaitResult == NativeMethods.WaitTimeout)
+    {
+        return "running";
+    }
+
+    if (observation.WaitResult == NativeMethods.WaitObject0)
+    {
+        return "exited";
+    }
+
+    if (observation.WaitResult == NativeMethods.WaitFailed)
+    {
+        return "failed";
+    }
+
+    return $"unexpected-{observation.WaitResult.ToString(CultureInfo.InvariantCulture)}";
+}
+
 internal readonly record struct BatchLockState(int ErrorCode)
 {
     internal static BatchLockState Missing { get; } = new(NativeMethods.ErrorFileNotFound);
@@ -228,16 +295,175 @@ internal readonly record struct BatchLockState(int ErrorCode)
     internal static BatchLockState AccessRefused { get; } = new(NativeMethods.ErrorAccessDenied);
 }
 
+internal static class ConsoleAttachmentReadiness
+{
+    internal static ConsoleAttachmentResult Wait(
+        Func<ConsoleAttachmentAttempt> tryAttach,
+        Func<ConsoleTargetObservation> observeTarget,
+        Func<long> elapsedMilliseconds,
+        Action delay,
+        long timeoutMilliseconds)
+    {
+        ArgumentNullException.ThrowIfNull(tryAttach);
+        ArgumentNullException.ThrowIfNull(observeTarget);
+        ArgumentNullException.ThrowIfNull(elapsedMilliseconds);
+        ArgumentNullException.ThrowIfNull(delay);
+        if (timeoutMilliseconds <= 0)
+        {
+            throw new ArgumentOutOfRangeException(
+                nameof(timeoutMilliseconds),
+                timeoutMilliseconds,
+                "The console-attachment readiness timeout must be positive.");
+        }
+
+        var initialElapsed = elapsedMilliseconds();
+        if (initialElapsed < 0)
+        {
+            throw new InvalidOperationException("The console-attachment clock cannot start below zero.");
+        }
+
+        var lastPollAt = initialElapsed;
+        var maximumPollGapMilliseconds = 0L;
+        var attempts = 0;
+        var lastAttachError = 0;
+        var lastTargetObservation = ConsoleTargetObservation.Unobserved;
+
+        long ReadElapsed()
+        {
+            var current = elapsedMilliseconds();
+            if (current < lastPollAt)
+            {
+                throw new InvalidOperationException("The console-attachment clock must be monotonic.");
+            }
+
+            maximumPollGapMilliseconds = Math.Max(
+                maximumPollGapMilliseconds,
+                current - lastPollAt);
+            lastPollAt = current;
+            return current;
+        }
+
+        ConsoleAttachmentResult Result(
+            ConsoleAttachmentOutcome outcome,
+            bool attachedToTarget,
+            long elapsed)
+        {
+            return new(
+                outcome,
+                lastAttachError,
+                attempts,
+                attachedToTarget,
+                lastTargetObservation,
+                maximumPollGapMilliseconds,
+                elapsed);
+        }
+
+        ConsoleAttachmentResult? ObserveTargetAndClassify(
+            bool attachedToTarget,
+            ConsoleAttachmentOutcome runningOutcome)
+        {
+            lastTargetObservation = observeTarget();
+            var elapsed = ReadElapsed();
+            if (lastTargetObservation.WaitResult == NativeMethods.WaitObject0)
+            {
+                return Result(ConsoleAttachmentOutcome.TargetExited, attachedToTarget, elapsed);
+            }
+
+            if (lastTargetObservation.WaitResult != NativeMethods.WaitTimeout)
+            {
+                return Result(ConsoleAttachmentOutcome.TargetWatchFailed, attachedToTarget, elapsed);
+            }
+
+            if (elapsed >= timeoutMilliseconds)
+            {
+                return Result(ConsoleAttachmentOutcome.TimedOut, attachedToTarget, elapsed);
+            }
+
+            return runningOutcome == ConsoleAttachmentOutcome.Attached
+                ? null
+                : Result(runningOutcome, attachedToTarget, elapsed);
+        }
+
+        while (true)
+        {
+            var elapsed = ReadElapsed();
+            if (elapsed >= timeoutMilliseconds)
+            {
+                return ObserveTargetAndClassify(
+                    attachedToTarget: false,
+                    ConsoleAttachmentOutcome.TimedOut)!.Value;
+            }
+
+            attempts = checked(attempts + 1);
+            var attempt = tryAttach();
+            elapsed = ReadElapsed();
+            if (attempt.Attached)
+            {
+                lastAttachError = 0;
+                if (elapsed < timeoutMilliseconds)
+                {
+                    return Result(ConsoleAttachmentOutcome.Attached, attachedToTarget: true, elapsed);
+                }
+
+                return ObserveTargetAndClassify(
+                    attachedToTarget: true,
+                    ConsoleAttachmentOutcome.TimedOut)!.Value;
+            }
+
+            lastAttachError = attempt.ErrorCode;
+            var runningOutcome = lastAttachError == NativeMethods.ErrorInvalidHandle
+                ? ConsoleAttachmentOutcome.Attached
+                : ConsoleAttachmentOutcome.AttachFailed;
+            var classified = ObserveTargetAndClassify(
+                attachedToTarget: false,
+                runningOutcome);
+            if (classified.HasValue)
+            {
+                return classified.Value;
+            }
+
+            delay();
+        }
+    }
+}
+
+internal readonly record struct ConsoleAttachmentAttempt(bool Attached, int ErrorCode);
+
+internal readonly record struct ConsoleTargetObservation(uint WaitResult, int ErrorCode)
+{
+    internal static ConsoleTargetObservation Unobserved { get; } = new(uint.MaxValue - 1, 0);
+}
+
+internal readonly record struct ConsoleAttachmentResult(
+    ConsoleAttachmentOutcome Outcome,
+    int LastAttachError,
+    int Attempts,
+    bool AttachedToTarget,
+    ConsoleTargetObservation LastTargetObservation,
+    long MaximumPollGapMilliseconds,
+    long ElapsedMilliseconds);
+
+internal enum ConsoleAttachmentOutcome
+{
+    Attached,
+    AttachFailed,
+    TargetExited,
+    TargetWatchFailed,
+    TimedOut,
+}
+
 internal static partial class NativeMethods
 {
     internal const uint CtrlCEvent = 0;
     internal const int ErrorFileNotFound = 2;
     internal const int ErrorPathNotFound = 3;
     internal const int ErrorAccessDenied = 5;
+    internal const int ErrorInvalidHandle = 6;
     internal const int ErrorSharingViolation = 32;
     internal const uint Synchronize = 0x00100000;
     internal const uint WaitObject0 = 0;
     internal const uint WaitTimeout = 258;
+    internal const uint WaitFailed = uint.MaxValue;
 
     [LibraryImport("kernel32.dll", SetLastError = true)]
     internal static partial SafeFileHandle OpenProcess(
