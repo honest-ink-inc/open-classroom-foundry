@@ -13,9 +13,7 @@ param(
     [int]$MemoryMiB = 128,
 
     [ValidateRange(60, 600)]
-    [int]$PerRunProcessLimitSeconds = 240,
-
-    [switch]$SkipBuild
+    [int]$PerRunProcessLimitSeconds = 240
 )
 
 Set-StrictMode -Version Latest
@@ -23,32 +21,37 @@ $ErrorActionPreference = "Stop"
 
 $repositoryRoot = [IO.Path]::GetFullPath((Join-Path $PSScriptRoot ".."))
 $testProject = "tests\UiAutomation\Foundry.Tests.UiAutomation.csproj"
-
-$repositoryCommit = (& git -C $repositoryRoot rev-parse --verify HEAD 2>$null)
-if ($LASTEXITCODE -ne 0 -or $repositoryCommit -notmatch '^[0-9a-fA-F]{40}$') {
-    throw "The repository commit could not be resolved; no source-bound evidence was collected."
-}
-$repositoryCommit = $repositoryCommit.ToLowerInvariant()
-
-$repositoryStatus = @(& git -C $repositoryRoot status --porcelain=v1 --untracked-files=all 2>$null)
-if ($LASTEXITCODE -ne 0) {
-    throw "The repository tree state could not be measured; no source-bound evidence was collected."
-}
-if ($repositoryStatus.Count -ne 0) {
-    throw "The repository tree is not clean; commit or set aside every change before collecting source-bound evidence."
-}
-
-$dotnetSdk = (& dotnet --version 2>$null)
-if ($LASTEXITCODE -ne 0 -or [string]::IsNullOrWhiteSpace($dotnetSdk)) {
-    throw "The .NET SDK identity could not be measured; no source-bound evidence was collected."
-}
-$dotnetSdk = $dotnetSdk.Trim()
-
 $runId = (Get-Date).ToUniversalTime().ToString("yyyyMMddTHHmmssZ", [Globalization.CultureInfo]::InvariantCulture)
 $runId += "-" + [Guid]::NewGuid().ToString("N")
-$relativeEvidenceRoot = Join-Path "out\uia-load-repro" $runId
-$evidenceRoot = Join-Path $repositoryRoot $relativeEvidenceRoot
-New-Item -ItemType Directory -Path $evidenceRoot | Out-Null
+$evidenceModulePath = Join-Path $PSScriptRoot "LoadReproEvidence.psm1"
+Import-Module -Name $evidenceModulePath -Force
+$evidenceLock = Enter-LoadReproEvidenceLock `
+    -RepositoryRoot $repositoryRoot `
+    -RunId $runId `
+    -HarnessName "headed-uia-load-repro"
+$finalExitCode = 1
+
+try {
+    # This cooperative lock prevents the other load harness from entering its
+    # preflight/build/run boundary; unrelated builders do not honor this lock.
+    $repositoryStateBefore = Get-LoadReproRepositoryState -RepositoryRoot $repositoryRoot
+    Assert-LoadReproCleanRepositoryState -State $repositoryStateBefore
+    $repositoryCommit = $repositoryStateBefore.Commit
+
+    $dotnetSdk = (& dotnet --version 2>$null)
+    if ($LASTEXITCODE -ne 0 -or [string]::IsNullOrWhiteSpace($dotnetSdk)) {
+        throw "The .NET SDK identity could not be measured; no source-bound evidence was collected."
+    }
+    $dotnetSdk = $dotnetSdk.Trim()
+
+    $evidenceDirectory = New-LoadReproEvidenceDirectory `
+        -RepositoryRoot $repositoryRoot `
+        -EvidenceBaseName "uia-load-repro" `
+        -RunId $runId
+    $relativeEvidenceRoot = $evidenceDirectory.RelativePath
+    $evidenceRoot = $evidenceDirectory.Path
+    # An exception before the durable summary fails the process and leaves no
+    # completed batch summary from which evidence could be claimed.
 
 $testCases = @(
     [pscustomobject]@{
@@ -81,10 +84,35 @@ function Invoke-BoundedProcess {
         -WorkingDirectory $repositoryRoot -NoNewWindow -PassThru `
         -RedirectStandardOutput $StandardOutputPath -RedirectStandardError $StandardErrorPath
     $timedOut = -not $process.WaitForExit($LimitSeconds * 1000)
+    $terminationRequestStarted = $null
+    $terminationRequestTimedOut = $null
+    $terminationRequestExitCode = $null
+    $terminationHelperExitObserved = $null
+    $terminationRequestStartError = $null
+    $terminationRequestCleanupError = $null
+    $terminationRequestSucceeded = $null
+    $launcherExitObserved = $true
+    $safeToContinue = $true
     if ($timedOut) {
-        # Kill exactly this dotnet process tree. A stranded headed testhost can
-        # otherwise collide with the next named repetition and corrupt evidence.
-        & "$env:SystemRoot\System32\taskkill.exe" /PID $process.Id /T /F 2>&1 | Out-Null
+        # taskkill /T requests termination of the launcher and its current
+        # descendants. Its success plus observed launcher exit are required to
+        # continue, but neither is an independent enumeration of descendant exit.
+        $taskkillResult = Invoke-LoadReproBoundedTaskKill -TargetProcessId $process.Id
+        $terminationRequestStarted = $taskkillResult.Started
+        $terminationRequestTimedOut = $taskkillResult.TimedOut
+        $terminationRequestExitCode = $taskkillResult.ExitCode
+        $terminationHelperExitObserved = $taskkillResult.HelperExitObserved
+        $terminationRequestStartError = $taskkillResult.StartError
+        $terminationRequestCleanupError = $taskkillResult.CleanupError
+        $terminationRequestSucceeded = $taskkillResult.Started `
+            -and -not $taskkillResult.TimedOut `
+            -and $taskkillResult.HelperExitObserved `
+            -and $taskkillResult.ExitCode -eq 0
+        $launcherExitObserved = $process.WaitForExit(10000)
+        if ($launcherExitObserved) {
+            $process.WaitForExit()
+        }
+        $safeToContinue = $terminationRequestSucceeded -and $launcherExitObserved
         $exitCode = 124
     }
     else {
@@ -97,6 +125,15 @@ function Invoke-BoundedProcess {
     return [pscustomobject]@{
         ExitCode = $exitCode
         TimedOut = $timedOut
+        TerminationRequestStarted = $terminationRequestStarted
+        TerminationRequestTimedOut = $terminationRequestTimedOut
+        TerminationRequestExitCode = $terminationRequestExitCode
+        TerminationHelperExitObserved = $terminationHelperExitObserved
+        TerminationRequestStartError = $terminationRequestStartError
+        TerminationRequestCleanupError = $terminationRequestCleanupError
+        TerminationRequestSucceeded = $terminationRequestSucceeded
+        LauncherExitObserved = $launcherExitObserved
+        SafeToContinue = $safeToContinue
         ElapsedMilliseconds = $clock.ElapsedMilliseconds
     }
 }
@@ -183,6 +220,28 @@ function Stop-ControlledContention {
     }
 }
 
+function Get-ControlledContentionSnapshot {
+    param(
+        [System.Management.Automation.Job[]]$Jobs,
+        [int]$ExpectedWorkerCount
+    )
+
+    $states = @($Jobs |
+        Sort-Object -Property Id |
+        ForEach-Object { [string]$_.State })
+    $running = @($states | Where-Object { $_ -eq "Running" }).Count
+    return [pscustomobject][ordered]@{
+        ExpectedWorkerCount = $ExpectedWorkerCount
+        ObservedWorkerCount = $states.Count
+        RunningWorkerCount = $running
+        NonRunningWorkerCount = $states.Count - $running
+        AllWorkersRunning = $ExpectedWorkerCount -gt 0 `
+            -and $states.Count -eq $ExpectedWorkerCount `
+            -and $running -eq $ExpectedWorkerCount
+        States = $states
+    }
+}
+
 function Read-TrxResult {
     param(
         [Parameter(Mandatory)]
@@ -236,105 +295,178 @@ if ($env:OCF_SKIP_HEADED -eq "1") {
     throw "OCF_SKIP_HEADED=1 would skip the named tests; no headed evidence was collected."
 }
 
-if (-not $SkipBuild) {
-    $buildOutput = Join-Path $evidenceRoot "build.stdout.log"
-    $buildError = Join-Path $evidenceRoot "build.stderr.log"
-    $build = Invoke-BoundedProcess -Arguments @(
-        "build", $testProject, "-c", "Release", "--no-restore"
-    ) -StandardOutputPath $buildOutput -StandardErrorPath $buildError -LimitSeconds 300
-    if ($build.ExitCode -ne 0) {
-        throw "The headed UIA project build failed with exit code $($build.ExitCode); see the retained build logs."
-    }
+$restoreOutput = Join-Path $evidenceRoot "restore.stdout.log"
+$restoreError = Join-Path $evidenceRoot "restore.stderr.log"
+$restore = Invoke-BoundedProcess -Arguments @(
+    "restore", $testProject, "--locked-mode", "--configfile", "NuGet.config"
+) -StandardOutputPath $restoreOutput -StandardErrorPath $restoreError -LimitSeconds 300
+if (-not $restore.SafeToContinue) {
+    throw "The timed-out restore did not produce both a successful process-tree termination request and an observed launcher exit; the batch cannot continue safely."
 }
+if ($restore.ExitCode -ne 0) {
+    throw "The headed UIA project locked restore failed with exit code $($restore.ExitCode); see the retained restore logs."
+}
+
+$buildOutput = Join-Path $evidenceRoot "build.stdout.log"
+$buildError = Join-Path $evidenceRoot "build.stderr.log"
+$build = Invoke-BoundedProcess -Arguments @(
+    "build", $testProject, "-c", "Release", "--no-restore", "--no-incremental"
+) -StandardOutputPath $buildOutput -StandardErrorPath $buildError -LimitSeconds 300
+if (-not $build.SafeToContinue) {
+    throw "The timed-out build did not produce both a successful process-tree termination request and an observed launcher exit; the batch cannot continue safely."
+}
+if ($build.ExitCode -ne 0) {
+    throw "The headed UIA project forced build failed with exit code $($build.ExitCode); see the retained build logs."
+}
+
+$testAssembly = Join-Path $repositoryRoot `
+    "tests\UiAutomation\bin\Release\net10.0-windows10.0.19041.0\Foundry.Tests.UiAutomation.dll"
+$testOutputRoot = [IO.Path]::GetDirectoryName($testAssembly)
+$outputIdentityBefore = Get-LoadReproOutputIdentity `
+    -RepositoryRoot $repositoryRoot `
+    -OutputRoot $testOutputRoot `
+    -RequiredTestAssembly $testAssembly
+$outputIdentityBeforePath = Join-Path $evidenceRoot "test-output-identity-before.json"
+Write-LoadReproJsonFile `
+    -Value $outputIdentityBefore `
+    -Path $outputIdentityBeforePath `
+    -ContainmentRoot $evidenceRoot `
+    -Description "pre-run test-output identity"
+$testAssemblySha256 = $outputIdentityBefore.RequiredTestAssemblySha256
+$harnessSha256 = (Get-FileHash -LiteralPath $PSCommandPath -Algorithm SHA256).Hash
 
 $loadJobs = @()
 $results = @()
+$contentionLiveness = @()
 try {
     $loadJobs = @(Start-ControlledContention -WorkerCount $CpuWorkers -TotalMemoryMiB $MemoryMiB)
 
     for ($repetition = 1; $repetition -le $Repetitions; $repetition++) {
-        foreach ($testCase in $testCases) {
-            $fileStem = "r{0:D2}-{1}" -f $repetition, $testCase.Id
-            $relativeRunDirectory = Join-Path $relativeEvidenceRoot $fileStem
-            $runDirectory = Join-Path $repositoryRoot $relativeRunDirectory
-            $scratchRoot = Join-Path $runDirectory "scratch"
-            New-Item -ItemType Directory -Path $scratchRoot | Out-Null
-
-            $stdoutPath = Join-Path $runDirectory "$fileStem.stdout.log"
-            $stderrPath = Join-Path $runDirectory "$fileStem.stderr.log"
-            $trxPath = Join-Path $runDirectory "$fileStem.trx"
-
-            $previousTemp = $env:TEMP
-            $previousTmp = $env:TMP
-            $previousSkip = $env:OCF_SKIP_HEADED
-            try {
-                # The named tests inherit only this disposable temp root. The
-                # PilotDay fixture then supplies its exact empty library root
-                # to production; no default teacher library can be reached.
-                $env:TEMP = $scratchRoot
-                $env:TMP = $scratchRoot
-                Remove-Item Env:OCF_SKIP_HEADED -ErrorAction SilentlyContinue
-
-                # One process invocation per named test and repetition. The
-                # tests themselves issue approval/output actions once only;
-                # this harness has no action-level retry path.
-                $boundedRun = Invoke-BoundedProcess -Arguments @(
-                    "test", $testProject,
-                    "-c", "Release", "--no-build", "--no-restore",
-                    "--filter", "FullyQualifiedName=$($testCase.FullyQualifiedName)",
-                    "--results-directory", $relativeRunDirectory,
-                    "--logger", "console;verbosity=normal",
-                    "--logger", "trx;LogFileName=$fileStem.trx"
-                ) -StandardOutputPath $stdoutPath -StandardErrorPath $stderrPath `
-                    -LimitSeconds $PerRunProcessLimitSeconds
+        $contentionBefore = Get-ControlledContentionSnapshot `
+            -Jobs $loadJobs -ExpectedWorkerCount $CpuWorkers
+        try {
+            if (-not $contentionBefore.AllWorkersRunning) {
+                Write-Host "[$repetition/$Repetitions] controlled contention was not live; neither named test was started."
+                continue
             }
-            finally {
-                $env:TEMP = $previousTemp
-                $env:TMP = $previousTmp
-                if ($null -eq $previousSkip) {
+
+            foreach ($testCase in $testCases) {
+                $fileStem = "r{0:D2}-{1}" -f $repetition, $testCase.Id
+                $relativeRunDirectory = Join-Path $relativeEvidenceRoot $fileStem
+                $runDirectory = Join-Path $repositoryRoot $relativeRunDirectory
+                $scratchRoot = Join-Path $runDirectory "scratch"
+                New-Item -ItemType Directory -Path $scratchRoot | Out-Null
+
+                $stdoutPath = Join-Path $runDirectory "$fileStem.stdout.log"
+                $stderrPath = Join-Path $runDirectory "$fileStem.stderr.log"
+                $trxPath = Join-Path $runDirectory "$fileStem.trx"
+
+                $previousTemp = $env:TEMP
+                $previousTmp = $env:TMP
+                $previousSkip = $env:OCF_SKIP_HEADED
+                try {
+                    # The named tests inherit only this disposable temp root. The
+                    # PilotDay fixture then supplies its exact empty library root
+                    # to production; no default teacher library can be reached.
+                    $env:TEMP = $scratchRoot
+                    $env:TMP = $scratchRoot
                     Remove-Item Env:OCF_SKIP_HEADED -ErrorAction SilentlyContinue
-                }
-                else {
-                    $env:OCF_SKIP_HEADED = $previousSkip
-                }
-            }
 
-            $trxResult = Read-TrxResult -TrxPath $trxPath -ExpectedTestName $testCase.FullyQualifiedName
-            $outcome = $trxResult.Outcome
-            $failureMessage = $trxResult.FailureMessage
-            if ($boundedRun.TimedOut) {
-                $outcome = "ProcessTimedOut"
-                $failureMessage = "The per-run process cap was reached; the exact test process tree was terminated with no action retry issued."
-            }
-            elseif ($boundedRun.ExitCode -ne 0 -and $outcome -eq "NotRecorded") {
-                $outcome = "ProcessFailed"
-            }
+                    # One process invocation per named test and repetition. The
+                    # tests themselves issue approval/output actions once only;
+                    # this harness has no action-level retry path.
+                    $boundedRun = Invoke-BoundedProcess -Arguments @(
+                        "test", $testProject,
+                        "-c", "Release", "--no-build", "--no-restore",
+                        "--filter", "FullyQualifiedName=$($testCase.FullyQualifiedName)",
+                        "--results-directory", $relativeRunDirectory,
+                        "--logger", "console;verbosity=normal",
+                        "--logger", "trx;LogFileName=$fileStem.trx"
+                    ) -StandardOutputPath $stdoutPath -StandardErrorPath $stderrPath `
+                        -LimitSeconds $PerRunProcessLimitSeconds
+                }
+                finally {
+                    $env:TEMP = $previousTemp
+                    $env:TMP = $previousTmp
+                    if ($null -eq $previousSkip) {
+                        Remove-Item Env:OCF_SKIP_HEADED -ErrorAction SilentlyContinue
+                    }
+                    else {
+                        $env:OCF_SKIP_HEADED = $previousSkip
+                    }
+                }
 
-            $record = [ordered]@{
-                TestId = $testCase.Id
-                FullyQualifiedName = $testCase.FullyQualifiedName
+                $trxResult = Read-TrxResult -TrxPath $trxPath -ExpectedTestName $testCase.FullyQualifiedName
+                $outcome = $trxResult.Outcome
+                $failureMessage = $trxResult.FailureMessage
+                if ($boundedRun.TimedOut) {
+                    if ($boundedRun.SafeToContinue) {
+                        $outcome = "ProcessTimedOut"
+                        $failureMessage = "The per-run process cap was reached; the process-tree termination request succeeded and launcher exit was observed, with no action retry issued. Descendant exit was not independently enumerated."
+                    }
+                    else {
+                        $outcome = "ProcessTerminationUnconfirmed"
+                        $failureMessage = "The per-run process cap was reached, but the process-tree termination request did not succeed or launcher exit was not observed within 10 seconds; the batch was aborted."
+                    }
+                }
+                elseif ($boundedRun.ExitCode -ne 0 -and $outcome -eq "NotRecorded") {
+                    $outcome = "ProcessFailed"
+                }
+
+                $record = [ordered]@{
+                    TestId = $testCase.Id
+                    FullyQualifiedName = $testCase.FullyQualifiedName
+                    Repetition = $repetition
+                    Outcome = $outcome
+                    ExitCode = $boundedRun.ExitCode
+                    TimedOut = $boundedRun.TimedOut
+                    TerminationRequestStarted = $boundedRun.TerminationRequestStarted
+                    TerminationRequestTimedOut = $boundedRun.TerminationRequestTimedOut
+                    TerminationRequestExitCode = $boundedRun.TerminationRequestExitCode
+                    TerminationHelperExitObserved = $boundedRun.TerminationHelperExitObserved
+                    TerminationRequestStartError = $boundedRun.TerminationRequestStartError
+                    TerminationRequestCleanupError = $boundedRun.TerminationRequestCleanupError
+                    TerminationRequestSucceeded = $boundedRun.TerminationRequestSucceeded
+                    LauncherExitObserved = $boundedRun.LauncherExitObserved
+                    SafeToContinue = $boundedRun.SafeToContinue
+                    ElapsedMilliseconds = $boundedRun.ElapsedMilliseconds
+                    FailureMessage = $failureMessage
+                    TrxFile = "$fileStem\$fileStem.trx"
+                    StandardOutputFile = "$fileStem\$fileStem.stdout.log"
+                    StandardErrorFile = "$fileStem\$fileStem.stderr.log"
+                }
+                $record | ConvertTo-Json -Depth 4 | Set-Content -LiteralPath (Join-Path $runDirectory "$fileStem.result.json") -Encoding utf8
+                $results += [pscustomobject]$record
+
+                Write-Host ("[{0}/{1}] {2}: {3}; exit={4}; elapsedMs={5}" -f `
+                    $repetition, $Repetitions, $testCase.Id, $outcome, $boundedRun.ExitCode, $boundedRun.ElapsedMilliseconds)
+                if (-not [string]::IsNullOrWhiteSpace($failureMessage)) {
+                    Write-Host "  $failureMessage"
+                }
+
+                if (Test-Path -LiteralPath $scratchRoot) {
+                    Remove-Item -LiteralPath $scratchRoot -Recurse -Force
+                }
+
+                if (-not $boundedRun.SafeToContinue) {
+                    throw "The timed-out test did not produce both a successful process-tree termination request and an observed launcher exit; the receipt was retained and the batch cannot continue safely."
+                }
+            }
+        }
+        finally {
+            $contentionAfter = Get-ControlledContentionSnapshot `
+                -Jobs $loadJobs -ExpectedWorkerCount $CpuWorkers
+            $liveness = [ordered]@{
                 Repetition = $repetition
-                Outcome = $outcome
-                ExitCode = $boundedRun.ExitCode
-                TimedOut = $boundedRun.TimedOut
-                ElapsedMilliseconds = $boundedRun.ElapsedMilliseconds
-                FailureMessage = $failureMessage
-                TrxFile = "$fileStem\$fileStem.trx"
-                StandardOutputFile = "$fileStem\$fileStem.stdout.log"
-                StandardErrorFile = "$fileStem\$fileStem.stderr.log"
+                Before = $contentionBefore
+                After = $contentionAfter
+                LoadConditionVerified = $contentionBefore.AllWorkersRunning `
+                    -and $contentionAfter.AllWorkersRunning
             }
-            $record | ConvertTo-Json -Depth 4 | Set-Content -LiteralPath (Join-Path $runDirectory "$fileStem.result.json") -Encoding utf8
-            $results += [pscustomobject]$record
-
-            Write-Host ("[{0}/{1}] {2}: {3}; exit={4}; elapsedMs={5}" -f `
-                $repetition, $Repetitions, $testCase.Id, $outcome, $boundedRun.ExitCode, $boundedRun.ElapsedMilliseconds)
-            if (-not [string]::IsNullOrWhiteSpace($failureMessage)) {
-                Write-Host "  $failureMessage"
-            }
-
-            if (Test-Path -LiteralPath $scratchRoot) {
-                Remove-Item -LiteralPath $scratchRoot -Recurse -Force
-            }
+            $liveness | ConvertTo-Json -Depth 5 | Set-Content `
+                -LiteralPath (Join-Path $evidenceRoot ("r{0:D2}-contention.json" -f $repetition)) `
+                -Encoding utf8
+            $contentionLiveness += [pscustomobject]$liveness
         }
     }
 }
@@ -342,15 +474,74 @@ finally {
     Stop-ControlledContention -Jobs $loadJobs
 }
 
+$repositoryStateAfter = $null
+$outputIdentityAfter = $null
+$postIdentityMeasurementError = $null
+$identityErrors = [Collections.Generic.List[string]]::new()
+try {
+    $repositoryStateAfter = Get-LoadReproRepositoryState -RepositoryRoot $repositoryRoot
+    $outputIdentityAfter = Get-LoadReproOutputIdentity `
+        -RepositoryRoot $repositoryRoot `
+        -OutputRoot $testOutputRoot `
+        -RequiredTestAssembly $testAssembly
+    $outputIdentityAfterPath = Join-Path $evidenceRoot "test-output-identity-after.json"
+    Write-LoadReproJsonFile `
+        -Value $outputIdentityAfter `
+        -Path $outputIdentityAfterPath `
+        -ContainmentRoot $evidenceRoot `
+        -Description "post-run test-output identity"
+    foreach ($identityError in @(Get-LoadReproIdentityErrors `
+            -RepositoryBefore $repositoryStateBefore `
+            -RepositoryAfter $repositoryStateAfter `
+            -OutputBefore $outputIdentityBefore `
+            -OutputAfter $outputIdentityAfter)) {
+        $identityErrors.Add($identityError)
+    }
+}
+catch {
+    $postIdentityMeasurementError = $_.Exception.Message
+    $identityErrors.Add("Post-run source/output identity measurement failed: $postIdentityMeasurementError")
+}
+$identityStable = $null -ne $repositoryStateAfter `
+    -and $null -ne $outputIdentityAfter `
+    -and $identityErrors.Count -eq 0
+
 $summary = [ordered]@{
     RunId = $runId
     Statement = "Passing repetitions are non-reproductions, not a diagnosis of either historical sighting."
+    TerminationEvidenceStatement = "Timeout continuation requires taskkill /T /F exit 0 and observed launcher exit; descendant exit is not independently enumerated."
+    SourceToBinaryProvenance = "A forced build plus stable pre/post source and built-output manifests bind this batch to unchanged observed bytes; they do not prove compiler/source correspondence or the complete SDK/NuGet process closure."
+    SourceAndOutputIdentityStable = $identityStable
+    SharedEvidenceLock = [ordered]@{
+        RelativePath = $evidenceLock.RelativePath
+        BoundRunId = $runId
+        HeldThroughDurableSummary = $true
+    }
     Source = [ordered]@{
         RepositoryCommit = $repositoryCommit
-        TreeState = "clean"
+        TreeStateBefore = "clean"
+        RepositoryStateBefore = $repositoryStateBefore
+        RepositoryStateAfter = $repositoryStateAfter
         DotnetSdk = $dotnetSdk
-        BuildPerformed = -not $SkipBuild.IsPresent
+        RestorePerformed = $true
+        BuildPerformed = $true
+        HarnessSha256 = $harnessSha256
+        TestAssemblySha256 = $testAssemblySha256
     }
+    TestOutputIdentity = [ordered]@{
+        BeforeFile = "test-output-identity-before.json"
+        AfterFile = if ($null -eq $outputIdentityAfter) { $null } else { "test-output-identity-after.json" }
+        BeforeManifestSha256 = $outputIdentityBefore.ManifestSha256
+        AfterManifestSha256 = if ($null -eq $outputIdentityAfter) { $null } else {
+            $outputIdentityAfter.ManifestSha256
+        }
+        BeforeFileCount = $outputIdentityBefore.FileCount
+        AfterFileCount = if ($null -eq $outputIdentityAfter) { $null } else {
+            $outputIdentityAfter.FileCount
+        }
+    }
+    IdentityErrors = @($identityErrors)
+    PostIdentityMeasurementError = $postIdentityMeasurementError
     Host = [ordered]@{
         OperatingSystem = [Environment]::OSVersion.VersionString
         ProcessorCount = [Environment]::ProcessorCount
@@ -363,14 +554,34 @@ $summary = [ordered]@{
         PerRunProcessLimitSeconds = $PerRunProcessLimitSeconds
         ExistingProbeTimeoutMilliseconds = 20000
     }
+    ContentionStatement = "Worker job states were sampled at repetition boundaries; this does not measure CPU-utilization magnitude."
+    ContentionLiveness = $contentionLiveness
     Results = $results
 }
 $summaryPath = Join-Path $evidenceRoot "summary.json"
-$summary | ConvertTo-Json -Depth 8 | Set-Content -LiteralPath $summaryPath -Encoding utf8
+Write-LoadReproJsonFile `
+    -Value $summary `
+    -Path $summaryPath `
+    -ContainmentRoot $evidenceRoot `
+    -Description "headed UIA load-reproduction summary"
 
 $failed = @($results | Where-Object { $_.Outcome -ne "Passed" -or $_.ExitCode -ne 0 })
+$invalidLoad = @($contentionLiveness | Where-Object { -not $_.LoadConditionVerified })
+$missingResults = $results.Count -ne ($Repetitions * $testCases.Count)
 Write-Host "Evidence retained at $evidenceRoot"
-if ($failed.Count -gt 0) {
-    exit 1
+$finalExitCode = if ($failed.Count -gt 0 `
+    -or $invalidLoad.Count -gt 0 `
+    -or $missingResults `
+    -or -not $identityStable) {
+    1
 }
-exit 0
+else {
+    0
+}
+}
+finally {
+    if ($null -ne $evidenceLock) {
+        $evidenceLock.Stream.Dispose()
+    }
+}
+exit $finalExitCode

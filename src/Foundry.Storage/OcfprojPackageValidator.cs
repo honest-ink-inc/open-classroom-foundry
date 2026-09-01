@@ -1135,6 +1135,8 @@ internal static class OcfprojPackageValidator
         if (!string.Equals(provenance.Id.Value, assetId, StringComparison.Ordinal)
             || !IsSafePackageSegment(provenance.Id.Value)
             || !IsSafePackageSegment(provenance.FileName)
+            || !AssetRightsPolicy.HasCompleteRequiredMetadata(provenance)
+            || !AssetRightsPolicy.HasSafeOptionalMetadata(provenance)
             || !RequiredText(provenance.ConceptId, 128)
             || !RequiredText(provenance.Version, 64)
             || !RequiredText(provenance.MimeType, 128)
@@ -1145,7 +1147,9 @@ internal static class OcfprojPackageValidator
             || !RequiredText(provenance.AltText, 2048)
             || !IsSha256(provenance.Sha256))
         {
-            throw Invalid("package.provenance-values", "A project provenance record has invalid required values.");
+            throw Invalid(
+                "package.provenance-values",
+                "A project provenance record has invalid required or optional values.");
         }
 
         // A private project may retain an explicitly non-redistributable asset

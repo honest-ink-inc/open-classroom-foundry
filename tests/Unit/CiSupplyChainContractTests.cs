@@ -206,6 +206,11 @@ public sealed class CiSupplyChainContractTests
         Assert.Contains("portable-samples:", workflow, StringComparison.Ordinal);
         Assert.Contains("needs: build-and-test", workflow, StringComparison.Ordinal);
         Assert.Contains("Get-ChildItem $rootA -Recurse -File", workflow, StringComparison.Ordinal);
+        Assert.Contains(
+            "tests/Rendering/Fixtures/recipe-first-admission-samples.sha256",
+            workflow,
+            StringComparison.Ordinal);
+        Assert.Contains("First-admission sample baseline drifted", workflow, StringComparison.Ordinal);
         Assert.Contains("windows-sample-baseline", workflow, StringComparison.Ordinal);
         Assert.Contains(
             "actions/download-artifact@70fc10c6e5e1ce46ad2ea6f2b72d43f7d47b13c3 # v8.0.0",

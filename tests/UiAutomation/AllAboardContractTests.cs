@@ -239,6 +239,59 @@ public class AllAboardContractTests
         });
 
     [Fact]
+    public void Unrequested_exporter_cancellation_reaches_the_UI_fault_boundary_and_recovers_controls()
+        => Sta.Run(() =>
+        {
+            var destination = Path.Combine(Path.GetTempPath(), $"all-aboard-unrequested-{Guid.NewGuid():N}.pdf");
+            File.WriteAllText(destination, "original exact bytes");
+            Exception? escapedThreadException = null;
+            void captureThreadException(object _, ThreadExceptionEventArgs args)
+            {
+                escapedThreadException ??= args.Exception;
+            }
+
+            System.Windows.Forms.Application.ThreadException += captureThreadException;
+            try
+            {
+                var exporterFailure = new OperationCanceledException(
+                    "Synthetic unrequested SequenceSlate exporter cancellation.");
+                using var form = new AllAboardForm(
+                    Catalog(),
+                    GateRespectingApprove,
+                    () => new AllAboardForm.ExportChoice(destination, 1),
+                    (_, _, _, cancellationToken) =>
+                    {
+                        Assert.False(cancellationToken.IsCancellationRequested);
+                        return Task.FromException(exporterFailure);
+                    });
+                form.Show();
+                Title(form).Text = "Synthetic unrequested cancellation routine";
+                Step(form, 1).Text = "Place the synthetic card on the tray.";
+                Step(form, 2).Text = "Check the synthetic marker.";
+                Step(form, 3).Text = "Return the synthetic card.";
+                ((Button)ReviewSurfaceContractTests.ByName(form, "Review and approve…")).PerformClick();
+
+                var export = (Button)ReviewSurfaceContractTests.ByName(form, "Export…");
+                var cancel = (Button)ReviewSurfaceContractTests.ByName(form, "Cancel export");
+                export.PerformClick();
+                PumpUntil(() => escapedThreadException is not null
+                    && export.Enabled
+                    && !cancel.Enabled);
+
+                Assert.Same(exporterFailure, escapedThreadException);
+                Assert.Equal("original exact bytes", File.ReadAllText(destination));
+                Assert.DoesNotContain("cancelled", form.StatusText, StringComparison.OrdinalIgnoreCase);
+                Assert.True(Input(form, "Output mode").Enabled);
+                Assert.True(ReviewSurfaceContractTests.ByName(form, "Review and approve…").Enabled);
+            }
+            finally
+            {
+                System.Windows.Forms.Application.ThreadException -= captureThreadException;
+                File.Delete(destination);
+            }
+        });
+
+    [Fact]
     public void Export_picker_failure_is_announced_without_leaving_the_form_busy()
         => Sta.Run(() =>
         {

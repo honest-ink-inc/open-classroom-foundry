@@ -8,6 +8,7 @@
 
   <ItemGroup>
     <InternalsVisibleTo Include="Foundry.Tests.Integration" />
+    <InternalsVisibleTo Include="Foundry.Tools.ProjectUpgradeHost" />
   </ItemGroup>
 
   <PropertyGroup>

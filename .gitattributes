@@ -19,3 +19,4 @@ assets/** -text
 # not write it. Protection that does not run still reads as protection.
 .githooks/** text eol=lf
 *.sh text eol=lf
+tests/Rendering/Fixtures/recipe-first-admission-samples.sha256 text eol=lf

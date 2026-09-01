@@ -288,6 +288,13 @@
           "Foundry.Domain": "[1.0.0, )"
         }
       },
+      "foundry.modules.deterministicpress": {
+        "type": "Project",
+        "dependencies": {
+          "Foundry.Contracts": "[1.0.0, )",
+          "Foundry.Domain": "[1.0.0, )"
+        }
+      },
       "foundry.rendering": {
         "type": "Project",
         "dependencies": {
@@ -303,10 +310,16 @@
           "Foundry.Rendering": "[1.0.0, )"
         }
       },
+      "foundry.tools.consolecontrolsignalsender": {
+        "type": "Project"
+      },
       "foundry.tools.projectupgradehost": {
         "type": "Project",
         "dependencies": {
+          "Foundry.Contracts": "[1.0.0, )",
           "Foundry.Domain": "[1.0.0, )",
+          "Foundry.Modules.BuiltIn": "[1.0.0, )",
+          "Foundry.Modules.DeterministicPress": "[1.0.0, )",
           "Foundry.Storage": "[1.0.0, )"
         }
       }

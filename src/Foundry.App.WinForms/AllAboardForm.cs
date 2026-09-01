@@ -99,9 +99,16 @@ public sealed class AllAboardForm : Form
         ]);
         _mode.SelectedIndexChanged += (_, _) => LoadMode();
 
-        _grid = new TableLayoutPanel { Dock = DockStyle.Fill, ColumnCount = 2, AutoScroll = true };
+        _grid = new TableLayoutPanel
+        {
+            Dock = DockStyle.Fill,
+            ColumnCount = 2,
+            AutoScroll = true,
+            AutoScrollMargin = new Size(16, 16),
+        };
         _grid.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
         _grid.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
+        _grid.Layout += (_, _) => RefreshGridScrollExtent();
 
         _review = MakeButton(UiStrings.ReviewAndApprove, (_, _) => ReviewAndApprove());
         _print = MakeButton(UiStrings.PrintButton, (_, _) => WithApproved(a =>
@@ -134,7 +141,7 @@ public sealed class AllAboardForm : Form
         }));
 
         // The message itself is what AT hears.
-        _status = new Label { Dock = DockStyle.Bottom, AutoSize = false, Height = 28, UseMnemonic = false };
+        _status = ReflowingStatusLabel.Attach(new Label(), minimumHeight: 28);
         SetStatus(UiStrings.StatusReady);
 
         var buttons = new FlowLayoutPanel { Dock = DockStyle.Bottom, AutoSize = true, FlowDirection = FlowDirection.LeftToRight };
@@ -279,6 +286,7 @@ public sealed class AllAboardForm : Form
             symbol.Items.Add(name);
         }
 
+        ComboBoxReadingPath.EnsureEveryItemFits(symbol);
         symbol.SelectedIndex = 0;
         return symbol;
     }
@@ -297,6 +305,21 @@ public sealed class AllAboardForm : Form
         }, 0, row);
         _grid.Controls.Add(control, 1, row);
         TrackInput(control);
+    }
+
+    private void RefreshGridScrollExtent()
+    {
+        var scrollPosition = _grid.AutoScrollPosition;
+        var contentBottom = _grid.Controls.Cast<Control>()
+            .Where(control => control.Visible)
+            .Select(control => control.Bottom - scrollPosition.Y + control.Margin.Bottom)
+            .DefaultIfEmpty(0)
+            .Max();
+        var minimumHeight = checked(contentBottom + _grid.AutoScrollMargin.Height);
+        if (_grid.AutoScrollMinSize.Height != minimumHeight)
+        {
+            _grid.AutoScrollMinSize = new Size(0, minimumHeight);
+        }
     }
 
     private void TrackInput(Control control)
@@ -482,7 +505,7 @@ public sealed class AllAboardForm : Form
     internal static string PublicFileStem(RecipeManifest recipe)
         => ModulePublicIdentity.FileStemFor(recipe);
 
-    private async Task ExportAsync(ApprovedArtifact approved)
+    internal async Task ExportAsync(ApprovedArtifact approved)
     {
         if (_exportInProgress)
         {
@@ -529,7 +552,7 @@ public sealed class AllAboardForm : Form
 
             SetStatus(UiStrings.StatusExported, Path.GetFileName(choice.Path));
         }
-        catch (OperationCanceledException)
+        catch (OperationCanceledException) when (_exportCancellation?.IsCancellationRequested == true)
         {
             SetStatus(UiStrings.StatusExportCancelled);
         }

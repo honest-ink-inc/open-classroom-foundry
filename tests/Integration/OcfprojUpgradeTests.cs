@@ -1,4 +1,6 @@
+using System.ComponentModel;
 using System.IO.Compression;
+using System.Runtime.InteropServices;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
@@ -9,13 +11,18 @@ using Foundry.Storage;
 
 namespace Foundry.Tests.Integration;
 
-public sealed class OcfprojUpgradeTests : IDisposable
+public sealed partial class OcfprojUpgradeTests : IDisposable
 {
     private const string PriorEngineVersion = "0.1.0-dev";
     private const string PriorSchemaVersion = "1";
     private const string FrozenFixtureSha256 = "9B592AA00C2CCB31C5678D82C1685DBE99E023FA482AE25F103AE0D50D9A13FD";
     private const string PriorMainFixtureSha256 = "AE0C140FC4FCB1F9A4DF10FBDC32B2FE09384A5481016016B6223EB6DAAF0D5A";
     private const string SourceRelativePath = "prior/assets.ocfproj";
+    private static readonly IReadOnlyList<ProjectUpgradeRecipeIdentity> CandidateRecipes =
+    [
+        new("all-aboard.task-strip", "0.1.0"),
+        new(PortableProjectIdentity.RecipeId, PortableProjectIdentity.RecipeVersion),
+    ];
 
     private readonly string _root = Path.Combine(Path.GetTempPath(), "ocf-upgrade-tests", Guid.NewGuid().ToString("N"));
     private readonly string _sourceRoot;
@@ -119,6 +126,42 @@ public sealed class OcfprojUpgradeTests : IDisposable
     }
 
     [Fact]
+    public async Task A_project_whose_exact_pinned_recipe_is_absent_from_the_candidate_fails_before_output()
+    {
+        var request = Request(SourceRelativePath, "prepared/assets.ocfproj") with
+        {
+            CandidateRecipes = [new ProjectUpgradeRecipeIdentity("different.recipe", "9.9.9")],
+        };
+
+        var exception = await Assert.ThrowsAsync<ProjectUpgradeException>(
+            () => OcfprojUpgradeService.PrepareCompatibleCopyAsync(request, CancellationToken.None));
+
+        Assert.Equal(ProjectUpgradeFailureCodes.CandidateRecipeUnavailable, exception.Code);
+        Assert.Equal(_fixtureBytes, await File.ReadAllBytesAsync(_sourcePath));
+        Assert.Empty(Directory.EnumerateFileSystemEntries(_candidateRoot));
+    }
+
+    [Theory]
+    [InlineData("all-aboard.task-strip", "0.1.1")]
+    [InlineData("ALL-ABOARD.TASK-STRIP", "0.1.0")]
+    public async Task Candidate_recipe_matching_is_exact_for_version_and_case(
+        string candidateRecipeId,
+        string candidateRecipeVersion)
+    {
+        var request = Request(SourceRelativePath, "prepared/assets.ocfproj") with
+        {
+            CandidateRecipes = [new ProjectUpgradeRecipeIdentity(candidateRecipeId, candidateRecipeVersion)],
+        };
+
+        var exception = await Assert.ThrowsAsync<ProjectUpgradeException>(
+            () => OcfprojUpgradeService.PrepareCompatibleCopyAsync(request, CancellationToken.None));
+
+        Assert.Equal(ProjectUpgradeFailureCodes.CandidateRecipeUnavailable, exception.Code);
+        Assert.Equal(_fixtureBytes, await File.ReadAllBytesAsync(_sourcePath));
+        Assert.Empty(Directory.EnumerateFileSystemEntries(_candidateRoot));
+    }
+
+    [Fact]
     public async Task A_frozen_prior_main_07_package_still_loads_and_prepares_under_the_unchanged_engine_identity()
     {
         const string sourceRelative = "prior/prior-main-07.ocfproj";
@@ -139,7 +182,8 @@ public sealed class OcfprojUpgradeTests : IDisposable
             EngineIdentity.EngineVersion,
             EngineIdentity.ProjectSchemaVersion,
             PriorMainFixtureSha256,
-            EngineIdentity.EngineVersion);
+            EngineIdentity.EngineVersion,
+            CandidateRecipes);
         var receipt = await OcfprojUpgradeService.PrepareCompatibleCopyAsync(
             request,
             CancellationToken.None);
@@ -168,7 +212,8 @@ public sealed class OcfprojUpgradeTests : IDisposable
             [
                 Item(SourceRelativePath, "one/first.ocfproj"),
                 Item(secondRelative, "two/second.ocfproj"),
-            ]);
+            ],
+            CandidateRecipes);
 
         var receipt = await OcfprojUpgradeService.PrepareCompatibleBatchAsync(batch, CancellationToken.None);
 
@@ -183,6 +228,35 @@ public sealed class OcfprojUpgradeTests : IDisposable
     }
 
     [Fact]
+    public async Task Hard_link_source_aliases_are_refused_and_prior_outputs_are_removed()
+    {
+        const string aliasRelative = "prior/alias.ocfproj";
+        var aliasPath = SourcePath(aliasRelative);
+        if (!CreateHardLink(aliasPath, _sourcePath, 0))
+        {
+            throw new Win32Exception(Marshal.GetLastPInvokeError());
+        }
+
+        var batch = new ProjectUpgradeBatchRequest(
+            _sourceRoot,
+            _candidateRoot,
+            EngineIdentity.EngineVersion,
+            [
+                Item(SourceRelativePath, "one.ocfproj"),
+                Item(aliasRelative, "two.ocfproj"),
+            ],
+            CandidateRecipes);
+
+        var exception = await Assert.ThrowsAsync<ProjectUpgradeException>(
+            () => OcfprojUpgradeService.PrepareCompatibleBatchAsync(batch, CancellationToken.None));
+
+        Assert.Equal(ProjectUpgradeFailureCodes.AddressInvalid, exception.Code);
+        Assert.Equal(_fixtureBytes, await File.ReadAllBytesAsync(_sourcePath));
+        Assert.Equal(_fixtureBytes, await File.ReadAllBytesAsync(aliasPath));
+        Assert.Empty(Directory.EnumerateFileSystemEntries(_candidateRoot));
+    }
+
+    [Fact]
     public async Task A_later_batch_failure_removes_every_output_prepared_by_that_batch()
     {
         const string secondRelative = "prior/second.ocfproj";
@@ -194,7 +268,8 @@ public sealed class OcfprojUpgradeTests : IDisposable
             [
                 Item(SourceRelativePath, "one.ocfproj"),
                 Item(secondRelative, "two.ocfproj") with { SourceSha256 = new string('0', 64) },
-            ]);
+            ],
+            CandidateRecipes);
 
         var exception = await Assert.ThrowsAsync<ProjectUpgradeException>(
             () => OcfprojUpgradeService.PrepareCompatibleBatchAsync(batch, CancellationToken.None));
@@ -366,7 +441,8 @@ public sealed class OcfprojUpgradeTests : IDisposable
             PriorEngineVersion,
             PriorSchemaVersion,
             Sha256(enrichedBytes),
-            EngineIdentity.EngineVersion);
+            EngineIdentity.EngineVersion,
+            CandidateRecipes);
 
         var secondReceipt = await OcfprojUpgradeService.PrepareCompatibleCopyAsync(
             request,
@@ -465,7 +541,8 @@ public sealed class OcfprojUpgradeTests : IDisposable
             PriorEngineVersion,
             PriorSchemaVersion,
             FrozenFixtureSha256,
-            EngineIdentity.EngineVersion);
+            EngineIdentity.EngineVersion,
+            CandidateRecipes);
 
     private static ProjectUpgradeItem Item(string sourceRelativePath, string destinationRelativePath)
         => new(
@@ -476,7 +553,7 @@ public sealed class OcfprojUpgradeTests : IDisposable
             FrozenFixtureSha256);
 
     private ProjectUpgradeBatchRequest Batch(params ProjectUpgradeItem[] items)
-        => new(_sourceRoot, _candidateRoot, EngineIdentity.EngineVersion, items);
+        => new(_sourceRoot, _candidateRoot, EngineIdentity.EngineVersion, items, CandidateRecipes);
 
     private string SourcePath(string relativePath)
     {
@@ -628,4 +705,15 @@ public sealed class OcfprojUpgradeTests : IDisposable
 
     private static string Sha256(byte[] content)
         => Convert.ToHexString(SHA256.HashData(content));
+
+    [LibraryImport(
+        "kernel32.dll",
+        EntryPoint = "CreateHardLinkW",
+        StringMarshalling = StringMarshalling.Utf16,
+        SetLastError = true)]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static partial bool CreateHardLink(
+        string fileName,
+        string existingFileName,
+        nint securityAttributes);
 }

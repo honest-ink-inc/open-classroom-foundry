@@ -12,3 +12,10 @@ Numbered, immutable once ratified, superseded only by a later ADR. Format: [temp
 | [ADR-006](ADR-006-public-name-honest-ink.md) | The public name is Honest Ink ("— the classroom foundry"); repository and internal identifiers unchanged; counsel confirmation pre-release | Accepted — decided 29 Aug 2026 |
 | [ADR-007](ADR-007-managed-pilot-upgrades-are-side-by-side.md) | Managed pilot upgrades are side-by-side and project preparation is copy-on-write | Proposed — advisory pending product-owner ratification and District IT deployment decisions |
 | [ADR-008](ADR-008-public-module-display-names.md) | Six public module display names change; stable project, recipe, schema, and diagnostic identifiers do not | Accepted — decided 30 Aug 2026 |
+| [ADR-009](ADR-009-strandplan-display-name.md) | StrandPlan replaces GridLesson as the provisional lesson-design display; stable `lesson-loom` identities remain unchanged | Accepted — corrected 31 Aug 2026 |
+
+## Decision companions
+
+| Packet | Purpose | Status |
+|---|---|---|
+| [Recipe identity disposition packet](recipe-identity-disposition-packet.md) | Records Option A for all 23 alpha-tag recipe identities plus the same-commit first-admission freeze for 15 candidate-only identities; retains the independent schema-1 `recipeHash` release stop without reopening ADR-001 | **DECIDED — OPTION A; local C1 hash pending, transitional state must not be pushed** |

@@ -30,9 +30,10 @@ public sealed record SourceLensResult(ArtifactDocument Document, IReadOnlyList<V
 
 /// <summary>
 /// Inquirywright (stable legacy id: source-lens; plan §10.12): disciplined source inquiry. Metadata is stated or
-/// explicitly unknown, never guessed; the transcript is human-verified or the
-/// artifact does not exist; every inquiry set includes genuine sourcing and
-/// corroboration; observation and inference are structurally separate columns.
+/// explicitly unknown, never guessed; a false caller-supplied transcript-review
+/// assertion blocks approval (the current Boolean is not a durable verification
+/// receipt); every inquiry set includes nonempty sourcing and corroboration
+/// collections; observation and inference are structurally separate columns.
 /// </summary>
 public static class SourceLensBuilder
 {
@@ -71,13 +72,13 @@ public static class SourceLensBuilder
         if (IsUnknown(metadata.Rights))
         {
             issues.Add(ValidationIssue.Warning("lens.rights-unknown",
-                "Rights are explicitly unknown: the inquiry may be taught, but redistribution is blocked until rights are known."));
+                "Rights are explicitly unknown. This warning records the unresolved rights state; it does not itself block approval, saving, or export."));
         }
 
         if (!transcriptVerifiedByTeacher)
         {
             issues.Add(ValidationIssue.Blocking("lens.transcript",
-                "Transcript fidelity is human-verified; an unverified excerpt cannot become an artifact."));
+                "The caller did not assert teacher review of this excerpt. Approval requires that assertion; the Boolean is not a durable verification receipt."));
         }
 
         if (string.IsNullOrWhiteSpace(verifiedExcerpt))
@@ -111,7 +112,7 @@ public static class SourceLensBuilder
                     Row("Provenance", metadata.Provenance),
                     Row("Rights", metadata.Rights),
                 ]),
-            new Heading(2, "The source, verbatim"),
+            new Heading(2, "Teacher-provided source excerpt"),
             new Paragraph(string.IsNullOrWhiteSpace(verifiedExcerpt) ? Unknown : verifiedExcerpt),
             new Citation(FormatCitation(metadata)),
         };

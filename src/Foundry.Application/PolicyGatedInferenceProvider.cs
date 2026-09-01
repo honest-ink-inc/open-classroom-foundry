@@ -6,7 +6,8 @@ using Foundry.Inference;
 namespace Foundry.Application;
 
 /// <summary>
-/// Council finding R2-1: district policy is law at the provider boundary, not
+/// Product-owner-enacted policy boundary first exercised by fictional rehearsal
+/// note R2-1: district policy is law at the provider boundary, not
 /// configuration beside it. With cloud inference disabled, or a payload lane
 /// above the district maximum, the call is refused before any egress — the
 /// inner provider is never touched. Composition roots wrap every real provider

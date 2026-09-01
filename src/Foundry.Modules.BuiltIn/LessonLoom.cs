@@ -10,7 +10,7 @@ public sealed record LessonPhase(string Name, int Minutes, string LearnerWork, s
 public sealed record LessonResult(ArtifactDocument Document, IReadOnlyList<ValidationIssue> Issues);
 
 /// <summary>
-/// GridLesson (stable legacy id: lesson-loom; plan §10.7): backward alignment from evidence, with the arithmetic
+/// StrandPlan (stable legacy id: lesson-loom; plan §10.7): backward alignment from evidence, with the arithmetic
 /// the model never does — the engine checks it. Minutes must sum exactly, at least
 /// two checks must carry responses, and closure must produce evidence.
 /// </summary>

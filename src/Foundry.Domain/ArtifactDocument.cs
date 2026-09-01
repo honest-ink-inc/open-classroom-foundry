@@ -78,7 +78,8 @@ public sealed record Paragraph(string Text) : DocumentNode;
 public sealed record OrderedSteps(IReadOnlyList<string> Steps) : DocumentNode;
 
 /// <summary>
-/// One step with everything that belongs beside it (council finding RC-3): its
+/// One step with everything that belongs beside it (rehearsal-derived engineering
+/// invariant RC-3, enacted as product behavior rather than council approval): its
 /// symbol and its aligned translation live in the same row, so adjacency — the
 /// entire point of a visual task strip — survives rendering. Numbering derives
 /// from document order and continues across page breaks.

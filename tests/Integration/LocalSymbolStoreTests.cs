@@ -6,7 +6,7 @@ using Foundry.Storage;
 
 namespace Foundry.Tests.Integration;
 
-/// <summary>The council's directive made code: teachers add their own symbols, provenance-first, local by default.</summary>
+/// <summary>A product-owner-adopted rehearsal finding made code: teachers add their own symbols, provenance-first, local by default. This is not council or AAC/SLP approval.</summary>
 public class LocalSymbolStoreTests : IDisposable
 {
     private readonly string _directory = Path.Combine(Path.GetTempPath(), "ocf-tests", Guid.NewGuid().ToString("N"));

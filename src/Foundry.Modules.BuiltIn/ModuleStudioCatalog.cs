@@ -283,6 +283,7 @@ public static class ModuleStudioCatalog
     public const string AccessPurposeAuthorityRequiredId = "modules.authorization.access-purpose-required";
     public const string AccessOperationChunk = "chunk";
     public const string AccessOperationOneStepPerPanel = "one-step-per-panel";
+    public const string LockedFactsReviewedKey = "locked-facts-reviewed";
 
     private const string DistrictAuthorizationFallback =
         "Written district authorization is required. Authorization cannot be granted from this application.";
@@ -399,6 +400,11 @@ public static class ModuleStudioCatalog
                     Table("locked-fields", "Locked facts", "number|3", "directions-duet",
                         Column("kind", "Kind", "directions-duet", LockChoices("directions-duet")),
                         Column("value", "Exact value", "directions-duet")),
+                    ToggleField(
+                        LockedFactsReviewedKey,
+                        "Source content reviewed and exact values declared (not language/specialist review)",
+                        false,
+                        "directions-duet"),
                     TextField("comprehension-check", "Comprehension check", "Show the correct folder.", "directions-duet", required: false),
                 ]));
     }
@@ -612,6 +618,9 @@ public static class ModuleStudioCatalog
                     TextField("requested-action", "One requested action", "Return the form.", "family-bridge"),
                     TextField("contact", "Help contact", "School office", "family-bridge"),
                     TextField("deadline", "Deadline", "June 10", "family-bridge", required: false),
+                    TextField("target-requested-action", "Working target action - not approved", "Devuelva el formulario.", "family-bridge", condition: translated),
+                    TextField("target-contact", "Working target contact - not approved", "School office", "family-bridge", condition: translated),
+                    TextField("target-deadline", "Working target deadline - not approved", "June 10", "family-bridge", required: false, condition: translated),
                     TextField("glossary-version", "Working glossary version - not approved", "synthetic-1", "family-bridge", condition: translated),
                     Table("glossary", "Working glossary - not approved", "forms|formularios", "family-bridge",
                         Column("source", "Source term", "family-bridge"),
@@ -619,6 +628,11 @@ public static class ModuleStudioCatalog
                     Table("locked-fields", "Locked facts", "date|June 10", "family-bridge",
                         Column("kind", "Kind", "family-bridge", LockChoices("family-bridge")),
                         Column("value", "Exact value", "family-bridge")),
+                    ToggleField(
+                        LockedFactsReviewedKey,
+                        "Source content reviewed and exact values declared (not language/specialist review)",
+                        false,
+                        "family-bridge"),
                 ]));
     }
 
@@ -642,21 +656,38 @@ public static class ModuleStudioCatalog
     private static ModuleBuildOutcome BuildDirections(ModuleInputValues inputs)
     {
         var steps = inputs.Records("steps", 2).Select(row => new DuetStep(row[0], row[1])).ToList();
+        var sourceLocale = inputs.Text("source-locale");
+        var targetLocale = inputs.Text("target-locale");
         var glossary = GlossaryValue(inputs, "glossary-version", "glossary");
         var locked = LockedFields(inputs, "locked-fields");
+        var lockedInventoryReviewed = inputs.Toggle(LockedFactsReviewedKey);
         var check = NullIfWhiteSpace(inputs.Text("comprehension-check"));
         var result = DirectionsDuetBuilder.Build(
             inputs.Text("title"),
             steps,
-            inputs.Text("source-locale"),
-            inputs.Text("target-locale"),
+            sourceLocale,
+            targetLocale,
             glossary,
             locked,
+            lockedInventoryReviewed,
             comprehensionCheck: check);
+        var confirmedSourceProjection = SourceInventoryProjection(result.Document);
         var requiredNotices = result.Document.Nodes.OfType<TeacherOnlyNotice>().Select(notice => notice.Text).ToList();
 
         return Outcome(result.Document, DirectionsDuetBuilder.Recipe, DataLane.Green, result.Issues,
-            document => ValidateBilingual(document, glossary, locked, "duet", requireTranslation: true, requiredNotices));
+            document => ValidateBilingual(
+                document,
+                glossary,
+                locked,
+                "duet",
+                requireTranslation: true,
+                validateLocks: true,
+                requireAlignedLocks: true,
+                lockedInventoryReviewed,
+                sourceLocale,
+                targetLocale,
+                confirmedSourceProjection,
+                requiredNotices));
     }
 
     private static ModuleBuildOutcome BuildScaffoldPacket(ModuleInputValues inputs)
@@ -809,6 +840,8 @@ public static class ModuleStudioCatalog
             .ToList();
         var glossary = GlossaryValue(inputs, "glossary-version", "glossary");
         var locked = LockedFields(inputs, "locked-fields");
+        var lockedInventoryReviewed = inputs.Toggle(LockedFactsReviewedKey);
+        var sourceLocale = inputs.Text("source-locale");
         var result = FamilyBridgeBuilder.Build(
             inputs.Text("title"),
             paragraphs,
@@ -816,13 +849,28 @@ public static class ModuleStudioCatalog
             inputs.Text("contact"),
             glossary,
             locked,
+            lockedInventoryReviewed,
             NullIfWhiteSpace(inputs.Text("deadline")),
-            inputs.Text("source-locale"),
-            targetLocale);
+            sourceLocale,
+            targetLocale,
+            targetRequestedAction: targetLocale is null ? null : NullIfWhiteSpace(inputs.Text("target-requested-action")),
+            targetContact: targetLocale is null ? null : NullIfWhiteSpace(inputs.Text("target-contact")),
+            targetDeadline: targetLocale is null ? null : NullIfWhiteSpace(inputs.Text("target-deadline")));
+        var confirmedSourceProjection = SourceInventoryProjection(result.Document);
         var requiredNotices = result.Document.Nodes.OfType<TeacherOnlyNotice>().Select(notice => notice.Text).ToList();
 
         return Outcome(result.Document, FamilyBridgeBuilder.Recipe, DataLane.Green, result.Issues,
-            document => ValidateFamily(document, glossary, locked, targetLocale is not null, requiredNotices));
+            document => ValidateFamily(
+                document,
+                glossary,
+                locked,
+                lockedInventoryReviewed,
+                targetLocale is not null,
+                sourceLocale,
+                targetLocale,
+                !string.IsNullOrWhiteSpace(inputs.Text("deadline")),
+                confirmedSourceProjection,
+                requiredNotices));
     }
 
     private static List<ValidationIssue> ValidateBoard(ArtifactDocument document, IReadOnlyList<LockedField> locked)
@@ -843,13 +891,35 @@ public static class ModuleStudioCatalog
         IReadOnlyList<LockedField> locked,
         string codePrefix,
         bool requireTranslation,
+        bool validateLocks,
+        bool requireAlignedLocks,
+        bool lockedInventoryReviewed,
+        string expectedSourceLocale,
+        string expectedTargetLocale,
+        List<string> confirmedSourceProjection,
         IReadOnlyList<string> requiredNotices)
     {
         var issues = new List<ValidationIssue>();
         var pairs = document.Nodes.OfType<BilingualPair>().ToList();
+        if (!HasHeadingOne(document))
+        {
+            issues.Add(ValidationIssue.Blocking(
+                $"{codePrefix}.structure",
+                "A non-empty level-one title must survive review."));
+        }
+
         if (pairs.Count == 0)
         {
             issues.Add(ValidationIssue.Blocking($"{codePrefix}.empty", "At least one aligned bilingual item is required."));
+        }
+
+        if (pairs.Any(pair =>
+            !string.Equals(pair.SourceLocale, expectedSourceLocale, StringComparison.Ordinal)
+            || !string.Equals(pair.TargetLocale, expectedTargetLocale, StringComparison.Ordinal)))
+        {
+            issues.Add(ValidationIssue.Blocking(
+                $"{codePrefix}.locale",
+                "Bilingual item locale metadata no longer matches the source and target languages selected before review. Return to module inputs to change languages or glossary context."));
         }
 
         foreach (var pair in pairs)
@@ -870,15 +940,28 @@ public static class ModuleStudioCatalog
             }
         }
 
-        foreach (var field in locked)
+        issues.AddRange(LockedFieldValidator.ValidateInventoryReview(lockedInventoryReviewed));
+        RequireSourceInventoryCurrent(
+            document,
+            lockedInventoryReviewed,
+            confirmedSourceProjection,
+            issues);
+        var alignedPairs = pairs
+            .Select(pair => (pair.SourceText, TargetText: (string?)pair.TargetText))
+            .ToList();
+        if (validateLocks)
         {
-            var inSource = pairs.Any(pair => pair.SourceText.Contains(field.ExactValue, StringComparison.Ordinal));
-            var inTarget = pairs.Any(pair => pair.TargetText.Contains(field.ExactValue, StringComparison.Ordinal));
-            if (!inSource || !inTarget)
-            {
-                issues.Add(ValidationIssue.Blocking($"{codePrefix}.locked",
-                    $"Locked {field.Kind} '{field.ExactValue}' must remain verbatim in both languages."));
-            }
+            issues.AddRange(requireAlignedLocks
+                ? LockedFieldValidator.ValidateAlignedPairs(
+                    alignedPairs,
+                    locked,
+                    $"{codePrefix}.locked",
+                    "Aligned item")
+                : LockedFieldValidator.ValidateBilingualPairs(
+                    alignedPairs,
+                    locked,
+                    $"{codePrefix}.locked",
+                    "Version"));
         }
 
         RequireNotices(document, requiredNotices, $"{codePrefix}.status", issues);
@@ -967,19 +1050,35 @@ public static class ModuleStudioCatalog
         ArtifactDocument document,
         Glossary glossary,
         IReadOnlyList<LockedField> locked,
+        bool lockedInventoryReviewed,
         bool translated,
+        string expectedSourceLocale,
+        string? expectedTargetLocale,
+        bool requireDeadline,
+        List<string> confirmedSourceProjection,
         IReadOnlyList<string> requiredNotices)
     {
         var issues = new List<ValidationIssue>();
-        var bodyCount = document.Nodes.Count(node => node is Paragraph or BilingualPair);
-        var hasAction = document.Nodes.OfType<Card>().Any(card => card.Title == "What we ask" && !string.IsNullOrWhiteSpace(card.Body));
-        var hasContact = document.Nodes.OfType<Card>().Any(card => card.Title == "Questions? Contact" && !string.IsNullOrWhiteSpace(card.Body));
-        if (!HasHeadingOne(document) || bodyCount == 0 || !hasAction || !hasContact)
+        var bodyNodes = document.Nodes
+            .TakeWhile(node => node is not Heading { Level: 2 })
+            .Where(node => node is Paragraph or BilingualPair)
+            .ToList();
+        var bodyCount = bodyNodes.Count;
+        var hasAction = translated
+            ? HasBilingualSection(document, "What we ask")
+            : document.Nodes.OfType<Card>().Any(card => card.Title == "What we ask" && !string.IsNullOrWhiteSpace(card.Body));
+        var hasContact = translated
+            ? HasBilingualSection(document, "Questions? Contact")
+            : document.Nodes.OfType<Card>().Any(card => card.Title == "Questions? Contact" && !string.IsNullOrWhiteSpace(card.Body));
+        var hasDeadline = !requireDeadline || (translated
+            ? HasBilingualSection(document, "By when")
+            : document.Nodes.OfType<Card>().Any(card => card.Title == "By when" && !string.IsNullOrWhiteSpace(card.Body)));
+        if (!HasHeadingOne(document) || bodyCount == 0 || !hasAction || !hasContact || !hasDeadline)
         {
             issues.Add(ValidationIssue.Blocking("bridge.structure", "The title, message, requested action, and help contact must survive review."));
         }
 
-        var sourceParagraphs = document.Nodes.Select(node => node switch
+        var sourceParagraphs = bodyNodes.Select(node => node switch
         {
             Paragraph paragraph => paragraph.Text,
             BilingualPair pair => pair.SourceText,
@@ -992,16 +1091,207 @@ public static class ModuleStudioCatalog
 
         if (translated)
         {
-            issues.AddRange(ValidateBilingual(document, glossary, locked, "bridge", requireTranslation: true, requiredNotices));
+            issues.AddRange(ValidateBilingual(
+                document,
+                glossary,
+                locked,
+                "bridge",
+                requireTranslation: true,
+                validateLocks: false,
+                requireAlignedLocks: false,
+                lockedInventoryReviewed,
+                expectedSourceLocale,
+                expectedTargetLocale!,
+                confirmedSourceProjection,
+                requiredNotices));
+            var structuredPairs = new List<(string RoleLabel, string SourceText, string? TargetText)>();
+            foreach (var role in new[]
+            {
+                (Heading: "What we ask", Label: "requested action"),
+                (Heading: "By when", Label: "deadline"),
+                (Heading: "Questions? Contact", Label: "help contact"),
+            })
+            {
+                if (FindBilingualSection(document, role.Heading) is { } pair)
+                {
+                    structuredPairs.Add((role.Label, pair.SourceText, pair.TargetText));
+                }
+            }
+
+            issues.AddRange(LockedFieldValidator.ValidateBilingualContent(
+                [.. bodyNodes.OfType<BilingualPair>().Select(pair => (pair.SourceText, TargetText: (string?)pair.TargetText))],
+                structuredPairs,
+                locked,
+                "bridge.locked",
+                "message paragraphs"));
         }
         else
         {
-            issues.AddRange(LockedFieldValidator.Validate(document, locked));
+            issues.AddRange(LockedFieldValidator.ValidateInventoryReview(lockedInventoryReviewed));
+            RequireSourceInventoryCurrent(
+                document,
+                lockedInventoryReviewed,
+                confirmedSourceProjection,
+                issues);
+            issues.AddRange(LockedFieldValidator.Validate(
+                FamilyBridgeBuilder.SelectTeacherAuthoredSourceContent(document),
+                locked));
             RequireNotices(document, requiredNotices, "bridge.status", issues);
         }
 
         return issues;
     }
+
+    private static void RequireSourceInventoryCurrent(
+        ArtifactDocument document,
+        bool inventoryReviewed,
+        List<string> confirmedSourceProjection,
+        List<ValidationIssue> issues)
+    {
+        if (inventoryReviewed
+            && !SourceInventoryProjection(document).SequenceEqual(
+                confirmedSourceProjection,
+                StringComparer.Ordinal))
+        {
+            issues.Add(ValidationIssue.Blocking(
+                "locked.inventory-review-stale",
+                "Source content changed after the exact-value inventory was confirmed. Return to module inputs, review Locked facts, and confirm the source inventory again. This is not language or specialist review."));
+        }
+    }
+
+    private static List<string> SourceInventoryProjection(ArtifactDocument document)
+    {
+        var projection = new List<string>
+        {
+            ProjectionEntry("document-language", document.Language),
+        };
+
+        var semanticNodeIndex = 0;
+        foreach (var node in document.Nodes)
+        {
+            switch (node)
+            {
+                case Heading heading:
+                    projection.Add(ProjectionEntry(
+                        $"{semanticNodeIndex}:heading",
+                        heading.Level.ToString(CultureInfo.InvariantCulture),
+                        heading.Text));
+                    break;
+                case Paragraph paragraph:
+                    projection.Add(ProjectionEntry($"{semanticNodeIndex}:paragraph", paragraph.Text));
+                    break;
+                case OrderedSteps ordered:
+                    for (var stepIndex = 0; stepIndex < ordered.Steps.Count; stepIndex++)
+                    {
+                        projection.Add(ProjectionEntry(
+                            $"{semanticNodeIndex}:ordered:{stepIndex}",
+                            ordered.Steps[stepIndex]));
+                    }
+
+                    break;
+                case StepRow step:
+                    projection.Add(ProjectionEntry(
+                        $"{semanticNodeIndex}:step-source",
+                        step.SourceLocale,
+                        step.Text));
+                    if (step.Symbol is not null)
+                    {
+                        projection.Add(ProjectionEntry(
+                            $"{semanticNodeIndex}:step-symbol",
+                            step.Symbol.Asset.Value,
+                            step.Symbol.AltText));
+                    }
+
+                    break;
+                case UnorderedList unordered:
+                    for (var itemIndex = 0; itemIndex < unordered.Items.Count; itemIndex++)
+                    {
+                        projection.Add(ProjectionEntry(
+                            $"{semanticNodeIndex}:unordered:{itemIndex}",
+                            unordered.Items[itemIndex]));
+                    }
+
+                    break;
+                case TableNode table:
+                    if (table.HeaderRow is not null)
+                    {
+                        for (var columnIndex = 0; columnIndex < table.HeaderRow.Count; columnIndex++)
+                        {
+                            projection.Add(ProjectionEntry(
+                                $"{semanticNodeIndex}:table-header:{columnIndex}",
+                                table.HeaderRow[columnIndex]));
+                        }
+                    }
+
+                    for (var rowIndex = 0; rowIndex < table.Rows.Count; rowIndex++)
+                    {
+                        for (var columnIndex = 0; columnIndex < table.Rows[rowIndex].Count; columnIndex++)
+                        {
+                            projection.Add(ProjectionEntry(
+                                $"{semanticNodeIndex}:table:{rowIndex}:{columnIndex}",
+                                table.Rows[rowIndex][columnIndex]));
+                        }
+                    }
+
+                    break;
+                case Card card:
+                    projection.Add(ProjectionEntry($"{semanticNodeIndex}:card-title", card.Title));
+                    projection.Add(ProjectionEntry($"{semanticNodeIndex}:card-body", card.Body));
+                    break;
+                case ImageReference image:
+                    projection.Add(ProjectionEntry(
+                        $"{semanticNodeIndex}:image",
+                        image.Asset.Value,
+                        image.AltText));
+                    break;
+                case BilingualPair pair:
+                    projection.Add(ProjectionEntry(
+                        $"{semanticNodeIndex}:bilingual-source",
+                        pair.SourceLocale,
+                        pair.SourceText));
+                    break;
+                case ChoiceSet choices:
+                    for (var optionIndex = 0; optionIndex < choices.Options.Count; optionIndex++)
+                    {
+                        projection.Add(ProjectionEntry(
+                            $"{semanticNodeIndex}:choice:{optionIndex}",
+                            choices.Options[optionIndex]));
+                    }
+
+                    break;
+                case EvidenceLink evidence:
+                    projection.Add(ProjectionEntry(
+                        $"{semanticNodeIndex}:evidence",
+                        evidence.Claim,
+                        evidence.SourcePointer));
+                    break;
+                case Citation citation:
+                    projection.Add(ProjectionEntry($"{semanticNodeIndex}:citation", citation.Text));
+                    break;
+                case VectorGraphic graphic:
+                    projection.Add(ProjectionEntry($"{semanticNodeIndex}:vector-description", graphic.Description));
+                    break;
+                case TeacherOnlyNotice or PageBreak:
+                    continue;
+                default:
+                    projection.Add(ProjectionEntry($"{semanticNodeIndex}:unknown-node", node.GetType().FullName));
+                    break;
+            }
+
+            semanticNodeIndex++;
+        }
+
+        return projection;
+    }
+
+    private static string ProjectionEntry(string kind, params string?[] values)
+        => string.Join(
+            '|',
+            new[] { kind }.Concat(values.Select(value => value is null
+                ? "-1:"
+                : string.Create(
+                    CultureInfo.InvariantCulture,
+                    $"{value.Length}:{value}"))));
 
     private static double AverageSentenceWords(IEnumerable<string> texts)
     {
@@ -1028,6 +1318,26 @@ public static class ModuleStudioCatalog
 
     private static bool HasHeadingOne(ArtifactDocument document)
         => document.Nodes.OfType<Heading>().Any(heading => heading.Level == 1 && !string.IsNullOrWhiteSpace(heading.Text));
+
+    private static bool HasBilingualSection(ArtifactDocument document, string heading)
+        => FindBilingualSection(document, heading) is not null;
+
+    private static BilingualPair? FindBilingualSection(ArtifactDocument document, string heading)
+    {
+        for (var index = 0; index + 1 < document.Nodes.Count; index++)
+        {
+            if (document.Nodes[index] is Heading { Level: 2 } candidate
+                && string.Equals(candidate.Text, heading, StringComparison.Ordinal)
+                && document.Nodes[index + 1] is BilingualPair pair
+                && !string.IsNullOrWhiteSpace(pair.SourceText)
+                && !string.IsNullOrWhiteSpace(pair.TargetText))
+            {
+                return pair;
+            }
+        }
+
+        return null;
+    }
 
     private static ModuleBuildOutcome Outcome(
         ArtifactDocument document,

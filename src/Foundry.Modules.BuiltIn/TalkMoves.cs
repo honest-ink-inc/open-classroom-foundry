@@ -37,6 +37,10 @@ public static class TalkMovesBuilder
         LanguageTag.RequireValid(language, nameof(language));
 
         var issues = new List<ValidationIssue>();
+        var submittedAutomaticPassOption = participationModes.Any(IsAutomaticPassOption);
+        var authoredParticipationModes = participationModes
+            .Where(mode => !IsAutomaticPassOption(mode))
+            .ToArray();
 
         if (questions.Count == 0)
         {
@@ -53,10 +57,21 @@ public static class TalkMovesBuilder
             }
         }
 
-        if (participationModes.Count < 3)
+        var distinctParticipationModeCount = authoredParticipationModes
+            .Where(mode => !string.IsNullOrWhiteSpace(mode))
+            .Select(mode => mode.Trim())
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .Count();
+        if (distinctParticipationModeCount < 3)
         {
             issues.Add(ValidationIssue.Blocking("talk.modes",
-                "At least three participation modes (speaking, writing, pointing, drawing, AAC, partner-supported...) beyond wait/pass."));
+                "At least three distinct participation modes (speaking, writing, pointing, drawing, AAC, partner-supported...) are required beyond the automatically appended wait/pass option."));
+        }
+
+        if (submittedAutomaticPassOption)
+        {
+            issues.Add(ValidationIssue.Blocking("talk.modes",
+                "Wait or pass is appended automatically; remove that reserved option from the teacher-entered participation modes."));
         }
 
         foreach (var (move, family) in new[]
@@ -77,7 +92,7 @@ public static class TalkMovesBuilder
             new Heading(2, "Our questions"),
             new UnorderedList([.. questions.Select(q => q.Question)]),
             new Heading(2, "Ways to take part"),
-            new UnorderedList([.. participationModes, PassOption]),
+            new UnorderedList([.. authoredParticipationModes, PassOption]),
         };
 
         if (sentenceFrames is { Count: > 0 })
@@ -101,6 +116,9 @@ public static class TalkMovesBuilder
         issues.AddRange(DocumentValidator.Validate(document));
         return new TalkMovesResult(document, issues);
     }
+
+    private static bool IsAutomaticPassOption(string? mode)
+        => string.Equals(mode?.Trim(), PassOption, StringComparison.OrdinalIgnoreCase);
 
     public static RecipeManifest Recipe { get; } = new(
         Id: "talk-moves-studio",

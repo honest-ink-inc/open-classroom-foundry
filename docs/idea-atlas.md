@@ -14,7 +14,7 @@ The central discovery is that Writer's Kiosk is not merely one application. It e
 
 Writer's Kiosk already supplies much of the difficult machinery: live camera capture, image correction, subject/grade/band profiles, assignment focus, aligned bilingual rendering, bounded generation, PDF creation, silent printing, local logging, keyless district authentication, and an in-memory image path. The teacher-facing family should reuse those strengths while adding an indispensable **edit-and-approve studio** between generation and publication.
 
-Most names in this atlas remain working titles, not trademark clearances. ADR-008 fixes six current public display names—SequenceSlate, GridLesson, Forumwright, ReteachSignal, Inquirywright, and KinDispatch—while preserving their legacy internal identifiers. Every product keeps a load-bearing subtitle as its functional identity, and counsel screening remains a pre-release checkpoint.
+Most names in this atlas remain working titles, not trademark clearances. ADR-008 fixes six public display identities and ADR-009 corrects the lesson-design display: SequenceSlate, StrandPlan, Forumwright, ReteachSignal, Inquirywright, and KinDispatch. Their legacy internal identifiers remain unchanged. Every product keeps a load-bearing subtitle as its functional identity, and counsel screening remains a pre-release checkpoint.
 
 ## The three data lanes
 
@@ -72,7 +72,7 @@ The load-bearing subtitle remains essential because the coined name does not rev
 4. **Access Remix** — produces large-print, reduced-clutter, chunked, symbol-supported, and bilingual variants from one teacher-created source.
 5. **Directions Duet** — exploits the existing aligned bilingual renderer for classroom directions.
 6. **ReteachSignal — Formative Evidence** — converts anonymous exit tickets into tomorrow's reteach and extension moves.
-7. **GridLesson — Lesson Design Studio** — the high-frequency teacher-planning studio.
+7. **StrandPlan — Lesson Design Studio** — the high-frequency teacher-planning studio.
 8. **Rubric Relay** — makes evidence, criteria, and revision moves visible before the teacher approves feedback.
 9. **Forumwright — Discussion Design** — designs equitable, intellectually productive discussion.
 10. **KinDispatch — Bilingual & Family Press** — transforms teacher-authored information into clear, parallel family communications.
@@ -141,7 +141,7 @@ Preceding the twelve is **Module Zero: the Deterministic Press** (entries 203–
 
 ## Studio V — Lesson and unit design
 
-41. **GridLesson — Lesson Design Studio** `[G]` — Arrange an objective, time, materials, and constraints into launch, modeling, practice, checks, closure, and access supports.
+41. **StrandPlan — Lesson Design Studio** `[G]` — Arrange an objective, time, materials, and constraints into launch, modeling, practice, checks, closure, and access supports.
 42. **Standards Unpacker** `[G]` — Translate a standard into concepts, skills, vocabulary, prerequisites, success criteria, and acceptable evidence.
 43. **Unit Spine** `[G]` — Build a conceptual unit arc, lesson sequence, checkpoints, flex days, and culminating evidence from standards and a calendar.
 44. **Bell-to-Bell** `[G]` — Produce a realistic minute-by-minute lesson with transitions, contingency cuts, and protected closure.
@@ -446,7 +446,7 @@ Add Board to Brief and Directions Duet with the OCR-uncertainty workflow and har
 
 ### Green planning studio 0.3
 
-Add Scaffold Smith (with its task-entry scaffold), GridLesson, and Forumwright; complete the full Deterministic Press studio; begin second-maintainer recruitment.
+Add Scaffold Smith (with its task-entry scaffold), StrandPlan, and Forumwright; complete the full Deterministic Press studio; begin second-maintainer recruitment.
 
 ### Accessibility, commons, and sources 0.4–0.5
 

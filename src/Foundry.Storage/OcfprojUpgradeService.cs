@@ -24,6 +24,7 @@ public static class ProjectUpgradeFailureCodes
     public const string SourceAddressMismatch = "upgrade.source-address-mismatch";
     public const string SourceVersionMismatch = "upgrade.source-version-mismatch";
     public const string TargetVersionMismatch = "upgrade.target-version-mismatch";
+    public const string CandidateRecipeUnavailable = "upgrade.candidate-recipe-unavailable";
     public const string NoMigrationRoute = "upgrade.no-migration-route";
     public const string PackageInvalid = "upgrade.package-invalid";
     public const string DestinationConflict = "upgrade.destination-conflict";
@@ -58,21 +59,25 @@ public sealed class ProjectUpgradeException : Exception
     public int CleanupResidueCount { get; }
 }
 
-public sealed record ProjectUpgradeItem(
+internal sealed record ProjectUpgradeItem(
     string SourceRelativePath,
     string DestinationRelativePath,
     string SourceEngineVersion,
     string SourceSchemaVersion,
     string SourceSha256);
 
-public sealed record ProjectUpgradeBatchRequest(
+/// <summary>An exact recipe identity compiled into the candidate build.</summary>
+internal sealed record ProjectUpgradeRecipeIdentity(string RecipeId, string RecipeVersion);
+
+internal sealed record ProjectUpgradeBatchRequest(
     string SourceLibraryRoot,
     string CandidateLibraryRoot,
     string TargetEngineVersion,
-    IReadOnlyList<ProjectUpgradeItem> Projects);
+    IReadOnlyList<ProjectUpgradeItem> Projects,
+    IReadOnlyList<ProjectUpgradeRecipeIdentity> CandidateRecipes);
 
 /// <summary>A one-project convenience request retaining the same explicit root boundary as a batch.</summary>
-public sealed record ProjectUpgradeRequest(
+internal sealed record ProjectUpgradeRequest(
     string SourceLibraryRoot,
     string CandidateLibraryRoot,
     string SourceRelativePath,
@@ -80,9 +85,10 @@ public sealed record ProjectUpgradeRequest(
     string SourceEngineVersion,
     string SourceSchemaVersion,
     string SourceSha256,
-    string TargetEngineVersion);
+    string TargetEngineVersion,
+    IReadOnlyList<ProjectUpgradeRecipeIdentity> CandidateRecipes);
 
-public sealed record ProjectUpgradeReceipt(
+internal sealed record ProjectUpgradeReceipt(
     string SourceEngineVersion,
     string SourceSchemaVersion,
     string SourceSha256,
@@ -91,7 +97,7 @@ public sealed record ProjectUpgradeReceipt(
     string OutputSha256,
     bool PackageTransformed);
 
-public sealed record ProjectUpgradeBatchReceipt(
+internal sealed record ProjectUpgradeBatchReceipt(
     string TargetEngineVersion,
     string TargetSchemaVersion,
     IReadOnlyList<ProjectUpgradeReceipt> Projects);
@@ -102,13 +108,14 @@ public sealed record ProjectUpgradeBatchReceipt(
 /// library roots; serializes one initially empty candidate batch; and never
 /// downloads, installs, versions, signs, distributes, or publishes software.
 /// </summary>
-public static partial class OcfprojUpgradeService
+internal static partial class OcfprojUpgradeService
 {
     private const int CopyBufferBytes = 128 * 1024;
     private const int MaximumBatchProjects = 512;
+    private const int MaximumCandidateRecipes = 2048;
     private const string BatchLockFileName = ".ocf-upgrade-batch.lock";
 
-    public static async Task<ProjectUpgradeReceipt> PrepareCompatibleCopyAsync(
+    internal static async Task<ProjectUpgradeReceipt> PrepareCompatibleCopyAsync(
         ProjectUpgradeRequest request,
         CancellationToken cancellationToken)
     {
@@ -126,12 +133,13 @@ public static partial class OcfprojUpgradeService
                 request.DestinationRelativePath,
                 request.SourceEngineVersion,
                 request.SourceSchemaVersion,
-                request.SourceSha256)]);
+                request.SourceSha256)],
+            request.CandidateRecipes);
         var receipt = await PrepareCompatibleBatchAsync(batch, cancellationToken).ConfigureAwait(false);
         return receipt.Projects[0];
     }
 
-    public static Task<ProjectUpgradeBatchReceipt> PrepareCompatibleBatchAsync(
+    internal static Task<ProjectUpgradeBatchReceipt> PrepareCompatibleBatchAsync(
         ProjectUpgradeBatchRequest request,
         CancellationToken cancellationToken)
         => PrepareCompatibleBatchAsync(request, hooks: null, cancellationToken);
@@ -237,7 +245,9 @@ public static partial class OcfprojUpgradeService
     {
         if (!RequiredText(request.TargetEngineVersion, 64)
             || request.Projects is null
-            || request.Projects.Count is 0 or > MaximumBatchProjects)
+            || request.Projects.Count is 0 or > MaximumBatchProjects
+            || request.CandidateRecipes is null
+            || request.CandidateRecipes.Count is 0 or > MaximumCandidateRecipes)
         {
             throw Failure(ProjectUpgradeFailureCodes.AddressInvalid, "The project upgrade batch address is incomplete.");
         }
@@ -250,6 +260,20 @@ public static partial class OcfprojUpgradeService
         var sourceRoot = ResolveRoot(request.SourceLibraryRoot, source: true);
         var candidateRoot = ResolveRoot(request.CandidateLibraryRoot, source: false);
         EnsureRootsDoNotOverlap(sourceRoot, candidateRoot);
+
+        var candidateRecipes = new HashSet<ProjectUpgradeRecipeIdentity>();
+        foreach (var recipe in request.CandidateRecipes)
+        {
+            if (recipe is null
+                || !RequiredText(recipe.RecipeId, 128)
+                || !RequiredText(recipe.RecipeVersion, 64)
+                || !candidateRecipes.Add(recipe))
+            {
+                throw Failure(
+                    ProjectUpgradeFailureCodes.AddressInvalid,
+                    "The candidate recipe inventory is invalid.");
+            }
+        }
 
         var items = new List<ResolvedUpgradeItem>(request.Projects.Count);
         var sourceNames = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
@@ -281,7 +305,7 @@ public static partial class OcfprojUpgradeService
                 : "The candidate library must be empty before preparation begins.");
         }
 
-        return new BatchContext(sourceRoot, candidateRoot, items);
+        return new BatchContext(sourceRoot, candidateRoot, items, candidateRecipes);
     }
 
     private static void ValidateItemAddress(ProjectUpgradeItem project)
@@ -492,6 +516,15 @@ public static partial class OcfprojUpgradeService
         }
 
         var loadedSource = await OcfprojPackageValidator.ValidateAsync(source, cancellationToken).ConfigureAwait(false);
+        if (!context.CandidateRecipes.Contains(new ProjectUpgradeRecipeIdentity(
+                loadedSource.Manifest.RecipeId,
+                loadedSource.Manifest.RecipeVersion)))
+        {
+            throw Failure(
+                ProjectUpgradeFailureCodes.CandidateRecipeUnavailable,
+                "The candidate build does not contain a project's pinned recipe identity.");
+        }
+
         var packageTransformed = loadedSource.Validation is null;
 
         var destinationDirectory = Path.GetDirectoryName(resolved.DestinationPath)
@@ -1041,13 +1074,16 @@ public static partial class OcfprojUpgradeService
     private sealed class BatchContext(
         RootDescriptor sourceRoot,
         RootDescriptor candidateRoot,
-        IReadOnlyList<ResolvedUpgradeItem> items)
+        IReadOnlyList<ResolvedUpgradeItem> items,
+        HashSet<ProjectUpgradeRecipeIdentity> candidateRecipes)
     {
         internal RootDescriptor SourceRoot { get; } = sourceRoot;
 
         internal RootDescriptor CandidateRoot { get; } = candidateRoot;
 
         internal IReadOnlyList<ResolvedUpgradeItem> Items { get; } = items;
+
+        internal HashSet<ProjectUpgradeRecipeIdentity> CandidateRecipes { get; } = candidateRecipes;
 
         internal string LockPath => Path.Combine(CandidateRoot.FullPath, BatchLockFileName);
 

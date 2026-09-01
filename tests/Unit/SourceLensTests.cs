@@ -52,7 +52,7 @@ public class SourceLensTests
     }
 
     [Fact]
-    public void Unknown_rights_teach_but_warn_that_redistribution_is_blocked()
+    public void Unknown_rights_emits_a_warning_but_this_builder_does_not_prove_sink_enforcement()
     {
         var result = SourceLensBuilder.Build(Letter() with { Rights = "unknown" }, "Excerpt.", true, Prompts());
 
@@ -60,7 +60,7 @@ public class SourceLensTests
     }
 
     [Fact]
-    public void An_unverified_transcript_cannot_become_an_artifact()
+    public void A_false_transcript_assertion_emits_a_blocking_issue()
     {
         var result = SourceLensBuilder.Build(Letter(), "Excerpt.", transcriptVerifiedByTeacher: false, Prompts());
 

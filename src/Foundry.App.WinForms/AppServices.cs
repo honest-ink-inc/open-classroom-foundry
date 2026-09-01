@@ -56,6 +56,12 @@ public sealed class LoadedProjectGreenConfirmation
 /// </summary>
 public static partial class AppServices
 {
+    // This pins the exact 13-symbol catalog that already ships. It is a build
+    // identity fence only: it is not AAC/SLP, accessibility, or rights approval,
+    // and it admits no Mulberry, OpenMoji, OpenSymbols, or other candidate source.
+    internal const string ExpectedShippedSymbolManifestSha256 =
+        "103D117E37090A6CBB9968AE9485D7C1CD9C7D3EEEC65B13DFC1054609D1B2A4";
+
     private const string PrintViewJobMarker = "-print-view-";
     private const string PrintViewCleanupMarker = "cleanup-";
     private const string PrintViewLeaseFileName = ".active";
@@ -71,11 +77,11 @@ public static partial class AppServices
     /// edited. Package module/recipe selectors are never copied into a new
     /// manifest as though they were authenticated provenance.
     /// </summary>
-    public const string PortableProjectModuleId = "portable-semantic-document";
+    public const string PortableProjectModuleId = PortableProjectIdentity.ModuleId;
 
-    public const string PortableProjectRecipeId = "portable-semantic-editor";
+    public const string PortableProjectRecipeId = PortableProjectIdentity.RecipeId;
 
-    public const string PortableProjectRecipeVersion = "1.0.0";
+    public const string PortableProjectRecipeVersion = PortableProjectIdentity.RecipeVersion;
 
     /// <summary>The shipped CC0 pack beside the executable; an empty catalog when absent — the app still runs, symbol-less.</summary>
     public static IAssetCatalog SymbolCatalog()
@@ -93,7 +99,19 @@ public static partial class AppServices
         }
 
         var catalog = new JsonAssetCatalog(packaged);
+        if (!string.Equals(
+            catalog.ManifestSha256,
+            ExpectedShippedSymbolManifestSha256,
+            StringComparison.Ordinal))
+        {
+            throw new InvalidDataException(
+                UiStrings.FormatWithoutMnemonic(
+                    UiStrings.SymbolCatalogIntegrityFailed,
+                    "asset.unexpected-build-identity"));
+        }
+
         var blocking = catalog.VerifyIntegrity()
+            .Concat(catalog.VerifyClosedDeploymentRoot())
             .Where(issue => issue.Severity == ValidationSeverity.Blocking)
             .ToArray();
         if (blocking.Length > 0)

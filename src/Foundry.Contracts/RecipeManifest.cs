@@ -23,4 +23,23 @@ public sealed record RecipeManifest(
     string RendererId,
     IReadOnlyList<RenderTarget> SupportedExports,
     IReadOnlyList<string> Warnings,
-    string EvaluationSuiteVersion);
+    string EvaluationSuiteVersion)
+{
+    /// <summary>
+    /// Allowlisted local preprocessing identities required before this recipe
+    /// executes. An empty list is an explicit declaration that none are used.
+    /// </summary>
+    public IReadOnlyList<string> LocalPreprocessingIds { get; init; } = [];
+
+    /// <summary>
+    /// Recipe-owned localization resource identities. Global application
+    /// chrome catalogs are not recipe resources and do not belong here.
+    /// </summary>
+    public IReadOnlyList<string> LocalizationResourceIds { get; init; } = [];
+
+    /// <summary>
+    /// Explicit project-specific migration identities admitted for this recipe.
+    /// First-admission recipes correctly declare an empty list.
+    /// </summary>
+    public IReadOnlyList<string> MigrationIds { get; init; } = [];
+}

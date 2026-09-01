@@ -2,13 +2,19 @@
 
 **Date:** 30 August 2026 · **Status:** informal product screening, not legal clearance and not legal advice. Professional registry, common-law, domain, marketplace, and counsel review remain required before release, distribution, publication, or any use that treats a selected name as a cleared mark.
 
-ADR-006 fixes **Honest Ink — the classroom foundry** as the public product name. ADR-008 fixes six public module display names while deliberately preserving internal identifiers. The standing insurance policy holds: every renamed product keeps a load-bearing functional subtitle so a display name can change without changing a project, recipe, schema, or diagnostic identity.
+ADR-006 fixes **Honest Ink — the classroom foundry** as the public product name. ADR-008 fixes six public module identities, and ADR-009 corrects the lesson-design display from GridLesson to **StrandPlan — Lesson Design Studio**, while deliberately preserving internal identifiers. The standing insurance policy holds: every renamed product keeps a load-bearing functional subtitle so a display name can change without changing a project, recipe, schema, or diagnostic identity.
 
 ## Six former module displays that must not ship as branding
 
 ### Lesson Loom — direct same-category collision
 
-**The Lesson Loom** is an existing AI lesson-planning and curriculum product in the same teacher-authoring category. In addition to its active product site, United States registry records exist at TSDR serial numbers [`99339738`](https://tsdr.uspto.gov/#caseNumber=99339738&caseSearchType=US_APPLICATION&caseType=DEFAULT&searchType=statusSearch) and [`99339743`](https://tsdr.uspto.gov/#caseNumber=99339743&caseSearchType=US_APPLICATION&caseType=DEFAULT&searchType=statusSearch). The public display is replaced by **GridLesson — Lesson Design Studio**. Stable recipe, schema, source-code, and project tokens retain `lesson-loom` for compatibility; that token is not public branding.
+**The Lesson Loom** is an existing AI lesson-planning and curriculum product in the same teacher-authoring category. In addition to its active product site, United States registry records exist at TSDR serial numbers [`99339738`](https://tsdr.uspto.gov/#caseNumber=99339738&caseSearchType=US_APPLICATION&caseType=DEFAULT&searchType=statusSearch) and [`99339743`](https://tsdr.uspto.gov/#caseNumber=99339743&caseSearchType=US_APPLICATION&caseType=DEFAULT&searchType=statusSearch). The current provisional public display is **StrandPlan — Lesson Design Studio**. Stable recipe, schema, source-code, and project tokens retain `lesson-loom` for compatibility; that token is not public branding.
+
+### GridLesson — reversed-word same-category collision found on re-screen
+
+The 30 August exact-name pass selected GridLesson. A 31 August re-screen found [LessonGrid](https://lessongrid.app/), which describes itself as visual curriculum browsing and lesson planning for United States teachers, with weekly and quarterly planning, standards visibility, materials, exports, and sharing. The exact composite is reversed, but the words, audience, function, and software category are substantially the same. ADR-009 therefore retires GridLesson from current chrome rather than overstating the earlier bounded search.
+
+Of the product owner's supplied alternatives, StrandPlan had the least relevant surfaced product conflict in the updated pass. It remains descriptive, its matching `.com` is occupied, and this is not a claim of trademark or domain availability. **StrandPlan — Lesson Design Studio** is a provisional in-product label pending the same professional counsel screen required for every selected name.
 
 ### All Aboard — direct education and accessibility uses
 
@@ -35,7 +41,7 @@ All Aboard Learning sells an education-software, curriculum, app, and print-reso
 | Former display | Selected display | Load-bearing subtitle | Initial exact-name result |
 |---|---|---|---|
 | All Aboard | **SequenceSlate** | Visual Support Studio | No same-name education-software product surfaced in this pass |
-| Lesson Loom | **GridLesson** | Lesson Design Studio | Best result in the product owner's candidate set; no same-name education-software product surfaced in this pass |
+| Lesson Loom / GridLesson | **StrandPlan** | Lesson Design Studio | Provisional correction after LessonGrid surfaced in the same teacher-planning category; no clearance claim |
 | Talk Moves Studio | **Forumwright** | Discussion Design | No same-name education-software product surfaced in this pass |
 | Exit Lens | **ReteachSignal** | Formative Evidence | No same-name education-software product surfaced in this pass |
 | Source Lens | **Inquirywright** | Source & Inquiry | No same-name education-software product surfaced in this pass |
@@ -43,9 +49,9 @@ All Aboard Learning sells an education-software, curriculum, app, and print-reso
 
 “No product surfaced” is an exact description of a bounded informal search, not a claim of availability, priority, registrability, or non-infringement. The pass checked exact and spaced variants across general web results, education/software products, app stores, code forges, domain use, and preliminary United States trademark records, then checked semantic fit, spoken/readability ergonomics, and Honest Ink's craft register. It did not order professional clearance searches, reserve a domain, create an account, file a mark, or accept terms.
 
-For Lesson Loom, the product owner supplied weaving, minimalist, growth, and blended-word candidates. **GridLesson** was the strongest combination of module fit, teacher legibility, app-name compactness, and distance from the direct conflict. Syllabuild, CurriculumCraft, Planly, Loominote, Lessoneer, Weavly, Tapestry/TapestryEdu, SyncClass, and Planwright were eliminated by current exact or strongly adjacent product uses. StrandPlan and LessonSprout were plausible but less exact descriptions of the implemented planning surface. GridLesson remains subject to the same counsel checkpoint as every selected name.
+For Lesson Loom, the product owner supplied weaving, minimalist, growth, and blended-word candidates. GridLesson was the 30 August choice but is now retired because LessonGrid occupies the same teacher-planning category. Syllabuild, CurriculumCraft, Planly, Loominote, Lessoneer, Weavly, Tapestry/TapestryEdu, SyncClass, and Planwright were eliminated by exact or strongly adjacent product uses; the updated pass also found current Sprout-branded lesson products that make LessonSprout unsuitable. StrandPlan is the least-conflicted supplied working option, not a cleared mark.
 
-The full identifier map and protected-seat consequences are binding in [ADR-008](adr/ADR-008-public-module-display-names.md). A name change grants no AAC/SLP, accessibility, multilingual, rights, district, or council authority.
+The full identifier map and protected-seat consequences remain binding in [ADR-008](adr/ADR-008-public-module-display-names.md), with the lesson-design display correction in [ADR-009](adr/ADR-009-strandplan-display-name.md). A name change grants no AAC/SLP, accessibility, multilingual, rights, district, or council authority.
 
 ## Repository name — retained internal; Honest Ink selected publicly
 

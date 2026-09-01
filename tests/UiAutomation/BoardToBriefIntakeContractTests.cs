@@ -299,44 +299,122 @@ public sealed class BoardToBriefIntakeContractTests
     public void Unexpected_OCR_fault_during_terminal_cancel_cannot_block_purge()
         => Sta.Run(() =>
         {
-            var fixture = GreenFixture(new InMemorySessionByteStore());
-            var ocr = new FaultOnCancellationOcrService();
-            using var form = Intake(fixture, ocr);
-            form.Show();
-            PumpUntil(() => form.OperationPending && ocr.Calls == 1);
+            Exception? escapedThreadException = null;
+            void captureThreadException(object _, ThreadExceptionEventArgs args)
+            {
+                escapedThreadException ??= args.Exception;
+            }
+            System.Windows.Forms.Application.ThreadException += captureThreadException;
+            try
+            {
+                var fixture = GreenFixture(new InMemorySessionByteStore());
+                var ocr = new FaultOnCancellationOcrService();
+                using var form = Intake(fixture, ocr);
+                form.Show();
+                PumpUntil(() => form.OperationPending && ocr.Calls == 1);
 
-            Named<Button>(form, BoardToBriefIntakeForm.CancelName).PerformClick();
-            PumpUntil(() => !form.Visible);
+                Named<Button>(form, BoardToBriefIntakeForm.CancelName).PerformClick();
+                PumpUntil(() => !form.Visible && ocr.Settled && form.CaptureWork.IsCompleted);
+                System.Windows.Forms.Application.DoEvents();
 
-            Assert.True(ocr.Settled);
-            Assert.Equal(DialogResult.Cancel, form.DialogResult);
-            Assert.Equal(JobState.TransientSourcesPurged, form.IntakeState);
-            Assert.Equal(0, fixture.Store.Count);
-            Assert.Null(form.ResultLines);
+                Assert.Null(escapedThreadException);
+                form.CaptureWork.GetAwaiter().GetResult();
+                Assert.True(form.IsDisposed);
+                Assert.Equal(DialogResult.Cancel, form.DialogResult);
+                Assert.Equal(JobState.TransientSourcesPurged, form.IntakeState);
+                Assert.Equal(0, fixture.Store.Count);
+                Assert.Null(form.ResultLines);
+            }
+            finally
+            {
+                System.Windows.Forms.Application.ThreadException -= captureThreadException;
+            }
         });
 
     [Fact]
-    public void Capture_surface_failure_cancels_and_purges_without_calling_OCR()
+    public void Capture_surface_failure_cancels_and_purges_without_escaping_or_calling_OCR()
         => Sta.Run(() =>
         {
-            var fixture = GreenFixture(new InMemorySessionByteStore());
-            var ocr = new RecordingOcrService(ConfidentRecognition());
-            using var form = new BoardToBriefIntakeForm(
-                fixture.Store,
-                fixture.Session,
-                ocr,
-                DistrictPolicy.Offline,
-                captureRunner: _ => throw new KeyNotFoundException("Synthetic capture surface failure."),
-                noticePresenter: (_, _, _) => { });
+            Exception? escapedThreadException = null;
+            void captureThreadException(object _, ThreadExceptionEventArgs args)
+            {
+                escapedThreadException ??= args.Exception;
+            }
+            System.Windows.Forms.Application.ThreadException += captureThreadException;
+            try
+            {
+                var fixture = GreenFixture(new InMemorySessionByteStore());
+                var ocr = new RecordingOcrService(ConfidentRecognition());
+                using var form = new BoardToBriefIntakeForm(
+                    fixture.Store,
+                    fixture.Session,
+                    ocr,
+                    DistrictPolicy.Offline,
+                    captureRunner: _ => throw new KeyNotFoundException("Synthetic capture surface failure."),
+                    noticePresenter: (_, _, _) => { });
 
-            form.Show();
-            PumpUntil(() => !form.Visible);
+                form.Show();
+                PumpUntil(() => !form.Visible
+                    && form.CaptureWork.IsCompleted);
+                System.Windows.Forms.Application.DoEvents();
 
-            Assert.Equal(0, ocr.Calls);
-            Assert.Equal(DialogResult.Cancel, form.DialogResult);
-            Assert.Equal(JobState.TransientSourcesPurged, form.IntakeState);
-            Assert.Equal(0, fixture.Store.Count);
-            Assert.Null(form.ResultLines);
+                Assert.Null(escapedThreadException);
+                form.CaptureWork.GetAwaiter().GetResult();
+                Assert.True(form.IsDisposed);
+                Assert.Equal(0, ocr.Calls);
+                Assert.Equal(DialogResult.Cancel, form.DialogResult);
+                Assert.Equal(JobState.TransientSourcesPurged, form.IntakeState);
+                Assert.Equal(0, fixture.Store.Count);
+                Assert.Null(form.ResultLines);
+            }
+            finally
+            {
+                System.Windows.Forms.Application.ThreadException -= captureThreadException;
+            }
+        });
+
+    [Fact]
+    public void Unexpected_non_cancellation_OCR_fault_fails_closed_without_escaping_or_disclosure()
+        => Sta.Run(() =>
+        {
+            Exception? escapedThreadException = null;
+            void captureThreadException(object _, ThreadExceptionEventArgs args)
+            {
+                escapedThreadException ??= args.Exception;
+            }
+            System.Windows.Forms.Application.ThreadException += captureThreadException;
+            try
+            {
+                var fixture = GreenFixture(new InMemorySessionByteStore());
+                var ocr = new UnexpectedOcrFaultService();
+                using var form = Intake(fixture, ocr);
+                var statusHistory = new List<string>();
+                var status = Named<Label>(form, BoardToBriefIntakeForm.StatusName);
+                status.TextChanged += (_, _) => statusHistory.Add(status.Text);
+
+                form.Show();
+                PumpUntil(() => !form.Visible && form.CaptureWork.IsCompleted);
+                System.Windows.Forms.Application.DoEvents();
+
+                Assert.Null(escapedThreadException);
+                form.CaptureWork.GetAwaiter().GetResult();
+                Assert.True(form.IsDisposed);
+                Assert.Equal(1, ocr.Calls);
+                Assert.Contains(
+                    UiStrings.WithoutMnemonic(UiStrings.StatusBoardIntakeImageUnavailable),
+                    statusHistory);
+                Assert.DoesNotContain(
+                    statusHistory,
+                    text => text.Contains(UnexpectedOcrFaultService.FailureMessage, StringComparison.Ordinal));
+                Assert.Equal(DialogResult.Cancel, form.DialogResult);
+                Assert.Equal(JobState.TransientSourcesPurged, form.IntakeState);
+                Assert.Equal(0, fixture.Store.Count);
+                Assert.Null(form.ResultLines);
+            }
+            finally
+            {
+                System.Windows.Forms.Application.ThreadException -= captureThreadException;
+            }
         });
 
     [Fact]
@@ -681,6 +759,20 @@ public sealed class BoardToBriefIntakeContractTests
                 Settled = true;
                 throw new KeyNotFoundException("Synthetic unexpected OCR terminal fault.");
             }
+        }
+    }
+
+    private sealed class UnexpectedOcrFaultService : IOcrService
+    {
+        public const string FailureMessage = "Synthetic unexpected OCR provider detail.";
+
+        public int Calls { get; private set; }
+
+        public Task<OcrResult> RecognizeAsync(SourceEnvelope source, CancellationToken cancellationToken)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            Calls++;
+            return Task.FromException<OcrResult>(new KeyNotFoundException(FailureMessage));
         }
     }
 

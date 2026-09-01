@@ -16,6 +16,7 @@ seat's acceptance gate.
 | Act | Owner | Stop condition |
 |---|---|---|
 | Select the exact source and candidate application packages | Typist / release owner | Either package, checksum, signature, or provenance is absent |
+| Approve the exact candidate recipe identity and declarative-contract inventories | Product owner / typist, with every applicable protected-seat acceptance still required | The expected digests are not independently tied to the exact candidate package or source commit in an immutable evidence record |
 | Approve Intune assignment, detection, supersedence, uninstall, and rollback behavior | District IT/security | No tested prior-package reinstall path or device cohort |
 | Approve backup location, access, and retention for a real library | District privacy/records authority | Storage or retention is undecided |
 | Prepare and validate `.ocfproj` copies | Engine compatibility host under operator control, if this proposal is ratified | Either root or any package fails its exact address, the candidate root is not initially empty, or no admitted schema route exists |
@@ -36,8 +37,13 @@ Stop the upgrade immediately if any of these is true:
   `--project-library-root` switch, does not already exist, crosses a reparse
   point, or lacks one literal path segment equal to that build's engine version;
 - the strict operator plan has not been reviewed with the host's source-tree
-  `review` operation described below, or the exact SHA-256 it reports is not
-  supplied unchanged to the later `prepare` invocation;
+  `review` operation described below, or any of the exact plan, candidate recipe
+  ID/version inventory, and candidate declarative-contract inventory SHA-256
+  values it reports is not supplied unchanged to the later `prepare` invocation;
+- the sorted content-free candidate contract inventory and its two expected
+  aggregate digests are absent from an immutable approval record independently
+  bound to the exact candidate package checksum or source commit, or either
+  reviewed value differs from that record;
 - the canonical source and candidate roots are not explicit, distinct,
   non-overlapping, and confined against link or path escape, or the candidate
   root is not empty before the batch begins;
@@ -62,7 +68,12 @@ District IT records, in its approved system of record:
 5. for every source `.ocfproj`, its relative name, manifest engine version,
    manifest schema version, and SHA-256;
 6. pinned recipe versions required by those projects;
-7. the approved rollback owner, decision deadline, evidence location, and the
+7. the exact candidate source commit or package checksum; the independently
+   reviewed, sorted content-free constituent inventory of `(recipeId, version,
+   manifestSha256-or-identity-only)`; its candidate recipe ID/version inventory
+   SHA-256 and declarative recipe-contract inventory SHA-256; and the immutable
+   evidence-record reference, accountable approval role, and decision instant;
+8. the approved rollback owner, decision deadline, evidence location, and the
    time after which the prior copy may be retired.
 
 Do not put project paths, teacher-authored content, package-controlled entry
@@ -101,23 +112,91 @@ inventory may map devices to paths under its own access and retention controls.
 
    ```powershell
    dotnet run --project tools/ProjectUpgradeHost/Foundry.Tools.ProjectUpgradeHost.csproj -- review --plan <absolute-plan-file>
-   dotnet run --project tools/ProjectUpgradeHost/Foundry.Tools.ProjectUpgradeHost.csproj -- prepare --plan <the-same-absolute-plan-file> --confirm-plan-sha256 <reviewed-SHA-256>
+   dotnet run --project tools/ProjectUpgradeHost/Foundry.Tools.ProjectUpgradeHost.csproj -- prepare --plan <the-same-absolute-plan-file> --confirm-plan-sha256 <reviewed-plan-SHA-256> --confirm-candidate-recipes-sha256 <reviewed-candidate-recipe-inventory-SHA-256> --confirm-candidate-recipe-contracts-sha256 <reviewed-candidate-recipe-contract-inventory-SHA-256>
    ```
+
+   The source-tree operator is Windows-only. It refuses any other platform
+   before command or plan processing because its same-file and directory-alias
+   guarantees depend on Windows file identities. `Ctrl+C` requests cooperative
+   cancellation through the preparation token; wait for the content-free
+   refusal and all-or-nothing cleanup result rather than killing the process and
+   assuming the candidate root is clean.
 
    Do not copy these development commands into a managed deployment or describe
    them as an installed tool. `review` performs no preparation and prints only
-   schema, target engine, closed project count, and the exact plan SHA-256.
-   Compare those fields with the approved inventory before invoking `prepare`.
-   The host rereads the exact bytes, refuses a changed digest, and invokes
+   schema, target engine, closed project count, exact plan SHA-256, the
+   deterministic SHA-256 of the executing build's sorted candidate-recipe
+   ID/version inventory, a separate SHA-256 of its declarative recipe-contract
+   inventory, both inventory framing identities, the constituent
+   `recipe-contract-fingerprint.v2` framing identity, and the sorted content-
+   free constituent rows underlying that contract digest. Each row contains
+   only recipe ID, version, manifest SHA-256,
+   and the explicit identity-only flag; the review remains read-only and displays
+   no project address or authored content. The ID/version digest uses the explicit
+   `candidate-recipe-identity-inventory.v1` framing: strict UTF-8 strings and the
+   inventory count are length-framed with big-endian 32-bit integers before
+   hashing. The second inventory uses
+   `candidate-recipe-contract-inventory.v2`, binds the constituent fingerprint
+   framing identity, and includes every field in each `RecipeManifest`,
+   including the local-preprocessing, recipe-owned localization-resource, and
+    migration identity lists. All current first-admission manifests explicitly
+    declare those three lists empty; a future nonempty value is contract drift,
+    not an inferred global resource. The portable-semantic-editor entry is
+    explicitly identity-only because it has no manifest. It binds declared schema, validators,
+    editor, renderer, exports, and evaluation version. Plan §6.6's combined
+    “Warnings and confirmations” concern is represented once by the ordered
+    `Warnings` list: each entry becomes a fresh required-acknowledgement warning
+    in every review through both supported review paths. The fingerprint binds
+    that exact text; focused regressions bind the acknowledgement behavior. It is
+    not a second confirmation-text list, and clicking acknowledgement is not
+    substantive approval. The digest does not bind executable builder, editor,
+    or renderer bytes, schema or validator implementations, or evaluation-corpus
+    bytes. The sorted contract inventory has its own length-
+   framed envelope and fails closed if one ID/version identity maps to different
+   manifest fingerprints.
+   The three confirmation arguments establish only that `prepare` sees the same
+   plan and executing candidate declarations that the operator just reviewed.
+   They are optimistic-concurrency and review-handoff guards, not signatures,
+   provenance, product-owner approval, or protected-seat acceptance. Before any
+   real use, compare both recipe-inventory digests with a separately reviewed,
+   immutable evidence record that contains the sorted content-free constituent
+   inventory and is bound to the exact candidate package checksum or source
+   commit, and record the accountable approval role and instant. The emitted
+   `review` rows make that comparison possible, but the output itself is not the
+   independent approved record; copying its rows or values directly into
+   `prepare` does not approve them. No such approved candidate
+   inventory artifact exists in this repository; its absence is a stop.
+   This operator host is the only production assembly in this repository that
+   is granted direct access to the internal compatibility service. The WinForms
+   application has no such call path and cannot supply its own recipe inventory
+   or bypass the host's version-address check. This is an architectural boundary
+   inside a full-trust, unsigned .NET process, not a hostile-code security
+   boundary: reflection or a same-simple-name friend assembly is outside the
+   threat claim.
+   The host rereads the exact bytes, refuses a changed plan, executing recipe-
+   identity inventory, or declarative recipe-contract inventory digest, and invokes
    `OcfprojUpgradeService.PrepareCompatibleBatchAsync` exactly once. Its batch
    lock serializes preparation and it processes inventory items sequentially.
-   For each item, schema-1 input is hashed, routed, fully validated, compatibly
-   prepared, and revalidated through held streams; no stage reopens the source
-   path and substitutes different bytes. Preparation may retain an already
-   current package byte for byte or deterministically add the required
-   exact-document validation envelope and default render profile to a legacy
-   schema-1 package. An unrecognized schema stops with a coded no-route failure;
-   do not edit the manifest or retry under a different declared version.
+   The executing host also repeats the literal candidate-engine-version path
+   segment check and mechanically derives the candidate recipe inventory from
+   the recipe catalogs compiled into that build. After complete package
+   validation, it refuses the whole batch when a source manifest's exact pinned
+   recipe ID and version are absent; it neither substitutes nor upgrades a
+   recipe identity.
+   For each item, an admitted schema-1 input is hashed, routed, fully validated,
+   compatibly prepared, and revalidated through held streams; no stage reopens
+   the source path and substitutes different bytes. The implemented snapshot
+   admission set contains only the executing `EngineIdentity.EngineVersion` and
+   the exact legacy `0.1.0-dev` writer identity. The legacy renderer route is
+   explicit only for a snapshot without persisted validation/render context;
+   context-bearing snapshots currently use the executing renderer. That is not
+   a future outgoing-version route. Preparation may retain an already current
+   package byte for byte or deterministically add the required exact-document
+   validation envelope and default render profile to an admitted legacy
+   schema-1 package. An unrecognized schema stops with the coded no-migration-
+   route failure; an unadmitted snapshot-renderer identity fails complete
+   package validation as package-invalid. Do not edit the manifest or retry
+   under a different declared version.
 6. Treat preparation as all-or-nothing. The host does not return a successful
    batch result or publish its receipts until every item succeeds. On a failure
    or cancellation it stops, removes all destinations and partials created by

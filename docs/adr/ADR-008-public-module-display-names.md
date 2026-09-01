@@ -96,8 +96,11 @@ No name decision waives a protected seat or alters a data lane. In particular:
   catalogs, and KinDispatch's parallel-language behavior.
 - Written district authority remains required before ReteachSignal or any
   other Amber workflow uses real learner-linked evidence.
-- The educator council still selects the next Atlas priority in a real
-  needs-first session. A rename is neither adoption nor prioritization.
+- The educator council still recommends the next Atlas priority in a real
+  needs-first session. Participant review and record freeze precede a
+  separate feasibility record and written product-owner disposition; the
+  product owner still owns module priorities and may then adopt, defer, or
+  decline. A rename is neither recommendation, adoption, nor prioritization.
 
 ## Consequences
 

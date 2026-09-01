@@ -1,8 +1,13 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 using System.Diagnostics;
+using System.Drawing.Imaging;
 using System.IO;
+using System.Text;
+using System.Text.Json;
+using System.Text.Json.Nodes;
 using System.Windows.Automation;
 using Foundry.App.WinForms;
+using Foundry.Application;
 using Foundry.Contracts;
 using Foundry.Domain;
 using Foundry.Storage;
@@ -18,6 +23,21 @@ namespace Foundry.Tests.UiAutomation;
 
 public class PseudoLocaleTests
 {
+    private const string ReviewedFixtureMarker = "⟬test-pinned-reviewed-catalog⟭";
+
+    private static readonly Type[] DirectPseudoSurfaceTypes =
+    [
+        typeof(ReviewForm),
+        typeof(CaptureForm),
+        typeof(PressRoomForm),
+        typeof(AllAboardForm),
+        typeof(ModuleStudioForm),
+        typeof(LoadedProjectPreflightForm),
+        typeof(TileForm),
+        typeof(BoardToBriefIntakeForm),
+    ];
+    private static readonly Type[] SpecializedPseudoSurfaceTypes = [typeof(NodeEditorForm)];
+
     private static void InPseudo(Action assert)
     {
         UiLocale.Set(UiLocaleMode.Pseudo);
@@ -65,6 +85,49 @@ public class PseudoLocaleTests
         });
 
     [Fact]
+    public void Every_catalog_entry_stretches_by_at_least_forty_percent()
+        => InPseudo(() =>
+        {
+            var shortfalls = UiCatalogInventory.NeutralStrings
+                .Select(entry =>
+                {
+                    var pseudo = UiStrings.Localize(entry.Key, entry.Value);
+                    return new
+                    {
+                        Id = entry.Key,
+                        NeutralLength = entry.Value.Length,
+                        PseudoLength = pseudo.Length,
+                        RequiredLength = (int)Math.Ceiling(entry.Value.Length * 1.4),
+                    };
+                })
+                .Where(entry => entry.PseudoLength < entry.RequiredLength)
+                .OrderBy(entry => entry.Id, StringComparer.Ordinal)
+                .ToArray();
+
+            Assert.True(
+                shortfalls.Length == 0,
+                $"{shortfalls.Length} pseudo-locale entries were shorter than 140 percent. "
+                + string.Join(
+                    "; ",
+                    shortfalls.Take(20).Select(entry =>
+                        $"{entry.Id}={entry.NeutralLength}->{entry.PseudoLength} (needs {entry.RequiredLength})")));
+        });
+
+    [Fact]
+    public void Every_shipped_form_type_has_a_deliberate_pseudo_locale_scenario()
+    {
+        var shipped = typeof(PressRoomForm).Assembly.GetTypes()
+            .Where(type => !type.IsAbstract && typeof(Form).IsAssignableFrom(type))
+            .OrderBy(type => type.FullName, StringComparer.Ordinal)
+            .ToArray();
+        var covered = DirectPseudoSurfaceTypes.Concat(SpecializedPseudoSurfaceTypes)
+            .OrderBy(type => type.FullName, StringComparer.Ordinal)
+            .ToArray();
+
+        Assert.Equal(shipped, covered);
+    }
+
+    [Fact]
     public void Pseudo_transformation_is_deterministic_and_keeps_format_placeholders()
         => InPseudo(() =>
         {
@@ -88,35 +151,71 @@ public class PseudoLocaleTests
     [Fact]
     public void Every_constructed_surface_exposes_only_catalog_backed_visible_chrome_in_pseudo()
         => InPseudo(() => Sta.Run(() =>
+            ExerciseEveryConstructedSurface(AssertSurfaceChromeIsCatalogBacked)));
+
+    [Theory]
+    [InlineData("ltr", RightToLeft.No, false)]
+    [InlineData("rtl", RightToLeft.Yes, true)]
+    public void Synthetic_test_pinned_reviewed_catalog_projects_through_every_shipped_surface_without_granting_seat_review(
+        string direction,
+        RightToLeft expectedRightToLeft,
+        bool expectedRightToLeftLayout)
+    {
+        using var catalog = CreateSyntheticReviewedFixtureCatalog(direction);
+        try
         {
-            using var review = UiaHarness.CreateReviewForm();
-            using var capture = UiaHarness.CreateCaptureForm();
-            using var pressRoom = new PressRoomForm(_ => null);
-            using var allAboard = new AllAboardForm(new AppServices.NoAssetsCatalog(), _ => null);
-            using var modules = new ModuleStudioForm(_ => null);
-            using var preflight = new LoadedProjectPreflightForm(SyntheticLoadedProject());
-            using var tile = new TileForm();
+            Assert.Empty(UiCatalogDeployment.ApprovedCatalogSha256);
+            UiLocale.ConfigureForTest(
+                [UiLocale.CatalogSwitch, catalog.Path],
+                new HashSet<string>(StringComparer.OrdinalIgnoreCase) { catalog.Sha256 });
+            Assert.Equal(UiLocaleMode.ReviewedCatalog, UiLocale.Mode);
+            Assert.Contains("not protected-seat evidence", UiLocale.ActiveReview?.ReviewerName, StringComparison.Ordinal);
 
-            foreach (var form in new Form[]
-            {
-                review,
-                capture,
-                pressRoom,
-                allAboard,
-                modules,
-                preflight,
-                tile,
-            })
-            {
-                AssertSurfaceChromeIsCatalogBacked(form);
-            }
+            Sta.Run(() => ExerciseEveryConstructedSurface(form =>
+                AssertSurfaceChromeUsesReviewedFixture(
+                    form,
+                    expectedRightToLeft,
+                    expectedRightToLeftLayout)));
+        }
+        finally
+        {
+            UiLocale.Set(UiLocaleMode.Neutral);
+            Assert.Empty(UiCatalogDeployment.ApprovedCatalogSha256);
+        }
+    }
 
-            ExerciseEveryReviewTab(review);
-            ExerciseEveryPress(pressRoom);
-            ExerciseEveryAllAboardMode(allAboard);
-            ExerciseEveryModuleMode(modules);
-            ExerciseEveryNodeEditorVariant();
-        }));
+    private static void ExerciseEveryConstructedSurface(Action<Form> assertSurface)
+    {
+        using var review = UiaHarness.CreateReviewForm();
+        using var capture = UiaHarness.CreateCaptureForm();
+        using var pressRoom = new PressRoomForm(_ => null);
+        using var allAboard = new AllAboardForm(new AppServices.NoAssetsCatalog(), _ => null);
+        using var modules = new ModuleStudioForm(_ => null);
+        using var preflight = new LoadedProjectPreflightForm(SyntheticLoadedProject());
+        using var tile = new TileForm();
+        using var boardFixture = CreateBoardIntakePseudoFixture();
+
+        foreach (var form in new Form[]
+        {
+            review,
+            capture,
+            pressRoom,
+            allAboard,
+            modules,
+            preflight,
+            tile,
+            boardFixture.Form,
+        })
+        {
+            assertSurface(form);
+        }
+
+        ExerciseEveryReviewTab(review, assertSurface);
+        ExerciseEveryPress(pressRoom, assertSurface);
+        ExerciseEveryAllAboardMode(allAboard, assertSurface);
+        ExerciseEveryModuleMode(modules, assertSurface);
+        ExerciseEveryNodeEditorVariant(assertSurface);
+    }
 
     private static void AssertSurfaceChromeIsCatalogBacked(Form form)
     {
@@ -143,40 +242,40 @@ public class PseudoLocaleTests
         AssertChoiceChromeIsCatalogBacked(form);
     }
 
-    private static void ExerciseEveryReviewTab(ReviewForm form)
+    private static void ExerciseEveryReviewTab(ReviewForm form, Action<Form> assertSurface)
     {
         var tabs = ReviewSurfaceContractTests.Flatten(form).OfType<TabControl>().Single();
         Assert.Equal(3, tabs.TabPages.Count);
         for (var index = 0; index < tabs.TabPages.Count; index++)
         {
             tabs.SelectedIndex = index;
-            AssertSurfaceChromeIsCatalogBacked(form);
+            assertSurface(form);
         }
     }
 
-    private static void ExerciseEveryPress(PressRoomForm form)
+    private static void ExerciseEveryPress(PressRoomForm form, Action<Form> assertSurface)
     {
         var presses = ReviewSurfaceContractTests.Flatten(form).OfType<ListBox>()
             .Single(control => control.AccessibilityObject.Name == UiStrings.PressList);
         for (var index = 0; index < presses.Items.Count; index++)
         {
             presses.SelectedIndex = index;
-            AssertSurfaceChromeIsCatalogBacked(form);
+            assertSurface(form);
         }
     }
 
-    private static void ExerciseEveryAllAboardMode(AllAboardForm form)
+    private static void ExerciseEveryAllAboardMode(AllAboardForm form, Action<Form> assertSurface)
     {
         var modes = ReviewSurfaceContractTests.Flatten(form).OfType<ComboBox>()
             .Single(control => control.AccessibilityObject.Name == UiStrings.OutputMode);
         for (var index = 0; index < modes.Items.Count; index++)
         {
             modes.SelectedIndex = index;
-            AssertSurfaceChromeIsCatalogBacked(form);
+            assertSurface(form);
         }
     }
 
-    private static void ExerciseEveryModuleMode(ModuleStudioForm form)
+    private static void ExerciseEveryModuleMode(ModuleStudioForm form, Action<Form> assertSurface)
     {
         var doors = ReviewSurfaceContractTests.Flatten(form).OfType<ListBox>()
             .Single(control => control.AccessibilityObject.Name == UiStrings.ModuleDoors);
@@ -189,12 +288,12 @@ public class PseudoLocaleTests
             for (var modeIndex = 0; modeIndex < modes.Items.Count; modeIndex++)
             {
                 modes.SelectedIndex = modeIndex;
-                AssertSurfaceChromeIsCatalogBacked(form);
+                assertSurface(form);
             }
         }
     }
 
-    private static void ExerciseEveryNodeEditorVariant()
+    private static void ExerciseEveryNodeEditorVariant(Action<Form> assertSurface)
     {
         DocumentNode[] nodes =
         [
@@ -232,7 +331,7 @@ public class PseudoLocaleTests
         foreach (var node in nodes)
         {
             using var editor = new NodeEditorForm(node);
-            AssertSurfaceChromeIsCatalogBacked(editor);
+            assertSurface(editor);
             if (node is not VectorGraphic)
             {
                 continue;
@@ -243,9 +342,98 @@ public class PseudoLocaleTests
             for (var index = 0; index < primitives.Items.Count; index++)
             {
                 primitives.SelectedIndex = index;
-                AssertSurfaceChromeIsCatalogBacked(editor);
+                assertSurface(editor);
             }
         }
+    }
+
+    private static void AssertSurfaceChromeUsesReviewedFixture(
+        Form form,
+        RightToLeft expectedRightToLeft,
+        bool expectedRightToLeftLayout)
+    {
+        if (!form.Visible)
+        {
+            form.Show();
+        }
+
+        System.Windows.Forms.Application.DoEvents();
+        Assert.Equal(expectedRightToLeft, form.RightToLeft);
+        Assert.Equal(expectedRightToLeftLayout, form.RightToLeftLayout);
+
+        foreach (var control in ReviewSurfaceContractTests.Flatten(form)
+            .Where(control => control.TabStop && control.CanSelect))
+        {
+            AssertReviewedFixtureMarker(
+                control.AccessibilityObject.Name,
+                $"{form.GetType().Name} focusable {control.GetType().Name} accessible name");
+        }
+
+        AssertReviewedFixtureMarker(form.Text, $"{form.GetType().Name} title");
+        foreach (var control in ReviewSurfaceContractTests.Flatten(form))
+        {
+            if (control is Label or GroupBox or ButtonBase or TabPage
+                && !string.IsNullOrWhiteSpace(control.Text))
+            {
+                AssertReviewedFixtureMarker(
+                    control.Text,
+                    $"{form.GetType().Name} visible {control.GetType().Name} chrome");
+            }
+
+            if (control is DataGridView grid)
+            {
+                foreach (DataGridViewColumn column in grid.Columns)
+                {
+                    if (!string.IsNullOrWhiteSpace(column.HeaderText))
+                    {
+                        AssertReviewedFixtureMarker(
+                            column.HeaderText,
+                            $"{form.GetType().Name} grid header");
+                    }
+                }
+            }
+        }
+
+        foreach (var combo in ReviewSurfaceContractTests.Flatten(form).OfType<ComboBox>())
+        {
+            foreach (var item in combo.Items.Cast<object>())
+            {
+                AssertReviewedFixtureMarker(item.ToString(), $"{form.GetType().Name} combo choice");
+            }
+        }
+
+        foreach (var grid in ReviewSurfaceContractTests.Flatten(form).OfType<DataGridView>())
+        {
+            foreach (var column in grid.Columns.OfType<DataGridViewComboBoxColumn>())
+            {
+                foreach (var item in column.Items.Cast<object>())
+                {
+                    AssertReviewedFixtureMarker(item.ToString(), $"{form.GetType().Name} grid choice");
+                }
+            }
+        }
+
+        var catalogListNames = new HashSet<string>(StringComparer.Ordinal)
+        {
+            UiStrings.PressList,
+            UiStrings.ModuleDoors,
+            UiStrings.EditorVectorPrimitives,
+        };
+        foreach (var list in ReviewSurfaceContractTests.Flatten(form).OfType<ListBox>()
+            .Where(control => control.AccessibilityObject.Name is { } name
+                && catalogListNames.Contains(name)))
+        {
+            foreach (var item in list.Items.Cast<object>())
+            {
+                AssertReviewedFixtureMarker(item.ToString(), $"{form.GetType().Name} catalog list item");
+            }
+        }
+    }
+
+    private static void AssertReviewedFixtureMarker(string? text, string context)
+    {
+        Assert.False(string.IsNullOrWhiteSpace(text), $"{context} was blank.");
+        Assert.Contains(ReviewedFixtureMarker, text, StringComparison.Ordinal);
     }
 
     private static void AssertVisibleChromeIsCatalogBacked(Form form)
@@ -288,6 +476,19 @@ public class PseudoLocaleTests
                 var text = item.ToString();
                 Assert.False(string.IsNullOrWhiteSpace(text));
                 Assert.Contains("⟦", text, StringComparison.Ordinal);
+            }
+        }
+
+        foreach (var grid in ReviewSurfaceContractTests.Flatten(form).OfType<DataGridView>())
+        {
+            foreach (var column in grid.Columns.OfType<DataGridViewComboBoxColumn>())
+            {
+                foreach (var item in column.Items.Cast<object>())
+                {
+                    var text = item.ToString();
+                    Assert.False(string.IsNullOrWhiteSpace(text));
+                    Assert.Contains("⟦", text, StringComparison.Ordinal);
+                }
             }
         }
 
@@ -335,11 +536,137 @@ public class PseudoLocaleTests
         return new LoadedProject(manifest, document, null, null);
     }
 
+    private static BoardIntakePseudoFixture CreateBoardIntakePseudoFixture()
+    {
+        var store = new InMemorySessionByteStore();
+        var session = new CaptureSession(
+            new ByteImportCaptureSource(store),
+            new MetadataOnlyNormalizer(),
+            store);
+        session.CaptureAsync(
+                new CaptureRequest(ByteImportCaptureSource.Kind, "image/png", TinyPng()),
+                CancellationToken.None)
+            .GetAwaiter()
+            .GetResult();
+        session.NormalizeAsync(new NormalizationRequest(), CancellationToken.None)
+            .GetAwaiter()
+            .GetResult();
+        session.ConfirmLane(DataLane.Green);
+
+        var form = new BoardToBriefIntakeForm(
+            store,
+            session,
+            new PseudoOcrService(),
+            DistrictPolicy.Offline,
+            captureRunner: _ => DialogResult.OK,
+            noticePresenter: (_, _, _) => { });
+        return new BoardIntakePseudoFixture(form, session);
+    }
+
+    private static SyntheticReviewedCatalogFile CreateSyntheticReviewedFixtureCatalog(string direction)
+    {
+        var root = JsonNode.Parse(UiCatalogInventory.CreateTemplateJson())!.AsObject();
+        root["languageTag"] = "en-US";
+        root["direction"] = direction;
+        var review = root["review"]!.AsObject();
+        review["status"] = UiCatalogInventory.ReviewedStatus;
+        review["reviewerName"] = "Synthetic automated fixture — not protected-seat evidence";
+        review["reviewerRole"] = UiCatalogInventory.RequiredReviewerRole;
+        review["reviewedAtUtc"] = "2026-08-31T12:00:00Z";
+        var provenance = root["provenance"]!.AsObject();
+        provenance["catalogId"] = "synthetic-full-surface-projection";
+        provenance["creator"] = "Automated test fixture";
+        provenance["source"] = "Generated in memory for this test only";
+        provenance["license"] = "GPL-3.0-or-later test fixture";
+        provenance["modificationHistory"] = new JsonArray("Appended a diagnostic marker to neutral fixture text");
+
+        var strings = root["strings"]!.AsObject();
+        foreach (var pair in UiCatalogInventory.NeutralStrings)
+        {
+            strings[pair.Key] = $"{pair.Value} {ReviewedFixtureMarker}";
+        }
+
+        return SyntheticReviewedCatalogFile.FromJson(
+            root.ToJsonString(new JsonSerializerOptions { WriteIndented = true }));
+    }
+
+    private static byte[] TinyPng()
+    {
+        using var bitmap = new Bitmap(4, 4);
+        using (var graphics = Graphics.FromImage(bitmap))
+        {
+            graphics.Clear(Color.White);
+        }
+
+        using var output = new MemoryStream();
+        bitmap.Save(output, ImageFormat.Png);
+        return output.ToArray();
+    }
+
+    private sealed record BoardIntakePseudoFixture(
+        BoardToBriefIntakeForm Form,
+        CaptureSession Session) : IDisposable
+    {
+        public void Dispose() => Form.Dispose();
+    }
+
+    private sealed class MetadataOnlyNormalizer : IDocumentNormalizer
+    {
+        public Task<SourceEnvelope> NormalizeAsync(
+            SourceEnvelope source,
+            NormalizationRequest request,
+            CancellationToken cancellationToken)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            return Task.FromResult(source with { MetadataStripped = true });
+        }
+    }
+
+    private sealed class PseudoOcrService : IOcrService
+    {
+        public Task<OcrResult> RecognizeAsync(
+            SourceEnvelope source,
+            CancellationToken cancellationToken)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            return Task.FromResult(new OcrResult(
+            [
+                new OcrToken("Synthetic", 0) { ConfidenceAvailable = false },
+            ]));
+        }
+    }
+
+    private sealed class SyntheticReviewedCatalogFile : IDisposable
+    {
+        private SyntheticReviewedCatalogFile(string path)
+        {
+            Path = path;
+        }
+
+        public string Path { get; }
+
+        public string Sha256
+            => Convert.ToHexStringLower(
+                System.Security.Cryptography.SHA256.HashData(File.ReadAllBytes(Path)));
+
+        public static SyntheticReviewedCatalogFile FromJson(string json)
+        {
+            var path = System.IO.Path.Combine(
+                System.IO.Path.GetTempPath(),
+                $"honest-ink-synthetic-reviewed-projection-{Guid.NewGuid():N}.json");
+            File.WriteAllText(path, json, new UTF8Encoding(encoderShouldEmitUTF8Identifier: false));
+            return new SyntheticReviewedCatalogFile(path);
+        }
+
+        public void Dispose() => File.Delete(Path);
+    }
+
     [HeadedFact]
     public void The_pseudo_locale_switch_reaches_the_real_chrome_end_to_end()
     {
         var exe = Path.Combine(AppContext.BaseDirectory, "Foundry.App.WinForms.exe");
         using var process = Process.Start(new ProcessStartInfo(exe, $"{UiaHarness.Switch} review {UiLocale.PseudoSwitch}"))!;
+        Exception? bodyFailure = null;
         try
         {
             AutomationElement? window = null;
@@ -355,12 +682,37 @@ public class PseudoLocaleTests
             Assert.StartsWith(ProductIdentity.PublicName, window.Current.Name, StringComparison.Ordinal);
             Assert.Contains("⟦", window.Current.Name, StringComparison.Ordinal);
         }
-        finally
+        catch (Exception failure)
         {
-            if (!process.HasExited)
-            {
-                process.Kill(entireProcessTree: true);
-            }
+            bodyFailure = failure;
+        }
+
+        Exception? cleanupFailure = null;
+        try
+        {
+            HeadedProcessLifetime.TerminateAndWait(process);
+        }
+        catch (Exception failure)
+        {
+            cleanupFailure = failure;
+        }
+
+        if (bodyFailure is not null && cleanupFailure is not null)
+        {
+            throw new AggregateException(
+                "The headed pseudo-locale assertion and its child-process cleanup both failed.",
+                bodyFailure,
+                cleanupFailure);
+        }
+
+        if (bodyFailure is not null)
+        {
+            System.Runtime.ExceptionServices.ExceptionDispatchInfo.Capture(bodyFailure).Throw();
+        }
+
+        if (cleanupFailure is not null)
+        {
+            System.Runtime.ExceptionServices.ExceptionDispatchInfo.Capture(cleanupFailure).Throw();
         }
     }
 }

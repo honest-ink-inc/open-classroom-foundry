@@ -14,7 +14,7 @@ public enum UiLocaleMode
 
 /// <summary>
 /// The app-chrome locale switch (handover 2026-08-29, forge item 4 — the
-/// council's multilingual-stewardship directive). The pseudo-locale "ẋẋ"
+/// product-owner-recorded multilingual-stewardship proposal). The pseudo-locale "ẋẋ"
 /// stretches every string by at least forty percent, brackets it so truncation
 /// confesses at a glance, and forces right-to-left mirroring — so layout and
 /// mirroring defects surface before the multilingual seat's review, not during
@@ -55,7 +55,7 @@ public static class UiLocale
 
     public static UiCatalogProvenance? ActiveCatalogProvenance => _catalog?.Provenance;
 
-    public static void Configure(string[] args)
+    internal static void Configure(string[] args)
         => ConfigureCore(args, UiCatalogDeployment.ApprovedCatalogSha256);
 
     /// <summary>
@@ -121,7 +121,7 @@ public static class UiLocale
     }
 
     /// <summary>Test seam; production code configures from args and environment.</summary>
-    public static void Set(UiLocaleMode mode)
+    internal static void Set(UiLocaleMode mode)
     {
         if (mode == UiLocaleMode.ReviewedCatalog)
         {
@@ -402,6 +402,8 @@ public static class UiStrings
     public static string StatusModuleReady => T("Set the module inputs and reviewed output options, then review and approve.");
 
     public static string StatusModuleGreenRequired => T("Green confirmation is required. Unknown or learner-linked inputs remain Amber and cannot enter this studio.");
+
+    public static string StatusModuleLockInventoryReviewRequired => T("Review the source and declare every exact value that must remain unchanged in Locked facts. This confirms the source inventory only; it is not language or specialist review.");
 
     public static string StatusModuleUnavailable => T("Unavailable: {0}");
 
@@ -1104,8 +1106,9 @@ public static class UiStrings
     /// <summary>
     /// Deterministic pseudo-localization: accents most letters, keeps format
     /// placeholders and the mnemonic character intact (Alt+key still works),
-    /// pads by at least forty percent of the letter count, and brackets the
-    /// whole string so a truncated end is visible in any review or screenshot.
+    /// retains letter-derived stress padding, expands the complete string by
+    /// at least forty percent, and brackets the whole string so a truncated
+    /// end is visible in any review or screenshot.
     /// </summary>
     private static string Pseudoize(string neutral)
     {
@@ -1140,9 +1143,18 @@ public static class UiStrings
             builder.Append(Accent(ch));
         }
 
+        // The historic letter-count rule alone under-stressed strings that
+        // contain substantial punctuation, spacing, numbers, or placeholders.
+        // Keep that useful letter pressure, but also satisfy the public
+        // complete-string contract for every catalog entry.
+        var requiredLength = (int)Math.Ceiling(neutral.Length * 1.4);
+        var letterPadding = Math.Max(2, (int)Math.Ceiling(letters * 0.4));
+        var completeStringPadding = requiredLength - builder.Length - 2;
+        var padding = Math.Max(letterPadding, completeStringPadding);
+
         return builder
             .Append(' ')
-            .Append('ẋ', Math.Max(2, (int)Math.Ceiling(letters * 0.4)))
+            .Append('ẋ', padding)
             .Append('⟧')
             .ToString();
     }

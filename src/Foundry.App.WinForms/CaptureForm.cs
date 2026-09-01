@@ -142,6 +142,8 @@ public sealed class CaptureForm : Form
 
         _applyCrop = MakeButton(UiStrings.ApplyCrop, async (_, _) => await ApplyCropAsync());
         _resetCrop = MakeButton(UiStrings.ResetCrop, (_, _) => ResetCropProposal(announce: true));
+        _applyCrop.MinimumSize = new Size(0, 36);
+        _resetCrop.MinimumSize = new Size(0, 36);
 
         var cropLayout = new TableLayoutPanel
         {
@@ -185,15 +187,15 @@ public sealed class CaptureForm : Form
             UseMnemonic = false,
         };
 
-        var actions = new FlowLayoutPanel
+        var actionStack = new FlowLayoutPanel
         {
-            Dock = DockStyle.Fill,
+            AutoSize = true,
+            AutoSizeMode = AutoSizeMode.GrowAndShrink,
             FlowDirection = FlowDirection.TopDown,
             WrapContents = false,
-            AutoScroll = true,
             Padding = new Padding(12),
         };
-        actions.Controls.AddRange(
+        actionStack.Controls.AddRange(
         [
             _import,
             _safetyPause,
@@ -204,6 +206,8 @@ public sealed class CaptureForm : Form
             _confirm,
             _retryPurge,
         ]);
+        var actions = new Panel { Dock = DockStyle.Fill, AutoScroll = true };
+        actions.Controls.Add(actionStack);
 
         var previewGroup = new GroupBox
         {

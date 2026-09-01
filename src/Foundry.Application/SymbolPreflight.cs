@@ -6,7 +6,8 @@ using Foundry.Domain;
 namespace Foundry.Application;
 
 /// <summary>
-/// Council finding R2-8, binding: a symbol submission is a capture, and it walks
+/// Product-owner-adopted rehearsal requirement R2-8: a symbol submission is a
+/// capture, and it walks
 /// the same privacy preflight — metadata stripped by re-encode, teacher crop and
 /// redaction burns applied — before its bytes may reach the shelf. The raw and
 /// intermediate bytes are released from the session on the way out.

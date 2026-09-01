@@ -52,4 +52,59 @@ Cross-cutting, script-independent: `Mnemonics_are_unique…` (one unambiguous ac
 11. **A malformed fixture command could become production.** Missing, repeated, or unknown `--uia-harness` modes returned no fixture, and `Program` interpreted that as an ordinary Press Room launch. Presence of the harness switch now requires exactly one known mode or exits through a content-free refusal.
 12. **The direct export seam could overwrite an arbitrary PDF.** `--export-to` bypasses the shell's overwrite confirmation by design, so it now accepts only one new fully qualified `.pdf` directly inside the validated empty rehearsal root. Duplicates, missing values, irrelevant modes, occupied roots, alternate extensions, and outside paths fail closed; a sentinel regression proves outside bytes remain unchanged.
 
+## Under-load sighting evidence boundary (31 Aug 2026)
+
+The two historical headed timeouts remain sightings, not diagnoses. Their
+bounded reproduction harness still runs only the exact `Part3_Steps9to12…`
+and `PilotDay_dress_rehearsal…` tests, retains each TRX and full assertion
+message, and leaves the shared 20-second UIA probe timeout unchanged. The
+separate exact burned-region image-test instrument remains a fresh-process
+probe for the third historical sighting; it cannot recover the lost assertion
+message. A pass from either instrument is only a current-code
+non-reproduction.
+
+Both instruments now share one cooperative evidence lock from source
+preflight through the durable completed-batch summary. Their evidence-root
+creator validates the repository, `out`, harness base, and unique run path
+before and after creation and rejects every observed reparse-point segment.
+Each instrument refuses a dirty tree, performs a locked restore and forced
+non-incremental Release build with no build-skipping path, then records
+pre/post HEAD, status, and tracked-plus-untracked-nonignored source-content
+fingerprints together with sorted SHA-256 manifests of every file under the
+exact Release TFM output root. Any source/output drift, failed result, missing
+result, or invalid contention boundary makes the batch non-evidence and exits
+nonzero. The same unrestarted contention jobs must report `Running` immediately
+before and after every repetition; this is job-state evidence, not a measure of
+CPU utilization or scheduler pressure.
+
+After an outer-cap timeout, a shared Process-based helper gives the
+`taskkill /T /F` request ten seconds, then gives helper self-termination and
+exit observation a bounded further two seconds. Another repetition is allowed
+only when the request started, did not time out, exited 0, the helper exit was
+observed, and the original `dotnet` launcher exit was observed within the
+separate ten-second launcher wait. Those facts and any start/cleanup errors are
+retained in the per-run receipt before an unsafe batch aborts. This is not a
+Job Object or an independent enumeration or proof of descendant exit.
+
+The cooperative lock excludes only the two participating harnesses; an
+arbitrary builder does not honor it. Boundary manifests cannot detect a
+transient mutate-and-restore between snapshots, and neither the forced build
+nor matching manifests prove compiler/source correspondence or the complete
+SDK/NuGet process closure. The deliberately dirty current tree therefore
+prevented both reproduction batches from running. Only the shared helper and
+source contracts were exercised here: all three PowerShell files parsed cleanly
+and the focused tests measured **20/20 passed**. This does not retroactively
+strengthen the earlier headed **6/6** receipt or close any sighting. The ordinary
+hosted solution test remains a separate one-process instrument under
+`tools/run-ci-tests.ps1`; its own evidence boundary must not be conflated with
+these reproduction batches.
+
+### Local same-process suite sighting — 31 August 2026
+
+Two plain minimal-output executions of the complete UI Automation assembly produced no TRX and an idle testhost after more than five minutes; both were stopped locally. The same exact 243-test binary completed **243/243** with ordinary console output, with blame-hang enabled, and with VSTest diagnostic logging. The 234 nonheaded cases passed together and the nine headed cases passed together. Those timing-altered and partitioned passes narrow the observation but do not identify the active test, stack, or cause. The two stalls are therefore one newly recorded same-process suite sighting, not a diagnosis and not evidence that either historical headed timeout recurred.
+
+The audit did establish separate lifecycle defects in the test harness: the headed pseudo-locale child was killed without observing exit, `HeadedApp` ignored an unconfirmed exit, and a constructor-time UIA failure could bypass fixture disposal. Every headed child now receives a bounded kill-and-observe shutdown; constructor failure owns the same cleanup; and simultaneous assertion/cleanup failures preserve both exceptions. Two direct lifecycle tests measured forced and already-complete child exits. This hardening is independently warranted and is not represented as the cause of the stalls. The shared UIA polling stopwatch is also not called a hard bound: each synchronous UIA/COM probe can itself block before the stopwatch is checked again. A diagnosis still requires a stalled-run process inventory and native/full dumps of testhost and any surviving app child.
+
+After the lifecycle hardening, the exact plain minimal UI command completed **245/245** in 45 seconds. It then completed **245/245** in each of two full seven-suite closing runs. These are non-reproductions after a guard, not proof of causation or closure of the new sighting.
+
 The typist's self-run of the script (prep week) and the AT reviewer's moderated session (week 2) remain the evidence that closes the gate; this harness only keeps what they find fixed from regressing.

@@ -23,8 +23,14 @@ public class AssetCatalogTests
     {
         var catalog = new JsonAssetCatalog(SymbolPackDirectory());
 
+        // Exact current-build identity only. Neither this digest nor the closed
+        // root is AAC/SLP, accessibility, or rights-review evidence.
+        Assert.Equal(
+            "103D117E37090A6CBB9968AE9485D7C1CD9C7D3EEEC65B13DFC1054609D1B2A4",
+            catalog.ManifestSha256);
         Assert.Equal(13, catalog.All.Count);
         Assert.Empty(catalog.VerifyIntegrity());
+        Assert.Empty(catalog.VerifyClosedDeploymentRoot());
         Assert.All(catalog.All, asset =>
         {
             Assert.Equal("CC0-1.0", asset.License);
@@ -47,6 +53,40 @@ public class AssetCatalogTests
             var svg = System.Text.Encoding.UTF8.GetString(content.Span);
             Assert.DoesNotContain("<text", svg, StringComparison.OrdinalIgnoreCase);
             Assert.DoesNotContain("aria-label", svg, StringComparison.OrdinalIgnoreCase);
+        }
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void Closed_shipped_deployment_refuses_top_level_and_nested_unlisted_entries(bool nested)
+    {
+        var directory = Path.Combine(Path.GetTempPath(), "ocf-tests", Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(directory);
+        try
+        {
+            CopyShippedPack(directory);
+            var unlistedName = "unlisted-synthetic-entry";
+            var unlistedPath = nested
+                ? Path.Combine(directory, unlistedName, "fixture.bin")
+                : Path.Combine(directory, unlistedName + ".bin");
+            Directory.CreateDirectory(Path.GetDirectoryName(unlistedPath)!);
+            File.WriteAllText(unlistedPath, "synthetic unlisted bytes");
+
+            var catalog = new JsonAssetCatalog(directory);
+
+            // Generic pack integrity remains about declared records. Only the
+            // shipped-deployment boundary closes the root.
+            Assert.Empty(catalog.VerifyIntegrity());
+            var issue = Assert.Single(
+                catalog.VerifyClosedDeploymentRoot(),
+                candidate => candidate.Code == "asset.unexpected-deployment-entry");
+            Assert.DoesNotContain(directory, issue.Message, StringComparison.OrdinalIgnoreCase);
+            Assert.DoesNotContain(unlistedName, issue.Message, StringComparison.OrdinalIgnoreCase);
+        }
+        finally
+        {
+            Directory.Delete(directory, recursive: true);
         }
     }
 

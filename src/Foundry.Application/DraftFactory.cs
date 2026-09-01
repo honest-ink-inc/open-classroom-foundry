@@ -4,7 +4,8 @@ using Foundry.Domain;
 namespace Foundry.Application;
 
 /// <summary>
-/// Council finding RC-18, binding: a draft born of captured sources inherits the
+/// Product-owner-enacted lane invariant first surfaced by fictional rehearsal
+/// note RC-18: a draft born of captured sources inherits the
 /// highest lane among them — computed, never asserted. A requested lane may
 /// escalate the result and can never lower it: a photographed board bearing a
 /// student's name is Amber, and every derivative of it is born Amber no matter

@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
+using System.Security.Cryptography;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using Foundry.Contracts;
@@ -46,7 +47,15 @@ public sealed class JsonAssetCatalog : IAssetCatalog
         _directory = Path.TrimEndingDirectorySeparator(Path.GetFullPath(directory));
 
         var manifestPath = Path.Combine(_directory, ManifestFileName);
-        var (records, _) = AssetManifestReader.Read(manifestPath, "asset manifest");
+        var (records, manifestBytes) = AssetManifestReader.Read(manifestPath, "asset manifest");
+        try
+        {
+            ManifestSha256 = Convert.ToHexString(SHA256.HashData(manifestBytes));
+        }
+        finally
+        {
+            CryptographicOperations.ZeroMemory(manifestBytes);
+        }
 
         _assets = [];
         foreach (var provenance in records)
@@ -64,6 +73,13 @@ public sealed class JsonAssetCatalog : IAssetCatalog
     }
 
     public IReadOnlyList<AssetProvenance> All => [.. _assets.Values];
+
+    /// <summary>
+    /// SHA-256 of the exact bounded manifest bytes parsed by this instance. This
+    /// is an identity value, not a rights, AAC/SLP, accessibility, or source
+    /// review assertion.
+    /// </summary>
+    public string ManifestSha256 { get; }
 
     public AssetProvenance? Find(AssetId id)
         => _assets.TryGetValue(id, out var provenance) ? provenance : null;
@@ -181,6 +197,71 @@ public sealed class JsonAssetCatalog : IAssetCatalog
                 issues.Add(ValidationIssue.Blocking("asset.size-limit", $"Asset {id} is empty, oversized, or changed while read."));
             }
 
+        }
+
+        return issues;
+    }
+
+    /// <summary>
+    /// Closes the on-disk root used for the application's current shipped
+    /// symbol deployment. Generic symbol packs may carry separate sidecars such
+    /// as ATTRIBUTIONS.md and therefore deliberately do not use this check.
+    /// Passing this check proves only that no unlisted entry rides beside this
+    /// manifest; it grants no protected review or candidate-source admission.
+    /// </summary>
+    public IReadOnlyList<ValidationIssue> VerifyClosedDeploymentRoot()
+    {
+        var issues = new List<ValidationIssue>();
+        var expectedNames = new HashSet<string>(AssetFileSafety.FileNameComparer)
+        {
+            ManifestFileName,
+        };
+
+        foreach (var provenance in _assets.Values)
+        {
+            if (AssetFileSafety.TryResolveLeaf(_directory, provenance.FileName, out _))
+            {
+                expectedNames.Add(provenance.FileName);
+            }
+        }
+
+        try
+        {
+            var seenNames = new HashSet<string>(AssetFileSafety.FileNameComparer);
+            foreach (var entry in Directory.EnumerateFileSystemEntries(
+                _directory,
+                "*",
+                SearchOption.TopDirectoryOnly))
+            {
+                var name = Path.GetFileName(entry);
+                if (!seenNames.Add(name) || !expectedNames.Contains(name))
+                {
+                    issues.Add(ValidationIssue.Blocking(
+                        "asset.unexpected-deployment-entry",
+                        "The shipped symbol catalog contains an entry outside its closed deployment inventory."));
+                    continue;
+                }
+
+                var attributes = File.GetAttributes(entry);
+                if ((attributes & FileAttributes.Directory) != 0)
+                {
+                    issues.Add(ValidationIssue.Blocking(
+                        "asset.invalid-deployment-entry-type",
+                        "The shipped symbol catalog contains a directory where its closed deployment inventory requires files."));
+                }
+                else if ((attributes & FileAttributes.ReparsePoint) != 0)
+                {
+                    issues.Add(ValidationIssue.Blocking(
+                        "asset.reparse-deployment-entry",
+                        "The shipped symbol catalog contains a reparse entry in its closed deployment inventory."));
+                }
+            }
+        }
+        catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
+        {
+            issues.Add(ValidationIssue.Blocking(
+                "asset.unreadable-deployment-inventory",
+                "The shipped symbol catalog inventory could not be read safely."));
         }
 
         return issues;

@@ -11,6 +11,20 @@
       "foundry.domain": {
         "type": "Project"
       },
+      "foundry.modules.builtin": {
+        "type": "Project",
+        "dependencies": {
+          "Foundry.Contracts": "[1.0.0, )",
+          "Foundry.Domain": "[1.0.0, )"
+        }
+      },
+      "foundry.modules.deterministicpress": {
+        "type": "Project",
+        "dependencies": {
+          "Foundry.Contracts": "[1.0.0, )",
+          "Foundry.Domain": "[1.0.0, )"
+        }
+      },
       "foundry.rendering": {
         "type": "Project",
         "dependencies": {

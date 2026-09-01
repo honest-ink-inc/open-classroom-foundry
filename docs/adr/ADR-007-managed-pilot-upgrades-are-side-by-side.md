@@ -107,7 +107,18 @@ reported compatibility transform, not a fabricated schema migration.
    `PrepareCompatibleCopyAsync` wrapper retains the same explicit-root,
    relative-path, lock, and cleanup contract. The candidate build, if later
    authorized, opens only the complete prepared root and never writes to the
-   rollback library.
+   rollback library. The operator host supplies an exact candidate-recipe
+   inventory derived from the recipe catalogs compiled into its executing
+   build. After fully validating each held source, preparation requires an
+   ordinal match for both the pinned recipe ID and version; absence fails the
+   batch without changing or inferring a recipe identity. That compatibility
+   service and its request records are internal to the storage assembly; the
+   operator host is the only production assembly in this repository granted
+   friend access, so the application has no direct path to self-assert an
+   inventory or bypass the host's version-address gate. This is an architectural
+   API boundary, not a hostile-code security boundary: the assemblies are
+   unsigned, and full-trust reflection or a same-simple-name assembly is outside
+   the claim.
 
 7. **Make recovery boring.** Before installation, retain the prior approved
    application package, its deployment metadata, the untouched prior library,
@@ -130,9 +141,34 @@ reported compatibility transform, not a fabricated schema migration.
    root.** `Foundry.Tools.ProjectUpgradeHost` accepts only a strict schema-1 JSON
    plan containing the two explicit roots, this binary's exact target engine
    identity, and the ordered closed source-package inventory. `review` prints a
-   content-free summary and the exact plan SHA-256 without preparing anything;
-   `prepare` requires that SHA-256 back, then invokes the whole-batch service
-   once and prints only content-free receipt fields or stable failures. It does
+   content-free summary, the exact plan SHA-256, a deterministic SHA-256 of the
+   executing build's sorted candidate-recipe ID/version inventory, and a
+   separate deterministic SHA-256 of that inventory's declarative manifest
+   contracts without preparing anything. The declarative fingerprint uses
+    `recipe-contract-fingerprint.v2` and binds every `RecipeManifest` field,
+    including output schema; local-preprocessing, validator, recipe-owned
+    localization-resource, and migration identity lists; editor; renderer;
+    supported exports; the ordered §6.6 “Warnings and confirmations” declaration;
+    and evaluation version. That combined concern is represented once: every
+    manifest warning becomes a fresh required-acknowledgement warning in each
+    review through both the shared review-notice path and Module Studio. It is
+    not a second declarative confirmation-text list, and acknowledgement is not
+    protected-seat approval. The surrounding
+    `candidate-recipe-contract-inventory.v2` envelope also binds the fingerprint
+   framing identity and every constituent. The engine-owned portable-semantic-
+   editor identity is explicitly represented as
+   identity-only because it has no `RecipeManifest`. The contract inventory is
+   itself length-framed and refuses one ID/version identity that maps to
+   different declarative fingerprints. `prepare` requires all three digests
+   back, then invokes the whole-batch service once and prints only content-free
+   receipt fields or stable failures. Echoing those digests proves review/prepare
+   consistency, not approval or provenance. The present first-admission recipe
+   manifests declare honest empty lists for local preprocessing, recipe-owned
+   localization resources, and migrations; application-wide chrome catalogs do
+   not become recipe resources by implication. Real use also requires an immutable,
+   independently approved inventory record bound to the exact candidate package
+   or source commit. Neither recipe digest binds executable builder, editor,
+   renderer, schema, validator, or evaluation implementations or bytes. The host does
    not infer packages or builds and has no install, launch, delete, signing,
    versioning, distribution, or publication operation. The WinForms application
    accepts `--project-library-root <exact-existing-version-addressed-root>` only
@@ -179,13 +215,24 @@ the privacy/records authority must approve any retention change for real
 teacher-managed libraries. Signing, versioning, installation, distribution, and
 release remain outside this ADR's executable scope.
 
-The earlier operator-host and version-addressed-root implementation stops are
-closed in code and synthetic tests. That does not select a real root, review a
-real inventory, prepare a live library, install a build, or grant deployment
-authority. District IT must still approve and supply the exact plan and storage
-roots, maintain the external exclusive-write boundary, run the reviewed host,
-configure the application switch, retain rollback evidence, and decide whether
-the proposal is fit for a pilot device.
+The storage upgrade service, request, and receipt types were introduced as
+public after the alpha tag and remained public through public-main commit
+`96e37e9854861cc2a6098a9fbf05add708732e03`; they are now internal. That
+narrowing is an intentional source- and binary-compatibility break from that
+public source baseline under the present assumption that
+`Foundry.Storage` is an application implementation assembly, not a supported
+external SDK. If that assumption changes, an explicit versioned public-API
+compatibility decision and evidence are required; this ADR does not silently
+claim backward compatibility for external library consumers.
+
+The earlier operator-host, version-addressed-root, and executing-build pinned-
+recipe availability implementation stops are closed in code and synthetic
+tests. That does not select a real root, review a real inventory, prepare a live
+library, install a build, or grant deployment authority. District IT must still
+approve and supply the exact plan and storage roots, maintain the external
+exclusive-write boundary, run the reviewed host, configure the application
+switch, retain rollback evidence, and decide whether the proposal is fit for a
+pilot device.
 
 If ratified, this decision remains reversible by a superseding ADR. A particular
 upgrade remains reversible until the operator deliberately retires the prior

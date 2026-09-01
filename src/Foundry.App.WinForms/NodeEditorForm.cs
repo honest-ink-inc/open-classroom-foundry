@@ -407,6 +407,7 @@ public sealed class NodeEditorForm : Form
         {
             Dock = DockStyle.Fill,
             AccessibleName = UiStrings.WithoutMnemonic(UiStrings.EditorVectorPrimitives),
+            HorizontalScrollbar = true,
         };
         _primitiveList.SelectedIndexChanged += (_, _) => PrimitiveSelectionChanged();
 
@@ -462,6 +463,7 @@ public sealed class NodeEditorForm : Form
 
         var primitiveEditActions = new FlowLayoutPanel
         {
+            AutoScroll = true,
             AutoSize = true,
             Dock = DockStyle.Top,
             FlowDirection = FlowDirection.LeftToRight,
@@ -535,13 +537,16 @@ public sealed class NodeEditorForm : Form
 
     private CheckBox AddCheck(string key, string label, bool value)
     {
-        var control = new CheckBox
-        {
-            AutoSize = true,
-            AccessibleName = UiStrings.WithoutMnemonic(label),
-            Text = label,
-            Checked = value,
-        };
+        var control = ReflowingCheckBox.Attach(
+            new CheckBox
+            {
+                AccessibleName = UiStrings.WithoutMnemonic(label),
+                Dock = DockStyle.Fill,
+                Text = label,
+                Checked = value,
+            },
+            minimumHeight: Font.Height * 2);
+        control.MinimumSize = new Size(0, control.Font.Height * 2);
         control.CheckedChanged += (_, _) => MarkDirty();
         _checks.Add(key, control);
         AddFullWidth(control, 32);
@@ -551,7 +556,10 @@ public sealed class NodeEditorForm : Form
     private void AddRow(string label, Control control, int height)
     {
         var row = _fields.RowCount++;
-        _fields.RowStyles.Add(new RowStyle(SizeType.Absolute, height));
+        _fields.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+        control.MinimumSize = new Size(
+            control.MinimumSize.Width,
+            Math.Max(control.MinimumSize.Height, height));
         _fields.Controls.Add(new Label
         {
             AutoSize = true,
@@ -593,6 +601,8 @@ public sealed class NodeEditorForm : Form
             AllowUserToDeleteRows = false,
             AllowUserToOrderColumns = false,
             AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.Fill,
+            AutoSizeRowsMode = DataGridViewAutoSizeRowsMode.AllCells,
+            ColumnHeadersHeightSizeMode = DataGridViewColumnHeadersHeightSizeMode.AutoSize,
             Dock = DockStyle.Fill,
             MultiSelect = false,
             RowHeadersVisible = true,
@@ -773,13 +783,16 @@ public sealed class NodeEditorForm : Form
 
     private void AddPrimitiveCheck(string key, string label, bool value)
     {
-        var control = new CheckBox
-        {
-            AutoSize = true,
-            AccessibleName = UiStrings.WithoutMnemonic(label),
-            Text = label,
-            Checked = value,
-        };
+        var control = ReflowingCheckBox.Attach(
+            new CheckBox
+            {
+                AccessibleName = UiStrings.WithoutMnemonic(label),
+                Dock = DockStyle.Fill,
+                Text = label,
+                Checked = value,
+            },
+            minimumHeight: Font.Height * 2);
+        control.MinimumSize = new Size(0, control.Font.Height * 2);
         control.CheckedChanged += (_, _) => MarkPrimitiveDirty();
         _primitiveChecks.Add(key, control);
         AddPrimitiveFullWidth(control);
@@ -799,6 +812,7 @@ public sealed class NodeEditorForm : Form
             new AnchorChoice(TextAnchor.Middle, UiStrings.WithoutMnemonic(UiStrings.TextAnchorMiddle)),
             new AnchorChoice(TextAnchor.End, UiStrings.WithoutMnemonic(UiStrings.TextAnchorEnd)),
         ]);
+        ComboBoxReadingPath.EnsureEveryItemFits(_primitiveAnchor);
         _primitiveAnchor.SelectedIndex = anchor switch
         {
             TextAnchor.Start => 0,
@@ -839,7 +853,7 @@ public sealed class NodeEditorForm : Form
         }
 
         var row = _primitiveFields.RowCount++;
-        _primitiveFields.RowStyles.Add(new RowStyle(SizeType.Absolute, 32));
+        _primitiveFields.RowStyles.Add(new RowStyle(SizeType.AutoSize));
         _primitiveFields.Controls.Add(control, 0, row);
         _primitiveFields.SetColumnSpan(control, 2);
     }

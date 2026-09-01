@@ -232,6 +232,8 @@ public sealed class BoardToBriefIntakeForm : Form
 
     internal bool OperationPending => _ocrTask is { IsCompleted: false };
 
+    internal Task CaptureWork { get; private set; } = Task.CompletedTask;
+
     internal Task DisposalCleanup => _disposalCleanup ?? Task.CompletedTask;
 
     protected override void OnShown(EventArgs e)
@@ -243,7 +245,28 @@ public sealed class BoardToBriefIntakeForm : Form
         }
 
         _shown = true;
-        BeginInvoke(new Action(async () => await CaptureAndRecognizeAsync()));
+        BeginInvoke(new Action(() =>
+        {
+            CaptureWork = CaptureAndRecognizeFailClosedAsync();
+            ObserveFault(CaptureWork);
+        }));
+    }
+
+    private async Task CaptureAndRecognizeFailClosedAsync()
+    {
+        try
+        {
+            await CaptureAndRecognizeAsync();
+        }
+        catch (Exception)
+        {
+            // The top-level shown operation cannot disclose arbitrary provider
+            // or control exceptions, and it cannot leave source bytes behind
+            // an apparently usable form. Reuse the ordinary terminal boundary
+            // so OCR settles before the session is purged and closed.
+            SetStatus(UiStrings.StatusBoardIntakeImageUnavailable);
+            await RequestTerminalAsync(PendingExit.Cancel);
+        }
     }
 
     private static OwnedDependencies CreateOwnedDependencies()
@@ -333,6 +356,12 @@ public sealed class BoardToBriefIntakeForm : Form
         catch (OperationCanceledException) when (lifetimeToken.IsCancellationRequested)
         {
             // The terminal requester awaits this task before purging the store.
+        }
+        catch (Exception) when (_stopping && lifetimeToken.IsCancellationRequested)
+        {
+            // A terminal requester independently awaits and contains the OCR
+            // task before purging. The same fault must not also escape this
+            // shown-form operation through its async WinForms dispatcher.
         }
         catch (Exception failure) when (IsExpectedOcrFailure(failure))
         {
@@ -878,9 +907,8 @@ public sealed class BoardToBriefIntakeForm : Form
     {
         var intro = new Label
         {
-            Dock = DockStyle.Top,
+            Dock = DockStyle.Fill,
             AutoSize = true,
-            MaximumSize = new Size(1100, 0),
             UseMnemonic = false,
             Text = UiStrings.WithoutMnemonic(UiStrings.BoardIntakeIntroduction),
             AccessibleName = UiStrings.WithoutMnemonic(UiStrings.BoardIntakeIntroduction),
@@ -914,7 +942,12 @@ public sealed class BoardToBriefIntakeForm : Form
         manualLayout.Controls.Add(_manualInput, 0, 1);
         manualLayout.Controls.Add(_useManual, 0, 2);
 
-        var comparison = new TableLayoutPanel { Dock = DockStyle.Fill, ColumnCount = 2, RowCount = 3 };
+        var comparison = new TableLayoutPanel
+        {
+            ColumnCount = 2,
+            RowCount = 3,
+            MinimumSize = new Size(0, 350),
+        };
         comparison.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50));
         comparison.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50));
         comparison.RowStyles.Add(new RowStyle(SizeType.Percent, 42));
@@ -940,8 +973,33 @@ public sealed class BoardToBriefIntakeForm : Form
         lowerRight.RowStyles.Add(new RowStyle(SizeType.Absolute, 112));
         lowerRight.RowStyles.Add(new RowStyle(SizeType.Absolute, 148));
         lowerRight.Controls.Add(uncertainActions, 0, 0);
-        lowerRight.Controls.Add(Group(UiStrings.BoardIntakeManualTranscript, manualLayout), 0, 1);
+        var manualGroup = Group(UiStrings.BoardIntakeManualTranscript, manualLayout);
+        lowerRight.Controls.Add(manualGroup, 0, 1);
         comparison.Controls.Add(lowerRight, 1, 2);
+        var comparisonViewport = new Panel
+        {
+            Dock = DockStyle.Fill,
+            AutoScroll = true,
+        };
+        comparisonViewport.Controls.Add(comparison);
+        comparisonViewport.Layout += (_, _) =>
+        {
+            var needsVerticalScroll = comparison.MinimumSize.Height > comparisonViewport.ClientSize.Height;
+            var scrollBarWidth = needsVerticalScroll
+                ? SystemInformation.VerticalScrollBarWidth
+                : 0;
+            var widestCaptionColumn = new[] { sourceGroup, candidateGroup, verifiedGroup, manualGroup }
+                .Max(RequiredGroupWidth);
+            var desired = new Size(
+                Math.Max(
+                    checked(widestCaptionColumn * 2),
+                    Math.Max(1, comparisonViewport.ClientSize.Width - scrollBarWidth)),
+                Math.Max(comparison.MinimumSize.Height, comparisonViewport.ClientSize.Height));
+            if (comparison.Size != desired)
+            {
+                comparison.Size = desired;
+            }
+        };
 
         var roleActions = new FlowLayoutPanel { Dock = DockStyle.Bottom, AutoSize = true, WrapContents = true };
         roleActions.Controls.AddRange([_moveUp, _moveDown]);
@@ -951,13 +1009,42 @@ public sealed class BoardToBriefIntakeForm : Form
         _roleGrid.Dock = DockStyle.Fill;
         var roles = Group(UiStrings.BoardIntakeLineRoles, rolePanel);
 
-        var body = new TableLayoutPanel { Dock = DockStyle.Fill, ColumnCount = 1, RowCount = 3, AutoScroll = true, Padding = new Padding(8) };
+        var body = new TableLayoutPanel
+        {
+            Dock = DockStyle.Fill,
+            ColumnCount = 1,
+            RowCount = 3,
+            Padding = new Padding(8),
+        };
         body.RowStyles.Add(new RowStyle(SizeType.AutoSize));
-        body.RowStyles.Add(new RowStyle(SizeType.Percent, 68));
-        body.RowStyles.Add(new RowStyle(SizeType.Percent, 32));
+        body.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
+        body.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+        // Preserve a useful comparison canvas at its own workflow boundary.
+        // At the neutral default/floor the row is already taller, so no
+        // scrollbar is manufactured; expanded chrome scrolls inside the
+        // comparison rather than turning the whole form into a fixed canvas.
+        comparisonViewport.Margin = new Padding(3, 3, 24, 3);
+        roles.MinimumSize = new Size(0, 160);
+        roles.Margin = new Padding(3, 3, 24, 24);
         body.Controls.Add(intro, 0, 0);
-        body.Controls.Add(comparison, 0, 1);
+        body.Controls.Add(comparisonViewport, 0, 1);
         body.Controls.Add(roles, 0, 2);
+        body.Layout += (_, _) =>
+        {
+            var scrollBarWidth = body.VerticalScroll.Visible
+                ? SystemInformation.VerticalScrollBarWidth
+                : 0;
+            var availableWidth = Math.Max(
+                1,
+                body.ClientSize.Width
+                    - body.Padding.Horizontal
+                    - intro.Margin.Horizontal
+                    - scrollBarWidth);
+            if (intro.MaximumSize.Width != availableWidth)
+            {
+                intro.MaximumSize = new Size(availableWidth, 0);
+            }
+        };
         return new Panel { Dock = DockStyle.Fill, Controls = { body } };
     }
 
@@ -974,6 +1061,7 @@ public sealed class BoardToBriefIntakeForm : Form
             MultiSelect = false,
             SelectionMode = DataGridViewSelectionMode.FullRowSelect,
             AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.Fill,
+            ColumnHeadersHeightSizeMode = DataGridViewColumnHeadersHeightSizeMode.AutoSize,
             AccessibleName = UiStrings.WithoutMnemonic(UiStrings.BoardIntakeLineRoles),
         };
         grid.Columns.Add(new DataGridViewTextBoxColumn
@@ -1040,6 +1128,17 @@ public sealed class BoardToBriefIntakeForm : Form
         group.Controls.Add(content);
         content.Dock = DockStyle.Fill;
         return group;
+    }
+
+    private static int RequiredGroupWidth(GroupBox group)
+    {
+        var caption = group.AccessibleName ?? UiStrings.WithoutMnemonic(group.Text);
+        var required = TextRenderer.MeasureText(
+            caption,
+            group.Font,
+            Size.Empty,
+            TextFormatFlags.SingleLine | TextFormatFlags.NoPadding | TextFormatFlags.NoPrefix);
+        return required.Width + group.Margin.Horizontal + 16;
     }
 
     private void SetStatus(string template, params object?[] arguments)
