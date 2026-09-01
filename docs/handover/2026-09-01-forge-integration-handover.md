@@ -1,14 +1,14 @@
 # Forge integration handover
 
 **Prepared:** 1 September 2026
-**Integration branch:** `codex/forge-integration-2026-09-01`
-**Base:** `96e37e9` (`main`)
-**State:** current branch repository-state handover; Option A is ratified through
-the exact pushed C1/C2 sequence; C4 `5cf24a86249b35c44c557f3240455157e57e80e9`
-is pushed; its CodeQL run is green but its CI run is red on a newly named
-FlashCap lifecycle timeout; the test-only C5 bounded-native-lifecycle isolation
-candidate has completed its local close; C5 commit, push, and hosted proof remain
-pending; PR 5 remains unmerged
+**Source integration branch:** `codex/forge-integration-2026-09-01`
+**Original base:** `96e37e9854861cc2a6098a9fbf05add708732e03` (`main`)
+**State:** current repository-state handover; Option A is ratified through the
+exact C1/C2 sequence; C5 `522b1a15bd58b3f4d1c4af1f3131fa246540c6ae`
+completed its local and hosted close; pull request 5 was regularly merged on 1
+September 2026 as `85a2d695aa6f48558addce324299f4c67915a28d` with the
+original base and exact C5 as its two parents; and the resulting `main` CI and
+CodeQL push runs are green
 
 This is the compact successor record for the forge continuation accumulated in
 the [kiosk-plan evaluation](2026-08-30-kiosk-plan-evaluation.md). It inherits
@@ -18,8 +18,9 @@ not as instructions.
 
 ## Outcome in one page
 
-The working tree now contains the machine-owned implementation and evidence that
-could be completed without pretending a protected review had occurred:
+The merged `main` state now contains the machine-owned implementation and
+evidence that could be completed without pretending a protected review had
+occurred:
 
 - The authoring family has nine buildable authoring corpora: the separate
   SequenceSlate surface plus eight buildable Built-in modes. Ten Built-in doors
@@ -76,8 +77,12 @@ could be completed without pretending a protected review had occurred:
   direct C4 checkout. The retained receipt and byte-identical raw/curated TRX
   make the failure a sighting, not a diagnosis of FlashCap or cleanup. C5
   generalizes the nonparallel collection to both bounded native-lifecycle
-  classes without changing product code or any deadline; hosted proof remains
-  open.
+  classes without changing product code or any deadline. Exact-C5 PR CI run
+  `33511155971` and CodeQL run `33511155996` both completed successfully; their
+  metadata names C5 as `headSha` and their jobs checked out synthetic PR merge
+  ref `e55bdd929fea261e5910ba7e352d4a8a2c7e7fc8`. The green CI test receipt is one
+  non-reproduction in the later hosted PR run, not a diagnosis or proof of cure;
+  CodeQL is static-analysis evidence, not a test reproduction.
 - Provider and district-policy boundaries now fail closed around target
   construction, bearer acquisition, redirects, deadlines, status handling,
   response size and shape, strict UTF-8 JSON, endpoint inventory, and cancellation
@@ -186,10 +191,10 @@ the exact pair was pushed.
 ## Hosted PR finding and post-C2 repair
 
 C1 and record-only C2 `94f128cddd5cdbd00a6f7097b470e4defdebaa47`
-were pushed together on `codex/forge-integration-2026-09-01`; pull request 5
-retains both exact commits and allows a regular merge. CodeQL run `33497315024`
-completed successfully. CI run `33497314978` was red and therefore stopped the
-merge.
+were pushed together on `codex/forge-integration-2026-09-01`. At that checkpoint,
+pull request 5 retained both exact commits and was eligible for a regular merge.
+CodeQL run `33497315024` completed successfully; CI run `33497314978` was red and
+therefore stopped the merge at that checkpoint.
 
 The first reading of the bounded receipt saw only the Accessibility failure.
 Inspection of the always-retained raw TRXs corrected that report: the hosted run
@@ -267,7 +272,8 @@ suite before commit.
 C3 `4754637b6c98ccd8daf357bea7a0505a61b449ea` was committed with C2 as
 its sole parent and pushed to pull request 5. CodeQL run `33504105104`
 completed successfully. CI run `33504105140` completed red at the bounded test
-step, so the branch was not merged and the workflow was not rerun blindly.
+step, so pull request 5 remained unmerged at the C3 checkpoint and the workflow
+was not rerun blindly.
 Release build, formatting, secret scan, and every suite except one Integration
 case passed. The exact failure remained
 `ProjectUpgradeOperatorHostTests.Real_console_ctrl_c_cancels_the_process_and_cleans_the_synthetic_batch`
@@ -346,16 +352,18 @@ not rerun or relabeled. This final evidence note changes only the governed
 handover record and is followed by the full document-governance Unit suite
 before commit. C4 was then committed as
 `5cf24a86249b35c44c557f3240455157e57e80e9` and pushed; its hosted outcome is
-recorded immediately below. No merge claim exists.
+recorded immediately below. No merge claim is made for the C4 checkpoint; the
+later C5 and merge closure is recorded below.
 
-### C4 hosted result and C5 bounded native-lifecycle isolation candidate
+### C4 hosted result and C5 bounded native-lifecycle isolation
 
 CodeQL run `33507671111` completed successfully and CI run `33507671099`
 completed red. Both PR run records identify C4
 `5cf24a86249b35c44c557f3240455157e57e80e9` as `headSha` and checked out PR
 merge ref `291b048c052de3b5cc9713b5dc470c091e56035d`. PR 5 therefore remained
-unmerged and the CI run was not blindly retried. Ratification history, secret
-scan, warnings-as-errors build, and format succeeded. The bounded test step
+unmerged at the C4 checkpoint and the CI run was not blindly retried.
+Ratification history, secret scan, warnings-as-errors build, and format
+succeeded. The bounded test step
 executed every test, with
 Accessibility 26/26, Contract 152/152, Instructional Evals 336/336, Rendering
 81/81, UI Automation 261/261, Unit 835/835, and Integration 297/298. The sole
@@ -390,7 +398,7 @@ not processor-count evidence. These are non-reproductions; neither the overlap
 nor the passes establish whether cancellation propagation, cleanup, or
 continuation scheduling caused the hosted delay.
 
-The C5 candidate makes the smallest evidence-led test change. It renames the
+The C5 change makes the smallest evidence-led test change. It renames the
 test-only collection to `BoundedNativeLifecycleTestGroup`, places both the
 operator-host and FlashCap classes in that single disabled-parallelization
 collection, and adds a reflection contract that fails if either class leaves it
@@ -419,8 +427,51 @@ C2 in current ancestry. No deterministic-press source, recipe, fixture, or sampl
 input changed, so the C1 SampleGenerator proof is neither rerun nor relabeled.
 This final evidence note changes only governed documentation after the broad
 receipts and is followed by the full Unit/document-governance suite and format
-verification before commit. C5 commit, push, hosted conclusions, and merge remain
-pending.
+verification before commit.
+
+### C5 hosted and merge closure
+
+C5 was committed and pushed as
+`522b1a15bd58b3f4d1c4af1f3131fa246540c6ae`. Pull-request CI run
+`33511155971` completed successfully: build-and-test job `99866852723`, secret
+scan job `99866852854`, and portable-samples job `99869905899` all passed. Its
+bounded receipt `20260901T130655Z-ed2d7c0d8cf24f32842ba6acecb3918f` records
+**1,990/1,990 passed**: Accessibility 26, Contract 152, Instructional Evals 336,
+Integration 299, Rendering 81, UI Automation 261, and Unit 835. The raw-failure
+diagnostics step was correctly skipped because no test failed. Windows and Linux
+determinism, coverage threshold, dependency and vulnerability inventories, both
+SBOM scopes, and distributable checks passed. Pull-request CodeQL run
+`33511155996`, job `99866852704`, also completed successfully, including its
+clean-SARIF requirement.
+
+Both pull-request runs have `event=pull_request` and C5 as `headSha`; their jobs
+checked out synthetic merge ref
+`e55bdd929fea261e5910ba7e352d4a8a2c7e7fc8`, which merged C5 into original base
+`96e37e9854861cc2a6098a9fbf05add708732e03` for testing. That synthetic ref is
+not the repository merge commit. Pull request 5 was regularly merged at
+2026-09-01T13:14:26Z as
+`85a2d695aa6f48558addce324299f4c67915a28d`, whose first parent is the original
+base and whose second parent is exact C5. The merge tree is byte-identical to the
+C5 tree; C1 and single-parent record-only C2 remain intact in `main` ancestry.
+
+Main push CI run `33512198577` completed successfully on exact checkout and
+`headSha` `85a2d695aa6f48558addce324299f4c67915a28d`. Build-and-test job
+`99870367598`, secret-scan job `99870367946`, and portable-samples job
+`99873604621` all passed. Bounded receipt
+`20260901T131736Z-707a7823932b473abae84b5e0e70e57d` again records the same
+seven suite counts and **1,990/1,990 passed**. The ratification-history gate
+passed from the later regular merge, as did warnings-as-errors build, format,
+Windows and Linux determinism, coverage threshold, dependency and vulnerability
+inventories, both SBOM scopes, and distributable checks. Main push CodeQL run
+`33512198619`, job `99870367005`, completed successfully on the same exact merge
+commit, including its clean-SARIF requirement.
+
+The PR and main CI test receipts are non-reproductions of the historical and
+later hosted named under-load sightings; they do not diagnose their causes or
+prove a cure. The two CodeQL conclusions are separate static-analysis evidence.
+This integration
+closure is not a version, tag, signature, installation, distribution,
+publication, filing, protected-seat review, or release.
 
 ## Future work, in authority order
 
@@ -440,7 +491,10 @@ pending.
 5. Ratify or reject the managed-upgrade design, then obtain District IT's exact
    roots, detection, retention, deployment, smoke, and rollback policy and prove
    it on managed devices.
-6. Complete human keyboard/AT and physical-device evidence, print inspection,
+6. Keep all recorded under-load sightings open as sightings and use retained
+   receipts to seek equivalent-load reproduction before any causal fix, timeout
+   increase, or closure claim.
+7. Complete human keyboard/AT and physical-device evidence, print inspection,
    the six-week staff pilot, rights review, and all remaining release gates.
 
 The protected seats' territory remains non-waivable from the keyboard. More time
@@ -448,7 +502,7 @@ does not grant authority. Versioning, tagging, signing, installing, distributing
 publishing, filing, correspondence, protected reviews, and human evidence remain
 their named owners' acts unless that owner gives exact authority in the session.
 
-## Remaining integration evidence
+## Integration closure evidence
 
 C1's exact local build, format, two complete solution-wide receipts,
 SampleGenerator comparison, hook result, and full commit ID are recorded above.
@@ -464,12 +518,13 @@ handover record, and the document-governance Unit suite was rerun before C2 was
 committed.
 
 C1, exact C2 `94f128cddd5cdbd00a6f7097b470e4defdebaa47`, C3
-`4754637b6c98ccd8daf357bea7a0505a61b449ea`, and C4
-`5cf24a86249b35c44c557f3240455157e57e80e9` are pushed on
-`codex/forge-integration-2026-09-01`; pull request 5 remains open and unmerged.
-C4 CodeQL is green, but C4 CI is red for the distinct FlashCap lifecycle timeout
-recorded above. The C5 working tree has completed its focused, Integration, and
-two-run full local close recorded above. Its commit, push, hosted conclusions,
-merge commit, post-merge ancestry proof, and main-branch workflow conclusions do
-not yet exist. Until those results exist, this handover makes no hosted-green or
-merged claim.
+`4754637b6c98ccd8daf357bea7a0505a61b449ea`, C4
+`5cf24a86249b35c44c557f3240455157e57e80e9`, and C5
+`522b1a15bd58b3f4d1c4af1f3131fa246540c6ae` were pushed in exact order on
+`codex/forge-integration-2026-09-01`. The pull-request CI and CodeQL checks
+recorded above passed, then pull request 5 merged regularly as
+`85a2d695aa6f48558addce324299f4c67915a28d`. Main push CI `33512198577` and
+CodeQL `33512198619` both passed on that exact merge commit. This closes the
+authorized integration path measured in this handover while leaving the stated
+release stops, future work, protected reviews, and all non-diagnostic under-load
+sightings open.
