@@ -16,7 +16,9 @@ This file is canonical. It is wired to the tools that look for different names, 
 
 If a pointer file ever disagrees with this one, **this one wins and the pointer is the defect.**
 
-Note that Claude Code has been the only generator used on this repository through 30 Aug 2026, so nothing below has been exercised by a second toolchain. Treat the first Codex or other-agent session as a test of these instructions as much as of the task — and if something here proves ambiguous in practice, fix the wording rather than working around it.
+~~Note that Claude Code has been the only generator used on this repository through 30 Aug 2026, so nothing below has been exercised by a second toolchain. Treat the first Codex or other-agent session as a test of these instructions as much as of the task — and if something here proves ambiguous in practice, fix the wording rather than working around it.~~
+
+*Struck 1 Sep 2026.* Codex became the second toolchain on 1 September 2026: pull requests 5 through 8 were prepared on `codex/*` branches under these rules, closed with local and hosted evidence, and merged regularly. That session recorded no ambiguity in this file. The one rule it followed that this file had never written down is the merge-method rule under **How changes reach `main`** below, added the same day. The standing instruction survives the strike: when a rule proves ambiguous in practice, fix the wording rather than working around it, and write down what was ambiguous.
 
 ## Read before you act
 
@@ -68,6 +70,14 @@ Run these for every item, in order — the full text is in the enactment handove
 3. Full `dotnet test`, plus at least one stability re-run, with failure **names and messages** surviving your output filter.
 4. If presses changed: the SampleGenerator twice, hash-compared byte for byte.
 5. Strike the item with a dated note — never delete one — commit, push, and **read the CI run's conclusion**.
+6. Record the hosted conclusions in the [evidence ledger](docs/evidence/evidence-ledger.json). If a test failed under load and passed alone, add the row to the [sightings register](docs/evidence/sightings-register.md); never raise its timeout as part of the same change.
+
+## How changes reach `main`
+
+- Work on a branch and open a pull request. Read the CI **and** CodeQL conclusions for the exact head before merging, and read the exact-`main` runs after the merge; a green pull-request run does not stand in for either.
+- **Merge with a merge commit only. Never squash-merge, never rebase-merge, never force-push `main`.** CI's recipe-identity ratification guard requires the exact C1 and record-only C2 commits to remain in `main`'s ancestry with C1 as C2's sole parent; squashing or rebasing rewrites hashes and destroys that proof. Pull request 4 was rebase-merged on 31 Aug 2026, before the guard existed, which is why its `q1q4` branch still reads as unmerged.
+- Delete your branch after its pull request merges. A stale merged branch reads as unfinished work, and a stale rebase-merged one reads as unmerged work.
+- Cite hosted runs from the evidence ledger and sightings from the register. A handover explains decisions and boundaries; it does not restate what those two files already record.
 
 ## If you are unsure
 
