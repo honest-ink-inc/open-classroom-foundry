@@ -431,6 +431,38 @@
       "tests": null,
       "record": "docs/handover/2026-09-01-forge-integration-handover.md",
       "notes": "Clean SARIF with zero results on the exact pull request 8 merge commit."
+    },
+    {
+      "id": "ci-33557135820",
+      "kind": "hosted-ci",
+      "runId": 33557135820,
+      "workflow": "CI",
+      "event": "pull_request",
+      "branch": "claude/fifth-forge-menu-2026-09-01",
+      "headSha": "559e8b02502402d038c5ddf52c9b2072e5b3586a",
+      "checkoutSha": "e075079fb9163abff672d4e52927d58314b7d15e",
+      "conclusion": "success",
+      "createdUtc": "2026-09-01T20:45:06Z",
+      "receipt": "20260901T204825Z-fd7d2d52f19f40fe93535cfd3a598968",
+      "tests": { "passed": 2013, "total": 2013 },
+      "record": "docs/handover/2026-09-01-fifth-forge-menu.md",
+      "notes": "Pull request 9, the fifth forge menu implementation commit, on its synthetic merge checkout. Build-and-test, secret-scan, and portable-samples jobs all passed; seven suites at Accessibility 26, Contract 152, Instructional Evals 336, Integration 307, Rendering 81, UI Automation 261, Unit 850; core and module line coverage 92.8 percent. A non-reproduction of every open sighting, including S-11 and N-02 recorded the same day."
+    },
+    {
+      "id": "codeql-33557135821",
+      "kind": "hosted-codeql",
+      "runId": 33557135821,
+      "workflow": "CodeQL SAST",
+      "event": "pull_request",
+      "branch": "claude/fifth-forge-menu-2026-09-01",
+      "headSha": "559e8b02502402d038c5ddf52c9b2072e5b3586a",
+      "checkoutSha": "e075079fb9163abff672d4e52927d58314b7d15e",
+      "conclusion": "success",
+      "createdUtc": "2026-09-01T20:45:06Z",
+      "receipt": null,
+      "tests": null,
+      "record": "docs/handover/2026-09-01-fifth-forge-menu.md",
+      "notes": "Clean SARIF across one file for pull request 9 on its synthetic merge checkout; the retained codeql-sarif artifact's uploaded digest was 21db654d5c6a834b8e4c1c9179a72b52d3e8d1f4a031153f3838c12bb6d083f3, which is the artifact digest the upload step printed, not a SARIF file hash."
     }
   ]
 }
