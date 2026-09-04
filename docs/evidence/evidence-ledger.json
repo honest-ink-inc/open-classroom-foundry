@@ -704,6 +704,22 @@
       "tests": null,
       "record": "docs/handover/2026-09-03-bounded-commission-hardening.md",
       "notes": "Pull request 13 at the first hosted checkpoint. The portable locked restore passed, but the separate win-x64 application restore stopped with NU1004 because the new Foundry.ReviewPreview project reference was absent from packages.win-x64.lock.json. No build or test ran; portable-samples was skipped. The independently checksum-verified full-history secret-scan job succeeded."
+    },
+    {
+      "id": "codeql-33864488927",
+      "kind": "hosted-codeql",
+      "runId": 33864488927,
+      "workflow": "CodeQL SAST",
+      "event": "pull_request",
+      "branch": "codex/bounded-commission-hardening",
+      "headSha": "aa78c2fa5535e0744875b9ff5ba97a93af47914e",
+      "checkoutSha": null,
+      "conclusion": "success",
+      "createdUtc": "2026-09-04T10:42:23Z",
+      "receipt": null,
+      "tests": null,
+      "record": "docs/handover/2026-09-03-bounded-commission-hardening.md",
+      "notes": "The paired pull-request CodeQL run succeeded independently of the failed CI restore. Its clean-SARIF gate found zero results across one file; the retained codeql-sarif artifact's uploaded digest was d1cd69906012167d9d850511d67c75b3c5559b9e981cd65980944148bb116027, an artifact digest rather than a SARIF file hash."
     }
   ]
 }

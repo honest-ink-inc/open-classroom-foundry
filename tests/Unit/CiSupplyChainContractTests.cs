@@ -164,6 +164,67 @@ public sealed class CiSupplyChainContractTests
     }
 
     [Fact]
+    public void Application_runtime_project_closure_has_separate_locks()
+    {
+        var applicationProject = Path.Combine(
+            Root,
+            "src",
+            "Foundry.App.WinForms",
+            "Foundry.App.WinForms.csproj");
+        var closure = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        var pending = new Stack<string>();
+        pending.Push(applicationProject);
+
+        while (pending.TryPop(out var projectPath))
+        {
+            projectPath = Path.GetFullPath(projectPath);
+            Assert.True(File.Exists(projectPath), $"Runtime project reference does not exist: {projectPath}");
+            if (!closure.Add(projectPath))
+            {
+                continue;
+            }
+
+            var project = XDocument.Load(projectPath);
+            foreach (var reference in project.Descendants("ProjectReference"))
+            {
+                var include = (string?)reference.Attribute("Include");
+                Assert.False(
+                    string.IsNullOrWhiteSpace(include),
+                    $"ProjectReference in {Path.GetRelativePath(Root, projectPath)} has no Include path.");
+                pending.Push(Path.Combine(Path.GetDirectoryName(projectPath)!, include));
+            }
+        }
+
+        var malformed = new List<string>();
+        foreach (var projectPath in closure.Order(StringComparer.OrdinalIgnoreCase))
+        {
+            var lockPath = Path.Combine(Path.GetDirectoryName(projectPath)!, "packages.win-x64.lock.json");
+            try
+            {
+                using var runtimeLock = JsonDocument.Parse(File.ReadAllText(lockPath));
+                var lockRoot = runtimeLock.RootElement;
+                if (lockRoot.GetProperty("version").GetInt32() != 1
+                    || !lockRoot.GetProperty("dependencies").EnumerateObject()
+                        .Any(group => group.Name.EndsWith("/win-x64", StringComparison.Ordinal)))
+                {
+                    malformed.Add(Path.GetRelativePath(Root, lockPath));
+                }
+            }
+            catch (Exception exception) when (
+                exception is IOException or JsonException or KeyNotFoundException or InvalidOperationException)
+            {
+                malformed.Add(Path.GetRelativePath(Root, lockPath));
+            }
+        }
+
+        Assert.True(
+            malformed.Count == 0,
+            "Every project in the distributable application's reference closure must retain a separate version-1 "
+            + "win-x64 lock with an exact runtime group: "
+            + string.Join(", ", malformed));
+    }
+
+    [Fact]
     public void Human_readable_notice_acknowledges_the_version_locked_dependency_inventory()
     {
         var packageReferences = Directory.EnumerateFiles(Root, "*.csproj", SearchOption.AllDirectories)

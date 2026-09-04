@@ -217,9 +217,16 @@ serial passes are green:
   `Foundry.ReviewPreview` project was absent from
   `src/Foundry.App.WinForms/packages.win-x64.lock.json`. The full-history
   checksum-verified secret-scan job passed, while portable samples was skipped.
-  The lock was regenerated to add that exact project dependency and both local
-  locked restore commands then passed; later hosted results are separate
-  measurements, not a reinterpretation of this red run.
+  The application lock was regenerated to add that exact project dependency,
+  and the new project's separate `packages.win-x64.lock.json` was retained as
+  the twelfth runtime-graph lock. Both local locked restore commands then
+  passed; later hosted results are separate measurements, not a
+  reinterpretation of this red run.
+- The paired pull-request CodeQL run `33864488927` for that same exact head
+  independently concluded **success**. Its clean-SARIF gate found zero results
+  across one file; the retained `codeql-sarif` artifact's uploaded digest was
+  `d1cd69906012167d9d850511d67c75b3c5559b9e981cd65980944148bb116027`,
+  which is the artifact digest rather than a hash of the SARIF file.
 - Receipt `20260904T032401Z-2959235ccdb247238f179c189f753cff`
   completed red at 28 failures. The two
   `StagedTaskFixtureTests.Every_fixture_builds_validates_approves_and_renders_for_screen_and_paper`
