@@ -247,6 +247,26 @@ artifact digest. These hosted results support the Git merge decision only;
 they do not supply or bypass any human publication, schema, council, protected-
 seat, district, rights, counsel, or release authority.
 
+The final record-only head `d177424c119431bb79443104b23256c9bde2917e`
+then passed CI run `33868757925` and CodeQL run `33868757846`. All four required
+check contexts were green before merge. Pull request 13 merged regularly at
+`2026-09-04T11:47:57Z` as
+`62fa209870e5f96f36444c571d3f9588398dedb5`, whose parents are prior `main`
+`d851c6c2611147a34243b38b874831ccded54f3e` and the exact pull-request head.
+The remote and local feature branches were deleted.
+
+Exact-main CI run `33869643343` and CodeQL run `33869643322` both concluded
+**success** on that merge commit. Receipt
+`20260904T115059Z-389dc8f5f40d46c2ad48622d9590530e` recorded the same
+**2,346/2,346** suite split, no timeout, stable source and assembly identities,
+and complete evidence from a clean tree. Coverage remained 92.6 percent;
+Windows, Linux, cross-platform, first-admission baseline, vulnerability,
+inventory, and both SBOM gates passed. CodeQL again found zero results across
+one SARIF file. The evidence ledger binds both final pull-request runs, the
+two-parent merge, both exact-main runs, and their retained artifact digests.
+No site workflow, release rite, or other held human action was run as part of
+this Git close.
+
 ### Retained non-green measurements
 
 These measurements remain red or incomplete even though the final isolated and
