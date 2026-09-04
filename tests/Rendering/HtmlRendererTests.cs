@@ -42,6 +42,20 @@ public class HtmlRendererTests
     }
 
     [Fact]
+    public async Task Asset_free_approval_preserves_the_ratified_html_style_contract()
+    {
+        var html = await RenderAsync(
+            new ArtifactDocument([new Paragraph("No image is referenced.")]),
+            new RenderRequest(RenderTarget.AccessibleHtml));
+
+        Assert.Contains(
+            ".asset { display: inline-block; margin: 0.35rem; }",
+            html,
+            StringComparison.Ordinal);
+        Assert.DoesNotContain("<img", html, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public async Task Teacher_only_content_never_reaches_a_learner_rendering()
     {
         var document = new ArtifactDocument(

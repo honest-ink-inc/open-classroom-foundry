@@ -204,6 +204,22 @@ The ordered close completed on 4 September 2026:
   exact-number compile failure before the close.
 - The installed pre-commit hook scanned approximately **867.88 KB**, reported
   no leaks, and admitted the implementation commit.
+- After the runtime-lock correction, the exact branch head
+  `81cf4593a249aebeb7e33c5e1bfae3d029736673` completed local bounded receipt
+  `20260904T105253Z-ad70f18f187947069cdc35446fbbf842` at **2,345/2,345**:
+  Accessibility 26, Contract 175, Instructional Evals 336, Integration 317,
+  Rendering 84, UI Automation 263, and Unit 1,144. Source and Release test
+  assembly identities remained stable, and the run did not time out.
+- A fresh two-producer SampleGenerator audit produced the same **40 files** in
+  both directories. Comparison to the last main artifact found exactly 33
+  changed asset-free HTML files; each change was only removal of the two unused
+  `.asset` CSS rules after approval began using an exact empty asset snapshot.
+  The three PDFs, the three bilingual task-strip files, and the asset-bearing
+  agency-cards HTML were byte-identical. That was nevertheless a breach of the
+  ratified C1 first-admission bytes, not authority to rewrite their manifest.
+  The renderer now keeps the exact empty snapshot while retaining the inert CSS;
+  a fresh pair again matches the immutable 40-row baseline, whose SHA-256
+  remains `DEF10A3258A2F2ABA922DF8F1BC38FC3A3209065B36F81F44C41B4FE047F4A90`.
 
 ### Retained non-green measurements
 
@@ -227,6 +243,28 @@ serial passes are green:
   across one file; the retained `codeql-sarif` artifact's uploaded digest was
   `d1cd69906012167d9d850511d67c75b3c5559b9e981cd65980944148bb116027`,
   which is the artifact digest rather than a hash of the SARIF file.
+- Pull-request CI runs `33865026734` and `33865294610`, for respective exact
+  heads `b68d21a120db1eb59a28cbf214022613a8a5bfd5` and
+  `81cf4593a249aebeb7e33c5e1bfae3d029736673`, both concluded **failure** at
+  `First-admission sample baseline drifted`. Before that stop, the first run's
+  bounded receipt recorded **2,344/2,344** and the second recorded
+  **2,345/2,345**; the latter began and ended clean with stable source and
+  assembly identities. Both two-producer comparisons reported 40
+  byte-identical files. The first run also exposed the generated but untracked
+  twelfth runtime lock, which the next commit retained. The sample audit above
+  bounded the remaining drift to removal of two unused CSS rules from 33
+  asset-free HTML files. The repair restored those inert rules through the
+  approved exact snapshot and left the ratified baseline untouched; no failure
+  is reclassified by that repair. Coverage,
+  supply-chain, and portable-sample gates were skipped after each baseline
+  stop, while each independent secret scan succeeded.
+- Paired CodeQL runs `33865026563` and `33865294687` both concluded
+  **success**, each with zero results across one SARIF file. Their retained
+  artifact digests were respectively
+  `0f771b3fd80af81420ecd00a333f6ab5924a1f983821ff8fec0350996382a37a`
+  and
+  `6e021b7e366e266990fe081cdb8421124a3388a324462e1eb845b89b6793fc57`;
+  those are artifact digests, not hashes of the SARIF files.
 - Receipt `20260904T032401Z-2959235ccdb247238f179c189f753cff`
   completed red at 28 failures. The two
   `StagedTaskFixtureTests.Every_fixture_builds_validates_approves_and_renders_for_screen_and_paper`

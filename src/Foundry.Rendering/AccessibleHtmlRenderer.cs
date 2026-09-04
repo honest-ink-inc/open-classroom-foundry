@@ -76,9 +76,7 @@ public sealed class AccessibleHtmlRenderer : IRenderer
         var exactAssets = ExactAssetCatalogSnapshot.CaptureForApprovedOutput(
             artifact,
             _assetCatalog);
-        IAssetCatalog? approvedAssetCatalog = exactAssets.Bindings.Count == 0
-            ? null
-            : exactAssets;
+        IAssetCatalog approvedAssetCatalog = exactAssets;
 
         if (request.Target == RenderTarget.Svg)
         {
