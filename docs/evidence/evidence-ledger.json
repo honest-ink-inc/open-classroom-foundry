@@ -688,6 +688,22 @@
       "tests": null,
       "record": "docs/handover/2026-09-01-fifth-forge-menu.md",
       "notes": "Clean SARIF across one file on the exact pull request 11 merge commit; the codeql-sarif artifact's uploaded digest was 403eb0564e5375db67fe4e4146e223bfaf9e308225a1ecbead529464da5fda33, an artifact digest rather than a SARIF file hash."
+    },
+    {
+      "id": "ci-33864489086",
+      "kind": "hosted-ci",
+      "runId": 33864489086,
+      "workflow": "CI",
+      "event": "pull_request",
+      "branch": "codex/bounded-commission-hardening",
+      "headSha": "aa78c2fa5535e0744875b9ff5ba97a93af47914e",
+      "checkoutSha": null,
+      "conclusion": "failure",
+      "createdUtc": "2026-09-04T10:42:23Z",
+      "receipt": null,
+      "tests": null,
+      "record": "docs/handover/2026-09-03-bounded-commission-hardening.md",
+      "notes": "Pull request 13 at the first hosted checkpoint. The portable locked restore passed, but the separate win-x64 application restore stopped with NU1004 because the new Foundry.ReviewPreview project reference was absent from packages.win-x64.lock.json. No build or test ran; portable-samples was skipped. The independently checksum-verified full-history secret-scan job succeeded."
     }
   ]
 }

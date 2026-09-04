@@ -210,6 +210,16 @@ The ordered close completed on 4 September 2026:
 These measurements remain red or incomplete even though the final isolated and
 serial passes are green:
 
+- Pull-request CI run `33864489086` for exact hosted head
+  `aa78c2fa5535e0744875b9ff5ba97a93af47914e` concluded **failure** before
+  build or test. The portable locked restore passed; the separate `win-x64`
+  application restore reported `NU1004` because the newly referenced
+  `Foundry.ReviewPreview` project was absent from
+  `src/Foundry.App.WinForms/packages.win-x64.lock.json`. The full-history
+  checksum-verified secret-scan job passed, while portable samples was skipped.
+  The lock was regenerated to add that exact project dependency and both local
+  locked restore commands then passed; later hosted results are separate
+  measurements, not a reinterpretation of this red run.
 - Receipt `20260904T032401Z-2959235ccdb247238f179c189f753cff`
   completed red at 28 failures. The two
   `StagedTaskFixtureTests.Every_fixture_builds_validates_approves_and_renders_for_screen_and_paper`
