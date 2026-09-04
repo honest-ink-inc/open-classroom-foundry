@@ -6,11 +6,11 @@
 
 **Base:** `d851c6c2611147a34243b38b874831ccded54f3e` (`main`)
 
-**State:** current local repository-state handover. The product tree may be
-committed under the commission's later instruction if its audit closes, but it
-has not been pushed, published, released, tagged, signed, installed,
-distributed, filed, or sent to anyone. Hosted evidence does not exist for this
-tree.
+**State:** current local repository-state handover. The implementation is local
+commit `576e19148862df0540fbdf6235e7896832674d7e`; this document's completed
+evidence is the following local record-only change. Neither commit has been
+pushed, published, released, tagged, signed, installed, distributed, filed, or
+sent to anyone. Hosted evidence does not exist for this tree.
 
 ## Disposition of the commission
 
@@ -64,6 +64,17 @@ participant-reviewed record closes before a detached, non-self-hashing freeze
 manifest binds its path, version, byte length, and SHA-256. Each downstream row
 must bind both the preceding final-record digest and its completed-manifest
 digest; a frozen HOLD remains a hold rather than becoming assent.
+
+H0 now has exact, machine-checkable seat-authority, attendance, and decision
+arithmetic without claiming that any human supplied it. Each seat entry binds
+one person, appointing authority, one-calendar-year term, session scope,
+acceptance, qualification, and custodian. A disputed recusal is its own
+15-part read-back record for exactly one present affected person. Resolved
+RECUSED and NOT-RECUSED outcomes reconcile to the same need's recommendation;
+an honest no-quorum or no-majority HELD outcome cannot be converted into a
+recommendation. Immediate resignation or term expiry stops the sitting and
+requires a fresh roster cutoff and denominator. H1–H7 carry the same discrete
+recusal-record and freeze-manifest requirement.
 
 The participant-facing instruments remain held. They contain no real learner
 material, participant identity, consent record, compensation record, private
@@ -157,16 +168,92 @@ separate authorized version act.
 
 ## Local evidence
 
-This section is completed only from the final tree after the closing rites. It
-must preserve any red run with its test name and message instead of rewriting
-history around a later green run.
+The ordered close completed on 4 September 2026:
 
-- Release build: `[pending final close]`
-- Format fix and verification: `[pending final close]`
-- Bounded full-suite run 1: `[pending final close]`
-- Bounded full-suite stability run 2: `[pending final close]`
-- Two-producer SampleGenerator comparison: `[pending final close]`
-- Independent integrated and sink-inventory audit: `[pending final close]`
+- `dotnet format` fix and `--verify-no-changes` both exited 0. The post-format
+  Release solution build with warnings as errors succeeded at **0 warnings, 0
+  errors**. `git diff --check` exited 0; its only console notices were Git's
+  working-copy line-ending warnings.
+- Complete serial solution run
+  `20260904T084603Z-d1f60a4ba32041fca9818097f4e141ca` passed
+  **2,344/2,344**, zero failed and zero skipped: Accessibility 26, Contract 175,
+  Instructional Evals 336, Integration 317, Rendering 84, UI Automation 263,
+  and Unit 1,143. Its seven sorted path/hash/length TRX entries have manifest
+  SHA-256 `86651624C62DA2051A07165D61E9E8303A5A5021427B6192AF47B8A1E4186DBD`.
+- The unfiltered stability run
+  `20260904T085154Z-b316e1a2c35949bfaaeac7eaf498cdd0`, run serially against
+  exact implementation commit `576e19148862df0540fbdf6235e7896832674d7e`,
+  repeated **2,344/2,344** with the same suite counts and seven coverage files.
+  Its seven-TRX manifest SHA-256 is
+  `F08C08DF4B4A73658943043A05A6E1183E0345D7DDE2862001B6209E8E2E52A5`.
+- The required two-producer SampleGenerator comparison at that exact commit
+  used run id `20260904T085706Z-0d1b1d57924b4e22b8f87ecdd56af374`.
+  Both fresh directories held **40 files** and **769,403 bytes**; all 40 names,
+  lengths, and SHA-256 values matched. The canonical sorted
+  path/length/hash-manifest SHA-256 is
+  `00FA10352A8CD5F765E34E646E23D47B3F7E18A1A00D0E71EC2F29D2F30FF3E7`.
+- Independent audits closed the governance documents at 278/278 Atlas record
+  tests, 6/6 governance-hardening tests, and 2/2 Atlas governance tests; the
+  final cross-scope audit reran 81/81 cloud contracts and 77/77 focused
+  governance/domain tests and found no remaining P0/P1 issue. The audits found
+  and repaired semantic duplicate enums, malformed-Unicode pre-auth escapes,
+  the SampleGenerator's missing exact review catalog, and a formatter-induced
+  exact-number compile failure before the close.
+- The installed pre-commit hook scanned approximately **867.88 KB**, reported
+  no leaks, and admitted the implementation commit.
+
+### Retained non-green measurements
+
+These measurements remain red or incomplete even though the final isolated and
+serial passes are green:
+
+- Receipt `20260904T032401Z-2959235ccdb247238f179c189f753cff`
+  completed red at 28 failures. The two
+  `StagedTaskFixtureTests.Every_fixture_builds_validates_approves_and_renders_for_screen_and_paper`
+  cases (fixture indexes 28 and 29) and 23 named `HostilePackageDepthTests`
+  cases each reported
+  `System.InvalidOperationException : Approval is blocked: every referenced image requires exact Gate B asset evidence, with no missing or unrelated binding.`
+  Three UI cases—
+  `LibraryDoorTests.Reopened_All_Aboard_content_routes_pdf_to_the_semantic_exporter_with_its_assets`,
+  `ReviewSurfaceContractTests.GateB_selected_content_exposes_every_consequential_field_of_every_nonparagraph_node`,
+  and
+  `LoadedProjectPreflightTests.Exact_semantic_content_is_read_only_and_inspectable_before_Green_can_be_confirmed`—reported either that same message or
+  `System.InvalidOperationException : Gate B review refused: every referenced image requires an exact local asset catalog; a placeholder is not review evidence.`
+  Those failures measured missing test/fixture evidence and were repaired by
+  supplying the exact reviewed catalogs, not by weakening approval.
+- Receipt `20260904T035103Z-906577fa2b024bd9859cdc1e00936a7f`
+  timed out at the unchanged 900-second bound. UI Automation produced no TRX;
+  Unit recorded 889/890 with
+  `AtlasCouncilGovernanceTests.Atlas_priority_route_remains_needs_first_and_separates_each_authority`:
+  `Assert.Contains() Failure: Sub-string not found`; the retained expected
+  prefix was `The first cohort must enact a decision pr...`. The stale
+  documentation assertion was corrected; the UI signature remains open S-08.
+- A later attempted run directory,
+  `20260904T054920Z-9517248cc7b04a1a85d7d4c185f14657`, has streams but no
+  summary because its runner was interrupted. On resumption, both recorded
+  processes were absent; the exact stale marker was removed after inspection,
+  while the incomplete directory was preserved.
+- Receipt `20260904T081350Z-c5320441d5ba40f0bef1fdae213c54ea`
+  timed out with stable source and assembly identities. Accessibility 26,
+  Contract 175, Instructional Evals 336, Integration 317, Rendering 84, and
+  Unit 1,143 all passed—**2,081/2,081**—but UI Automation produced no TRX.
+  The same UI project then passed alone **263/263** in 50.6758 seconds, and both
+  complete serial passes above repeated 263/263. These are non-reproductions,
+  not a diagnosis or a reason to raise the suite's deadlines.
+- Before those retained receipts, focused pre-close runs exposed only assertion
+  drift in
+  `GovernanceDocumentHardeningTests.Compensation_and_participation_create_no_content_license_or_erasure_promise`,
+  `ReviewSessionTests.Restricted_session_never_reports_approval_ready_and_still_refuses_approval`,
+  `TruthSurfaceDocumentationTests.Print_instrument_does_not_turn_mechanical_inspection_into_protected_review`,
+  `GovernanceDocumentHardeningTests.Atlas_H0_uses_separate_choices_constituted_seats_and_a_non_circular_freeze_chain`,
+  and
+  `GovernanceDocumentHardeningTests.Human_reviews_are_ordered_and_every_freeze_record_remains_open`.
+  Their messages were `Assert.Contains() Failure: Sub-string not found` against
+  the newly separated or line-wrapped truth text; the restricted-session case
+  expected `Review cannot be approved` and observed
+  `Approval is not available: the review is not awaiting the teacher, or blocking issues remain.`
+  The assertions were aligned to the already-correct current language and all
+  later complete passes are green.
 
 ## Evidence manifest
 
@@ -175,13 +262,13 @@ the last audit correction. The manifest records files, not a release package.
 
 | Artifact | SHA-256 |
 |---|---|
-| Proposed first-cohort operating terms | `[pending final close]` |
-| Proposed corrective compensation policy | `[pending final close]` |
-| Stage-gate disposition register | `[pending final close]` |
-| Ordered H0–H7 review ledger | `[pending final close]` |
-| Proposed ADR-010 | `[pending final close]` |
-| NVDA walkthrough | `[pending final close]` |
-| Physical-print inspection instrument | `[pending final close]` |
+| Proposed first-cohort operating terms | `3BD04151B0783D9551FCD8E77C82396E082D42248EB962D63E2708C93A604A76` |
+| Proposed corrective compensation policy | `B4E3D0B33DCF97C1692E64087987C6E99B3C253FB91F1D35D67C205097DCF3A4` |
+| Stage-gate disposition register | `AAE50D216F64B8EA59B134FF734CB2296C3944F516CB1FE829CDAEF3B0F2CC38` |
+| Ordered H0–H7 review ledger | `6658773119D9CBAAF6378A6FF8C2DF3B6BE48345DD6B41C33B67D93500F0A09C` |
+| Proposed ADR-010 | `B1FE5C9A00CB595EB143F3809B23F7A3450A97E656CBDF742AA2394E329D2E79` |
+| NVDA walkthrough | `AE89473529B10BBAC8572F466FBD5A307D3BD270CE9DAF207236B4B9E4D2D304` |
+| Physical-print inspection instrument | `209DC55FBB5F6729E651B154300A2B72B17CDCB8B0A0BC2CFC553E0144FD4F8B` |
 
 ## Deviations and open authority
 
