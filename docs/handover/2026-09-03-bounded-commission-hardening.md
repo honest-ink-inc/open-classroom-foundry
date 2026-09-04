@@ -230,6 +230,23 @@ The ordered close completed on 4 September 2026:
   and Unit 1,144. The exact-commit receipt began and ended with zero working-tree
   entries.
 
+### Hosted green checkpoint
+
+Pull-request CI run `33867541168` on exact head
+`a670f273a97a292b23546144d8cfaee716a2438e` concluded **success** across all
+three jobs. Receipt `20260904T112430Z-35f8a27aa1e749d0b14cce210cf4c029`
+recorded **2,346/2,346**, no timeout, stable source and assembly identities,
+and complete evidence. Core/module line coverage was 92.6 percent; the 40-file
+Windows pair, 40-file Linux pair, cross-platform comparison, and immutable
+`DEF10A3258A2F2ABA922DF8F1BC38FC3A3209065B36F81F44C41B4FE047F4A90`
+baseline all matched. No known vulnerable NuGet dependency was reported, and
+both dependency-inventory and CycloneDX SBOM routes passed. The paired CodeQL
+run `33867541204` also concluded **success** with zero results across one SARIF
+file. The evidence ledger retains the five CI artifact digests and the CodeQL
+artifact digest. These hosted results support the Git merge decision only;
+they do not supply or bypass any human publication, schema, council, protected-
+seat, district, rights, counsel, or release authority.
+
 ### Retained non-green measurements
 
 These measurements remain red or incomplete even though the final isolated and

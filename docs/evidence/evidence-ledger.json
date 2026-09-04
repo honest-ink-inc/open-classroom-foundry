@@ -784,6 +784,38 @@
       "tests": null,
       "record": "docs/handover/2026-09-03-bounded-commission-hardening.md",
       "notes": "The paired pull-request CodeQL run succeeded with zero results across one SARIF file. The retained codeql-sarif artifact's uploaded digest was 6e021b7e366e266990fe081cdb8421124a3388a324462e1eb845b89b6793fc57, an artifact digest rather than a SARIF file hash."
+    },
+    {
+      "id": "ci-33867541168",
+      "kind": "hosted-ci",
+      "runId": 33867541168,
+      "workflow": "CI",
+      "event": "pull_request",
+      "branch": "codex/bounded-commission-hardening",
+      "headSha": "a670f273a97a292b23546144d8cfaee716a2438e",
+      "checkoutSha": "c20ffb8809231ca8c25dffb390f3d14ad0c523bf",
+      "conclusion": "success",
+      "createdUtc": "2026-09-04T11:21:15Z",
+      "receipt": "20260904T112430Z-35f8a27aa1e749d0b14cce210cf4c029",
+      "tests": { "passed": 2346, "total": 2346 },
+      "record": "docs/handover/2026-09-03-bounded-commission-hardening.md",
+      "notes": "Exact pull-request head after the immutable-sample repair and its record-only close. All three jobs succeeded. The seven suites passed 2,346/2,346 with no timeout, stable source/assembly identities, and complete evidence; core/module line coverage was 92.6 percent. Windows A/B and Linux A/B each matched across all 40 files, all 40 Windows/Linux files matched, and the ratified DEF10A3258A2F2ABA922DF8F1BC38FC3A3209065B36F81F44C41B4FE047F4A90 baseline matched. No known vulnerable NuGet dependency was reported; both dependency inventories and CycloneDX SBOM gates passed. Artifact digests: bounded-test-evidence 4a36a289f8c5d9ccf520bf0b58b42330a91d69654f47b7379bc399f83a3cf6ae, windows-sample-baseline f023e766d6c22f33caed54e8a2b3aedece7dca58a3aeb817a46532746813f758, linux-sample-candidate c28af1d84257f72cbe7082145942aa96125f21ace5ad289c8a7d70618282691a, build-evidence 42835bbb47a568017282d68a5a4cbb7b62fc0c7cabc6bfb0c57338faf611bcb8, and recipe-identity-ratification-history 5f4506f26a85fbf140865e9e16fd428c0962d6c6b2f3112c1faba49a9a24875b."
+    },
+    {
+      "id": "codeql-33867541204",
+      "kind": "hosted-codeql",
+      "runId": 33867541204,
+      "workflow": "CodeQL SAST",
+      "event": "pull_request",
+      "branch": "codex/bounded-commission-hardening",
+      "headSha": "a670f273a97a292b23546144d8cfaee716a2438e",
+      "checkoutSha": null,
+      "conclusion": "success",
+      "createdUtc": "2026-09-04T11:21:15Z",
+      "receipt": null,
+      "tests": null,
+      "record": "docs/handover/2026-09-03-bounded-commission-hardening.md",
+      "notes": "The paired exact-head CodeQL run succeeded with zero results across one SARIF file. The retained codeql-sarif artifact's uploaded digest was a98cdef6b2de704d1572914f1cbfd86ac6856e22961f0f1abc15a32923e872b5, an artifact digest rather than a SARIF file hash."
     }
   ]
 }
