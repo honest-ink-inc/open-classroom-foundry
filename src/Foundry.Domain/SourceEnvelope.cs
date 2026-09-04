@@ -11,6 +11,16 @@ public readonly record struct SessionByteReference(Guid Token)
 }
 
 /// <summary>
+/// Records whether a lane is an established classification or the fail-safe
+/// Amber placeholder used before a teacher resolves otherwise unknown input.
+/// </summary>
+public enum DataLaneBasis
+{
+    Established = 0,
+    ProvisionalUnknown = 1,
+}
+
+/// <summary>
 /// Everything the engine knows about one piece of source material. Original
 /// filenames and paths are discarded unless explicitly required.
 /// </summary>
@@ -21,4 +31,12 @@ public sealed record SourceEnvelope(
     DataLane Lane,
     bool MetadataStripped,
     string TeacherStatedRights,
-    SessionByteReference Bytes);
+    SessionByteReference Bytes)
+{
+    /// <summary>
+    /// Established is the safe default for callers constructing an explicit
+    /// classification. Capture sources must opt into ProvisionalUnknown, which
+    /// is valid only with <see cref="LanePolicy.DefaultForUnknown"/>.
+    /// </summary>
+    public DataLaneBasis LaneBasis { get; init; } = DataLaneBasis.Established;
+}

@@ -4,7 +4,7 @@
 
 **Plan version:** 2.0 — regenerated 29 August 2026, applying The Master's Review 1.0 (amendments 1–7; findings F2, F5–F11 incorporated)  
 **Date:** 29 August 2026  
-**Status (31 August 2026):** Foundation, the deterministic press, SequenceSlate, and the reachable Green built-in studios are implemented; protected-seat review, pilot evidence, packaging, release, and the remaining roadmap stay open. ADR-008 fixes current public display names and ADR-009 corrects the lesson-design display to StrandPlan, while preserving all stable internal identifiers. See the [current handover](handover/2026-08-30-kiosk-plan-evaluation.md).
+**Status (3 September 2026):** Foundation and the deterministic press are implemented; SequenceSlate and the reachable Green built-in studios are engineering prototypes, not protected-seat or classroom-validated products. SequenceSlate's constitutionally required AAC/SLP co-design, every other protected-seat review, pilot evidence, packaging, release, and the remaining roadmap stay open. ADR-008 fixes current public display names and ADR-009 corrects the lesson-design display to StrandPlan, while preserving all stable internal identifiers. The bounded commission prepared non-operative governance terms, hardened approval and output seams, and filed ADR-010 as Proposed without convening or ratifying any human decision. See the [current handover](handover/2026-09-03-bounded-commission-hardening.md).
 **License intention:** Application code and first-party recipes under GNU GPL-3.0-or-later; other content and assets governed by explicit, compatible licenses  
 **Initial operating environment:** .NET 10 on managed Windows 10/11 devices, local-first authoring, optional district-governed Azure OpenAI inference  
 
@@ -518,7 +518,7 @@ Prefer original, CC0, CC BY, or CC BY-SA artwork for the libre symbol core. Unkn
 
 Prefer OFL fonts and preserve required notices, naming obligations, embedding permissions, and script coverage. Translations require contributor rights, attribution, locale/script, review status, and the exact source-string version.
 
-Public tests, documentation, issue reports, and CI use synthetic, teacher-authored, public-domain, or OER material only. No student page enters source control, a release, a crash report, or an evaluation fixture.
+Public tests, documentation, issue reports, and CI use project-supplied synthetic, public-domain, or compatibly openly licensed material only. Outside or member-authored teacher material remains outside the repository until the exact content license is chosen and that author separately assents to its matching contribution terms; project-owner-directed factual governance, status, and repository-maintenance prose is the narrow first-party maintenance route under the current all-rights-reserved documentation default. No student page enters source control, a release, a crash report, or an evaluation fixture.
 
 CI fails if a shipped file lacks provenance or rights status. Each release includes LICENSES, COPYING, NOTICE/ATTRIBUTIONS, an asset manifest, an SBOM, SECURITY.md, contribution terms, trademark policy, and a takedown process.
 

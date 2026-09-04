@@ -45,7 +45,10 @@ internal static class SymbolPreflight
             var rawReference = store.Put(rawImage);
             var envelope = new SourceEnvelope(
                 "symbol-submission", mimeType, 1, LanePolicy.DefaultForUnknown,
-                MetadataStripped: false, teacherStatedRights, rawReference);
+                MetadataStripped: false, teacherStatedRights, rawReference)
+            {
+                LaneBasis = DataLaneBasis.ProvisionalUnknown,
+            };
 
             var normalized = await normalizer.NormalizeAsync(envelope, normalization, cancellationToken).ConfigureAwait(false);
             cancellationToken.ThrowIfCancellationRequested();
@@ -56,6 +59,7 @@ internal static class SymbolPreflight
                 || !string.Equals(normalized.SourceKind, envelope.SourceKind, StringComparison.Ordinal)
                 || normalized.PageCount != envelope.PageCount
                 || normalized.Lane != envelope.Lane
+                || normalized.LaneBasis != envelope.LaneBasis
                 || !string.Equals(
                     normalized.TeacherStatedRights,
                     envelope.TeacherStatedRights,

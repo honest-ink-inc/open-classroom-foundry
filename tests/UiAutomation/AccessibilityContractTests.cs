@@ -670,10 +670,15 @@ public class ReviewSurfaceContractTests
             machine.Transition(state);
         }
 
+        var document = new ArtifactDocument(nodes);
+        var assets = SyntheticAssetCatalog.ForDocument(document);
         return new ReviewSession(
-            DraftArtifact.New(new ArtifactDocument(nodes), DataLane.Green),
+            DraftArtifact.New(document, DataLane.Green),
             machine,
-            new DefaultArtifactValidator());
+            new DefaultArtifactValidator(),
+            new ReviewViewContext(
+                new RenderRequest(RenderTarget.PrintHtml),
+                assetCatalog: assets));
     }
 
     internal static IReadOnlyList<Control> TabStops(Form form)

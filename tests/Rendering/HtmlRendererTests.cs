@@ -12,8 +12,16 @@ public class HtmlRendererTests
 {
     private static readonly DateTimeOffset SomeInstant = new(2026, 8, 29, 12, 0, 0, TimeSpan.Zero);
 
-    private static ApprovedArtifact Approve(ArtifactDocument document)
-        => ApprovalGate.Approve(DraftArtifact.New(document, DataLane.Green), "teacher@example.org", [], SomeInstant);
+    private static ApprovedArtifact Approve(ArtifactDocument document, IAssetCatalog? catalog = null)
+    {
+        var reviewedAssets = ExactAssetCatalogSnapshot.CaptureForReview(document, catalog);
+        return ApprovalGate.Approve(
+            DraftArtifact.New(document, DataLane.Green),
+            "teacher@example.org",
+            [],
+            SomeInstant,
+            reviewedAssets.Bindings);
+    }
 
     private static async Task<string> RenderAsync(ArtifactDocument document, RenderRequest request)
     {
@@ -31,6 +39,20 @@ public class HtmlRendererTests
         Assert.DoesNotContain("<script>", html, StringComparison.Ordinal);
         Assert.Contains("&lt;script&gt;", html, StringComparison.Ordinal);
         Assert.DoesNotContain("onerror=y>", html, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task Asset_free_approval_preserves_the_ratified_html_style_contract()
+    {
+        var html = await RenderAsync(
+            new ArtifactDocument([new Paragraph("No image is referenced.")]),
+            new RenderRequest(RenderTarget.AccessibleHtml));
+
+        Assert.Contains(
+            ".asset { display: inline-block; margin: 0.35rem; }",
+            html,
+            StringComparison.Ordinal);
+        Assert.DoesNotContain("<img", html, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -109,14 +131,14 @@ public class HtmlRendererTests
     }
 
     [Fact]
-    public async Task Image_placeholders_are_explicit_never_silent_gaps()
+    public void Image_references_without_exact_gate_b_assets_are_not_approvable()
     {
-        var html = await RenderAsync(
-            new ArtifactDocument([new ImageReference(new AssetId("symbols.stop.v1"), "A red stop sign")]),
-            new RenderRequest(RenderTarget.AccessibleHtml));
+        var document = new ArtifactDocument(
+            [new ImageReference(new AssetId("symbols.stop.v1"), "A red stop sign")]);
 
-        Assert.Contains("data-asset-id=\"symbols.stop.v1\"", html, StringComparison.Ordinal);
-        Assert.Contains("A red stop sign", html, StringComparison.Ordinal);
+        var error = Assert.Throws<InvalidOperationException>(() => Approve(document));
+
+        Assert.Contains("placeholder is not review evidence", error.Message, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -126,7 +148,9 @@ public class HtmlRendererTests
             "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 10 10\"><circle cx=\"5\" cy=\"5\" r=\"4\"/></svg>");
         var id = new AssetId("symbols.safe.v1");
         var catalog = new OneAssetCatalog(id, svg, "image/svg+xml");
-        var artifact = Approve(new ArtifactDocument([new ImageReference(id, "A plain circle")]));
+        var artifact = Approve(
+            new ArtifactDocument([new ImageReference(id, "A plain circle")]),
+            catalog);
         var renderer = new AccessibleHtmlRenderer(catalog);
 
         var first = await renderer.RenderAsync(
@@ -151,7 +175,10 @@ public class HtmlRendererTests
             "<svg xmlns=\"http://www.w3.org/2000/svg\"><script>alert(1)</script></svg>");
         var processingInstruction = Encoding.UTF8.GetBytes(
             "<?xml-stylesheet href=\"https://example.invalid/hostile.css\"?><svg xmlns=\"http://www.w3.org/2000/svg\"><circle cx=\"5\" cy=\"5\" r=\"4\"/></svg>");
-        var artifact = Approve(new ArtifactDocument([new ImageReference(id, "A symbol")]));
+        var reviewedCatalog = new OneAssetCatalog(id, safe, "image/svg+xml");
+        var artifact = Approve(
+            new ArtifactDocument([new ImageReference(id, "A symbol")]),
+            reviewedCatalog);
 
         await Assert.ThrowsAsync<InvalidOperationException>(() =>
             new AccessibleHtmlRenderer(new OneAssetCatalog(id, safe, "image/svg+xml", recordedContent: active))
@@ -162,6 +189,54 @@ public class HtmlRendererTests
         await Assert.ThrowsAsync<InvalidOperationException>(() =>
             new AccessibleHtmlRenderer(new OneAssetCatalog(id, processingInstruction, "image/svg+xml"))
                 .RenderAsync(artifact, new RenderRequest(RenderTarget.AccessibleHtml), CancellationToken.None));
+    }
+
+    [Fact]
+    public async Task Same_asset_bytes_with_changed_rights_provenance_are_refused_after_approval()
+    {
+        var id = new AssetId("symbols.rights-bound.v1");
+        var content = Encoding.UTF8.GetBytes(
+            "<svg xmlns=\"http://www.w3.org/2000/svg\"><circle cx=\"5\" cy=\"5\" r=\"4\"/></svg>");
+        var document = new ArtifactDocument([new ImageReference(id, "A rights-bound symbol")]);
+        var reviewedCatalog = new OneAssetCatalog(
+            id,
+            content,
+            "image/svg+xml",
+            license: "CC0-1.0");
+        var substitutedCatalog = new OneAssetCatalog(
+            id,
+            content,
+            "image/svg+xml",
+            license: "LicenseRef-unreviewed-replacement");
+        var artifact = Approve(document, reviewedCatalog);
+
+        var error = await Assert.ThrowsAsync<InvalidOperationException>(() =>
+            new AccessibleHtmlRenderer(substitutedCatalog).RenderAsync(
+                artifact,
+                new RenderRequest(RenderTarget.AccessibleHtml),
+                CancellationToken.None));
+
+        Assert.Contains("exact asset bytes, MIME types, and provenance reviewed", error.Message, StringComparison.Ordinal);
+    }
+
+    [Theory]
+    [InlineData(0xD800)]
+    [InlineData(0xD801)]
+    public void Invalid_utf16_provenance_is_refused_instead_of_lossily_fingerprinted(
+        int invalidCodeUnit)
+    {
+        var id = new AssetId("symbols.invalid-provenance-text.v1");
+        var content = Encoding.UTF8.GetBytes(
+            "<svg xmlns=\"http://www.w3.org/2000/svg\"><circle cx=\"5\" cy=\"5\" r=\"4\"/></svg>");
+        var document = new ArtifactDocument([new ImageReference(id, "A symbol")]);
+        var invalidLicense = new string((char)invalidCodeUnit, 1);
+        var catalog = new OneAssetCatalog(
+            id,
+            content,
+            "image/svg+xml",
+            license: invalidLicense);
+
+        Assert.Throws<EncoderFallbackException>(() => Approve(document, catalog));
     }
 
     [Fact]
@@ -242,11 +317,15 @@ public class HtmlRendererTests
         var second = Encoding.UTF8.GetBytes(
             "<svg xmlns=\"http://www.w3.org/2000/svg\"><circle cx=\"5\" cy=\"5\" r=\"4\"/></svg>");
         var catalog = new MutatingCatalog(firstId, original, mutated, secondId, second);
-        var artifact = Approve(new ArtifactDocument(
+        var document = new ArtifactDocument(
         [
             new ImageReference(firstId, "First symbol"),
             new ImageReference(secondId, "Second symbol"),
-        ]));
+        ]);
+        var reviewedCatalog = new StaticAssetCatalog(
+            (firstId, "first.svg", original),
+            (secondId, "second.svg", second));
+        var artifact = Approve(document, reviewedCatalog);
 
         var output = await new AccessibleHtmlRenderer(catalog).RenderAsync(
             artifact,
@@ -271,7 +350,7 @@ public class HtmlRendererTests
             new ImageReference(id, "A plain circle"),
             new Card("First: Begin", "Begin the task"),
             new TeacherOnlyNotice("Teacher-only prompt"),
-        ]));
+        ]), catalog);
         var renderer = new AccessibleHtmlRenderer(catalog);
 
         var first = await renderer.RenderAsync(
@@ -421,12 +500,13 @@ public class HtmlRendererTests
             "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 10 10\"><circle cx=\"5\" cy=\"5\" r=\"4\"/></svg>");
         var id = new AssetId("symbols.repeated.v1");
         var catalog = new OneAssetCatalog(id, svg, "image/svg+xml");
+        var reviewedCatalog = new OneAssetCatalog(id, svg, "image/svg+xml");
         var document = new ArtifactDocument(
             [.. Enumerable.Range(1, 4)
                 .Select(index => (DocumentNode)new ImageReference(id, $"Repeated symbol {index}"))]);
 
         var output = await new AccessibleHtmlRenderer(catalog).RenderAsync(
-            Approve(document),
+            Approve(document, reviewedCatalog),
             new RenderRequest(RenderTarget.AccessibleHtml),
             CancellationToken.None);
         var html = Encoding.UTF8.GetString(output.Content.Span);
@@ -445,10 +525,11 @@ public class HtmlRendererTests
             [.. Enumerable.Range(1, 513)
                 .Select(index => (DocumentNode)new ImageReference(id, $"Reference {index}"))]);
 
+        var countCatalog = new OneAssetCatalog(id, smallSvg, "image/svg+xml");
         var countException = await Assert.ThrowsAsync<InvalidOperationException>(() =>
-            new AccessibleHtmlRenderer(new OneAssetCatalog(id, smallSvg, "image/svg+xml"))
+            new AccessibleHtmlRenderer(countCatalog)
                 .RenderAsync(
-                    Approve(tooManyReferences),
+                    Approve(tooManyReferences, countCatalog),
                     new RenderRequest(RenderTarget.AccessibleHtml),
                     CancellationToken.None));
         Assert.Contains("image-reference limit", countException.Message, StringComparison.Ordinal);
@@ -459,10 +540,11 @@ public class HtmlRendererTests
             [.. Enumerable.Range(1, 28)
                 .Select(index => (DocumentNode)new ImageReference(id, $"Large reference {index}"))]);
 
+        var budgetCatalog = new OneAssetCatalog(id, largeSvg, "image/svg+xml");
         var budgetException = await Assert.ThrowsAsync<InvalidOperationException>(() =>
-            new AccessibleHtmlRenderer(new OneAssetCatalog(id, largeSvg, "image/svg+xml"))
+            new AccessibleHtmlRenderer(budgetCatalog)
                 .RenderAsync(
-                    Approve(repeatedLargeAsset),
+                    Approve(repeatedLargeAsset, budgetCatalog),
                     new RenderRequest(RenderTarget.AccessibleHtml),
                     CancellationToken.None));
         Assert.Contains("cumulative embedded-derivative budget", budgetException.Message, StringComparison.Ordinal);
@@ -484,18 +566,18 @@ public class HtmlRendererTests
         var beyondBudget = new ArtifactDocument(
             [.. Enumerable.Range(1, 5)
                 .Select(index => (DocumentNode)new ImageReference(id, $"Large raster {index}"))]);
-        var renderer = new AccessibleHtmlRenderer(
-            new OneAssetCatalog(id, compressedLargeRaster, "image/png"));
+        var rasterCatalog = new OneAssetCatalog(id, compressedLargeRaster, "image/png");
+        var renderer = new AccessibleHtmlRenderer(rasterCatalog);
 
         var admitted = await renderer.RenderAsync(
-            Approve(withinBudget),
+            Approve(withinBudget, rasterCatalog),
             new RenderRequest(RenderTarget.AccessibleHtml),
             CancellationToken.None);
         Assert.False(admitted.Content.IsEmpty);
 
         var exception = await Assert.ThrowsAsync<InvalidOperationException>(() =>
             renderer.RenderAsync(
-                Approve(beyondBudget),
+                Approve(beyondBudget, rasterCatalog),
                 new RenderRequest(RenderTarget.AccessibleHtml),
                 CancellationToken.None));
         Assert.Contains("cumulative raster-decode budget", exception.Message, StringComparison.Ordinal);
@@ -759,12 +841,16 @@ public class HtmlRendererTests
     }
 
     [Fact]
-    public async Task Symbol_svg_without_the_exact_catalog_is_refused()
+    public async Task Approved_symbol_output_without_the_exact_reviewed_catalog_is_refused()
     {
-        var artifact = Approve(new ArtifactDocument(
-            [new ImageReference(new AssetId("symbols.missing.v1"), "Missing symbol"), new Card("Card", "Card")]));
+        var id = new AssetId("symbols.missing.v1");
+        var content = Encoding.UTF8.GetBytes("<svg xmlns=\"http://www.w3.org/2000/svg\"/>");
+        var reviewedCatalog = new OneAssetCatalog(id, content, "image/svg+xml");
+        var artifact = Approve(
+            new ArtifactDocument([new ImageReference(id, "Missing symbol"), new Card("Card", "Card")]),
+            reviewedCatalog);
 
-        await Assert.ThrowsAsync<NotSupportedException>(() =>
+        await Assert.ThrowsAsync<InvalidOperationException>(() =>
             new AccessibleHtmlRenderer().RenderAsync(
                 artifact,
                 new RenderRequest(RenderTarget.Svg),
@@ -827,7 +913,13 @@ public class HtmlRendererTests
             BuildPng(1, 1, includeEnd: true),
             "image/png",
             onContentRead: cancelled.Cancel);
-        var artifact = Approve(new ArtifactDocument([new ImageReference(id, "Synthetic cancellation proof")]));
+        var reviewedCatalog = new OneAssetCatalog(
+            id,
+            BuildPng(1, 1, includeEnd: true),
+            "image/png");
+        var artifact = Approve(
+            new ArtifactDocument([new ImageReference(id, "Synthetic cancellation proof")]),
+            reviewedCatalog);
 
         await Assert.ThrowsAnyAsync<OperationCanceledException>(() =>
             new AccessibleHtmlRenderer(catalog).RenderAsync(
@@ -982,6 +1074,52 @@ public class HtmlRendererTests
         return crc;
     }
 
+    private sealed class StaticAssetCatalog : IAssetCatalog
+    {
+        private readonly IReadOnlyDictionary<AssetId, (AssetProvenance Provenance, byte[] Content)> _assets;
+
+        internal StaticAssetCatalog(params (AssetId Id, string FileName, byte[] Content)[] assets)
+        {
+            _assets = assets.ToDictionary(
+                asset => asset.Id,
+                asset => (
+                    new AssetProvenance(
+                        asset.Id,
+                        $"concept.{asset.Id.Value}",
+                        "1.0.0",
+                        asset.FileName,
+                        "image/svg+xml",
+                        "synthetic test",
+                        "synthetic test",
+                        "CC0-1.0",
+                        Convert.ToHexString(SHA256.HashData(asset.Content)),
+                        "Synthetic fixture",
+                        "Synthetic fixture",
+                        Redistributable: true),
+                    asset.Content.ToArray()));
+        }
+
+        public IReadOnlyList<AssetProvenance> All
+            => [.. _assets.Values.Select(asset => asset.Provenance)];
+
+        public AssetProvenance? Find(AssetId id)
+            => _assets.TryGetValue(id, out var asset) ? asset.Provenance : null;
+
+        public bool TryGetContent(AssetId id, out ReadOnlyMemory<byte> content, out string mimeType)
+        {
+            if (_assets.TryGetValue(id, out var asset))
+            {
+                content = asset.Content;
+                mimeType = asset.Provenance.MimeType;
+                return true;
+            }
+
+            content = default;
+            mimeType = string.Empty;
+            return false;
+        }
+    }
+
     private sealed class OneAssetCatalog : IAssetCatalog
     {
         private readonly ReadOnlyMemory<byte> _content;
@@ -997,7 +1135,8 @@ public class HtmlRendererTests
             ReadOnlyMemory<byte> content,
             string mimeType,
             ReadOnlyMemory<byte>? recordedContent = null,
-            Action? onContentRead = null)
+            Action? onContentRead = null,
+            string license = "CC0-1.0")
         {
             _content = content;
             _onContentRead = onContentRead;
@@ -1009,7 +1148,7 @@ public class HtmlRendererTests
                 mimeType,
                 "test",
                 "test",
-                "CC0-1.0",
+                license,
                 Convert.ToHexString(SHA256.HashData((recordedContent ?? content).Span)),
                 "Test symbol",
                 "A symbol",
@@ -1104,11 +1243,11 @@ public class HtmlRendererTests
                 fileName,
                 "image/svg+xml",
                 "synthetic test",
-                "test",
+                "synthetic test",
                 "CC0-1.0",
                 Convert.ToHexString(SHA256.HashData(content)),
-                "Synthetic mutation proof",
-                "A synthetic symbol",
+                "Synthetic fixture",
+                "Synthetic fixture",
                 Redistributable: true);
     }
 }

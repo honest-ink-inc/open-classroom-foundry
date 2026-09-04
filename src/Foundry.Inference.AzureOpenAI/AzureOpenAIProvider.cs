@@ -16,9 +16,9 @@ namespace Foundry.Inference.AzureOpenAI;
 /// caller-supplied bearer-token factory (Entra); no API key exists anywhere in
 /// this codebase. Requests are stateless chat completions with JSON output and
 /// temperature zero; every failure maps to the plan §12 taxonomy rather than
-/// leaking as an exception. Strict per-recipe JSON schemas bind here when the
-/// schema registry lands; until then json_object mode plus the engine's strict
-/// parsers carry the contract.
+/// leaking as an exception. Every call requires a registered, locally supported
+/// strict schema, and returned JSON is validated against that same schema before
+/// it can become a successful draft input.
 /// </summary>
 public sealed class AzureOpenAIProvider : IInferenceProvider, IDisposable
 {
@@ -26,6 +26,7 @@ public sealed class AzureOpenAIProvider : IInferenceProvider, IDisposable
     internal const int MaxResponseJsonDepth = 16;
     internal const int MaxDeploymentIdentifierLength = 128;
     internal const int MaxApiVersionLength = 64;
+    internal const int MaxResponseFormatSchemaNameLength = 64;
 
     private static readonly TimeSpan ProductionTotalDeadline = TimeSpan.FromSeconds(100);
     private static readonly UTF8Encoding StrictUtf8 = new(
@@ -130,7 +131,7 @@ public sealed class AzureOpenAIProvider : IInferenceProvider, IDisposable
         _responseValidationStarting = responseValidationStarting;
         _capabilities = new ProviderCapabilities(
             "azure-openai", deploymentId, PinnedModelVersion: null,
-            SupportsImageInput: true, SupportsStructuredOutput: true,
+            SupportsImageInput: true, SupportsStructuredOutput: _schemaRegistry is not null,
             EndpointOrigin: origin);
     }
 
@@ -147,6 +148,16 @@ public sealed class AzureOpenAIProvider : IInferenceProvider, IDisposable
         ArgumentNullException.ThrowIfNull(request);
         cancellationToken.ThrowIfCancellationRequested();
         EgressGate.EnsureProviderMatches(request, _capabilities);
+
+        if (!TryResolveOutputSchema(
+                request.Request.OutputSchemaId,
+                out var responseFormatSchemaName,
+                out var outputSchema))
+        {
+            return InferenceResult.Failure(InferenceOutcome.UnsupportedCapability);
+        }
+
+        using var strictOutputSchema = outputSchema;
 
         using var message = new HttpRequestMessage(
             HttpMethod.Post,
@@ -187,7 +198,10 @@ public sealed class AzureOpenAIProvider : IInferenceProvider, IDisposable
                 return InferenceResult.Failure(InferenceOutcome.Unauthorized);
             }
 
-            message.Content = new StringContent(BuildBody(request.Request), Encoding.UTF8, "application/json");
+            message.Content = new StringContent(
+                BuildBody(request.Request, responseFormatSchemaName, strictOutputSchema),
+                Encoding.UTF8,
+                "application/json");
 
             using var response = await _http.SendAsync(
                 message,
@@ -236,7 +250,7 @@ public sealed class AzureOpenAIProvider : IInferenceProvider, IDisposable
                 var responseBytes = responseBuffer.AsMemory(0, responseLength);
                 _responseValidationStarting?.Invoke();
                 var result = successResponse
-                    ? MapSuccessfulResponse(responseBytes)
+                    ? MapSuccessfulResponse(responseBytes, strictOutputSchema)
                     : MapBadRequest(responseBytes);
                 operationToken.ThrowIfCancellationRequested();
                 return result;
@@ -318,7 +332,9 @@ public sealed class AzureOpenAIProvider : IInferenceProvider, IDisposable
         }
     }
 
-    private static InferenceResult MapSuccessfulResponse(ReadOnlyMemory<byte> body)
+    private static InferenceResult MapSuccessfulResponse(
+        ReadOnlyMemory<byte> body,
+        StrictOutputSchema outputSchema)
     {
         if (!IsStrictUtf8(body.Span))
         {
@@ -386,6 +402,11 @@ public sealed class AzureOpenAIProvider : IInferenceProvider, IDisposable
             if (string.IsNullOrWhiteSpace(content) || !IsStrictStructuredObject(content))
             {
                 return InferenceResult.Failure(InferenceOutcome.MalformedOutput);
+            }
+
+            if (!outputSchema.Matches(content))
+            {
+                return InferenceResult.Failure(InferenceOutcome.SchemaMismatch);
             }
 
             return InferenceResult.Success(content);
@@ -566,7 +587,10 @@ public sealed class AzureOpenAIProvider : IInferenceProvider, IDisposable
         }
     }
 
-    private string BuildBody(InferenceRequest request)
+    private static string BuildBody(
+        InferenceRequest request,
+        string responseFormatSchemaName,
+        StrictOutputSchema outputSchema)
     {
         using var stream = new MemoryStream();
         using (var writer = new Utf8JsonWriter(stream))
@@ -575,30 +599,14 @@ public sealed class AzureOpenAIProvider : IInferenceProvider, IDisposable
             writer.WriteNumber("temperature", 0);
             writer.WriteNumber("n", 1);
 
-            // Strict schema binding when the registry knows this schema: malformed
-            // output becomes unrepresentable at generation time. Otherwise JSON-object
-            // mode — the engine's strict parsers still hold the line.
-            var schemaJson = _schemaRegistry?.FindSchemaJson(request.OutputSchemaId);
             writer.WriteStartObject("response_format");
-            if (schemaJson is not null)
-            {
-                writer.WriteString("type", "json_schema");
-                writer.WriteStartObject("json_schema");
-                writer.WriteString("name", request.OutputSchemaId.Replace('.', '_'));
-                writer.WriteBoolean("strict", true);
-                writer.WritePropertyName("schema");
-                using (var schema = JsonDocument.Parse(schemaJson))
-                {
-                    schema.RootElement.WriteTo(writer);
-                }
-
-                writer.WriteEndObject();
-            }
-            else
-            {
-                writer.WriteString("type", "json_object");
-            }
-
+            writer.WriteString("type", "json_schema");
+            writer.WriteStartObject("json_schema");
+            writer.WriteString("name", responseFormatSchemaName);
+            writer.WriteBoolean("strict", true);
+            writer.WritePropertyName("schema");
+            outputSchema.WriteProviderSchema(writer);
+            writer.WriteEndObject();
             writer.WriteEndObject();
 
             writer.WriteStartArray("messages");
@@ -635,5 +643,57 @@ public sealed class AzureOpenAIProvider : IInferenceProvider, IDisposable
         }
 
         return Encoding.UTF8.GetString(stream.ToArray());
+    }
+
+    private bool TryResolveOutputSchema(
+        string outputSchemaId,
+        out string responseFormatSchemaName,
+        out StrictOutputSchema outputSchema)
+    {
+        responseFormatSchemaName = string.Empty;
+        outputSchema = null!;
+        if (_schemaRegistry is null
+            || !TryMapResponseFormatSchemaName(outputSchemaId, out responseFormatSchemaName))
+        {
+            return false;
+        }
+
+        try
+        {
+            return StrictOutputSchema.TryCreate(
+                _schemaRegistry.FindSchemaJson(outputSchemaId),
+                out outputSchema);
+        }
+        catch (Exception)
+        {
+            // A registry is a capability boundary. Lookup failures cannot turn
+            // into an unstructured request or escape as provider exceptions.
+            return false;
+        }
+    }
+
+    private static bool TryMapResponseFormatSchemaName(
+        string? outputSchemaId,
+        out string responseFormatSchemaName)
+    {
+        responseFormatSchemaName = string.Empty;
+        if (string.IsNullOrWhiteSpace(outputSchemaId))
+        {
+            return false;
+        }
+
+        var mapped = outputSchemaId.Replace('.', '_');
+        if (mapped.Length > MaxResponseFormatSchemaNameLength
+            || mapped.Any(character => character is not (
+                >= 'A' and <= 'Z'
+                or >= 'a' and <= 'z'
+                or >= '0' and <= '9'
+                or '_' or '-')))
+        {
+            return false;
+        }
+
+        responseFormatSchemaName = mapped;
+        return true;
     }
 }

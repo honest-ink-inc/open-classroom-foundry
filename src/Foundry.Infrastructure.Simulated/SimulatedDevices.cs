@@ -28,7 +28,10 @@ public sealed class SimulatedCameraSource(ISessionByteStore store, ReadOnlyMemor
             Lane: LanePolicy.DefaultForUnknown,
             MetadataStripped: false,
             TeacherStatedRights: string.Empty,
-            Bytes: reference));
+            Bytes: reference)
+        {
+            LaneBasis = DataLaneBasis.ProvisionalUnknown,
+        });
     }
 }
 
@@ -41,10 +44,15 @@ public sealed class VirtualPrintSink : IPrinter
 
     public IReadOnlyList<RecordedPrintJob> Jobs => _jobs;
 
-    public Task PrintAsync(ApprovedArtifact artifact, PrintRequest request, CancellationToken cancellationToken)
+    public Task PrintAsync(
+        ApprovedArtifact artifact,
+        PrintRequest request,
+        CancellationToken cancellationToken,
+        AmberSinkAuthorization? amberAuthorization = null)
     {
         ArgumentNullException.ThrowIfNull(artifact);
         ArgumentNullException.ThrowIfNull(request);
+        ArtifactSinkAuthorizationGate.DemandPrint(artifact, amberAuthorization);
         cancellationToken.ThrowIfCancellationRequested();
 
         _jobs.Add(new RecordedPrintJob(artifact.Receipt, request));
@@ -60,10 +68,15 @@ public sealed class RecordingExporter : IExporter
 
     public IReadOnlyList<RecordedExport> Exports => _exports;
 
-    public Task ExportAsync(ApprovedArtifact artifact, ExportRequest request, CancellationToken cancellationToken)
+    public Task ExportAsync(
+        ApprovedArtifact artifact,
+        ExportRequest request,
+        CancellationToken cancellationToken,
+        AmberSinkAuthorization? amberAuthorization = null)
     {
         ArgumentNullException.ThrowIfNull(artifact);
         ArgumentNullException.ThrowIfNull(request);
+        ArtifactSinkAuthorizationGate.DemandExport(artifact, amberAuthorization);
         cancellationToken.ThrowIfCancellationRequested();
 
         _exports.Add(new RecordedExport(artifact.Receipt, request));
@@ -87,13 +100,8 @@ public sealed class RecordingProjectStore : IProjectStore
     {
         ArgumentNullException.ThrowIfNull(artifact);
         ArgumentNullException.ThrowIfNull(request);
+        ArtifactSinkAuthorizationGate.DemandGreenSave(artifact);
         cancellationToken.ThrowIfCancellationRequested();
-
-        if (artifact.Revision.Lane != DataLane.Green)
-        {
-            throw new InvalidOperationException(
-                $"Only Green-lane products may be saved to the project library; this artifact is {artifact.Revision.Lane}.");
-        }
 
         _saves.Add(new RecordedProjectSave(artifact.Receipt, request));
         return Task.CompletedTask;

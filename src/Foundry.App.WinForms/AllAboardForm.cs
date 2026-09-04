@@ -462,6 +462,16 @@ public sealed class AllAboardForm : Form
             return;
         }
 
+        try
+        {
+            ArtifactSinkAuthorizationGate.DemandPrint(approved, amberAuthorization: null);
+        }
+        catch (Exception failure) when (IsExpectedPrintViewFailure(failure))
+        {
+            SetStatus(UiStrings.StatusPrintViewRefused);
+            return;
+        }
+
         _printViewInProgress = true;
         UpdateGatedButtons();
         SetStatus(UiStrings.StatusPrintViewOpening);
@@ -514,6 +524,11 @@ public sealed class AllAboardForm : Form
 
         try
         {
+            // The picker is part of the Export operation: even asking for a
+            // destination must not run for an artifact whose lane cannot use
+            // the sink.
+            ArtifactSinkAuthorizationGate.DemandExport(approved, amberAuthorization: null);
+
             var choice = _exportPicker();
             if (choice is null)
             {

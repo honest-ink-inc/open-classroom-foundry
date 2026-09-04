@@ -472,6 +472,16 @@ public sealed class PressRoomForm : Form
             return;
         }
 
+        try
+        {
+            ArtifactSinkAuthorizationGate.DemandPrint(approved, amberAuthorization: null);
+        }
+        catch (Exception failure) when (IsExpectedPrintViewFailure(failure))
+        {
+            SetStatus(UiStrings.StatusPrintViewRefused);
+            return;
+        }
+
         _printViewInProgress = true;
         UpdateGatedButtons();
         SetStatus(UiStrings.StatusPrintViewOpening);
@@ -541,6 +551,10 @@ public sealed class PressRoomForm : Form
         ExportChoice? choice = null;
         try
         {
+            // The picker is part of the Export operation. Refuse the lane
+            // before invoking any supplied or production destination picker.
+            ArtifactSinkAuthorizationGate.DemandExport(approved, amberAuthorization: null);
+
             choice = _exportPicker();
             if (choice is null)
             {
@@ -788,7 +802,7 @@ public sealed class PressRoomForm : Form
                 _context.Name + "-tiles", "deterministic-press",
                 DeterministicPressRecipes.BigPrint.Id, DeterministicPressRecipes.BigPrint.Version);
         var session = AppServices.SessionOverRecipe(
-            DraftArtifact.TrustedLayoutDerivative(ApprovedResult, tiled, DataLane.Green),
+            DraftArtifact.TrustedLayoutDerivative(ApprovedResult, tiled),
             new DefaultArtifactValidator(),
             DeterministicPressRecipes.BigPrint);
         var generation = ++_stateGeneration;

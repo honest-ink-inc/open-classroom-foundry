@@ -4,7 +4,7 @@ This file is the human-readable companion to the asset ledger. Every shipped ass
 
 ## Application code
 
-- **Open Classroom Foundry** — © the Open Classroom Foundry contributors, licensed under GNU GPL-3.0-or-later ([COPYING](COPYING)).
+- **Open Classroom Foundry application code, tests, and first-party recipes** — © the Open Classroom Foundry contributors, licensed under GNU GPL-3.0-or-later ([COPYING](COPYING)). Documentation, original printable content, and assets follow the separate [README licensing boundaries](README.md#licensing); this notice does not extend the GPL to them.
 - Descended from **Writer's Kiosk** (https://github.com/Spacejunk-io/writers-kiosk-csharp), audited baseline commit `c2b670b`; inherited components are refactored behind interfaces during Release 0.0 under the same authorship.
 
 ## Third-party dependencies
@@ -23,4 +23,4 @@ Rights concerns about any asset or file in this repository follow the same priva
 
 ## Trademarks
 
-All product and module names are working titles, not trademark clearances. PECS® is a registered trademark of Pyramid Educational Consultants; this project makes no PECS alignment, equivalence, certification, or protocol claim (implementation plan, binding corrections).
+Honest Ink and the current public module display names are ratified identities under ADR-006, ADR-008, and ADR-009, but those decisions are not trademark clearances; counsel review remains a pre-release checkpoint. Open Classroom Foundry remains the working repository and engineering title. PECS® is a registered trademark of Pyramid Educational Consultants; this project makes no PECS alignment, equivalence, certification, or protocol claim (implementation plan, binding corrections).

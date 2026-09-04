@@ -258,6 +258,7 @@ public static partial class AppServices
     {
         ArgumentNullException.ThrowIfNull(artifact);
         ArgumentException.ThrowIfNullOrWhiteSpace(destination);
+        ArtifactSinkAuthorizationGate.DemandExport(artifact, amberAuthorization: null);
 
         cancellationToken.ThrowIfCancellationRequested();
         AccessibleHtmlRenderer.ValidateTextScaleContract(new RenderRequest(
@@ -647,6 +648,7 @@ public static partial class AppServices
         bool targetLanguageFirst = false,
         IAssetCatalog? assetCatalog = null)
     {
+        ArtifactSinkAuthorizationGate.DemandPrint(artifact, amberAuthorization: null);
         var content = Render(
             artifact,
             new RenderRequest(RenderTarget.PrintHtml, audience, textScalePercent, targetLanguageFirst),

@@ -28,10 +28,44 @@ public sealed class EdgePdfExporter : IExporter
         _renderer = renderer ?? throw new ArgumentNullException(nameof(renderer));
     }
 
-    public async Task ExportAsync(ApprovedArtifact artifact, ExportRequest request, CancellationToken cancellationToken)
+    public Task ExportAsync(
+        ApprovedArtifact artifact,
+        ExportRequest request,
+        CancellationToken cancellationToken,
+        AmberSinkAuthorization? amberAuthorization = null)
     {
         ArgumentNullException.ThrowIfNull(artifact);
         ArgumentNullException.ThrowIfNull(request);
+        var renderAuthorization = ArtifactSinkAuthorizationGate.DelegateRenderWithinExport(
+            artifact,
+            amberAuthorization);
+        return ExportCoreAsync(artifact, request, renderAuthorization, cancellationToken);
+    }
+
+    /// <summary>
+    /// Narrow fallback used only after WindowsPdfPrinter has admitted the exact
+    /// artifact under Print authority and attenuated it to Render. This method
+    /// is internal to the Windows assembly and never accepts or creates Export
+    /// authority; its destination is the printer-owned temporary PDF.
+    /// </summary>
+    internal Task ExportWithinPrintAsync(
+        ApprovedArtifact artifact,
+        ExportRequest request,
+        AmberSinkAuthorization? renderAuthorization,
+        CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(artifact);
+        ArgumentNullException.ThrowIfNull(request);
+        ArtifactSinkAuthorizationGate.DemandRender(artifact, renderAuthorization);
+        return ExportCoreAsync(artifact, request, renderAuthorization, cancellationToken);
+    }
+
+    private async Task ExportCoreAsync(
+        ApprovedArtifact artifact,
+        ExportRequest request,
+        AmberSinkAuthorization? renderAuthorization,
+        CancellationToken cancellationToken)
+    {
 
         if (request.Target != RenderTarget.PrintPdf)
         {
@@ -44,7 +78,8 @@ public sealed class EdgePdfExporter : IExporter
         var rendered = await _renderer.RenderAsync(
             artifact,
             PrintHtmlRequest(request),
-            cancellationToken).ConfigureAwait(false);
+            cancellationToken,
+            renderAuthorization).ConfigureAwait(false);
 
         var tempDirectory = Path.Combine(Path.GetTempPath(), EngineIdentity.InternalId, "print");
         Directory.CreateDirectory(tempDirectory);

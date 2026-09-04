@@ -314,7 +314,7 @@ public class ArchitectureRulesTests
 
     // D19 Q1 and Q2: the layering rule is the project's own (plan 6.2, src/README.md,
     // ADR-001), but until now it was asserted a project at a time, and five of the
-    // fourteen were not asserted about at all. Scattered per-project rules are how
+    // original fourteen were not asserted about at all. Scattered per-project rules are how
     // those five gaps opened; completeness is the whole content of the rule, so this
     // is one map rather than five more tests.
     //
@@ -336,6 +336,7 @@ public class ArchitectureRulesTests
             ["Foundry.Modules.BuiltIn"] = ["Foundry.Contracts", "Foundry.Domain"],
             ["Foundry.Modules.DeterministicPress"] = ["Foundry.Contracts", "Foundry.Domain"],
             ["Foundry.Rendering"] = ["Foundry.Contracts", "Foundry.Domain"],
+            ["Foundry.ReviewPreview"] = ["Foundry.Contracts", "Foundry.Domain", "Foundry.Rendering"],
             ["Foundry.Storage"] = ["Foundry.Contracts", "Foundry.Domain", "Foundry.Rendering"],
             ["Foundry.App.WinForms"] =
             [
@@ -345,6 +346,7 @@ public class ArchitectureRulesTests
                 "Foundry.Modules.BuiltIn",
                 "Foundry.Modules.DeterministicPress",
                 "Foundry.Rendering",
+                "Foundry.ReviewPreview",
                 "Foundry.Storage",
             ],
         };

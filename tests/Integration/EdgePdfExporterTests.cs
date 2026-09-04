@@ -113,17 +113,19 @@ public class EdgePdfExporterTests
         var symbol = Encoding.UTF8.GetBytes(
             "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 100 100\" role=\"img\"><title>Synthetic stop marker</title><rect x=\"5\" y=\"5\" width=\"90\" height=\"90\" fill=\"#fff\" stroke=\"#000\"/></svg>");
         var catalog = new OneAssetCatalog(symbolId, symbol, "image/svg+xml");
-        var artifact = ApprovalGate.Approve(
-            DraftArtifact.New(new ArtifactDocument(
+        var document = new ArtifactDocument(
             [
                 new Heading(1, "Synthetic asset-backed routine"),
                 new StepRow(
                     "Stop at the synthetic marker.",
                     new ImageReference(symbolId, "A synthetic stop marker")),
-            ]), DataLane.Green),
+            ]);
+        var artifact = ApprovalGate.Approve(
+            DraftArtifact.New(document, DataLane.Green),
             "synthetic-reviewer@example.invalid",
             [],
-            SomeInstant);
+            SomeInstant,
+            ExactAssetCatalogSnapshot.CaptureForReview(document, catalog).Bindings);
         var destination = Path.Combine(
             Path.GetTempPath(),
             "ocf-tests",

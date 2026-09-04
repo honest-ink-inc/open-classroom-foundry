@@ -14,6 +14,8 @@ public class AzureOpenAIProviderTests
 {
     private static readonly DateTimeOffset SomeInstant = new(2026, 8, 29, 12, 0, 0, TimeSpan.Zero);
     private const string Endpoint = "https://district.example/";
+    private const string EmptyObjectSchema =
+        """{"type":"object","properties":{},"required":[],"additionalProperties":false}""";
     private static readonly string[] Allowlist = ["https://district.example"];
     private static readonly ProviderCapabilities AzureCapabilities = new(
         "azure-openai",
@@ -186,17 +188,24 @@ public class AzureOpenAIProviderTests
         string apiVersion = "2024-10-21",
         int maxResponseBytes = AzureOpenAIProvider.ProductionMaxResponseBytes,
         TimeSpan? totalDeadline = null,
-        Action? responseValidationStarting = null) => new(
+        Action? responseValidationStarting = null,
+        IOutputSchemaRegistry? schemaRegistry = null) => new(
         handler,
         endpoint ?? new Uri(Endpoint),
         deploymentId,
         Allowlist,
         bearerTokenFactory ?? (_ => Task.FromResult("entra-token")),
         apiVersion,
-        schemaRegistry: null,
+        schemaRegistry: schemaRegistry ?? TestSchemas(),
         maxResponseBytes,
         totalDeadline,
         responseValidationStarting);
+
+    private static InMemorySchemaRegistry TestSchemas()
+        => new(new Dictionary<string, string>
+        {
+            ["schema.all-aboard.v1"] = EmptyObjectSchema,
+        });
 
     private static HttpResponseMessage JsonResponse(HttpStatusCode status, string body)
         => Response(
@@ -264,7 +273,8 @@ public class AzureOpenAIProviderTests
             new Uri("https://elsewhere.example/"),
             "district-gpt",
             Allowlist,
-            _ => Task.FromResult("token")));
+            _ => Task.FromResult("token"),
+            schemaRegistry: TestSchemas()));
 
         Assert.Contains("allowlist", exception.Message, StringComparison.Ordinal);
     }
@@ -277,7 +287,8 @@ public class AzureOpenAIProviderTests
             new Uri("http://district.example/"),
             "district-gpt",
             ["http://district.example"],
-            _ => Task.FromResult("token")));
+            _ => Task.FromResult("token"),
+            schemaRegistry: TestSchemas()));
 
         Assert.Contains("HTTPS", exception.Message, StringComparison.Ordinal);
     }
@@ -292,7 +303,8 @@ public class AzureOpenAIProviderTests
             new Uri(Endpoint),
             "district-gpt",
             Allowlist,
-            _ => Task.FromResult("token"));
+            _ => Task.FromResult("token"),
+            schemaRegistry: TestSchemas());
 
         Assert.False(sockets.AllowAutoRedirect);
     }
@@ -314,18 +326,19 @@ public class AzureOpenAIProviderTests
     public async Task A_successful_completion_returns_structured_output_with_bearer_auth_and_zero_temperature()
     {
         var handler = new StubHandler(HttpStatusCode.OK,
-            """{"choices":[{"finish_reason":"stop","message":{"role":"assistant","content":"{\"steps\":3}"}}]}""");
+            """{"choices":[{"finish_reason":"stop","message":{"role":"assistant","content":"{}"}}]}""");
 
         var result = await Provider(handler).CompleteAsync(Previewed(), CancellationToken.None);
 
         Assert.True(result.IsSuccess);
-        Assert.Equal("""{"steps":3}""", result.StructuredJson);
+        Assert.Equal("{}", result.StructuredJson);
 
         Assert.Equal("Bearer", handler.LastRequest!.Headers.Authorization!.Scheme);
         Assert.DoesNotContain("api-key", handler.LastBody!, StringComparison.OrdinalIgnoreCase);
         Assert.Contains("\"temperature\":0", handler.LastBody, StringComparison.Ordinal);
         Assert.Contains("\"n\":1", handler.LastBody, StringComparison.Ordinal);
-        Assert.Contains("json_object", handler.LastBody, StringComparison.Ordinal);
+        Assert.Contains("\"type\":\"json_schema\"", handler.LastBody, StringComparison.Ordinal);
+        Assert.Contains("\"strict\":true", handler.LastBody, StringComparison.Ordinal);
         Assert.Contains("data:image/png;base64,", handler.LastBody, StringComparison.Ordinal);
         Assert.Contains("district-gpt/chat/completions", handler.LastRequest.RequestUri!.AbsoluteUri, StringComparison.Ordinal);
     }
@@ -503,7 +516,7 @@ public class AzureOpenAIProviderTests
     [Fact]
     public async Task A_valid_response_exactly_at_the_byte_boundary_is_accepted()
     {
-        var json = Encoding.UTF8.GetBytes(SuccessEnvelope("{\"bounded\":true}"));
+        var json = Encoding.UTF8.GetBytes(SuccessEnvelope());
         var cap = json.Length + 32;
         var exact = new byte[cap];
         json.CopyTo(exact, 0);
@@ -516,7 +529,7 @@ public class AzureOpenAIProviderTests
             .CompleteAsync(Previewed(), CancellationToken.None);
 
         Assert.True(result.IsSuccess);
-        Assert.Equal("{\"bounded\":true}", result.StructuredJson);
+        Assert.Equal("{}", result.StructuredJson);
         Assert.Equal(cap, stream.BytesRead);
     }
 

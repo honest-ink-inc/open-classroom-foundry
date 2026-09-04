@@ -851,6 +851,16 @@ public sealed class ModuleStudioForm : Form
             return;
         }
 
+        try
+        {
+            ArtifactSinkAuthorizationGate.DemandPrint(approved, amberAuthorization: null);
+        }
+        catch (Exception failure) when (IsExpectedPrintViewFailure(failure))
+        {
+            SetStatus(UiStrings.StatusPrintViewRefused);
+            return;
+        }
+
         _printViewInProgress = true;
         UpdateGatedButtons();
         SetStatus(UiStrings.StatusPrintViewOpening);
@@ -909,6 +919,19 @@ public sealed class ModuleStudioForm : Form
         var context = _context;
         if (approved is null || context is null)
         {
+            return;
+        }
+
+        try
+        {
+            // The injected writer remains a file sink. Bind authorization to
+            // Export before publishing any in-progress or cancellation state,
+            // so a refused artifact cannot begin an export attempt.
+            ArtifactSinkAuthorizationGate.DemandExport(approved, amberAuthorization: null);
+        }
+        catch (InvalidOperationException refusal)
+        {
+            SetStatus(UiStrings.StatusRefused, refusal.Message);
             return;
         }
 

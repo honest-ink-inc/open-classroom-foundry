@@ -1,0 +1,20 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <ItemGroup>
+    <ProjectReference Include="..\Foundry.Domain\Foundry.Domain.csproj" />
+    <ProjectReference Include="..\Foundry.Contracts\Foundry.Contracts.csproj" />
+    <ProjectReference Include="..\Foundry.Rendering\Foundry.Rendering.csproj" />
+  </ItemGroup>
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="Foundry.App.WinForms" />
+    <InternalsVisibleTo Include="Foundry.Tests.Rendering" />
+  </ItemGroup>
+
+</Project>

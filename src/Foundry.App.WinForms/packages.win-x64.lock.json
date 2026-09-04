@@ -204,6 +204,14 @@
           "Foundry.Domain": "[1.0.0, )"
         }
       },
+      "foundry.reviewpreview": {
+        "type": "Project",
+        "dependencies": {
+          "Foundry.Contracts": "[1.0.0, )",
+          "Foundry.Domain": "[1.0.0, )",
+          "Foundry.Rendering": "[1.0.0, )"
+        }
+      },
       "foundry.storage": {
         "type": "Project",
         "dependencies": {

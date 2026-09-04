@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 using System.Net;
 using System.Text;
+using Foundry.Application;
 using Foundry.Contracts;
 using Foundry.Domain;
 using Foundry.Modules.DeterministicPress;
@@ -49,11 +50,7 @@ public static class SampleGallery
         {
             var definition = PressRoomCatalog.ById(id);
             var document = definition.Build(new PressInputs(PressRoomCatalog.Defaults(definition)));
-            var approved = ApprovalGate.Approve(
-                DraftArtifact.New(document, DataLane.Green),
-                "site-gallery@honest-ink.org",
-                DocumentValidator.Validate(document),
-                ApprovedAt);
+            var approved = ReviewGreenFixture(document);
             var svg = renderer.RenderAsync(
                     approved, new RenderRequest(RenderTarget.Svg, RenderAudience.Learner), CancellationToken.None)
                 .GetAwaiter().GetResult();
@@ -69,5 +66,30 @@ public static class SampleGallery
         }
 
         return builder.ToString();
+    }
+
+    private static ApprovedArtifact ReviewGreenFixture(ArtifactDocument document)
+    {
+        var machine = new JobStateMachine();
+        foreach (var state in new[]
+        {
+            JobState.Imported,
+            JobState.Normalized,
+            JobState.DataLaneConfirmed,
+            JobState.DraftGenerated,
+            JobState.SchemaValidated,
+            JobState.InvariantsValidated,
+            JobState.AwaitingTeacherReview,
+        })
+        {
+            machine.Transition(state);
+        }
+
+        var review = new ReviewSession(
+            DraftArtifact.New(document, DataLane.Green),
+            machine,
+            new DefaultArtifactValidator());
+        review.SetRequiredIssuesAcknowledged(true);
+        return review.Approve("site-gallery@honest-ink.org", ApprovedAt);
     }
 }

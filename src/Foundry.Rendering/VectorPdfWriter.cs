@@ -69,8 +69,16 @@ public static class VectorPdfWriter
         ApprovedArtifact artifact,
         RenderAudience audience,
         CancellationToken cancellationToken)
+        => Write(artifact, audience, amberAuthorization: null, cancellationToken);
+
+    public static byte[] Write(
+        ApprovedArtifact artifact,
+        RenderAudience audience,
+        AmberSinkAuthorization? amberAuthorization,
+        CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(artifact);
+        ArtifactSinkAuthorizationGate.DemandRender(artifact, amberAuthorization);
         cancellationToken.ThrowIfCancellationRequested();
         if (!Enum.IsDefined(audience))
         {
@@ -129,9 +137,18 @@ public static class VectorPdfWriter
         IReadOnlyList<(int Left, int Right)> sides,
         RenderAudience audience,
         CancellationToken cancellationToken)
+        => WriteImposed(artifact, sides, audience, amberAuthorization: null, cancellationToken);
+
+    public static byte[] WriteImposed(
+        ApprovedArtifact artifact,
+        IReadOnlyList<(int Left, int Right)> sides,
+        RenderAudience audience,
+        AmberSinkAuthorization? amberAuthorization,
+        CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(artifact);
         ArgumentNullException.ThrowIfNull(sides);
+        ArtifactSinkAuthorizationGate.DemandRender(artifact, amberAuthorization);
         cancellationToken.ThrowIfCancellationRequested();
         if (!Enum.IsDefined(audience))
         {

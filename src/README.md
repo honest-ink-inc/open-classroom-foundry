@@ -15,6 +15,7 @@ Projects are created during Days 16–30 (implementation plan §14). The directo
 | `Foundry.Inference.Synthetic` | Deterministic scripted provider for CI and offline development (plan §6.7) | Ship as a district inference path or use randomness |
 | `Foundry.Infrastructure.Simulated` | Virtual bench: camera simulator, virtual print sink, recording exporter/project store (plan §12) | Reference anything beyond Domain and Contracts |
 | `Foundry.Rendering` | Escaped HTML and print renderers over the semantic ArtifactDocument | Accept a DraftArtifact at a sink (ADR-004) |
+| `Foundry.ReviewPreview` | Tiny internal adapter that emits only visibly marked Gate B draft previews for the desktop review surface | Expose preview bytes publicly or call any raw rendering core except the one marked-HTML adapter |
 | `Foundry.Storage` | `.ocfproj` packages, safe path handling, rebuildable index | Treat the index as the source of truth (ADR-003) |
 | `Foundry.Modules.DeterministicPress` | Module Zero: the eight presses | Reference inference, OCR, capture, or redaction seams — enforced by a build-failing architecture test |
 | `Foundry.Modules.BuiltIn` | First-party modules (SequenceSlate onward) | Reach camera/network/filesystem/printer/diagnostics directly (ADR-001) |

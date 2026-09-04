@@ -21,12 +21,14 @@
 | 10 | Edit field reachable, labeled, reads back | `Part3_Step10` (in-proc), `Part3_Steps9to12` (headed, via ValuePattern) | Typing echo behavior |
 | 11 | Approval states what approval means | `Part3_Step11` (in-proc, `AccessibleDescription`) | **Known gap:** the WinForms UIA provider does not surface `AccessibleDescription` as UIA `HelpText`; whether NVDA/Narrator speak the description must be confirmed by ear in the walkthrough |
 | 12 | Approve → state change announced | `Part3_Step12` (in-proc, typed `ApprovedArtifact` produced), `Part3_Steps9to12` (headed, review completes) | The announcement itself |
-| 13 | Reopen approved → locked state audible | `PilotDay_dress_rehearsal…` (headed): a saved project reopened from the library arrives as a FRESH Gate B review — by design there is no locked state to announce, only a new review; re-approval unlocks outputs again | What NVDA announces when the reopened review appears |
+| 13 | Reopen saved project → keyboard-readable data-lane preflight; incomplete Green classification refused; completion reaches fresh Gate B draft review; prior approval not inherited | `LoadedProjectPreflightTests.Exact_semantic_content_is_read_only_and_inspectable_before_Green_can_be_confirmed`, `An_incomplete_teacher_classification_cannot_mint_a_Green_capability`, and `Preflight_uses_only_named_roled_standard_controls` (in-proc); `PilotDay_dress_rehearsal…` plus `CompleteLoadedProjectPreflight` (headed): the exact document and three statements precede fresh Gate B, and re-approval alone unlocks outputs | What NVDA/Narrator actually speak for the preflight explanation, document, checkbox states, refusal, reset, unavailable outputs, and required re-approval; whether a first-time user understands the distinction |
 | 14 | Lane radios: name, role, checked state; meaning in the name | `Part4_Step14` (in-proc), `Part4_Steps14and15` (headed, checked state over SelectionItemPattern) | Speech order and clarity |
 | 15 | Safety pause reachable in ≤ a few tabs, names its purpose | `Part4_Step15` (in-proc: within the first six tab stops), `Part4_Steps14and15` (headed) | Whether "a few tabs" feels findable to a real user |
 | 16 | Pause procedure announced, blocked state audible | — | Human only: MessageBox flow |
 
 Cross-cutting, script-independent: `Mnemonics_are_unique…` (one unambiguous access key per action) and `ADR002_standard_controls_only…` (every control on both surfaces is a stock `System.Windows.Forms` type — the structural form of ADR-002's rule).
+
+**Instrument reconciliation, 3 September 2026.** The original walkthrough wording expected step 13 to announce an inherited locked/approved state. That contradicted the implemented and tested fresh-review boundary recorded in this table. The script now asks the human reviewer to hear the fresh Gate B draft state, the loss of prior approval authority, and the need to re-approve. This documentation repair is not a walkthrough result and closes no accessibility gate.
 
 ## Findings the harness produced on first contact (2026-08-29)
 
@@ -107,4 +109,4 @@ The audit did establish separate lifecycle defects in the test harness: the head
 
 After the lifecycle hardening, the exact plain minimal UI command completed **245/245** in 45 seconds. It then completed **245/245** in each of two full seven-suite closing runs. These are non-reproductions after a guard, not proof of causation or closure of the new sighting.
 
-The typist's self-run of the script (prep week) and the AT reviewer's moderated session (week 2) remain the evidence that closes the gate; this harness only keeps what they find fixed from regressing.
+A private typist-only self-run may prepare defects, but it cannot close the gate. The accountable accessibility/AT review is H4, may begin only after H0–H3 are frozen, and remains the human evidence that closes the gate; this harness only keeps what the reviewers find fixed from regressing.

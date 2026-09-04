@@ -377,12 +377,17 @@ public class LibraryDoorTests : IDisposable
         => Sta.Run(() =>
         {
             var catalog = AppServices.SymbolCatalog();
-            var sourceSession = AppServices.SessionOverGreen(new ArtifactDocument([
+            var sourceDocument = new ArtifactDocument([
                 new Heading(1, "Synthetic reopened routine"),
                 new StepRow(
                     "Stop at the synthetic marker.",
                     new ImageReference(new AssetId("agency.stop.v1"), "A stop symbol")),
-            ]));
+            ]);
+            var sourceSession = AppServices.SessionOverGreen(
+                sourceDocument,
+                new ReviewViewContext(
+                    new RenderRequest(RenderTarget.PrintHtml),
+                    assetCatalog: catalog));
             var sourceApproval = Assert.IsType<ApprovedArtifact>(GateRespectingApprove(sourceSession));
             _ = AppServices.SaveToLibrary(
                 sourceApproval,

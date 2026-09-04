@@ -36,6 +36,21 @@ public class LanePolicyTests
     }
 
     [Theory]
+    [InlineData(-1)]
+    [InlineData(3)]
+    [InlineData(int.MinValue)]
+    [InlineData(int.MaxValue)]
+    public void Undefined_lanes_fail_closed_instead_of_collapsing_to_green(int undefinedValue)
+    {
+        var undefined = (DataLane)undefinedValue;
+
+        Assert.Throws<ArgumentOutOfRangeException>(() => LanePolicy.Inherit(undefined, DataLane.Green));
+        Assert.Throws<ArgumentOutOfRangeException>(() => LanePolicy.Inherit(DataLane.Green, undefined));
+        Assert.Throws<ArgumentOutOfRangeException>(() => LanePolicy.Inherit([DataLane.Green, undefined]));
+        Assert.Throws<ArgumentOutOfRangeException>(() => LanePolicy.Escalate(DataLane.Green, undefined));
+    }
+
+    [Theory]
     [InlineData(DataLane.Amber, DataLane.Green, DataLane.Amber)]
     [InlineData(DataLane.Restricted, DataLane.Green, DataLane.Restricted)]
     [InlineData(DataLane.Green, DataLane.Amber, DataLane.Amber)]

@@ -7,7 +7,6 @@ using System.Text.Json;
 using Microsoft.Win32.SafeHandles;
 using Foundry.Contracts;
 using Foundry.Domain;
-using Foundry.Rendering;
 
 namespace Foundry.Storage;
 
@@ -657,22 +656,11 @@ internal static partial class OcfprojUpgradeService
             contextStamp ??= entry.LastWriteTime;
             await using var input = entry.Open();
             await using var destination = copy.Open();
-            if (string.Equals(entry.FullName, "snapshot.html", StringComparison.Ordinal))
-            {
-                using var heldSnapshot = new MemoryStream();
-                await input.CopyToAsync(heldSnapshot, CopyBufferBytes, cancellationToken).ConfigureAwait(false);
-                var rewrittenSnapshot = PortableProjectSnapshot.RewriteVerifiedForCurrent(
-                    loaded.Document,
-                    loaded.Manifest.EngineVersion,
-                    hasPersistedContext: loaded.RenderProfile is not null,
-                    OcfprojPackageValidator.SnapshotRenderRequest(profile),
-                    heldSnapshot.ToArray());
-                await destination.WriteAsync(rewrittenSnapshot, cancellationToken).ConfigureAwait(false);
-            }
-            else
-            {
-                await input.CopyToAsync(destination, CopyBufferBytes, cancellationToken).ConfigureAwait(false);
-            }
+            // ValidateAsync already proved that the held snapshot corresponds
+            // exactly to artifact.json and its named historical renderer. A
+            // compatibility copy preserves those bytes; it does not expose a
+            // raw-document render path while adding current validation context.
+            await input.CopyToAsync(destination, CopyBufferBytes, cancellationToken).ConfigureAwait(false);
         }
 
         var stamp = contextStamp

@@ -41,7 +41,10 @@ public sealed class ByteImportCaptureSource(ISessionByteStore store) : ICaptureS
             Lane: LanePolicy.DefaultForUnknown,
             MetadataStripped: false,
             TeacherStatedRights: string.Empty,
-            Bytes: reference);
+            Bytes: reference)
+        {
+            LaneBasis = DataLaneBasis.ProvisionalUnknown,
+        };
 
         return Task.FromResult(envelope);
     }

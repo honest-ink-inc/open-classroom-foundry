@@ -217,11 +217,11 @@ public sealed class DraftArtifact
 
     internal static DraftArtifact TrustedLayoutDerivative(
         ApprovedArtifact source,
-        ArtifactDocument document,
-        DataLane lane)
+        ArtifactDocument document)
     {
         ArgumentNullException.ThrowIfNull(source);
         ArgumentNullException.ThrowIfNull(document);
+        var lane = source.Revision.Lane;
         var evidence = source.Revision.PurposeEvidence?.Derive(
             document,
             lane,
@@ -234,19 +234,73 @@ public sealed class DraftArtifact
 public sealed record ApprovalReceipt(ArtifactId ArtifactId, int RevisionNumber, string ApprovedBy, DateTimeOffset ApprovedAtUtc);
 
 /// <summary>
+/// Exact content identity for one image asset shown at Gate B. This record is
+/// data, not authority: only the internal approval gate can attach bindings to
+/// an <see cref="ApprovedArtifact"/>, and output adapters must re-establish the
+/// same id, MIME type, and SHA-256 over owned bytes before rendering or saving.
+/// </summary>
+public sealed record ApprovedAssetBinding
+{
+    public ApprovedAssetBinding(
+        AssetId assetId,
+        string sha256,
+        string mimeType,
+        string provenanceSha256)
+    {
+        if (string.IsNullOrWhiteSpace(assetId.Value))
+        {
+            throw new ArgumentException("An approved asset binding requires an asset identity.", nameof(assetId));
+        }
+
+        ArgumentException.ThrowIfNullOrWhiteSpace(mimeType);
+        ValidateSha256(sha256, nameof(sha256));
+        ValidateSha256(provenanceSha256, nameof(provenanceSha256));
+        AssetId = assetId;
+        Sha256 = sha256.ToUpperInvariant();
+        MimeType = mimeType;
+        ProvenanceSha256 = provenanceSha256.ToUpperInvariant();
+    }
+
+    public AssetId AssetId { get; }
+
+    public string Sha256 { get; }
+
+    public string MimeType { get; }
+
+    /// <summary>
+    /// Canonical digest of every field in the provenance record shown and
+    /// accepted with this asset, including rights and attribution fields.
+    /// </summary>
+    public string ProvenanceSha256 { get; }
+
+    private static void ValidateSha256(string value, string parameterName)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(value, parameterName);
+        if (value.Length != 64 || !value.All(Uri.IsHexDigit))
+        {
+            throw new ArgumentException(
+                "An approved asset binding requires a 64-character SHA-256 value.",
+                parameterName);
+        }
+    }
+}
+
+/// <summary>
 /// The only type the render, export, save-as-final, and print sinks accept (ADR-004).
 /// Constructable solely through <see cref="ApprovalGate"/> — there is no other path.
 /// </summary>
 public sealed class ApprovedArtifact
 {
-    internal ApprovedArtifact(
+    private ApprovedArtifact(
         ArtifactRevision revision,
         ApprovalReceipt receipt,
-        IReadOnlyList<ValidationIssue> validationIssues)
+        IReadOnlyList<ValidationIssue> validationIssues,
+        IReadOnlyList<ApprovedAssetBinding> assetBindings)
     {
         Revision = revision;
         Receipt = receipt;
         ValidationIssues = validationIssues;
+        AssetBindings = assetBindings;
     }
 
     public ArtifactRevision Revision { get; }
@@ -261,28 +315,41 @@ public sealed class ApprovedArtifact
     public IReadOnlyList<ValidationIssue> ValidationIssues { get; }
 
     /// <summary>
+    /// Canonically ordered identities of the exact image bytes shown for this
+    /// revision at Gate B. An image reference without one of these bindings is
+    /// never approvable; an output catalog must match every binding exactly.
+    /// </summary>
+    public IReadOnlyList<ApprovedAssetBinding> AssetBindings { get; }
+
+    /// <summary>
     /// Any later edit invalidates approval: the result is a draft at a new revision,
     /// and the old receipt no longer matches anything renderable.
     /// </summary>
     public DraftArtifact Edit(ArtifactDocument editedDocument)
         => new(Revision.Edited(editedDocument));
-}
 
-/// <summary>
-/// The single constructor of approved content. Approval is architectural, not ceremonial:
-/// it requires the outstanding validation issues and fails closed on any blocking one.
-/// </summary>
-internal static class ApprovalGate
-{
-    public static ApprovedArtifact Approve(
+    /// <summary>
+    /// The assembly-owned half of <see cref="ApprovalGate"/>. Keeping the only
+    /// constructor call inside this type prevents friend assemblies from
+    /// manufacturing approval while preserving one validated public gate.
+    /// </summary>
+    internal static ApprovedArtifact ApproveThroughGate(
         DraftArtifact draft,
         string approvedBy,
         IReadOnlyList<ValidationIssue> outstandingIssues,
-        DateTimeOffset approvedAtUtc)
+        DateTimeOffset approvedAtUtc,
+        IReadOnlyList<ApprovedAssetBinding> reviewedAssetBindings)
     {
         ArgumentNullException.ThrowIfNull(draft);
         ArgumentNullException.ThrowIfNull(outstandingIssues);
+        ArgumentNullException.ThrowIfNull(reviewedAssetBindings);
         ArgumentException.ThrowIfNullOrWhiteSpace(approvedBy);
+
+        if (draft.Revision.Lane == DataLane.Restricted)
+        {
+            throw new InvalidOperationException(
+                "Approval is blocked: Restricted-lane artifacts cannot be approved in an early release.");
+        }
 
         var reportedIssues = FreezeAndValidateIssues(outstandingIssues, "reported");
         var structuralIssues = FreezeAndValidateIssues(
@@ -299,8 +366,11 @@ internal static class ApprovalGate
         var acceptedIssues = FreezeAndValidateIssues(
             [.. reportedIssues.Concat(structuralIssues).Distinct()],
             "accepted");
+        var acceptedAssetBindings = FreezeAndValidateAssetBindings(
+            draft.Revision.Document,
+            reviewedAssetBindings);
         var receipt = new ApprovalReceipt(draft.Revision.Id, draft.Revision.Number, approvedBy, approvedAtUtc);
-        return new ApprovedArtifact(draft.Revision, receipt, acceptedIssues);
+        return new ApprovedArtifact(draft.Revision, receipt, acceptedIssues, acceptedAssetBindings);
     }
 
     private static System.Collections.ObjectModel.ReadOnlyCollection<ValidationIssue> FreezeAndValidateIssues(
@@ -329,4 +399,70 @@ internal static class ApprovalGate
 
         return Array.AsReadOnly(snapshot);
     }
+
+    private static System.Collections.ObjectModel.ReadOnlyCollection<ApprovedAssetBinding> FreezeAndValidateAssetBindings(
+        ArtifactDocument document,
+        IReadOnlyList<ApprovedAssetBinding> reviewedAssetBindings)
+    {
+        var expectedIds = document.Nodes
+            .SelectMany(node => node switch
+            {
+                ImageReference image => new[] { image.Asset },
+                StepRow { Symbol: { } symbol } => [symbol.Asset],
+                _ => [],
+            })
+            .Distinct()
+            .OrderBy(id => id.Value, StringComparer.Ordinal)
+            .ToArray();
+        var snapshot = reviewedAssetBindings.ToArray();
+        if (snapshot.Any(binding => binding is null))
+        {
+            throw new InvalidOperationException(
+                "Approval is blocked: reviewed asset evidence contains a null binding.");
+        }
+
+        var ordered = snapshot
+            .OrderBy(binding => binding.AssetId.Value, StringComparer.Ordinal)
+            .ToArray();
+        if (ordered.Select(binding => binding.AssetId).Distinct().Count() != ordered.Length)
+        {
+            throw new InvalidOperationException(
+                "Approval is blocked: reviewed asset evidence contains a duplicate asset identity.");
+        }
+
+        if (!expectedIds.SequenceEqual(ordered.Select(binding => binding.AssetId)))
+        {
+            throw new InvalidOperationException(
+                "Approval is blocked: every referenced image requires exact Gate B asset evidence, with no missing or unrelated binding.");
+        }
+
+        return Array.AsReadOnly(ordered);
+    }
+}
+
+/// <summary>
+/// The single constructor of approved content. Approval is architectural, not ceremonial:
+/// it requires the outstanding validation issues and fails closed on any blocking one.
+/// </summary>
+internal static class ApprovalGate
+{
+    public static ApprovedArtifact Approve(
+        DraftArtifact draft,
+        string approvedBy,
+        IReadOnlyList<ValidationIssue> outstandingIssues,
+        DateTimeOffset approvedAtUtc)
+        => Approve(draft, approvedBy, outstandingIssues, approvedAtUtc, []);
+
+    public static ApprovedArtifact Approve(
+        DraftArtifact draft,
+        string approvedBy,
+        IReadOnlyList<ValidationIssue> outstandingIssues,
+        DateTimeOffset approvedAtUtc,
+        IReadOnlyList<ApprovedAssetBinding> reviewedAssetBindings)
+        => ApprovedArtifact.ApproveThroughGate(
+            draft,
+            approvedBy,
+            outstandingIssues,
+            approvedAtUtc,
+            reviewedAssetBindings);
 }

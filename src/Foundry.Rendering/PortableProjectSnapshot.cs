@@ -5,11 +5,10 @@ using Foundry.Domain;
 namespace Foundry.Rendering;
 
 /// <summary>
-/// Narrow package-verification boundary for deterministic learner snapshots.
-/// It never renders arbitrary draft content for a caller. The only byte-returning
-/// operation first requires an already-held snapshot to match the same document
-/// through an admitted exact renderer, then rewrites that verified derivative
-/// through the current core for managed compatibility preparation.
+/// Read-only package-verification boundary for deterministic learner snapshots.
+/// It answers exact-correspondence questions but never returns rendered bytes.
+/// Compatibility preparation preserves an admitted historical snapshot instead
+/// of turning package validation into a draft-rendering capability.
 /// </summary>
 public static class PortableProjectSnapshot
 {
@@ -28,35 +27,21 @@ public static class PortableProjectSnapshot
         ReadOnlySpan<byte> candidate)
     {
         ValidateArguments(document, writerEngineVersion, request);
-        var expected = !hasPersistedContext
-            && string.Equals(
-                writerEngineVersion,
-                LegacyPortableSnapshotRenderer.EngineVersion,
-                StringComparison.Ordinal)
+        var legacy = string.Equals(
+            writerEngineVersion,
+            LegacyPortableSnapshotRenderer.EngineVersion,
+            StringComparison.Ordinal);
+        if (legacy
+            && hasPersistedContext
+                && (request.TextScalePercent != 100 || request.TargetLanguageFirst))
+        {
+            return false;
+        }
+
+        var expected = legacy
             ? LegacyPortableSnapshotRenderer.RenderV010Dev(document)
             : AccessibleHtmlRenderer.RenderPortableSnapshot(document, request);
         return candidate.SequenceEqual(expected);
-    }
-
-    public static byte[] RewriteVerifiedForCurrent(
-        ArtifactDocument document,
-        string writerEngineVersion,
-        bool hasPersistedContext,
-        RenderRequest request,
-        ReadOnlySpan<byte> existingSnapshot)
-    {
-        if (!MatchesExact(
-            document,
-            writerEngineVersion,
-            hasPersistedContext,
-            request,
-            existingSnapshot))
-        {
-            throw new InvalidOperationException(
-                "A portable snapshot can be rewritten only after exact semantic correspondence is established.");
-        }
-
-        return AccessibleHtmlRenderer.RenderPortableSnapshot(document, request);
     }
 
     private static void ValidateArguments(

@@ -44,13 +44,11 @@ public sealed class OcfprojProjectStore(string rootDirectory, IRenderer renderer
     {
         ArgumentNullException.ThrowIfNull(artifact);
         ArgumentNullException.ThrowIfNull(request);
+        ArtifactSinkAuthorizationGate.DemandGreenSave(artifact);
         cancellationToken.ThrowIfCancellationRequested();
-
-        if (artifact.Revision.Lane != DataLane.Green)
-        {
-            throw new InvalidOperationException(
-                $"Only Green-lane products may be saved to the project library; this artifact is {artifact.Revision.Lane}.");
-        }
+        var exactAssets = ExactAssetCatalogSnapshot.CaptureForApprovedOutput(
+            artifact,
+            assetCatalog);
 
         if ((request.Validation is null) != (request.RenderProfile is null))
         {
@@ -72,10 +70,10 @@ public sealed class OcfprojProjectStore(string rootDirectory, IRenderer renderer
         var resolved = new List<(AssetProvenance Provenance, ReadOnlyMemory<byte> Content)>();
         foreach (var id in assetIds)
         {
-            var provenance = assetCatalog.Find(id)
+            var provenance = exactAssets.Find(id)
                 ?? throw new InvalidOperationException($"Asset '{id.Value}' has no provenance in the catalog; unknown rights block distribution.");
 
-            if (!assetCatalog.TryGetContent(id, out var content, out _))
+            if (!exactAssets.TryGetContent(id, out var content, out _))
             {
                 throw new InvalidOperationException($"Asset '{id.Value}' has provenance but no retrievable content.");
             }

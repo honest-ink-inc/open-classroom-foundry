@@ -20,10 +20,17 @@ public sealed class WindowsPdfPrinter(IRenderer renderer) : IPrinter
 {
     private const double RenderDpi = 300.0;
 
-    public async Task PrintAsync(ApprovedArtifact artifact, PrintRequest request, CancellationToken cancellationToken)
+    public async Task PrintAsync(
+        ApprovedArtifact artifact,
+        PrintRequest request,
+        CancellationToken cancellationToken,
+        AmberSinkAuthorization? amberAuthorization = null)
     {
         ArgumentNullException.ThrowIfNull(artifact);
         ArgumentNullException.ThrowIfNull(request);
+        var renderAuthorization = ArtifactSinkAuthorizationGate.DelegateRenderWithinPrint(
+            artifact,
+            amberAuthorization);
 
         var tempDirectory = Path.Combine(Path.GetTempPath(), EngineIdentity.InternalId, "print");
         Directory.CreateDirectory(tempDirectory);
@@ -43,12 +50,13 @@ public sealed class WindowsPdfPrinter(IRenderer renderer) : IPrinter
                         request.Audience,
                         request.TextScalePercent,
                         request.TargetLanguageFirst),
-                    cancellationToken).ConfigureAwait(false);
+                    cancellationToken,
+                    renderAuthorization).ConfigureAwait(false);
                 await File.WriteAllBytesAsync(tempPdf, native.Content.ToArray(), cancellationToken).ConfigureAwait(false);
             }
             catch (NotSupportedException)
             {
-                await new EdgePdfExporter(renderer).ExportAsync(
+                await new EdgePdfExporter(renderer).ExportWithinPrintAsync(
                     artifact,
                     new ExportRequest(
                         RenderTarget.PrintPdf,
@@ -56,6 +64,7 @@ public sealed class WindowsPdfPrinter(IRenderer renderer) : IPrinter
                         request.Audience,
                         request.TextScalePercent,
                         request.TargetLanguageFirst),
+                    renderAuthorization,
                     cancellationToken).ConfigureAwait(false);
             }
 

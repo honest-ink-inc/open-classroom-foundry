@@ -12,9 +12,9 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <!-- Draft-preview construction stays inside the desktop review shell.
-         Storage uses only the narrow public PortableProjectSnapshot verifier. -->
-    <InternalsVisibleTo Include="Foundry.App.WinForms" />
+    <!-- A tiny adapter assembly alone receives raw semantic-core access and
+         can produce only visibly marked preview values. -->
+    <InternalsVisibleTo Include="Foundry.ReviewPreview" />
     <InternalsVisibleTo Include="Foundry.Tests.Rendering" />
   </ItemGroup>
 

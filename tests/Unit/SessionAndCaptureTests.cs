@@ -64,6 +64,7 @@ public class CaptureSourceTests
             CancellationToken.None);
 
         Assert.Equal(DataLane.Amber, envelope.Lane);
+        Assert.Equal(DataLaneBasis.ProvisionalUnknown, envelope.LaneBasis);
         Assert.Equal("file-import", envelope.SourceKind);
         Assert.False(envelope.MetadataStripped);
         Assert.True(store.TryGet(envelope.Bytes, out _));
@@ -90,6 +91,7 @@ public class CaptureSourceTests
 
         Assert.Equal("camera-simulator", envelope.SourceKind);
         Assert.Equal(DataLane.Amber, envelope.Lane);
+        Assert.Equal(DataLaneBasis.ProvisionalUnknown, envelope.LaneBasis);
         Assert.True(store.TryGet(envelope.Bytes, out var frame));
         Assert.Equal(new byte[] { 7, 7 }, frame.ToArray());
     }
@@ -342,6 +344,7 @@ public class CaptureSessionTests
         Assert.Equal(JobState.DataLaneConfirmed, session.Machine.State);
         Assert.Equal(normalized.Bytes, confirmed.Bytes);
         Assert.Equal(DataLane.Green, confirmed.Lane);
+        Assert.Equal(DataLaneBasis.Established, confirmed.LaneBasis);
         Assert.Same(confirmed, session.Envelope);
     }
 
@@ -531,6 +534,218 @@ public class CaptureSessionTests
     }
 
     [Fact]
+    public async Task Restricted_lane_confirmation_blocks_and_purges_before_a_draft_can_exist()
+    {
+        var store = new InMemorySessionByteStore();
+        var session = new CaptureSession(
+            new ByteImportCaptureSource(store),
+            new RecordingNormalizer(),
+            store);
+        var captured = await session.CaptureAsync(
+            new CaptureRequest(ByteImportCaptureSource.Kind, "image/png", new byte[] { 9, 8, 7 }),
+            CancellationToken.None);
+        Assert.True(store.TryGet(captured.Bytes, out var heldBytes));
+        await session.NormalizeAsync(new NormalizationRequest(), CancellationToken.None);
+
+        var exception = Assert.Throws<InvalidOperationException>(
+            () => session.ConfirmLane(DataLane.Restricted));
+
+        Assert.Contains("Restricted data is blocked", exception.Message, StringComparison.Ordinal);
+        Assert.Equal(JobState.TransientSourcesPurged, session.Machine.State);
+        Assert.Null(session.Envelope);
+        Assert.Equal(0, store.Count);
+        Assert.All(heldBytes.ToArray(), value => Assert.Equal(0, value));
+        Assert.Throws<InvalidOperationException>(
+            () => session.CreateDraft(new ArtifactDocument([new Paragraph("No draft.")])));
+    }
+
+    [Fact]
+    public async Task A_normalizer_cannot_lower_the_captured_lane()
+    {
+        var store = new InMemorySessionByteStore();
+        var session = new CaptureSession(
+            new ByteImportCaptureSource(store),
+            new LaneReplacingNormalizer(DataLane.Green),
+            store);
+        await session.CaptureAsync(
+            new CaptureRequest(ByteImportCaptureSource.Kind, "image/png", new byte[] { 6, 5, 4 }),
+            CancellationToken.None);
+
+        var normalized = await session.NormalizeAsync(new NormalizationRequest(), CancellationToken.None);
+
+        Assert.Equal(DataLane.Amber, normalized.Lane);
+        Assert.Equal(DataLaneBasis.Established, normalized.LaneBasis);
+        Assert.Equal(DataLane.Amber, session.Envelope?.Lane);
+
+        var confirmed = session.ConfirmLane(DataLane.Green);
+        var draft = session.CreateDraft(new ArtifactDocument([new Paragraph("Preserve escalation.")]));
+
+        Assert.Equal(DataLane.Amber, confirmed.Lane);
+        Assert.Equal(DataLaneBasis.Established, confirmed.LaneBasis);
+        Assert.Equal(DataLane.Amber, draft.Revision.Lane);
+    }
+
+    [Fact]
+    public async Task An_established_amber_source_cannot_be_lowered_by_teacher_confirmation()
+    {
+        var store = new InMemorySessionByteStore();
+        var session = new CaptureSession(
+            new FixedLaneCaptureSource(store, DataLane.Amber),
+            new RecordingNormalizer(),
+            store);
+        await session.CaptureAsync(
+            new CaptureRequest("synthetic-established", "image/png", new byte[] { 4, 2, 4 }),
+            CancellationToken.None);
+        var normalized = await session.NormalizeAsync(new NormalizationRequest(), CancellationToken.None);
+
+        var confirmed = session.ConfirmLane(DataLane.Green);
+        var draft = session.CreateDraft(new ArtifactDocument([new Paragraph("Established Amber.")]));
+
+        Assert.Equal(DataLaneBasis.Established, normalized.LaneBasis);
+        Assert.Equal(DataLane.Amber, confirmed.Lane);
+        Assert.Equal(DataLaneBasis.Established, confirmed.LaneBasis);
+        Assert.Equal(DataLane.Amber, draft.Revision.Lane);
+    }
+
+    [Fact]
+    public async Task A_green_source_escalated_to_amber_cannot_be_lowered_by_teacher_confirmation()
+    {
+        var store = new InMemorySessionByteStore();
+        var session = new CaptureSession(
+            new FixedLaneCaptureSource(store, DataLane.Green),
+            new LaneReplacingNormalizer(DataLane.Amber),
+            store);
+        await session.CaptureAsync(
+            new CaptureRequest("synthetic-green", "image/png", new byte[] { 8, 4, 8 }),
+            CancellationToken.None);
+
+        var normalized = await session.NormalizeAsync(new NormalizationRequest(), CancellationToken.None);
+        var confirmed = session.ConfirmLane(DataLane.Green);
+        var draft = session.CreateDraft(new ArtifactDocument([new Paragraph("Detected Amber.")]));
+
+        Assert.Equal(DataLane.Amber, normalized.Lane);
+        Assert.Equal(DataLaneBasis.Established, normalized.LaneBasis);
+        Assert.Equal(DataLane.Amber, confirmed.Lane);
+        Assert.Equal(DataLaneBasis.Established, confirmed.LaneBasis);
+        Assert.Equal(DataLane.Amber, draft.Revision.Lane);
+    }
+
+    [Theory]
+    [InlineData(DataLane.Amber, (DataLaneBasis)999)]
+    [InlineData(DataLane.Green, DataLaneBasis.ProvisionalUnknown)]
+    public async Task An_invalid_capture_lane_basis_is_blocked_and_purged(
+        DataLane lane,
+        DataLaneBasis laneBasis)
+    {
+        var store = new InMemorySessionByteStore();
+        var source = new FixedLaneCaptureSource(store, lane, laneBasis);
+        var session = new CaptureSession(source, new CountingNormalizer(), store);
+
+        var exception = await Assert.ThrowsAsync<InvalidOperationException>(
+            () => session.CaptureAsync(
+                new CaptureRequest("synthetic-invalid-basis", "image/png", new byte[] { 6, 2, 6 }),
+                CancellationToken.None));
+
+        Assert.Contains("classification and basis", exception.Message, StringComparison.Ordinal);
+        Assert.Equal(JobState.TransientSourcesPurged, session.Machine.State);
+        Assert.Null(session.Envelope);
+        Assert.Equal(0, store.Count);
+        Assert.All(source.HeldBytes.ToArray(), value => Assert.Equal(0, value));
+    }
+
+    [Fact]
+    public async Task A_restricted_source_is_blocked_and_purged_before_normalization_or_draft_creation()
+    {
+        var store = new InMemorySessionByteStore();
+        var source = new FixedLaneCaptureSource(store, DataLane.Restricted);
+        var normalizer = new CountingNormalizer();
+        var session = new CaptureSession(
+            source,
+            normalizer,
+            store);
+
+        var exception = await Assert.ThrowsAsync<InvalidOperationException>(
+            () => session.CaptureAsync(
+                new CaptureRequest("synthetic-restricted", "image/png", new byte[] { 9, 1, 9 }),
+                CancellationToken.None));
+
+        Assert.Contains("Restricted data is blocked", exception.Message, StringComparison.Ordinal);
+        Assert.Equal(JobState.TransientSourcesPurged, session.Machine.State);
+        Assert.Null(session.Envelope);
+        Assert.Equal(0, store.Count);
+        Assert.All(source.HeldBytes.ToArray(), value => Assert.Equal(0, value));
+        Assert.Equal(0, normalizer.CallCount);
+        await Assert.ThrowsAsync<InvalidOperationException>(
+            () => session.NormalizeAsync(new NormalizationRequest(), CancellationToken.None));
+        Assert.Throws<InvalidOperationException>(
+            () => session.CreateDraft(new ArtifactDocument([new Paragraph("No draft.")])));
+    }
+
+    [Fact]
+    public async Task A_normalizer_escalation_to_restricted_blocks_and_purges_instead_of_returning_an_envelope()
+    {
+        var store = new InMemorySessionByteStore();
+        var session = new CaptureSession(
+            new ByteImportCaptureSource(store),
+            new LaneReplacingNormalizer(DataLane.Restricted),
+            store);
+        var captured = await session.CaptureAsync(
+            new CaptureRequest(ByteImportCaptureSource.Kind, "image/png", new byte[] { 7, 3, 7 }),
+            CancellationToken.None);
+        Assert.True(store.TryGet(captured.Bytes, out var heldBytes));
+
+        var exception = await Assert.ThrowsAsync<InvalidOperationException>(
+            () => session.NormalizeAsync(new NormalizationRequest(), CancellationToken.None));
+
+        Assert.Contains("Restricted data is blocked", exception.Message, StringComparison.Ordinal);
+        Assert.Equal(JobState.TransientSourcesPurged, session.Machine.State);
+        Assert.Null(session.Envelope);
+        Assert.Equal(0, store.Count);
+        Assert.All(heldBytes.ToArray(), value => Assert.Equal(0, value));
+    }
+
+    [Fact]
+    public async Task A_restricted_capture_with_an_unverifiable_purge_remains_explicitly_incomplete()
+    {
+        var store = new AlwaysFailsPurgeStore();
+        var source = new FixedLaneCaptureSource(store, DataLane.Restricted);
+        var normalizer = new CountingNormalizer();
+        var session = new CaptureSession(source, normalizer, store);
+
+        await Assert.ThrowsAsync<InvalidOperationException>(
+            () => session.CaptureAsync(
+                new CaptureRequest("synthetic-restricted", "image/png", new byte[] { 2, 4, 2 }),
+                CancellationToken.None));
+
+        Assert.Equal(JobState.PurgeIncomplete, session.Machine.State);
+        Assert.Null(session.Envelope);
+        Assert.Equal(1, store.Count);
+        Assert.Equal(0, normalizer.CallCount);
+        Assert.False(session.PurgeTransientSources());
+        Assert.Equal(JobState.PurgeIncomplete, session.Machine.State);
+    }
+
+    [Fact]
+    public async Task Undefined_lane_confirmation_is_refused_without_changing_or_purging_the_session()
+    {
+        var store = new InMemorySessionByteStore();
+        var session = new CaptureSession(
+            new ByteImportCaptureSource(store),
+            new RecordingNormalizer(),
+            store);
+        await session.CaptureAsync(
+            new CaptureRequest(ByteImportCaptureSource.Kind, "image/png", new byte[] { 3, 2, 1 }),
+            CancellationToken.None);
+        await session.NormalizeAsync(new NormalizationRequest(), CancellationToken.None);
+
+        Assert.Throws<ArgumentOutOfRangeException>(() => session.ConfirmLane((DataLane)999));
+
+        Assert.Equal(JobState.Normalized, session.Machine.State);
+        Assert.NotNull(session.Envelope);
+        Assert.Equal(1, store.Count);
+    }
+
+    [Fact]
     public async Task Gate_C_purges_and_zeroes_before_becoming_terminal()
     {
         var store = new InMemorySessionByteStore();
@@ -717,6 +932,65 @@ public class CaptureSessionTests
             }
 
             return Task.FromResult(source with { TeacherStatedRights = "normalized-after-retry" });
+        }
+    }
+
+    private sealed class LaneReplacingNormalizer(DataLane replacementLane) : IDocumentNormalizer
+    {
+        public Task<SourceEnvelope> NormalizeAsync(
+            SourceEnvelope source,
+            NormalizationRequest request,
+            CancellationToken cancellationToken)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            return Task.FromResult(source with
+            {
+                Lane = replacementLane,
+                MetadataStripped = true,
+            });
+        }
+    }
+
+    private sealed class FixedLaneCaptureSource(
+        ISessionByteStore store,
+        DataLane lane,
+        DataLaneBasis laneBasis = DataLaneBasis.Established) : ICaptureSource
+    {
+        public ReadOnlyMemory<byte> HeldBytes { get; private set; }
+
+        public Task<SourceEnvelope> CaptureAsync(
+            CaptureRequest request,
+            CancellationToken cancellationToken)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            var reference = store.Put(request.Content);
+            store.TryGet(reference, out var heldBytes);
+            HeldBytes = heldBytes;
+            return Task.FromResult(new SourceEnvelope(
+                request.SourceKind,
+                request.MimeType,
+                1,
+                lane,
+                false,
+                "synthetic test fixture",
+                reference)
+            {
+                LaneBasis = laneBasis,
+            });
+        }
+    }
+
+    private sealed class CountingNormalizer : IDocumentNormalizer
+    {
+        public int CallCount { get; private set; }
+
+        public Task<SourceEnvelope> NormalizeAsync(
+            SourceEnvelope source,
+            NormalizationRequest request,
+            CancellationToken cancellationToken)
+        {
+            CallCount++;
+            return Task.FromResult(source);
         }
     }
 
@@ -931,6 +1205,22 @@ public class CaptureSessionTests
 
             _inner.PurgeAll();
         }
+    }
+
+    private sealed class AlwaysFailsPurgeStore : ISessionByteStore
+    {
+        private readonly InMemorySessionByteStore _inner = new();
+
+        public int Count => _inner.Count;
+
+        public SessionByteReference Put(ReadOnlyMemory<byte> content) => _inner.Put(content);
+
+        public bool TryGet(SessionByteReference reference, out ReadOnlyMemory<byte> content)
+            => _inner.TryGet(reference, out content);
+
+        public void Release(SessionByteReference reference) => _inner.Release(reference);
+
+        public void PurgeAll() => throw new IOException("Synthetic persistent purge failure.");
     }
 
     private sealed class FailsFirstReleaseStore : ISessionByteStore

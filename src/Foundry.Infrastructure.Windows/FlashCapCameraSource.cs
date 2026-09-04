@@ -77,7 +77,10 @@ public sealed class FlashCapCameraSource : ICaptureSource
                 Lane: LanePolicy.DefaultForUnknown,
                 MetadataStripped: false,
                 TeacherStatedRights: string.Empty,
-                Bytes: tentativeReference.Value);
+                Bytes: tentativeReference.Value)
+            {
+                LaneBasis = DataLaneBasis.ProvisionalUnknown,
+            };
 
             // Ownership transfers only after every fallible/cancellable step has
             // completed. Until then the source must be able to remove its own

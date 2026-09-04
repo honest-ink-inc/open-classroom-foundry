@@ -102,6 +102,8 @@ public sealed class DraftPreviewTests
         Assert.False(typeof(IExporter).IsAssignableFrom(factoryType));
         Assert.False(typeof(IPrinter).IsAssignableFrom(factoryType));
         Assert.False(typeof(IProjectStore).IsAssignableFrom(factoryType));
+        Assert.False(previewType.IsPublic);
+        Assert.False(factoryType.IsPublic);
         Assert.False(typeof(ApprovedArtifact).IsAssignableFrom(previewType));
         Assert.DoesNotContain(
             previewType.GetConstructors(BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic)
@@ -111,14 +113,22 @@ public sealed class DraftPreviewTests
             factoryType.GetMethods(BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic),
             method => method.ReturnType == typeof(ApprovedArtifact));
 
-        var friends = typeof(AccessibleHtmlRenderer).Assembly
+        var renderingFriends = typeof(AccessibleHtmlRenderer).Assembly
+            .GetCustomAttributes<InternalsVisibleToAttribute>()
+            .Select(attribute => attribute.AssemblyName)
+            .Order(StringComparer.Ordinal)
+            .ToArray();
+        Assert.Equal(
+            ["Foundry.ReviewPreview", "Foundry.Tests.Rendering"],
+            renderingFriends);
+        var previewFriends = previewType.Assembly
             .GetCustomAttributes<InternalsVisibleToAttribute>()
             .Select(attribute => attribute.AssemblyName)
             .Order(StringComparer.Ordinal)
             .ToArray();
         Assert.Equal(
             ["Foundry.App.WinForms", "Foundry.Tests.Rendering"],
-            friends);
+            previewFriends);
 
         foreach (var sink in new[] { typeof(IRenderer), typeof(IExporter), typeof(IPrinter), typeof(IProjectStore) })
         {

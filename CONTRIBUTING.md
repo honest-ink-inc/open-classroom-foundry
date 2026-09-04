@@ -1,12 +1,12 @@
 # Contributing
 
-Thank you for helping build free tools for teachers. The project is in an alpha engineering and evidence phase: code, tests, documentation, synthetic fixtures, review, and co-design are welcome within the gates below. No contribution can substitute for protected-seat, district, or pilot evidence.
+Thank you for helping build free tools for teachers. The project is in an alpha engineering and evidence phase: GPL-covered code, tests, first-party recipes, review, and co-design are welcome within the gates below. Outside or member-authored documentation, original-printable, translation, illustration, and fixture contributions are held until the project chooses their exact content license and provides a separate contributor-assent route. Project-owner-directed factual governance, status, and repository-maintenance prose may still be committed as first-party maintenance under the present all-rights-reserved documentation default when the project owner explicitly authorizes that bounded change; this narrow route does not choose an outbound license or accept third-party expressive content. No contribution can substitute for protected-seat, district, or pilot evidence.
 
 ## The rules that outrank everything
 
 Three kinds of thing must never enter this repository. The first is the oldest and still the gravest; the other two were learned here, the hard way.
 
-**1. No student work, student data, or identifying classroom material.** Not in code, tests, fixtures, issues, pull requests, screenshots, discussion, or documentation. All fixtures and examples must be synthetic, teacher-authored, public-domain, or openly licensed OER — and marked as such. If you accidentally include such material, report it privately per [SECURITY.md](SECURITY.md) immediately; do not push a "fix" commit that leaves it in history.
+**1. No student work, student data, or identifying classroom material.** Not in code, tests, fixtures, issues, pull requests, screenshots, discussion, or documentation. All repository fixtures and examples must be project-supplied synthetic material, public-domain material, or openly licensed OER — and marked as such. Member-authored or outside teacher-authored material remains outside the repository until the project chooses the applicable content license and the author separately accepts its exact contribution terms. If you accidentally include prohibited classroom material, report it privately per [SECURITY.md](SECURITY.md) immediately; do not push a "fix" commit that leaves it in history.
 
 **2. No credentials.** API keys, tokens, passwords, connection strings, private keys, certificates, `.env` files — none of it, not even briefly, not even in a branch. Git history is permanent and **this repository is public**: a committed key is a burned key even if the next commit removes it. Rotate it; do not merely delete it.
 
@@ -30,16 +30,28 @@ If the hook refuses your commit, it is working. Fix the content, never the hook.
 
 ## What contributions are welcome now
 
-- **Document review** — the [idea atlas](docs/idea-atlas.md), [implementation plan](docs/implementation-plan.md), and [module specifications](docs/modules/) all benefit from teacher, specialist, and engineer eyes. Open an issue per finding.
+- **Document review** — the [idea atlas](docs/idea-atlas.md), [implementation plan](docs/implementation-plan.md), and [module specifications](docs/modules/) all benefit from teacher, specialist, and engineer eyes. Report a finding without submitting replacement authored content while the content-license hold below remains open.
 - **Educator council** — teachers willing to do think-aloud sessions and co-design (see [GOVERNANCE.md](GOVERNANCE.md) for the recruiting roles).
-- **Fixture authoring** — synthetic classroom materials for the seven fixture families (implementation plan §12): gold, ambiguity, privacy-adversarial, pedagogical edges, language, accessibility/rendering, rights/provenance.
+- **Fixture design review** — review the seven proposed fixture families (implementation plan §12): gold, ambiguity, privacy-adversarial, pedagogical edges, language, accessibility/rendering, rights/provenance. New member-authored fixture content remains held.
 - **Specialist review** — accessibility, AAC, multilingual, privacy, and OER-licensing expertise, per the governance roles.
 
 Code contributions are active. Start with an issue and the current handover or roadmap; changes that enter protected territory wait for their named gate.
 
+**Content-contribution hold:** do not submit outside or member-authored
+documentation prose, original printable content, translations, illustrations,
+or fixtures. The project has not chosen the outbound content license and
+therefore has no matching present inbound license or contributor-assent path for
+that material. Review findings may be reported without transferring authored
+replacement content. Project-owner-directed factual governance, status, and
+repository-maintenance prose is first-party maintenance under the current
+all-rights-reserved documentation default only when the project owner explicitly
+authorizes the bounded change; that exception does not admit member-authored
+expressive content. The broader hold ends only when an authorized record names
+the exact license and the contributor separately assents to those terms.
+
 ## Ground rules
 
-1. **Licensing is inbound = outbound.** Code and first-party recipes are contributed under GPL-3.0-or-later. Documentation and printable content follow the project's declared content license once chosen (implementation plan §9). By contributing you certify you have the right to submit the work under those terms.
+1. **Licensing is inbound = outbound.** Code, tests, and first-party recipes are contributed under GPL-3.0-or-later. Outside or member-authored documentation, printable content, translations, illustrations, and fixtures are not currently accepted: their content license and matching contributor-assent path have not yet been chosen (implementation plan §9). Project-owner-directed factual governance, status, and repository-maintenance prose may be accepted only as the bounded first-party maintenance exception above under the current all-rights-reserved documentation default. For material currently accepted, contributing certifies that you have the right to submit it under the stated terms.
 2. **Provenance or it doesn't ship.** Every asset (image, font, symbol, translation, template) carries source, creator, license, and modification history in the asset ledger. Unknown rights block distribution — CI will enforce this.
 3. **Bounded modules, structured output.** No contribution may add a "generate anything" surface, an unapproved network call, executable plugin loading, or a path that renders, prints, exports, or saves unapproved draft content (ADR-001, ADR-004).
 4. **Accessibility is not a later.** UI contributions use standard controls (ADR-002) and keep keyboard operation and UI Automation exposure intact.

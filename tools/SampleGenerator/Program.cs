@@ -15,6 +15,7 @@
 // (SeededPacketFile carries the full reasoning).
 // Usage: SampleGenerator <repoRoot> <outputDirectory> [--seeded <definitions.json>]
 
+using Foundry.Application;
 using Foundry.Contracts;
 using Foundry.Domain;
 using Foundry.Modules.BuiltIn.AllAboard;
@@ -63,11 +64,7 @@ if (args.Length == 4)
     {
         var document = AllAboardBuilders.TaskStrip(
             packet.Title, SeededPacketFile.ToStepSpecs(packet), catalog, targetLocale: packet.TargetLocale);
-        var approved = ApprovalGate.Approve(
-            DraftArtifact.New(document, DataLane.Green),
-            "sample-teacher@example.org",
-            DocumentValidator.Validate(document),
-            approvedAt);
+        var approved = ReviewGreenFixture(document);
         var print = await renderer.RenderAsync(
             approved, new RenderRequest(RenderTarget.PrintHtml, RenderAudience.Learner), CancellationToken.None);
         await File.WriteAllBytesAsync(
@@ -91,8 +88,7 @@ var strip = AllAboardBuilders.TaskStrip(
     sourceLocale: "en",
     targetLocale: "es");
 
-var approvedStrip = ApprovalGate.Approve(
-    DraftArtifact.New(strip, DataLane.Green), "sample-teacher@example.org", DocumentValidator.Validate(strip), approvedAt);
+var approvedStrip = ReviewGreenFixture(strip);
 
 await WriteRenderAsync(approvedStrip, "task-strip-bilingual.learner.html", RenderAudience.Learner);
 await WriteRenderAsync(approvedStrip, "task-strip-bilingual.teacher.html", RenderAudience.Teacher);
@@ -103,16 +99,14 @@ await store.SaveGreenProjectAsync(
 
 // Sample 2: the full agency deck.
 var deck = AllAboardBuilders.AgencyCards([.. catalog.All.Select(a => a.Id)], catalog);
-var approvedDeck = ApprovalGate.Approve(
-    DraftArtifact.New(deck, DataLane.Green), "sample-teacher@example.org", DocumentValidator.Validate(deck), approvedAt);
+var approvedDeck = ReviewGreenFixture(deck);
 
 await WriteRenderAsync(approvedDeck, "agency-cards.learner.html", RenderAudience.Learner);
 
 // Sample 3: First/Then, print-ready.
 var firstThen = AllAboardBuilders.FirstThen(
     new CardSpec("Math journal"), new CardSpec("Ten minutes of blocks"), catalog);
-var approvedFirstThen = ApprovalGate.Approve(
-    DraftArtifact.New(firstThen, DataLane.Green), "sample-teacher@example.org", DocumentValidator.Validate(firstThen), approvedAt);
+var approvedFirstThen = ReviewGreenFixture(firstThen);
 
 var printReady = await renderer.RenderAsync(
     approvedFirstThen, new RenderRequest(RenderTarget.PrintHtml, RenderAudience.Learner), CancellationToken.None);
@@ -209,11 +203,7 @@ var pressSamples = new (string Name, ArtifactDocument Document)[]
 
 foreach (var (name, document) in pressSamples)
 {
-    var approvedPress = ApprovalGate.Approve(
-        DraftArtifact.New(document, DataLane.Green),
-        "sample-teacher@example.org",
-        DocumentValidator.Validate(document),
-        approvedAt);
+    var approvedPress = ReviewGreenFixture(document);
     var pressPrint = await renderer.RenderAsync(
         approvedPress, new RenderRequest(RenderTarget.PrintHtml, RenderAudience.Learner), CancellationToken.None);
     await File.WriteAllBytesAsync(
@@ -222,9 +212,7 @@ foreach (var (name, document) in pressSamples)
 
 // The vector-first PDF (second forge menu, item 3): the calibration instrument
 // as deterministic PDF bytes — the print pipeline's primary paper format.
-var approvedProof = ApprovalGate.Approve(
-    DraftArtifact.New(CalibrationPress.ProofPage(), DataLane.Green),
-    "sample-teacher@example.org", [], approvedAt);
+var approvedProof = ReviewGreenFixture(CalibrationPress.ProofPage());
 var proofPdf = await renderer.RenderAsync(
     approvedProof, new RenderRequest(RenderTarget.PrintPdf, RenderAudience.Learner), CancellationToken.None);
 await File.WriteAllBytesAsync(
@@ -232,10 +220,8 @@ await File.WriteAllBytesAsync(
 
 // The imposed booklet (third forge menu, item 1): the signature arithmetic and
 // the PDF transforms composed — three retrieval grids as a saddle-stitch file.
-var approvedGrids = ApprovalGate.Approve(
-    DraftArtifact.New(RetrievalGrid.Grids(
-        [.. Enumerable.Range(1, 12).Select(i => $"Question {i}")], gridCount: 3, rows: 3, columns: 3, seed: 20260829), DataLane.Green),
-    "sample-teacher@example.org", [], approvedAt);
+var approvedGrids = ReviewGreenFixture(RetrievalGrid.Grids(
+    [.. Enumerable.Range(1, 12).Select(i => $"Question {i}")], gridCount: 3, rows: 3, columns: 3, seed: 20260829));
 await File.WriteAllBytesAsync(
     Path.Combine(outputDirectory, "press-booklet-retrieval.pdf"),
     VectorPdfWriter.WriteImposed(
@@ -247,9 +233,7 @@ await File.WriteAllBytesAsync(
 // imposed saddle-stitch booklet — the catalog builds it, the imposer binds
 // it, the PDF press inks it. Composition happens HERE, per the layering wall.
 var sampler = StudioSampler.Catalog();
-var approvedSampler = ApprovalGate.Approve(
-    DraftArtifact.New(sampler, DataLane.Green),
-    "sample-teacher@example.org", DocumentValidator.Validate(sampler), approvedAt);
+var approvedSampler = ReviewGreenFixture(sampler);
 await File.WriteAllBytesAsync(
     Path.Combine(outputDirectory, "press-studio-sampler.pdf"),
     VectorPdfWriter.WriteImposed(
@@ -265,4 +249,32 @@ async Task WriteRenderAsync(ApprovedArtifact artifact, string fileName, RenderAu
     var output = await renderer.RenderAsync(
         artifact, new RenderRequest(RenderTarget.AccessibleHtml, audience), CancellationToken.None);
     await File.WriteAllBytesAsync(Path.Combine(outputDirectory, fileName), output.Content.ToArray());
+}
+
+ApprovedArtifact ReviewGreenFixture(ArtifactDocument document)
+{
+    var machine = new JobStateMachine();
+    foreach (var state in new[]
+    {
+        JobState.Imported,
+        JobState.Normalized,
+        JobState.DataLaneConfirmed,
+        JobState.DraftGenerated,
+        JobState.SchemaValidated,
+        JobState.InvariantsValidated,
+        JobState.AwaitingTeacherReview,
+    })
+    {
+        machine.Transition(state);
+    }
+
+    var review = new ReviewSession(
+        DraftArtifact.New(document, DataLane.Green),
+        machine,
+        new DefaultArtifactValidator(),
+        new ReviewViewContext(
+            ReviewViewContext.ManualDefault.PreviewRequest,
+            assetCatalog: catalog));
+    review.SetRequiredIssuesAcknowledged(true);
+    return review.Approve("sample-teacher@example.org", approvedAt);
 }

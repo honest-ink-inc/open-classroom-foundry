@@ -56,11 +56,13 @@ public class OcfprojStoreTests : IDisposable
             ],
             _catalog);
 
+        var reviewedAssets = ExactAssetCatalogSnapshot.CaptureForReview(document, _catalog);
         return ApprovalGate.Approve(
             DraftArtifact.New(document, DataLane.Green, ArtifactPurpose.ClassroomSupport),
             "teacher@example.org",
             [],
-            SomeInstant);
+            SomeInstant,
+            reviewedAssets.Bindings);
     }
 
     private static ProjectSaveRequest Request(string hint) => new(
@@ -79,9 +81,18 @@ public class OcfprojStoreTests : IDisposable
         Assert.Equal(savedJson, loadedJson);
 
         Assert.Equal("all-aboard.task-strip", loaded.Manifest.RecipeId);
+        Assert.Equal("1", loaded.Manifest.SchemaVersion);
         Assert.Equal(DataLane.Green, loaded.Manifest.DataLane);
         Assert.Equal(ArtifactPurpose.ClassroomSupport, loaded.Manifest.Purpose);
         Assert.Equal(["agency.help.v1", "agency.finished.v1"], loaded.Manifest.AssetIds);
+
+        using var package = ZipFile.OpenRead(_store.PathFor("watering-plants"));
+        var manifestEntry = package.GetEntry("manifest.json");
+        Assert.NotNull(manifestEntry);
+        using var manifestStream = manifestEntry.Open();
+        using var manifestJson = await JsonDocument.ParseAsync(manifestStream);
+        Assert.Equal("1", manifestJson.RootElement.GetProperty("schemaVersion").GetString());
+        Assert.False(manifestJson.RootElement.TryGetProperty("recipeHash", out _));
     }
 
     [Fact]
@@ -95,11 +106,13 @@ public class OcfprojStoreTests : IDisposable
         Assert.True(loaded.Assets.TryGetContent(new AssetId("agency.help.v1"), out var originalBytes, out var mimeType));
         Assert.Equal("image/svg+xml", mimeType);
 
+        var reopenedAssets = ExactAssetCatalogSnapshot.CaptureForReview(loaded.Document, loaded.Assets);
         var reopenedApproval = ApprovalGate.Approve(
             DraftArtifact.New(loaded.Document, DataLane.Green),
             "teacher@example.org",
             DocumentValidator.Validate(loaded.Document),
-            SomeInstant);
+            SomeInstant,
+            reopenedAssets.Bindings);
         var rendered = await new AccessibleHtmlRenderer(loaded.Assets).RenderAsync(
             reopenedApproval,
             new RenderRequest(RenderTarget.AccessibleHtml),
@@ -388,18 +401,21 @@ public class OcfprojStoreTests : IDisposable
     }
 
     [Fact]
-    public async Task An_unknown_asset_blocks_the_save_entirely()
+    public void An_unknown_asset_blocks_approval_before_a_save_can_exist()
     {
         var document = new ArtifactDocument(
         [
             new Heading(1, "Mystery"),
             new ImageReference(new AssetId("proprietary.mystery"), "A symbol of unknown origin"),
         ]);
-        var artifact = ApprovalGate.Approve(DraftArtifact.New(document, DataLane.Green), "teacher@example.org", [], SomeInstant);
+        var refusal = Assert.Throws<InvalidOperationException>(() =>
+            ApprovalGate.Approve(
+                DraftArtifact.New(document, DataLane.Green),
+                "teacher@example.org",
+                [],
+                SomeInstant));
 
-        await Assert.ThrowsAsync<InvalidOperationException>(
-            () => _store.SaveGreenProjectAsync(artifact, Request("mystery"), CancellationToken.None));
-
+        Assert.Contains("exact Gate B asset evidence", refusal.Message, StringComparison.Ordinal);
         Assert.False(File.Exists(_store.PathFor("mystery")));
     }
 
@@ -580,7 +596,8 @@ public class OcfprojStoreTests : IDisposable
         public Task<RenderedOutput> RenderAsync(
             ApprovedArtifact artifact,
             RenderRequest request,
-            CancellationToken cancellationToken)
+            CancellationToken cancellationToken,
+            AmberSinkAuthorization? amberAuthorization = null)
         {
             cancellationToken.ThrowIfCancellationRequested();
             const string unrelated =
@@ -597,12 +614,14 @@ public class OcfprojStoreTests : IDisposable
         public async Task<RenderedOutput> RenderAsync(
             ApprovedArtifact artifact,
             RenderRequest request,
-            CancellationToken cancellationToken)
+            CancellationToken cancellationToken,
+            AmberSinkAuthorization? amberAuthorization = null)
         {
             var output = await new AccessibleHtmlRenderer().RenderAsync(
                 artifact,
                 request,
-                cancellationToken);
+                cancellationToken,
+                amberAuthorization);
             await cancellation.CancelAsync();
             return output;
         }

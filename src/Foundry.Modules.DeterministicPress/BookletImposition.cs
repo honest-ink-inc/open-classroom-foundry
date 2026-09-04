@@ -40,7 +40,7 @@ public static class BookletImposition
     }
 
     /// <summary>
-    /// Reading order after printing duplex (long-edge flip), stacking the sheets in
+    /// Reading order after printing duplex (short-edge flip), stacking the sheets in
     /// order, and folding the stack in half. A correct plan reconstructs 1..TotalPages.
     /// </summary>
     public static IReadOnlyList<int> FoldedReadingOrder(ImpositionPlan plan)
@@ -103,7 +103,7 @@ public static class BookletImposition
                 rows),
             new OrderedSteps(
             [
-                "Print the sheets double-sided, flipping on the LONG edge.",
+                "Print the sheets double-sided, flipping on the SHORT edge.",
                 "Keep the sheets in printed order.",
                 "Fold the whole stack in half.",
                 "Staple twice on the fold.",

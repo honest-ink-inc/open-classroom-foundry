@@ -60,6 +60,31 @@ public class PressRoomContractTests
         Assert.False(File.Exists(destination));
     }
 
+    [Fact]
+    public async Task Native_pdf_export_refuses_amber_before_creating_the_destination()
+    {
+        var approved = ApprovalGate.Approve(
+            DraftArtifact.New(new ArtifactDocument([
+                new VectorGraphic(
+                    10,
+                    10,
+                    [new LineSeg(1, 1, 9, 9)],
+                    "Synthetic Amber authorization sheet"),
+            ]), DataLane.Amber),
+            "teacher@example.org",
+            [],
+            new DateTimeOffset(2026, 9, 3, 12, 0, 0, TimeSpan.Zero));
+        var destination = Path.Combine(
+            Path.GetTempPath(),
+            $"honest-ink-amber-native-refusal-{Guid.NewGuid():N}.pdf");
+
+        var exception = await Assert.ThrowsAsync<InvalidOperationException>(() =>
+            AppServices.ExportPdfAsync(approved, destination));
+
+        Assert.Contains("request-bound", exception.Message, StringComparison.Ordinal);
+        Assert.False(File.Exists(destination));
+    }
+
     private static void WithPressRoom(Func<ReviewSession, ApprovedArtifact?> runner, Action<PressRoomForm> assert)
         => Sta.Run(() =>
         {

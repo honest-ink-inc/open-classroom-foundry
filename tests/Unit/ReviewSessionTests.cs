@@ -1,3 +1,5 @@
+using System.Security.Cryptography;
+using System.Text;
 using Foundry.Application;
 using Foundry.Contracts;
 using Foundry.Domain;
@@ -28,7 +30,10 @@ public class ReviewSessionTests
         => new(
             DraftArtifact.New(new ArtifactDocument(nodes), DataLane.Green),
             MachineAtReview(),
-            new DefaultArtifactValidator());
+            new DefaultArtifactValidator(),
+            new ReviewViewContext(
+                ReviewViewContext.ManualDefault.PreviewRequest,
+                assetCatalog: new FixtureAssetCatalog()));
 
     [Fact]
     public void A_session_requires_a_machine_awaiting_review()
@@ -37,6 +42,22 @@ public class ReviewSessionTests
             DraftArtifact.New(ArtifactDocument.Empty, DataLane.Green),
             new JobStateMachine(),
             new DefaultArtifactValidator()));
+    }
+
+    [Fact]
+    public void Restricted_session_never_reports_approval_ready_and_still_refuses_approval()
+    {
+        var session = new ReviewSession(
+            DraftArtifact.New(
+                new ArtifactDocument([new Paragraph("Synthetic restricted fixture.")]),
+                DataLane.Restricted),
+            MachineAtReview(),
+            new DefaultArtifactValidator());
+
+        Assert.False(session.CanApprove);
+        var exception = Assert.Throws<InvalidOperationException>(
+            () => session.Approve("teacher@example.org", SomeInstant));
+        Assert.Contains("Approval is not available", exception.Message, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -329,6 +350,23 @@ public class ReviewSessionTests
         Assert.Equal(JobState.AwaitingTeacherReview, session.Machine.State);
     }
 
+    [Fact]
+    public void A_gate_cannot_substitute_the_reviewer_identity_or_approval_instant()
+    {
+        var session = new ReviewSession(
+            DraftArtifact.New(new ArtifactDocument([new Paragraph("Reviewed content")]), DataLane.Green),
+            MachineAtReview(),
+            new DefaultArtifactValidator(),
+            new SubstitutingReceiptApprovalGate());
+
+        var error = Assert.Throws<InvalidOperationException>(
+            () => session.Approve("teacher@example.org", SomeInstant));
+
+        Assert.Contains("approval identity/time", error.Message, StringComparison.OrdinalIgnoreCase);
+        Assert.Null(session.ApprovedResult);
+        Assert.Equal(JobState.AwaitingTeacherReview, session.Machine.State);
+    }
+
     private sealed class DelegatingValidator(
         Func<ArtifactDocument, IReadOnlyList<ValidationIssue>> validate) : IArtifactValidator
     {
@@ -341,12 +379,14 @@ public class ReviewSessionTests
             DraftArtifact draft,
             string approvedBy,
             IReadOnlyList<ValidationIssue> outstandingIssues,
-            DateTimeOffset approvedAtUtc)
+            DateTimeOffset approvedAtUtc,
+            IReadOnlyList<ApprovedAssetBinding> reviewedAssetBindings)
             => ApprovalGate.Approve(
                 DraftArtifact.New(new ArtifactDocument([new Paragraph("Substituted content")]), DataLane.Green),
                 approvedBy,
                 outstandingIssues,
-                approvedAtUtc);
+                approvedAtUtc,
+                reviewedAssetBindings);
     }
 
     private sealed class AppendingApprovalGate : IApprovalGate
@@ -355,13 +395,62 @@ public class ReviewSessionTests
             DraftArtifact draft,
             string approvedBy,
             IReadOnlyList<ValidationIssue> outstandingIssues,
-            DateTimeOffset approvedAtUtc)
+            DateTimeOffset approvedAtUtc,
+            IReadOnlyList<ApprovedAssetBinding> reviewedAssetBindings)
             => ApprovalGate.Approve(
                 draft,
                 approvedBy,
                 [.. outstandingIssues, ValidationIssue.Warning(
                     "forged.seat-approved",
                     "Synthetic forged approval claim.")],
-                approvedAtUtc);
+                approvedAtUtc,
+                reviewedAssetBindings);
+    }
+
+    private sealed class SubstitutingReceiptApprovalGate : IApprovalGate
+    {
+        public ApprovedArtifact Approve(
+            DraftArtifact draft,
+            string approvedBy,
+            IReadOnlyList<ValidationIssue> outstandingIssues,
+            DateTimeOffset approvedAtUtc,
+            IReadOnlyList<ApprovedAssetBinding> reviewedAssetBindings)
+            => ApprovalGate.Approve(
+                draft,
+                "different-reviewer@example.invalid",
+                outstandingIssues,
+                approvedAtUtc.AddMinutes(-1),
+                reviewedAssetBindings);
+    }
+
+    private sealed class FixtureAssetCatalog : IAssetCatalog
+    {
+        private static readonly byte[] Content = Encoding.UTF8.GetBytes(
+            "<svg xmlns=\"http://www.w3.org/2000/svg\"><rect width=\"10\" height=\"10\"/></svg>");
+        private static readonly string ContentHash = Convert.ToHexString(SHA256.HashData(Content));
+
+        public IReadOnlyList<AssetProvenance> All => [];
+
+        public AssetProvenance? Find(AssetId id)
+            => new(
+                id,
+                $"concept.{id.Value}",
+                "1.0.0",
+                "fixture.svg",
+                "image/svg+xml",
+                "synthetic test",
+                "synthetic test",
+                "CC0-1.0",
+                ContentHash,
+                "Synthetic fixture",
+                "Synthetic fixture",
+                Redistributable: true);
+
+        public bool TryGetContent(AssetId id, out ReadOnlyMemory<byte> content, out string mimeType)
+        {
+            content = Content;
+            mimeType = "image/svg+xml";
+            return true;
+        }
     }
 }

@@ -44,6 +44,19 @@ public class DraftFactoryTests
     {
         Assert.Equal(DataLane.Green, DraftFactory.CreateFromSources(ArtifactDocument.Empty, []).Revision.Lane);
     }
+
+    [Theory]
+    [InlineData(-1)]
+    [InlineData(3)]
+    public void Undefined_source_or_requested_lanes_cannot_mint_a_green_draft(int undefinedValue)
+    {
+        var undefined = (DataLane)undefinedValue;
+
+        Assert.Throws<ArgumentOutOfRangeException>(() =>
+            DraftFactory.CreateFromSources(ArtifactDocument.Empty, [Source(undefined)]));
+        Assert.Throws<ArgumentOutOfRangeException>(() =>
+            DraftFactory.CreateFromSources(ArtifactDocument.Empty, [], undefined));
+    }
 }
 
 public class AccessRemixTests

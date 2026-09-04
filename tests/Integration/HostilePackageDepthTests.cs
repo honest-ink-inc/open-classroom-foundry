@@ -32,6 +32,7 @@ public class HostilePackageDepthTests : IDisposable
 
     private readonly string _root = Path.Combine(Path.GetTempPath(), "ocf-hostile", Guid.NewGuid().ToString("N"));
     private readonly OcfprojProjectStore _store;
+    private readonly JsonAssetCatalog _catalog;
 
     public HostilePackageDepthTests()
     {
@@ -41,8 +42,8 @@ public class HostilePackageDepthTests : IDisposable
             repo = repo.Parent;
         }
 
-        var catalog = new JsonAssetCatalog(Path.Combine(repo!.FullName, "assets", "symbols"));
-        _store = new OcfprojProjectStore(_root, new AccessibleHtmlRenderer(), catalog);
+        _catalog = new JsonAssetCatalog(Path.Combine(repo!.FullName, "assets", "symbols"));
+        _store = new OcfprojProjectStore(_root, new AccessibleHtmlRenderer(), _catalog);
 
         var document = AllAboardBuilders.TaskStrip(
             "Watering the class plants",
@@ -51,9 +52,14 @@ public class HostilePackageDepthTests : IDisposable
                 new StepSpec("Fill it to the line."),
                 new StepSpec("Water each plant once."),
             ],
-            catalog);
+            _catalog);
+        var reviewedAssets = ExactAssetCatalogSnapshot.CaptureForReview(document, _catalog);
         var artifact = ApprovalGate.Approve(
-            DraftArtifact.New(document, DataLane.Green), "teacher@example.org", [], SomeInstant);
+            DraftArtifact.New(document, DataLane.Green),
+            "teacher@example.org",
+            [],
+            SomeInstant,
+            reviewedAssets.Bindings);
         _store.SaveGreenProjectAsync(
             artifact,
             new ProjectSaveRequest("valid", "all-aboard", "all-aboard.task-strip", "0.1.0", SomeInstant),
@@ -295,7 +301,8 @@ public class HostilePackageDepthTests : IDisposable
             DraftArtifact.New(loaded.Document, DataLane.Green),
             "teacher@example.org",
             DocumentValidator.Validate(loaded.Document),
-            SomeInstant);
+            SomeInstant,
+            ExactAssetCatalogSnapshot.CaptureForReview(loaded.Document, loadedAssets).Bindings);
         var resavedStore = new OcfprojProjectStore(
             Path.Combine(_root, "safe-optional-resaved"),
             new AccessibleHtmlRenderer(),
@@ -473,7 +480,8 @@ public class HostilePackageDepthTests : IDisposable
             DraftArtifact.New(document, DataLane.Green),
             "teacher@example.org",
             [],
-            SomeInstant);
+            SomeInstant,
+            ExactAssetCatalogSnapshot.CaptureForReview(document, _catalog).Bindings);
         var snapshot = await AccessibleHtmlRenderer.RenderPortableSnapshotAsync(
             approved,
             new RenderRequest(RenderTarget.AccessibleHtml, RenderAudience.Learner),
