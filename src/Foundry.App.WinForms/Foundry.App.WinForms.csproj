@@ -4,6 +4,7 @@
     <ProjectReference Include="..\Foundry.Application\Foundry.Application.csproj" />
     <ProjectReference Include="..\Foundry.Infrastructure.Windows\Foundry.Infrastructure.Windows.csproj" />
     <ProjectReference Include="..\Foundry.Rendering\Foundry.Rendering.csproj" />
+    <ProjectReference Include="..\Foundry.ReviewPreview\Foundry.ReviewPreview.csproj" />
     <ProjectReference Include="..\Foundry.Storage\Foundry.Storage.csproj" />
     <ProjectReference Include="..\Foundry.Inference.AzureOpenAI\Foundry.Inference.AzureOpenAI.csproj" />
     <ProjectReference Include="..\Foundry.Modules.DeterministicPress\Foundry.Modules.DeterministicPress.csproj" />

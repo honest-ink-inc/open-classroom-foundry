@@ -67,7 +67,7 @@ V. opened with the samples printed and scissors on the table, which is where vis
 
 **Findings:**
 - **RC-21 (refinement, fix now).** The flashcard overflow threshold of 60 characters is generous past honesty: at 6 mm type in a ~96×63 mm cell, wrapping fails well before 60. Lower the flag to 40 characters; the text is still never truncated.
-- **RC-22 (needs human, standing).** Time-to-artifact budgets are declared and unmeasured. The two accepted educators can begin think-alouds against the existing samples *now* — the rehearsal council's strongest recommendation to the product owner.
+- **RC-22 (needs human, standing; current directive superseded 3 September 2026).** Time-to-artifact budgets are declared and unmeasured. ~~The two accepted educators can begin think-alouds against the existing samples *now* — the rehearsal council's strongest recommendation to the product owner.~~ That historical scheduling statement is no longer operative. Current participant use is held until the exact terms, constituted seats, ordered H0–H7 prerequisites, and instrument entry conditions recorded in the [bounded-commission review ledger](bounded-commission-review-ledger.md) are satisfied.
 - **RC-23 (advisory).** When the human council convenes, hand each member this register and let them overturn any rehearsal disposition; the rehearsal is scaffolding and should fade like one.
 
 ---

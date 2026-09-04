@@ -180,6 +180,7 @@
       "foundry.tools.samplegenerator": {
         "type": "Project",
         "dependencies": {
+          "Foundry.Application": "[1.0.0, )",
           "Foundry.Modules.BuiltIn": "[1.0.0, )",
           "Foundry.Modules.DeterministicPress": "[1.0.0, )",
           "Foundry.Rendering": "[1.0.0, )",
@@ -189,6 +190,7 @@
       "foundry.tools.sitegenerator": {
         "type": "Project",
         "dependencies": {
+          "Foundry.Application": "[1.0.0, )",
           "Foundry.Modules.DeterministicPress": "[1.0.0, )",
           "Foundry.Rendering": "[1.0.0, )"
         }

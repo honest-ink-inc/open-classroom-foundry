@@ -9,7 +9,12 @@ namespace Foundry.Contracts;
 
 public interface IApprovalGate
 {
-    ApprovedArtifact Approve(DraftArtifact draft, string approvedBy, IReadOnlyList<ValidationIssue> outstandingIssues, DateTimeOffset approvedAtUtc);
+    ApprovedArtifact Approve(
+        DraftArtifact draft,
+        string approvedBy,
+        IReadOnlyList<ValidationIssue> outstandingIssues,
+        DateTimeOffset approvedAtUtc,
+        IReadOnlyList<ApprovedAssetBinding> reviewedAssetBindings);
 }
 
 public interface IDataPolicyEvaluator
@@ -58,17 +63,29 @@ public interface IRedactionAssistant
 
 public interface IRenderer
 {
-    Task<RenderedOutput> RenderAsync(ApprovedArtifact artifact, RenderRequest request, CancellationToken cancellationToken);
+    Task<RenderedOutput> RenderAsync(
+        ApprovedArtifact artifact,
+        RenderRequest request,
+        CancellationToken cancellationToken,
+        AmberSinkAuthorization? amberAuthorization = null);
 }
 
 public interface IExporter
 {
-    Task ExportAsync(ApprovedArtifact artifact, ExportRequest request, CancellationToken cancellationToken);
+    Task ExportAsync(
+        ApprovedArtifact artifact,
+        ExportRequest request,
+        CancellationToken cancellationToken,
+        AmberSinkAuthorization? amberAuthorization = null);
 }
 
 public interface IPrinter
 {
-    Task PrintAsync(ApprovedArtifact artifact, PrintRequest request, CancellationToken cancellationToken);
+    Task PrintAsync(
+        ApprovedArtifact artifact,
+        PrintRequest request,
+        CancellationToken cancellationToken,
+        AmberSinkAuthorization? amberAuthorization = null);
 }
 
 public interface IProjectStore

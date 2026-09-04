@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 using System.IO;
+using System.Reflection;
 using Foundry.App.WinForms;
 using Foundry.Application;
 using Foundry.Contracts;
@@ -134,6 +135,40 @@ public class AllAboardContractTests
                 form.StatusText);
             Assert.NotNull(form.ApprovedResult);
             Assert.True(ReviewSurfaceContractTests.ByName(form, "Open print view").Enabled);
+        });
+
+    [Fact]
+    public void Amber_print_view_is_refused_before_an_injected_opener_runs()
+        => Sta.Run(() =>
+        {
+            var openerCalls = 0;
+            using var form = new AllAboardForm(
+                Catalog(),
+                GateRespectingApprove,
+                printViewOpener: (_, _, _, _, _, _) =>
+                {
+                    openerCalls++;
+                    return Task.CompletedTask;
+                });
+            var amber = ApprovalGate.Approve(
+                DraftArtifact.New(
+                    new ArtifactDocument([new Paragraph("Synthetic Amber print-view refusal")]),
+                    DataLane.Amber),
+                "teacher@example.org",
+                [],
+                new DateTimeOffset(2026, 9, 3, 12, 0, 0, TimeSpan.Zero));
+            var open = typeof(AllAboardForm).GetMethod(
+                "OpenPrintViewAsync",
+                BindingFlags.NonPublic | BindingFlags.Instance)
+                ?? throw new InvalidOperationException("The audited print-view coordinator was not found.");
+
+            var work = Assert.IsType<Task>(open.Invoke(form, [amber]), exactMatch: false);
+            work.GetAwaiter().GetResult();
+
+            Assert.Equal(0, openerCalls);
+            Assert.Equal(
+                UiStrings.WithoutMnemonic(UiStrings.StatusPrintViewRefused),
+                form.StatusText);
         });
 
     [Fact]

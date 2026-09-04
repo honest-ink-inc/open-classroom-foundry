@@ -10,8 +10,8 @@ namespace Foundry.Rendering;
 /// <summary>
 /// A sealed in-process view model for Gate B's visual derivative. It is not a
 /// <see cref="RenderedOutput"/>, has no MIME target or destination, and is
-/// internal to the application shell. Consequently it cannot satisfy any
-/// renderer, exporter, printer, or project-store sink contract.
+/// visibly and semantically marked as unapproved. It is internal to the tiny
+/// review-preview adapter and the desktop review surface.
 /// </summary>
 internal sealed class UnapprovedDraftPreview
 {
@@ -49,9 +49,8 @@ internal sealed class UnapprovedDraftPreview
 
 /// <summary>
 /// Produces a visibly marked local preview directly from a draft revision.
-/// This is intentionally not an <see cref="IRenderer"/>: only approved
-/// artifacts can enter that output capability. The semantic derivative is
-/// nevertheless produced by the exact same HTML/SVG core as approved output.
+/// This adapter is intentionally internal and is the sole production caller
+/// of the Rendering assembly's raw semantic core.
 /// </summary>
 internal static class UnapprovedDraftPreviewFactory
 {

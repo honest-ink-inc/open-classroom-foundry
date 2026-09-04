@@ -4,13 +4,6 @@ using Foundry.Domain;
 
 namespace Foundry.Application;
 
-/// <summary>Delegates to the Domain gate — the only path that constructs approved content.</summary>
-internal sealed class DomainApprovalGate : IApprovalGate
-{
-    public ApprovedArtifact Approve(DraftArtifact draft, string approvedBy, IReadOnlyList<ValidationIssue> outstandingIssues, DateTimeOffset approvedAtUtc)
-        => ApprovalGate.Approve(draft, approvedBy, outstandingIssues, approvedAtUtc);
-}
-
 /// <summary>Lane rules of plan §4: the envelope's declared lane governs; detection escalates only.</summary>
 public sealed class DefaultDataPolicyEvaluator : IDataPolicyEvaluator
 {

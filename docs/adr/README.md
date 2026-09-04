@@ -13,6 +13,7 @@ Numbered, immutable once ratified, superseded only by a later ADR. Format: [temp
 | [ADR-007](ADR-007-managed-pilot-upgrades-are-side-by-side.md) | Managed pilot upgrades are side-by-side and project preparation is copy-on-write | Proposed — advisory pending product-owner ratification and District IT deployment decisions |
 | [ADR-008](ADR-008-public-module-display-names.md) | Six public module display names change; stable project, recipe, schema, and diagnostic identifiers do not | Accepted — decided 30 Aug 2026 |
 | [ADR-009](ADR-009-strandplan-display-name.md) | StrandPlan replaces GridLesson as the provisional lesson-design display; stable `lesson-loom` identities remain unchanged | Accepted — corrected 31 Aug 2026 |
+| [ADR-010](ADR-010-project-schema-2-binds-an-exact-recipe-contract.md) | Project schema 2 binds saved projects to an exact declarative recipe contract; schema 1 remains immutable and can only be re-admitted copy-on-write after fresh review | Proposed — decision-ready; no schema-2 writer, migration, version, or release is authorized |
 
 ## Decision companions
 

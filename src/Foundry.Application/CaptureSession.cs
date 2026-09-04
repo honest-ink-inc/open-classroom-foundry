@@ -21,10 +21,10 @@ internal sealed class CaptureGenerationChangedException()
 /// <summary>
 /// The capture-side presenter (ADR-002): capture → normalize → teacher lane
 /// confirmation, with Gate C invokable at any moment and RC-18 lane inheritance
-/// at the exit. The teacher's lane confirmation is an attestation — staged
-/// materials and empty environments qualify as Green because the teacher says
-/// so and owns saying so (plan §4); everything downstream then inherits, and a
-/// flow-computed draft can never fall below its sources.
+/// at the exit. A teacher may resolve an explicitly provisional unknown input;
+/// an established or automatically escalated classification cannot be lowered
+/// by that confirmation. Everything downstream inherits the resulting lane, and
+/// a flow-computed draft can never fall below its sources.
 /// </summary>
 public sealed class CaptureSession
 {
@@ -152,6 +152,26 @@ public sealed class CaptureSession
                     throw new InvalidOperationException($"Cannot complete capture while the session is {Machine.State}.");
                 }
 
+                if (captured is null || !HasValidLaneMetadata(captured))
+                {
+                    Machine.Transition(JobState.Blocked);
+                    _envelope = captured;
+                    committed = true;
+                    RequestPurgeLocked();
+                    throw new InvalidOperationException(
+                        "Capture was blocked because the source returned no valid data-lane classification and basis.");
+                }
+
+                if (captured.Lane == DataLane.Restricted)
+                {
+                    Machine.Transition(JobState.Blocked);
+                    _envelope = captured;
+                    committed = true;
+                    RequestPurgeLocked();
+                    throw new InvalidOperationException(
+                        "Restricted data is blocked at capture in this early release; transient source purge was requested.");
+                }
+
                 Machine.Transition(JobState.Imported);
                 _envelope = captured;
                 committed = true;
@@ -234,13 +254,53 @@ public sealed class CaptureSession
         var committed = false;
         try
         {
-            normalized = await _normalizer.NormalizeAsync(envelope, request, cancellationToken).ConfigureAwait(false);
+            normalized = await _normalizer.NormalizeAsync(envelope, request, cancellationToken).ConfigureAwait(false)
+                ?? throw new InvalidOperationException("The normalizer returned no source envelope.");
+            if (!HasValidLaneMetadata(envelope)
+                || !Enum.IsDefined(normalized.Lane)
+                || !Enum.IsDefined(normalized.LaneBasis))
+            {
+                throw new InvalidOperationException("Normalization returned an undefined data lane or basis.");
+            }
+
+            // A normalizer may discover a higher lane, but it is not an
+            // authority for lowering the source classification. Provisional
+            // status survives only a lane-preserving normalization that also
+            // explicitly preserves that status. Any drift establishes the
+            // inherited classification before pair validation, so an Amber →
+            // Restricted escalation is blocked and purged instead of mistaken
+            // for a malformed provisional envelope and retained for retry.
+            var inheritedLane = LanePolicy.Inherit(envelope.Lane, normalized.Lane);
+            var inheritedBasis = envelope.LaneBasis == DataLaneBasis.ProvisionalUnknown
+                && normalized.LaneBasis == DataLaneBasis.ProvisionalUnknown
+                && normalized.Lane == envelope.Lane
+                ? DataLaneBasis.ProvisionalUnknown
+                : DataLaneBasis.Established;
+            normalized = normalized with
+            {
+                Lane = inheritedLane,
+                LaneBasis = inheritedBasis,
+            };
+            if (!HasValidLaneMetadata(normalized))
+            {
+                throw new InvalidOperationException("Normalization returned an invalid data-lane classification and basis.");
+            }
             lock (_gate)
             {
                 cancellationToken.ThrowIfCancellationRequested();
                 if (Machine.State != state || _purgeRequested)
                 {
                     throw new InvalidOperationException($"Cannot complete normalization while the session is {Machine.State}.");
+                }
+
+                if (normalized.Lane == DataLane.Restricted)
+                {
+                    Machine.Transition(JobState.Blocked);
+                    _envelope = normalized;
+                    committed = true;
+                    RequestPurgeLocked();
+                    throw new InvalidOperationException(
+                        "Restricted data is blocked during normalization in this early release; transient source purge was requested.");
                 }
 
                 if (normalized.Bytes != envelope.Bytes
@@ -299,7 +359,10 @@ public sealed class CaptureSession
         }
     }
 
-    /// <summary>The teacher attests the lane; the attestation is theirs to make and theirs to answer for.</summary>
+    /// <summary>
+    /// The teacher resolves an explicitly provisional unknown lane. Established
+    /// source or detection classifications may only be retained or escalated.
+    /// </summary>
     public SourceEnvelope ConfirmLane(DataLane teacherConfirmedLane)
         => ConfirmLaneCore(teacherConfirmedLane, expectedPreviewReference: null);
 
@@ -329,7 +392,43 @@ public sealed class CaptureSession
                 throw new CaptureGenerationChangedException();
             }
 
-            var confirmed = envelope with { Lane = teacherConfirmedLane };
+            if (!Enum.IsDefined(teacherConfirmedLane))
+            {
+                throw new ArgumentOutOfRangeException(
+                    nameof(teacherConfirmedLane),
+                    teacherConfirmedLane,
+                    "The teacher-confirmed data lane is undefined.");
+            }
+
+            if (!HasValidLaneMetadata(envelope))
+            {
+                Machine.Transition(JobState.Blocked);
+                RequestPurgeLocked();
+                throw new InvalidOperationException(
+                    "Lane confirmation was blocked because the authoritative data-lane classification and basis are invalid.");
+            }
+
+            var confirmedLane = envelope.LaneBasis == DataLaneBasis.ProvisionalUnknown
+                ? teacherConfirmedLane
+                : LanePolicy.Inherit(envelope.Lane, teacherConfirmedLane);
+            var confirmed = envelope with
+            {
+                Lane = confirmedLane,
+                LaneBasis = DataLaneBasis.Established,
+            };
+            if (confirmedLane == DataLane.Restricted)
+            {
+                // Restricted is not an authoring lane in an early release. The
+                // refusal, state transition, and purge request are one locked
+                // act, so no caller can observe a confirmed Restricted session
+                // and continue into draft creation.
+                _envelope = confirmed;
+                Machine.Transition(JobState.Blocked);
+                RequestPurgeLocked();
+                throw new InvalidOperationException(
+                    "Restricted data is blocked in this early release; transient source purge was requested.");
+            }
+
             Machine.Transition(JobState.DataLaneConfirmed);
             _envelope = confirmed;
             return confirmed;
@@ -457,6 +556,12 @@ public sealed class CaptureSession
             PurgeOwnedBytesLocked();
         }
     }
+
+    private static bool HasValidLaneMetadata(SourceEnvelope envelope)
+        => Enum.IsDefined(envelope.Lane)
+            && Enum.IsDefined(envelope.LaneBasis)
+            && (envelope.LaneBasis != DataLaneBasis.ProvisionalUnknown
+                || envelope.Lane == LanePolicy.DefaultForUnknown);
 
     private bool RequestPurgeLocked()
     {

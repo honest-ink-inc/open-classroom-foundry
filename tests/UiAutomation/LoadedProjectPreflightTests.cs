@@ -191,11 +191,14 @@ public sealed class LoadedProjectPreflightTests
         ArtifactDocument document,
         ArtifactPurpose manifestPurpose = ArtifactPurpose.FormalOrHighStakesAssessment)
     {
+        var assets = SyntheticAssetCatalog.ForDocument(document);
+        var reviewedAssets = ExactAssetCatalogSnapshot.CaptureForReview(document, assets);
         var approved = ApprovalGate.Approve(
             DraftArtifact.New(document, DataLane.Green, ArtifactPurpose.ClassroomSupport),
             "Synthetic test teacher",
             DocumentValidator.Validate(document),
-            new DateTimeOffset(2026, 8, 30, 12, 0, 0, TimeSpan.Zero));
+            new DateTimeOffset(2026, 8, 30, 12, 0, 0, TimeSpan.Zero),
+            reviewedAssets.Bindings);
         return new LoadedProject(
             new ProjectManifest(
                 EngineIdentity.ProjectSchemaVersion,
@@ -216,7 +219,8 @@ public sealed class LoadedProjectPreflightTests
                 manifestPurpose),
             document,
             ProjectValidationEnvelope.Exact(approved, "synthetic-recipe", "0.1.0"),
-            ProjectRenderProfile.For(approved));
+            ProjectRenderProfile.For(approved),
+            assets);
     }
 
     private static ArtifactDocument RichDocument()

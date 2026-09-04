@@ -62,12 +62,23 @@ public sealed class AccessibleHtmlRenderer : IRenderer
         _assetCatalog = assetCatalog;
     }
 
-    public Task<RenderedOutput> RenderAsync(ApprovedArtifact artifact, RenderRequest request, CancellationToken cancellationToken)
+    public Task<RenderedOutput> RenderAsync(
+        ApprovedArtifact artifact,
+        RenderRequest request,
+        CancellationToken cancellationToken,
+        AmberSinkAuthorization? amberAuthorization = null)
     {
         ArgumentNullException.ThrowIfNull(artifact);
         ArgumentNullException.ThrowIfNull(request);
+        ArtifactSinkAuthorizationGate.DemandRender(artifact, amberAuthorization);
         cancellationToken.ThrowIfCancellationRequested();
         ValidateTextScaleContract(request);
+        var exactAssets = ExactAssetCatalogSnapshot.CaptureForApprovedOutput(
+            artifact,
+            _assetCatalog);
+        IAssetCatalog? approvedAssetCatalog = exactAssets.Bindings.Count == 0
+            ? null
+            : exactAssets;
 
         if (request.Target == RenderTarget.Svg)
         {
@@ -94,7 +105,7 @@ public sealed class AccessibleHtmlRenderer : IRenderer
             var assetSheet = RenderAssetSheetSvg(
                 artifact.Revision.Document,
                 request,
-                _assetCatalog,
+                approvedAssetCatalog,
                 cancellationToken);
             return Task.FromResult(new RenderedOutput(RenderTarget.Svg, Encoding.UTF8.GetBytes(assetSheet), "image/svg+xml"));
         }
@@ -104,7 +115,11 @@ public sealed class AccessibleHtmlRenderer : IRenderer
             // The vector-first press: mm-exact geometry as true PDF operators,
             // deterministic bytes, no browser. Non-vector documents keep the
             // HTML print path (headless PDF conversion) until parity.
-            var pdf = VectorPdfWriter.Write(artifact, request.Audience, cancellationToken);
+            var pdf = VectorPdfWriter.Write(
+                artifact,
+                request.Audience,
+                amberAuthorization,
+                cancellationToken);
             return Task.FromResult(new RenderedOutput(RenderTarget.PrintPdf, pdf, "application/pdf"));
         }
 
@@ -119,7 +134,7 @@ public sealed class AccessibleHtmlRenderer : IRenderer
             request,
             artifact.Receipt,
             isUnapprovedPreview: false,
-            _assetCatalog,
+            approvedAssetCatalog,
             cancellationToken: cancellationToken);
         return Task.FromResult(new RenderedOutput(request.Target, Encoding.UTF8.GetBytes(html), "text/html"));
     }
@@ -133,10 +148,12 @@ public sealed class AccessibleHtmlRenderer : IRenderer
     public static Task<RenderedOutput> RenderPortableSnapshotAsync(
         ApprovedArtifact artifact,
         RenderRequest request,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken,
+        AmberSinkAuthorization? amberAuthorization = null)
     {
         ArgumentNullException.ThrowIfNull(artifact);
         ArgumentNullException.ThrowIfNull(request);
+        ArtifactSinkAuthorizationGate.DemandRender(artifact, amberAuthorization);
         cancellationToken.ThrowIfCancellationRequested();
         ValidateTextScaleContract(request);
         var content = RenderPortableSnapshot(artifact.Revision.Document, request, cancellationToken);

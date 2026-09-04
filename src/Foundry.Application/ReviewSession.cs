@@ -15,7 +15,9 @@ public sealed class ReviewSession
 {
     private readonly IArtifactValidator _validator;
     private readonly IApprovalGate _gate;
+    private readonly IAssetCatalog? _sourceAssetCatalog;
     private readonly HashSet<ValidationIssue> _acknowledgedIssues = [];
+    private IReadOnlyList<ApprovedAssetBinding> _reviewedAssetBindings;
 
     public ReviewSession(
         DraftArtifact draft,
@@ -70,7 +72,11 @@ public sealed class ReviewSession
         Machine = machine;
         _validator = validator;
         _gate = gate;
-        ViewContext = viewContext;
+        _sourceAssetCatalog = viewContext.AssetCatalog;
+        (ViewContext, _reviewedAssetBindings) = BindExactReviewAssets(
+            viewContext,
+            draft.Revision.Document,
+            _sourceAssetCatalog);
         Issues = ValidateAndFreeze(_validator, draft.Revision.Document);
     }
 
@@ -83,7 +89,7 @@ public sealed class ReviewSession
     /// every revision in this review. Edits change only the revision; they do
     /// not silently change what audience, scale, ordering, or source was shown.
     /// </summary>
-    public ReviewViewContext ViewContext { get; }
+    public ReviewViewContext ViewContext { get; private set; }
 
     public IReadOnlyList<ValidationIssue> Issues { get; private set; }
 
@@ -92,6 +98,7 @@ public sealed class ReviewSession
 
     public bool CanApprove
         => Machine.State == JobState.AwaitingTeacherReview
+            && Draft.Revision.Lane != DataLane.Restricted
             && !DocumentValidator.HasBlockingIssues(Issues)
             && Issues.Where(issue => issue.RequiresAcknowledgement)
                 .All(_acknowledgedIssues.Contains);
@@ -180,7 +187,12 @@ public sealed class ReviewSession
             throw new InvalidOperationException("Approval is not available: the review is not awaiting the teacher, or blocking issues remain.");
         }
 
-        var approved = _gate.Approve(Draft, approvedBy, Issues, approvedAtUtc);
+        var approved = _gate.Approve(
+            Draft,
+            approvedBy,
+            Issues,
+            approvedAtUtc,
+            _reviewedAssetBindings);
         var revision = Draft.Revision;
         var expectedEvidence = Issues
             .Concat(DocumentValidator.Validate(revision.Document))
@@ -189,10 +201,13 @@ public sealed class ReviewSession
         if (!ReferenceEquals(approved.Revision, revision)
             || approved.Receipt.ArtifactId != revision.Id
             || approved.Receipt.RevisionNumber != revision.Number
-            || !approved.ValidationIssues.SequenceEqual(expectedEvidence))
+            || !string.Equals(approved.Receipt.ApprovedBy, approvedBy, StringComparison.Ordinal)
+            || approved.Receipt.ApprovedAtUtc != approvedAtUtc
+            || !approved.ValidationIssues.SequenceEqual(expectedEvidence)
+            || !approved.AssetBindings.SequenceEqual(_reviewedAssetBindings))
         {
             throw new InvalidOperationException(
-                "Approval is not available: the gate returned evidence for a different revision or validation result.");
+                "Approval is not available: the gate returned a different revision, approval identity/time, or validation result.");
         }
 
         ApprovedResult = approved;
@@ -222,10 +237,15 @@ public sealed class ReviewSession
     private void ApplyEdit(List<DocumentNode> nodes)
     {
         var editedDraft = Draft.WithEditedDocument(new ArtifactDocument(nodes, Draft.Revision.Document.Language));
+        var reboundAssets = BindExactReviewAssets(
+            ViewContext,
+            editedDraft.Revision.Document,
+            _sourceAssetCatalog);
         var editedIssues = ValidateAndFreeze(_validator, editedDraft.Revision.Document);
 
         Machine.Transition(JobState.TeacherEdited);
         Draft = editedDraft;
+        (ViewContext, _reviewedAssetBindings) = reboundAssets;
         Issues = editedIssues;
         _acknowledgedIssues.Clear();
         Machine.Transition(JobState.AwaitingTeacherReview);
@@ -258,5 +278,45 @@ public sealed class ReviewSession
         }
 
         return Array.AsReadOnly(snapshot);
+    }
+
+    private static (ReviewViewContext Context, IReadOnlyList<ApprovedAssetBinding> Bindings) BindExactReviewAssets(
+        ReviewViewContext viewContext,
+        ArtifactDocument document,
+        IAssetCatalog? sourceCatalog)
+    {
+        var snapshot = ExactAssetCatalogSnapshot.CaptureForReview(document, sourceCatalog);
+        if (sourceCatalog is null && snapshot.Bindings.Count == 0)
+        {
+            return (viewContext, snapshot.Bindings);
+        }
+
+        IAssetCatalog? exactCatalog = sourceCatalog is null && snapshot.Bindings.Count == 0
+            ? null
+            : snapshot;
+        return (
+            new ReviewViewContext(viewContext.PreviewRequest, viewContext.Source, exactCatalog),
+            snapshot.Bindings);
+    }
+
+    /// <summary>
+    /// The sole production adapter allowed to invoke the Domain mint. Keeping
+    /// it private prevents friend assemblies from bypassing this session's
+    /// state, acknowledgement, revision, validator, and exact-asset checks.
+    /// </summary>
+    private sealed class DomainApprovalGate : IApprovalGate
+    {
+        public ApprovedArtifact Approve(
+            DraftArtifact draft,
+            string approvedBy,
+            IReadOnlyList<ValidationIssue> outstandingIssues,
+            DateTimeOffset approvedAtUtc,
+            IReadOnlyList<ApprovedAssetBinding> reviewedAssetBindings)
+            => ApprovalGate.Approve(
+                draft,
+                approvedBy,
+                outstandingIssues,
+                approvedAtUtc,
+                reviewedAssetBindings);
     }
 }

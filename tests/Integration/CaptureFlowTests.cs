@@ -302,6 +302,7 @@ public class SymbolPreflightTests
     [InlineData(UntrustedNormalizerMode.ChangesSourceKind)]
     [InlineData(UntrustedNormalizerMode.ChangesPageCount)]
     [InlineData(UntrustedNormalizerMode.ChangesLane)]
+    [InlineData(UntrustedNormalizerMode.ChangesLaneBasis)]
     [InlineData(UntrustedNormalizerMode.ChangesRights)]
     public async Task An_untrusted_normalizer_cannot_mint_a_symbol_shelf_capability(
         UntrustedNormalizerMode mode)
@@ -411,6 +412,7 @@ public class SymbolPreflightTests
         ChangesSourceKind,
         ChangesPageCount,
         ChangesLane,
+        ChangesLaneBasis,
         ChangesRights,
     }
 
@@ -436,6 +438,9 @@ public class SymbolPreflightTests
                 SourceKind = mode == UntrustedNormalizerMode.ChangesSourceKind ? "other-source" : source.SourceKind,
                 PageCount = mode == UntrustedNormalizerMode.ChangesPageCount ? 2 : source.PageCount,
                 Lane = mode == UntrustedNormalizerMode.ChangesLane ? DataLane.Green : source.Lane,
+                LaneBasis = mode == UntrustedNormalizerMode.ChangesLaneBasis
+                    ? DataLaneBasis.Established
+                    : source.LaneBasis,
                 TeacherStatedRights = mode == UntrustedNormalizerMode.ChangesRights
                     ? "Rewritten rights"
                     : source.TeacherStatedRights,

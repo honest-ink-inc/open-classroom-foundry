@@ -112,10 +112,16 @@ public class StagedTaskFixtureTests
         var issues = DocumentValidator.Validate(document);
         Assert.False(DocumentValidator.HasBlockingIssues(issues), fixture.ToString());
 
+        var draft = DraftArtifact.New(document, DataLane.Green);
+        var reviewedAssets = ExactAssetCatalogSnapshot.CaptureForReview(document, catalog);
         var approved = ApprovalGate.Approve(
-            DraftArtifact.New(document, DataLane.Green), "teacher@example.org", issues, SomeInstant);
+            draft,
+            "teacher@example.org",
+            issues,
+            SomeInstant,
+            reviewedAssets.Bindings);
 
-        var renderer = new AccessibleHtmlRenderer();
+        var renderer = new AccessibleHtmlRenderer(catalog);
         var learner = Encoding.UTF8.GetString(
             (await renderer.RenderAsync(approved, new RenderRequest(RenderTarget.AccessibleHtml), CancellationToken.None)).Content.Span);
         var print = Encoding.UTF8.GetString(

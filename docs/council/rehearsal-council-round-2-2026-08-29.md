@@ -59,7 +59,7 @@ The Owner heard all five seats and set the order of march:
 1. Accept and apply R2-1, R2-2, R2-3, R2-4 today; file R2-5 and R2-6 today.
 2. Remaining 0.4: the `Inference.Local` feasibility spike, Gate C per the delivered design when capture lands, the open-pack **export** path (where the non-redistributable invariant gets its export-side test — a teacher-local symbol must be unexportable to a public pack, provably).
 3. Then 0.5: Source Lens, Green-only Family Bridge with the readability lint, the provenance/citation editor — every multilingual element passing the council's new stewardship check.
-4. The human gates remain the human gates. Push the repository (R2-7), seat the second maintainer (R2-13), and let the two accepted educators put their hands on the samples.
+4. The human gates remain the human gates. ~~Push the repository (R2-7), seat the second maintainer (R2-13), and let the two accepted educators put their hands on the samples.~~ **Current directive superseded 3 September 2026:** no participant use begins until the exact terms, constituted seats, ordered H0–H7 prerequisites, and instrument entry conditions in the [bounded-commission review ledger](bounded-commission-review-ledger.md) are satisfied; no push or outward act follows from this historical rehearsal.
 
 ## Product-owner adoption of rehearsal-derived findings (29 August 2026)
 

@@ -13,6 +13,7 @@
     <Project Path="src/Foundry.Modules.BuiltIn/Foundry.Modules.BuiltIn.csproj" />
     <Project Path="src/Foundry.Modules.DeterministicPress/Foundry.Modules.DeterministicPress.csproj" />
     <Project Path="src/Foundry.Rendering/Foundry.Rendering.csproj" />
+    <Project Path="src/Foundry.ReviewPreview/Foundry.ReviewPreview.csproj" />
     <Project Path="src/Foundry.Storage/Foundry.Storage.csproj" />
   </Folder>
   <Folder Name="/tests/" />

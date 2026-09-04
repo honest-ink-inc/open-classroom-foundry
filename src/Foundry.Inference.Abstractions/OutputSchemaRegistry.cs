@@ -4,8 +4,9 @@ namespace Foundry.Inference;
 /// <summary>
 /// Maps a recipe's OutputSchemaId to its JSON Schema document, so providers that
 /// support strict schema binding can make malformed output unrepresentable at
-/// generation time. A missing schema is not an error — providers fall back to
-/// JSON-object mode and the engine's strict parsers still hold the line.
+/// generation time and independently validate the returned object. A missing or
+/// unsupported schema is a fail-closed capability refusal, never permission to
+/// fall back to a weaker JSON-object mode.
 /// </summary>
 public interface IOutputSchemaRegistry
 {

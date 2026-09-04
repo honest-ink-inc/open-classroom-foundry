@@ -210,8 +210,11 @@ public class BookletImpositionTests
     {
         var guide = BookletImposition.Guide(BookletImposition.Compute(6));
         var table = Assert.Single(guide.Nodes.OfType<TableNode>());
+        var instructions = Assert.Single(guide.Nodes.OfType<OrderedSteps>());
 
         Assert.Contains(table.Rows, row => row.Contains("blank"));
+        Assert.Contains(instructions.Steps, step => step.Contains("SHORT edge", StringComparison.Ordinal));
+        Assert.DoesNotContain(instructions.Steps, step => step.Contains("LONG edge", StringComparison.Ordinal));
         Assert.False(DocumentValidator.HasBlockingIssues(DocumentValidator.Validate(guide)));
     }
 

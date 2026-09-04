@@ -20,7 +20,11 @@ public static class LanePolicy
 
     /// <summary>A derivative inherits the highest lane of its inputs.</summary>
     public static DataLane Inherit(DataLane first, DataLane second)
-        => (DataLane)Math.Max((int)first, (int)second);
+    {
+        ValidateDefined(first, nameof(first));
+        ValidateDefined(second, nameof(second));
+        return (DataLane)Math.Max((int)first, (int)second);
+    }
 
     /// <summary>A derivative of many inputs inherits the highest lane among them; no inputs means Green (pure parameters).</summary>
     public static DataLane Inherit(IEnumerable<DataLane> lanes)
@@ -42,4 +46,15 @@ public static class LanePolicy
     /// </summary>
     public static DataLane Escalate(DataLane current, DataLane detected)
         => Inherit(current, detected);
+
+    private static void ValidateDefined(DataLane lane, string parameterName)
+    {
+        if (!Enum.IsDefined(lane))
+        {
+            throw new ArgumentOutOfRangeException(
+                parameterName,
+                lane,
+                "An undefined data lane cannot be inherited or converted into Green authority.");
+        }
+    }
 }

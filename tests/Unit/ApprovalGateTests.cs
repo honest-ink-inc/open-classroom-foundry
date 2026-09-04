@@ -53,6 +53,19 @@ public class ApprovalGateTests
     }
 
     [Fact]
+    public void Restricted_artifacts_cannot_be_approved()
+    {
+        var draft = DraftArtifact.New(
+            new ArtifactDocument([new Paragraph("Synthetic restricted fixture.")]),
+            DataLane.Restricted);
+
+        var exception = Assert.Throws<InvalidOperationException>(
+            () => ApprovalGate.Approve(draft, "teacher@example.org", [], SomeInstant));
+
+        Assert.Contains("Restricted-lane artifacts cannot be approved", exception.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void Accepted_validation_findings_are_frozen_with_the_approved_revision()
     {
         var issues = new List<ValidationIssue>
@@ -109,5 +122,23 @@ public class ApprovalGateTests
 
         Assert.Equal(draft.Revision.Number + 1, edited.Revision.Number);
         Assert.Equal(draft.Revision.Id, edited.Revision.Id);
+    }
+
+    [Fact]
+    public void A_trusted_layout_derivative_inherits_the_exact_approved_lane()
+    {
+        var source = ApprovalGate.Approve(
+            DraftArtifact.New(
+                new ArtifactDocument([new Paragraph("Synthetic staff-only source.")]),
+                DataLane.Amber),
+            "teacher@example.org",
+            [],
+            SomeInstant);
+
+        var derivative = DraftArtifact.TrustedLayoutDerivative(
+            source,
+            new ArtifactDocument([new Paragraph("Synthetic tiled derivative.")]));
+
+        Assert.Equal(DataLane.Amber, derivative.Revision.Lane);
     }
 }
