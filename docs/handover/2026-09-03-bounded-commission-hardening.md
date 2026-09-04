@@ -6,11 +6,14 @@
 
 **Base:** `d851c6c2611147a34243b38b874831ccded54f3e` (`main`)
 
-**State:** current local repository-state handover. The implementation is local
-commit `576e19148862df0540fbdf6235e7896832674d7e`; this document's completed
-evidence is the following local record-only change. Neither commit has been
-pushed, published, released, tagged, signed, installed, distributed, filed, or
-sent to anyone. Hosted evidence does not exist for this tree.
+**State:** current repository-state handover and dated local-close snapshot. The
+implementation is local commit `576e19148862df0540fbdf6235e7896832674d7e`;
+this document's completed evidence is the following local record-only change.
+At the local-closing cutoff, neither commit had been pushed, published,
+released, tagged, signed, installed, distributed, filed, or sent to anyone,
+and hosted evidence did not exist for this tree. That at-cutoff statement is
+not a claim about any later typist-authorized GitHub action; later hosted status
+must be measured against the exact revision and recorded rather than inferred.
 
 ## Disposition of the commission
 
@@ -272,7 +275,7 @@ the last audit correction. The manifest records files, not a release package.
 
 ## Deviations and open authority
 
-There is no substitution hidden in this close:
+There is no substitution hidden in this close. At its local-closing cutoff:
 
 - no content/documentation license was selected and no contribution terms were
   accepted;
