@@ -220,6 +220,15 @@ The ordered close completed on 4 September 2026:
   The renderer now keeps the exact empty snapshot while retaining the inert CSS;
   a fresh pair again matches the immutable 40-row baseline, whose SHA-256
   remains `DEF10A3258A2F2ABA922DF8F1BC38FC3A3209065B36F81F44C41B4FE047F4A90`.
+- The repaired worktree then completed bounded receipt
+  `20260904T111241Z-8591928c345a438584c8bb34f43153bc`, followed by clean exact
+  implementation commit `bbd382b9f94316868b6b74e9313adbff7c6c3302` receipt
+  `20260904T111637Z-bf1549ca585b4ac687e3b0f584310092`. Each passed
+  **2,346/2,346** with no timeout or evidence-completeness error and stable
+  source and Release assembly identities: Accessibility 26, Contract 175,
+  Instructional Evals 336, Integration 317, Rendering 85, UI Automation 263,
+  and Unit 1,144. The exact-commit receipt began and ended with zero working-tree
+  entries.
 
 ### Retained non-green measurements
 
