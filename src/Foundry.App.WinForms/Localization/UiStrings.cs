@@ -237,6 +237,10 @@ public static class UiStrings
 
     public static string StatusSaved => T("Saved to the library as {0}.");
 
+    public static string StatusSaveFailed => T("The project was not saved. Your approved artifact is still open. Check that the library folder is available and writable, then try again or export a copy.");
+
+    public static string StatusSaveCancelled => T("The save was cancelled. Your approved artifact is still open; you can try again or export a copy.");
+
     public static string SavedArtifactContextMismatch => T("The saved validation context or render profile does not bind to this exact approved artifact.");
 
     public static string SavedProjectNeedsManagedUpgrade => T("This saved project predates exact validation context. Prepare a managed side-by-side compatible copy before reopening it.");

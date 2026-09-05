@@ -6,7 +6,11 @@
 
 **Base:** `d851c6c2611147a34243b38b874831ccded54f3e` (`main`)
 
-**State:** current repository-state handover and dated local-close snapshot. The
+**Supersession, 5 September 2026:** current repository navigation now continues
+in the [accepted-improvement handover](2026-09-05-accepted-improvement-implementation.md).
+The following statements retain this document's historical local-closing cutoff.
+
+**State:** dated local-close snapshot (formerly the current repository-state handover). The
 implementation is local commit `576e19148862df0540fbdf6235e7896832674d7e`;
 this document's completed evidence is the following local record-only change.
 At the local-closing cutoff, neither commit had been pushed, published,

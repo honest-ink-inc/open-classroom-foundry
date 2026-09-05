@@ -1010,7 +1010,7 @@ public static class ModuleStudioCatalog
         }
         else
         {
-            var sum = 0;
+            long sum = 0;
             var validRows = true;
             foreach (var row in phaseTable.Rows)
             {

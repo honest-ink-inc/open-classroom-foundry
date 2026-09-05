@@ -59,6 +59,7 @@ the exact license and the contributor separately assents to those terms.
 
 ## Practicalities
 
+- Follow the [source-build and verification guide](docs/development/source-build-and-verification.md) for pinned prerequisites, locked restores and the full local closing sequence. It does not authorize installation, release or publication.
 - Discuss substantive changes in an issue before a large pull request.
 - Keep commits focused; reference the ADR or plan section your change serves.
 - Merge with a merge commit; never squash-merge, rebase-merge, or force-push `main`. CI's ratification-history guard depends on exact ancestry, and [AGENTS.md](AGENTS.md) records why.

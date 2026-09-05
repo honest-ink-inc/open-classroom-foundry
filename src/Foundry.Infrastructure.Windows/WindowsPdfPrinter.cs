@@ -31,6 +31,7 @@ public sealed class WindowsPdfPrinter(IRenderer renderer) : IPrinter
         var renderAuthorization = ArtifactSinkAuthorizationGate.DelegateRenderWithinPrint(
             artifact,
             amberAuthorization);
+        cancellationToken.ThrowIfCancellationRequested();
 
         var tempDirectory = Path.Combine(Path.GetTempPath(), EngineIdentity.InternalId, "print");
         Directory.CreateDirectory(tempDirectory);
@@ -98,6 +99,9 @@ public sealed class WindowsPdfPrinter(IRenderer renderer) : IPrinter
     /// <summary>Testable core: caller-supplied settings may target print-to-file for hardware-free verification.</summary>
     internal static async Task PrintPdfAsync(string pdfPath, PrinterSettings settings, bool duplex, CancellationToken cancellationToken)
     {
+        // A canceled job must not open or rasterize its source, even when the
+        // source has disappeared or the caller's renderer ignores cancellation.
+        cancellationToken.ThrowIfCancellationRequested();
         var pages = await RasterizeAsync(pdfPath).ConfigureAwait(false);
         try
         {

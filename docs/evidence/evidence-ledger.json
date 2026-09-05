@@ -1001,6 +1001,38 @@
       "tests": null,
       "record": "docs/reviews/2026-09-05-synthetic-council/evidence-and-completion.md",
       "notes": "Paired exact-head CodeQL run concluded success. Direct inspection of retained csharp.sarif found SARIF 2.1.0, one run and zero results. The uncompressed file was 632,685 bytes with SHA-256 1B9DDA8687B3B24862A0AF47E18BBE2D1A77A938050F18E9F9B40F6610E88E57. Uploaded codeql-sarif artifact 9967509637 had digest 37a91ccd1ae4682620ef2ecd6d7aa2df65bcfd921d514231a8107ce39d69cd52, which is an artifact digest rather than the SARIF-file hash. No security setting or release authority changed."
+    },
+    {
+      "id": "codeql-33960133982",
+      "kind": "hosted-codeql",
+      "runId": 33960133982,
+      "workflow": "CodeQL SAST",
+      "event": "pull_request",
+      "branch": "codex/synthetic-educator-council",
+      "headSha": "554ec87b256c5cbd8f6efba453070f27941c9257",
+      "checkoutSha": null,
+      "conclusion": "success",
+      "createdUtc": "2026-09-05T10:14:57Z",
+      "receipt": null,
+      "tests": null,
+      "record": "docs/governance/accepted-improvement-evidence.md",
+      "notes": "Paired final advisory head, re-read directly as completed/success on 5 September 2026. Direct per-run inspection of retained csharp.sarif found SARIF 2.1.0, one CodeQL run and zero results; 632,685 bytes with SHA-256 AC3010812B5D243DA041B819C3255BB2E091CC62B9ADE83EA2A33D0C9F663D18. This is the uncompressed file hash, not an uploaded-artifact digest. No claim is made for new implementation bytes, human authority or publication."
+    },
+    {
+      "id": "ci-33960134199",
+      "kind": "hosted-ci",
+      "runId": 33960134199,
+      "workflow": "CI",
+      "event": "pull_request",
+      "branch": "codex/synthetic-educator-council",
+      "headSha": "554ec87b256c5cbd8f6efba453070f27941c9257",
+      "checkoutSha": "86e71737539052f0844e2164ac914a507eb53715",
+      "conclusion": "success",
+      "createdUtc": "2026-09-05T10:14:58Z",
+      "receipt": "20260905T101837Z-ee60fd72881f4e76aa768715ac228e80",
+      "tests": { "passed": 2346, "total": 2346 },
+      "record": "docs/governance/accepted-improvement-evidence.md",
+      "notes": "Final advisory pull-request 15 head, re-read directly on 5 September 2026 while starting accepted-improvement implementation. Completed/success metadata matches this exact head. The retained synthetic-merge summary was inspected directly: seven suites, 2,346/2,346, zero failures, no timeout, stable source/assembly identity, clean before/after and no completeness errors. Summary SHA-256 E288F2B43113F2AC56B943622E09B4BD1C467F547EC68FC3B39D32E152113054. This closes a historical ledger gap and is not evidence for the new dirty implementation tree or a release."
     }
   ]
 }

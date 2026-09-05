@@ -96,10 +96,11 @@ public sealed class TranscriptSession
             LeadingText = t.LeadingText,
             TrailingText = t.TrailingText,
         })];
+        Tokens = _tokens.AsReadOnly();
         RecognizerLanguage = recognition.RecognizerLanguage;
     }
 
-    public IReadOnlyList<TranscriptToken> Tokens => _tokens;
+    public IReadOnlyList<TranscriptToken> Tokens { get; }
 
     public string RecognizerLanguage { get; }
 

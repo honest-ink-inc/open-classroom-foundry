@@ -38,6 +38,7 @@ public sealed class PressRoomForm : Form
     private readonly Func<Storage.LoadedProject, LoadedProjectGreenConfirmation?> _loadedProjectPreflight;
     private readonly Func<ApprovedArtifact, string, IAssetCatalog?, CancellationToken, Task> _pdfExporter;
     private readonly Func<ApprovedArtifact, string, RenderAudience, double, bool, IAssetCatalog?, Task> _printViewOpener;
+    private readonly ProjectLibrarySaveOperation _librarySaver;
     private bool _loadingParameters;
     private bool _reviewPending;
     private bool _exportInProgress;
@@ -71,7 +72,8 @@ public sealed class PressRoomForm : Form
         Func<ExportChoice?>? exportPicker = null,
         Func<Storage.LoadedProject, LoadedProjectGreenConfirmation?>? loadedProjectPreflight = null,
         Func<ApprovedArtifact, string, IAssetCatalog?, CancellationToken, Task>? pdfExporter = null,
-        Func<ApprovedArtifact, string, RenderAudience, double, bool, IAssetCatalog?, Task>? printViewOpener = null)
+        Func<ApprovedArtifact, string, RenderAudience, double, bool, IAssetCatalog?, Task>? printViewOpener = null,
+        ProjectLibrarySaveOperation? librarySaver = null)
     {
         _modalReview = reviewRunner is null;
         _reviewRunner = reviewRunner ?? RunModalReview;
@@ -85,6 +87,7 @@ public sealed class PressRoomForm : Form
                 assets,
                 cancellationToken: cancellationToken));
         _printViewOpener = printViewOpener ?? AppServices.OpenPrintViewAsync;
+        _librarySaver = librarySaver ?? AppServices.SaveToLibrary;
 
         Text = UiStrings.WithoutMnemonic(UiStrings.MainWindowTitle);
         MinimumSize = new Size(860, 560);
@@ -684,11 +687,26 @@ public sealed class PressRoomForm : Form
             return;
         }
 
-        var hint = AppServices.SaveToLibrary(
-            ApprovedResult, _context!.Name, _context.ModuleId,
-            _context.RecipeId, _context.RecipeVersion,
-            _context.AssetCatalog ?? AppServices.SymbolCatalog());
-        SetStatus(UiStrings.StatusSaved, hint);
+        ArtifactSinkAuthorizationGate.DemandGreenSave(ApprovedResult);
+        var catalog = _context!.AssetCatalog ?? AppServices.SymbolCatalog();
+        try
+        {
+            var hint = _librarySaver(
+                ApprovedResult, _context.Name, _context.ModuleId,
+                _context.RecipeId, _context.RecipeVersion,
+                catalog,
+                null,
+                null);
+            SetStatus(UiStrings.StatusSaved, hint);
+        }
+        catch (OperationCanceledException)
+        {
+            SetStatus(UiStrings.StatusSaveCancelled);
+        }
+        catch (Exception failure) when (failure is IOException or UnauthorizedAccessException)
+        {
+            SetStatus(UiStrings.StatusSaveFailed);
+        }
     }
 
     /// <summary>Reversibility, visible: a saved project reopens into a fresh Gate B review — reopen, re-review, re-approve, reprint.</summary>

@@ -58,14 +58,14 @@ public static class ChartPress
             throw new ArgumentException("The step is defined only above zero.", nameof(maxValue));
         }
 
-        for (var magnitude = 1; ; magnitude *= 10)
+        for (long magnitude = 1; ; magnitude *= 10)
         {
             foreach (var clean in new[] { 1, 2, 5 })
             {
                 var step = clean * magnitude;
                 if ((maxValue + step - 1) / step <= MaxGridlines)
                 {
-                    return step;
+                    return checked((int)step);
                 }
             }
         }
@@ -102,7 +102,10 @@ public static class ChartPress
         }
 
         var step = GridStep(max);
-        var axisMax = (max + step - 1) / step * step;
+        // The parser admits the complete nonnegative Int32 range. Ceiling
+        // arithmetic and the next clean axis limit must therefore be wider:
+        // Int32.MaxValue uses a 500,000,000 step and a 2,500,000,000 axis.
+        var axisMax = (max + (long)step - 1) / step * step;
 
         var (width, height) = BlankformsPress.Dimensions(size);
         var primitives = new List<VectorPrimitive>
@@ -127,7 +130,7 @@ public static class ChartPress
         var slot = slotSpan / data.Count;
         var barThickness = slot * 0.6;
 
-        for (var g = step; g <= axisMax; g += step)
+        for (var g = (long)step; g <= axisMax; g += step)
         {
             var numeral = g.ToString(System.Globalization.CultureInfo.InvariantCulture);
             var along = barSpan * g / axisMax;
@@ -156,13 +159,19 @@ public static class ChartPress
 
             if (horizontal)
             {
-                primitives.Add(new RectShape(left, acrossBar, length, barThickness, 0.6));
+                if (entry.Value > 0)
+                {
+                    primitives.Add(new RectShape(left, acrossBar, length, barThickness, 0.6));
+                }
                 primitives.Add(new TextLabel(left + length + 2, acrossBar + barThickness / 2 + 1.5, value, 4, TextAnchor.Start));
                 primitives.Add(new TextLabel(left - 2, acrossBar + barThickness / 2 + 1.5, entry.Label, 4, TextAnchor.End));
             }
             else
             {
-                primitives.Add(new RectShape(acrossBar, bottom - length, barThickness, length, 0.6));
+                if (entry.Value > 0)
+                {
+                    primitives.Add(new RectShape(acrossBar, bottom - length, barThickness, length, 0.6));
+                }
                 primitives.Add(new TextLabel(acrossBar + barThickness / 2, bottom - length - 2, value, 4));
                 primitives.Add(new TextLabel(acrossBar + barThickness / 2, bottom + 6, entry.Label, 4));
             }
