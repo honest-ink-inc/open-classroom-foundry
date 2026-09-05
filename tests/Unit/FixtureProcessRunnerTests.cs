@@ -289,6 +289,312 @@ public sealed class FixtureProcessRunnerTests(ITestOutputHelper output)
     }
 
     [Fact]
+    public async Task Disposal_observation_distinguishes_queued_callback_and_freezes_before_late_entry()
+    {
+        var clock = new ManualSettlementClock();
+        var scheduler = new ControlledDisposalScheduler();
+        var process = new SyntheticProcess();
+        var runner = new FixtureProcessRunner(
+            new FixtureProcessLimits(SettlementMilliseconds: 250), scheduler.Schedule, () => clock);
+        FixtureProcessResult? result = null;
+        string? frozenDescription = null;
+        try
+        {
+            result = ObserveSyntheticRun(runner, () => process);
+            frozenDescription = result.Describe();
+            Assert.False(result.SafeToStartAnotherFixture);
+            Assert.False(process.Disposed);
+            AssertRefusesNextCreation(runner);
+            var observation = RequireDisposalObservation(result);
+            Assert.Equal(FixtureDisposalStage.Queued, observation.Stage);
+            Assert.Equal(250, observation.RemainingAtDecisionMilliseconds);
+            Assert.Equal(250, observation.RemainingAtWaitMilliseconds);
+            Assert.Null(observation.CallbackEntryElapsedMilliseconds);
+            Assert.Null(observation.CallbackExitElapsedMilliseconds);
+            Assert.False(observation.TaskCompletionObserved);
+            Assert.False(observation.WaitReturnedSettled);
+        }
+        finally
+        {
+            scheduler.Execute();
+            await AwaitSyntheticOperations(result, scheduler.Operation);
+        }
+
+        Assert.True(process.Disposed);
+        Assert.Equal(frozenDescription, result.Describe());
+        AssertRefusesNextCreation(runner);
+    }
+
+    [Fact]
+    public async Task Disposal_observation_distinguishes_entered_callback_from_unsettled_task()
+    {
+        using var entered = new ManualResetEventSlim();
+        using var release = new ManualResetEventSlim();
+        var clock = new ManualSettlementClock();
+        var process = new SyntheticProcess
+        {
+            DisposeAction = () => { entered.Set(); release.Wait(); },
+        };
+        Task operation = Task.CompletedTask;
+        Task Schedule(Action callback)
+        {
+            operation = Task.Run(callback);
+            Assert.True(entered.Wait(2_000), "Synthetic disposal did not reach its explicit entry gate.");
+            return operation;
+        }
+        var runner = new FixtureProcessRunner(
+            new FixtureProcessLimits(SettlementMilliseconds: 250), Schedule, () => clock);
+        FixtureProcessResult? result = null;
+        try
+        {
+            result = ObserveSyntheticRun(runner, () => process);
+            Assert.False(result.DisposalSettled);
+            Assert.False(result.SafeToStartAnotherFixture);
+            AssertRefusesNextCreation(runner);
+            var observation = RequireDisposalObservation(result);
+            Assert.Equal(FixtureDisposalStage.Entered, observation.Stage);
+            Assert.Equal(0, observation.CallbackEntryElapsedMilliseconds);
+            Assert.Null(observation.CallbackExitElapsedMilliseconds);
+            Assert.False(observation.TaskCompletionObserved);
+            Assert.False(observation.WaitReturnedSettled);
+        }
+        finally
+        {
+            release.Set();
+            await AwaitSyntheticOperations(result, operation);
+        }
+
+        AssertRefusesNextCreation(runner);
+    }
+
+    [Fact]
+    public async Task Disposal_observation_identifies_budget_exhausted_before_scheduling()
+    {
+        var clock = new ManualSettlementClock(250);
+        var scheduler = new ControlledDisposalScheduler();
+        var process = new SyntheticProcess();
+        var runner = new FixtureProcessRunner(
+            new FixtureProcessLimits(SettlementMilliseconds: 250), scheduler.Schedule, () => clock);
+        FixtureProcessResult? result = null;
+        try
+        {
+            result = ObserveSyntheticRun(runner, () => process);
+            Assert.True(result.CaptureSettled);
+            Assert.False(scheduler.WasScheduled);
+            Assert.False(result.SafeToStartAnotherFixture);
+            AssertRefusesNextCreation(runner);
+            var observation = RequireDisposalObservation(result);
+            Assert.Equal(FixtureDisposalStage.Deferred, observation.Stage);
+            Assert.Equal(FixtureDisposalDeferral.SettlementBudgetExhausted, observation.DeferredReasons);
+            Assert.Equal(250, observation.DecisionElapsedMilliseconds);
+            Assert.Equal(0, observation.RemainingAtDecisionMilliseconds);
+            Assert.Null(observation.WaitElapsedMilliseconds);
+            Assert.Null(observation.RemainingAtWaitMilliseconds);
+            Assert.Null(observation.CallbackEntryElapsedMilliseconds);
+        }
+        finally
+        {
+            scheduler.Execute();
+            await AwaitSyntheticOperations(result, scheduler.Operation);
+            process.Dispose();
+        }
+    }
+
+    [Fact]
+    public async Task Disposal_observation_identifies_budget_consumed_between_scheduling_and_wait()
+    {
+        var clock = new ManualSettlementClock();
+        var scheduler = new ControlledDisposalScheduler { AfterScheduling = () => clock.AdvanceTo(250) };
+        var runner = new FixtureProcessRunner(
+            new FixtureProcessLimits(SettlementMilliseconds: 250), scheduler.Schedule, () => clock);
+        FixtureProcessResult? result = null;
+        try
+        {
+            result = ObserveSyntheticRun(runner, () => new SyntheticProcess());
+            Assert.False(result.SafeToStartAnotherFixture);
+            AssertRefusesNextCreation(runner);
+            var observation = RequireDisposalObservation(result);
+            Assert.Equal(FixtureDisposalStage.Queued, observation.Stage);
+            Assert.Equal(0, observation.DecisionElapsedMilliseconds);
+            Assert.Equal(250, observation.RemainingAtDecisionMilliseconds);
+            Assert.Equal(250, observation.WaitElapsedMilliseconds);
+            Assert.Equal(0, observation.RemainingAtWaitMilliseconds);
+            Assert.Null(observation.CallbackEntryElapsedMilliseconds);
+            Assert.False(observation.WaitReturnedSettled);
+        }
+        finally
+        {
+            scheduler.Execute();
+            await AwaitSyntheticOperations(result, scheduler.Operation);
+        }
+    }
+
+    [Fact]
+    public async Task Disposal_observation_identifies_unsettled_capture_without_inventing_budget_exhaustion()
+    {
+        var reader = new PendingReader(ignoreCancellation: true);
+        var process = new SyntheticProcess { Output = reader, BeforeWorkWait = reader.EnsureReading };
+        var clock = new ManualSettlementClock();
+        var scheduler = new ControlledDisposalScheduler();
+        var runner = new FixtureProcessRunner(ControlLimits, scheduler.Schedule, () => clock);
+        FixtureProcessResult? result = null;
+        try
+        {
+            result = ObserveSyntheticRun(runner, () => process);
+            Assert.False(result.CaptureSettled);
+            Assert.False(scheduler.WasScheduled);
+            Assert.False(result.SafeToStartAnotherFixture);
+            AssertRefusesNextCreation(runner);
+            var observation = RequireDisposalObservation(result);
+            Assert.Equal(FixtureDisposalStage.Deferred, observation.Stage);
+            Assert.Equal(FixtureDisposalDeferral.CaptureUnsettled, observation.DeferredReasons);
+            Assert.Equal(250, observation.RemainingAtDecisionMilliseconds);
+            Assert.Null(observation.WaitElapsedMilliseconds);
+        }
+        finally
+        {
+            reader.Release();
+            scheduler.Execute();
+            await AwaitSyntheticOperations(result, scheduler.Operation);
+            process.Dispose();
+        }
+    }
+
+    [Fact]
+    public async Task Disposal_observation_keeps_zero_elapsed_entry_exit_and_task_completion_distinct()
+    {
+        var clock = new ManualSettlementClock();
+        var runner = new FixtureProcessRunner(ControlLimits, ExecuteDisposalImmediately, () => clock);
+        FixtureProcessResult? result = null;
+        try
+        {
+            result = ObserveSyntheticRun(runner, () => new SyntheticProcess());
+            Assert.True(result.SafeToStartAnotherFixture);
+            var observation = RequireDisposalObservation(result);
+            Assert.Equal(FixtureDisposalStage.CallbackExited, observation.Stage);
+            Assert.Equal(0, observation.CallbackEntryElapsedMilliseconds);
+            Assert.Equal(0, observation.CallbackExitElapsedMilliseconds);
+            Assert.True(observation.TaskCompletionObserved);
+            Assert.False(observation.TaskFaultObserved);
+            Assert.True(observation.WaitReturnedSettled);
+        }
+        finally
+        {
+            await AwaitSyntheticOperations(result);
+        }
+    }
+
+    [Fact]
+    public async Task Disposal_observation_does_not_promote_callback_exit_to_task_completion()
+    {
+        var clock = new ManualSettlementClock();
+        var scheduler = new ControlledDisposalScheduler { InvokeCallbackBeforeReturning = true };
+        var runner = new FixtureProcessRunner(
+            new FixtureProcessLimits(SettlementMilliseconds: 250), scheduler.Schedule, () => clock);
+        FixtureProcessResult? result = null;
+        try
+        {
+            result = ObserveSyntheticRun(runner, () => new SyntheticProcess());
+            Assert.False(result.DisposalSettled);
+            Assert.False(result.SafeToStartAnotherFixture);
+            AssertRefusesNextCreation(runner);
+            var observation = RequireDisposalObservation(result);
+            Assert.Equal(FixtureDisposalStage.CallbackExited, observation.Stage);
+            Assert.Equal(0, observation.CallbackEntryElapsedMilliseconds);
+            Assert.Equal(0, observation.CallbackExitElapsedMilliseconds);
+            Assert.False(observation.TaskCompletionObserved);
+            Assert.False(observation.WaitReturnedSettled);
+        }
+        finally
+        {
+            scheduler.Execute();
+            await AwaitSyntheticOperations(result, scheduler.Operation);
+        }
+
+        Assert.False(result!.DisposalObservation!.TaskCompletionObserved);
+        AssertRefusesNextCreation(runner);
+    }
+
+    [Fact]
+    public async Task Disposal_observation_preserves_faulted_callback_exit_without_calling_it_successful()
+    {
+        var clock = new ManualSettlementClock();
+        var runner = new FixtureProcessRunner(ControlLimits, ExecuteDisposalImmediately, () => clock);
+        FixtureProcessResult? result = null;
+        try
+        {
+            result = ObserveSyntheticRun(runner, () => new SyntheticProcess
+            {
+                DisposeFailure = new IOException("synthetic-observed-disposal-fault"),
+            });
+            Assert.False(result.SafeToStartAnotherFixture);
+            Assert.Contains("synthetic-observed-disposal-fault", result.Describe(), StringComparison.Ordinal);
+            AssertRefusesNextCreation(runner);
+            var observation = RequireDisposalObservation(result);
+            Assert.Equal(FixtureDisposalStage.CallbackExited, observation.Stage);
+            Assert.Equal(0, observation.CallbackEntryElapsedMilliseconds);
+            Assert.Equal(0, observation.CallbackExitElapsedMilliseconds);
+            Assert.True(observation.TaskCompletionObserved);
+            Assert.True(observation.TaskFaultObserved);
+        }
+        finally
+        {
+            await AwaitSyntheticOperations(result);
+        }
+    }
+
+    [Fact]
+    public async Task Disposal_observation_does_not_claim_timeliness_from_completion_with_zero_wait_budget()
+    {
+        var clock = new ManualSettlementClock();
+        var runner = new FixtureProcessRunner(ControlLimits, ExecuteDisposalImmediately, () => clock);
+        FixtureProcessResult? result = null;
+        try
+        {
+            result = ObserveSyntheticRun(runner, () => new SyntheticProcess
+            {
+                DisposeAction = () => clock.AdvanceTo(250),
+            });
+            var observation = RequireDisposalObservation(result);
+            Assert.Equal(0, observation.CallbackEntryElapsedMilliseconds);
+            Assert.Equal(250, observation.CallbackExitElapsedMilliseconds);
+            Assert.Equal(0, observation.RemainingAtWaitMilliseconds);
+            Assert.True(observation.TaskCompletionObserved);
+            Assert.True(observation.WaitReturnedSettled);
+            Assert.Contains("TimelySettlement: NotEstablishedByObservations", result.Describe(), StringComparison.Ordinal);
+        }
+        finally
+        {
+            await AwaitSyntheticOperations(result);
+        }
+    }
+
+    [Fact]
+    public async Task Disposal_observation_distinguishes_no_adapter_from_deferred_disposal()
+    {
+        var clock = new ManualSettlementClock();
+        var scheduler = new ControlledDisposalScheduler();
+        var runner = new FixtureProcessRunner(ControlLimits, scheduler.Schedule, () => clock);
+        FixtureProcessResult? result = null;
+        try
+        {
+            result = ObserveSyntheticRun(runner, () => throw new IOException("synthetic-factory-fault"));
+            Assert.False(scheduler.WasScheduled);
+            var observation = RequireDisposalObservation(result);
+            Assert.Equal(FixtureDisposalStage.NotRequired, observation.Stage);
+            Assert.Equal(FixtureDisposalDeferral.None, observation.DeferredReasons);
+            Assert.Null(observation.CallbackEntryElapsedMilliseconds);
+            Assert.Null(observation.CallbackExitElapsedMilliseconds);
+            Assert.False(observation.TaskCompletionObserved);
+            Assert.Null(observation.WaitReturnedSettled);
+        }
+        finally
+        {
+            await AwaitSyntheticOperations(result);
+        }
+    }
+
+    [Fact]
     public void A_failed_tree_kill_does_not_become_success_because_the_root_exits()
     {
         var result = RunFailure(new SyntheticProcess
@@ -419,6 +725,103 @@ public sealed class FixtureProcessRunnerTests(ITestOutputHelper output)
         Assert.True(result.Error.Truncated);
         Assert.Equal("Eof", result.Output.State);
         Assert.False(result.SafeToStartAnotherFixture);
+    }
+
+    private FixtureProcessResult ObserveSyntheticRun(FixtureProcessRunner runner, Func<IFixtureProcess> createProcess)
+    {
+        FixtureProcessResult result;
+        try { result = runner.Run(createProcess); }
+        catch (FixtureProcessException failure) { result = failure.Result; }
+        output.WriteLine("Synthetic disposal/clock control only; not a hosted scheduling-cause finding:");
+        output.WriteLine(result.Describe());
+        return result;
+    }
+
+    private static FixtureDisposalObservation RequireDisposalObservation(FixtureProcessResult result)
+    {
+        Assert.True(result.DisposalObservation is not null,
+            "The fixture result does not retain disposal scheduling, callback progress, and shared-budget observations.");
+        return result.DisposalObservation;
+    }
+
+    private static Task ExecuteDisposalImmediately(Action callback)
+    {
+        try { callback(); return Task.CompletedTask; }
+        catch (Exception failure) { return Task.FromException(failure); }
+    }
+
+    private static async Task AwaitSyntheticOperations(FixtureProcessResult? result, Task? scheduled = null)
+    {
+        var operations = Task.WhenAll(result?.StartedOperations ?? Task.CompletedTask, scheduled ?? Task.CompletedTask);
+        try { await operations.WaitAsync(TimeSpan.FromSeconds(2)); }
+        catch (IOException) when (operations.IsFaulted)
+        {
+            // The injected disposal fault is retained in the result, not relabelled
+            // success. A wait timeout or any unexpected failure must escape.
+        }
+    }
+
+    private sealed class ManualSettlementClock(long initialMilliseconds = 0) : IFixtureSettlementClock
+    {
+        private long elapsed = initialMilliseconds;
+        public long ElapsedMilliseconds => Interlocked.Read(ref elapsed);
+        internal void AdvanceTo(long milliseconds)
+        {
+            Assert.True(milliseconds >= ElapsedMilliseconds, "Synthetic monotonic clock cannot move backwards.");
+            Interlocked.Exchange(ref elapsed, milliseconds);
+        }
+    }
+
+    private sealed class ControlledDisposalScheduler
+    {
+        private readonly TaskCompletionSource completion = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        private Action? callback;
+        private bool callbackInvoked;
+        private Exception? callbackFailure;
+        internal Action? AfterScheduling { get; init; }
+        internal bool InvokeCallbackBeforeReturning { get; init; }
+        internal bool WasScheduled => callback is not null;
+        internal Task Operation => WasScheduled ? completion.Task : Task.CompletedTask;
+        internal Task Schedule(Action action)
+        {
+            Assert.Null(callback);
+            callback = action;
+            if (InvokeCallbackBeforeReturning)
+            {
+                InvokeCallback();
+            }
+
+            AfterScheduling?.Invoke();
+            return completion.Task;
+        }
+        internal void Execute()
+        {
+            if (callback is null)
+            {
+                return;
+            }
+
+            InvokeCallback();
+            if (callbackFailure is not null)
+            {
+                completion.TrySetException(callbackFailure);
+            }
+            else
+            {
+                completion.TrySetResult();
+            }
+        }
+        private void InvokeCallback()
+        {
+            if (callbackInvoked)
+            {
+                return;
+            }
+
+            callbackInvoked = true;
+            try { callback!(); }
+            catch (Exception failure) { callbackFailure = failure; }
+        }
     }
 
     private static void AssertRefusesNextCreation(FixtureProcessRunner runner)
