@@ -7,9 +7,11 @@ namespace Foundry.Tests.Unit;
 /// The machine half of the one rule that outranks everything (CONTRIBUTING.md).
 ///
 /// Written 30 Aug 2026 after a near-miss: the seeded-error study's answer key
-/// sat in this repository and was briefly public. Nothing was lost, but nothing
-/// had *prevented* it either — the guard was a person choosing to look. Prose
-/// asks contributors to be careful; this asks git.
+/// sat in this repository and was briefly public. An earlier comment claimed
+/// "Nothing was lost." Correction, 5 Sep 2026: the unavailable traffic interval
+/// cannot support that claim; no participant was known to have the URL. Nothing
+/// had *prevented* the exposure either — the guard was a person choosing to look.
+/// Prose asks contributors to be careful; this asks git.
 ///
 /// It asserts over what git TRACKS, not over what happens to sit in the working
 /// directory, because the claim is about what a clone or a publish exposes. A

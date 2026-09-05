@@ -2678,7 +2678,7 @@ public static class AtlasCouncilRecordValidator
         {
             issues.Add(new(
                 "atlas.session.date-invalid",
-                "A SESSION RECORD requires 'YYYY-MM-DD · <duration in minutes>', and that date must exactly match its filename."));
+                "A SESSION RECORD requires 'YYYY-MM-DD · <duration in minutes>' with 1–1440 minutes, and that date must exactly match its filename."));
         }
 
         var terms = ReadNormalizedField(fields, OperatingTermsField)
@@ -3520,9 +3520,12 @@ public static class AtlasCouncilRecordValidator
             "unresolved",
             "withdrawn",
         ];
+        // Current-disposition prose treats hyphens as word boundaries; opaque
+        // references elsewhere retain their existing token grammar.
+        var dispositionWords = disposition.Replace('-', ' ');
         return disposition.EndsWith(" effective", StringComparison.Ordinal)
             && IsPositiveRecordComponent(disposition)
-            && !forbiddenStates.Any(state => ContainsStandaloneToken(disposition, state));
+            && !forbiddenStates.Any(state => ContainsStandaloneToken(dispositionWords, state));
     }
 
     private static bool HasResolvedCorrectionRecord(string value)
@@ -3756,7 +3759,7 @@ public static class AtlasCouncilRecordValidator
                 NumberStyles.None,
                 CultureInfo.InvariantCulture,
                 out var minutes)
-            && minutes > 0;
+            && minutes is > 0 and <= 1440;
     }
 
     private static bool TryParseSeatCounts(

@@ -2640,6 +2640,75 @@ public class AtlasCouncilRecordValidatorTests
             issue => issue.Code == "atlas.feasibility.chain-disposition-invalid");
     }
 
+    [Theory]
+    [InlineData(false, "ambiguous-state")]
+    [InlineData(false, "conflicting-event")]
+    [InlineData(false, "missing-link")]
+    [InlineData(false, "restricted-use")]
+    [InlineData(false, "revoked-permission")]
+    [InlineData(false, "stale-roster")]
+    [InlineData(false, "superseded-record")]
+    [InlineData(false, "unresolved-event")]
+    [InlineData(false, "withdrawn-from-use")]
+    [InlineData(false, "roster-stale")]
+    [InlineData(false, "chain-withdrawn-from-use")]
+    [InlineData(false, "WiThDrAwN-from-use")]
+    [InlineData(true, "ambiguous-state")]
+    [InlineData(true, "conflicting-event")]
+    [InlineData(true, "missing-link")]
+    [InlineData(true, "restricted-use")]
+    [InlineData(true, "revoked-permission")]
+    [InlineData(true, "stale-roster")]
+    [InlineData(true, "superseded-record")]
+    [InlineData(true, "unresolved-event")]
+    [InlineData(true, "withdrawn-from-use")]
+    [InlineData(true, "roster-stale")]
+    [InlineData(true, "chain-withdrawn-from-use")]
+    [InlineData(true, "WiThDrAwN-from-use")]
+    public void Current_chain_dispositions_refuse_hyphenated_forbidden_states(
+        bool productOwnerDisposition,
+        string state)
+    {
+        var upstream = productOwnerDisposition ? "H0 frozen bytes and feasibility v1" : "H0 frozen bytes";
+        var result = ValidateSyntheticDownstreamRecordWithChangedField(
+            productOwnerDisposition,
+            $"| Current effective upstream dispositions and unresolved chain holds | CURRENT — {upstream} effective; unresolved-chain-holds=NONE |",
+            $"| Current effective upstream dispositions and unresolved chain holds | CURRENT — {upstream} {state} effective; unresolved-chain-holds=NONE |");
+        var consumer = productOwnerDisposition ? "disposition" : "feasibility";
+
+        Assert.False(
+            result.IsValid,
+            $"The {consumer} validator accepted explicit current-chain state '{state}' as effective.");
+        Assert.Contains(result.Issues, issue => issue.Code == $"atlas.{consumer}.chain-disposition-invalid");
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void Current_chain_dispositions_preserve_benign_hyphenated_text(bool productOwnerDisposition)
+    {
+        var upstream = productOwnerDisposition ? "H0 frozen bytes and feasibility v1" : "H0 frozen bytes";
+        var result = ValidateSyntheticDownstreamRecordWithChangedField(
+            productOwnerDisposition,
+            $"| Current effective upstream dispositions and unresolved chain holds | CURRENT — {upstream} effective; unresolved-chain-holds=NONE |",
+            $"| Current effective upstream dispositions and unresolved chain holds | CURRENT — {upstream} final-byte records effective; unresolved-chain-holds=NONE |");
+
+        Assert.True(result.IsValid, Describe(result));
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void Current_chain_dispositions_leave_opaque_reference_token_grammar_unchanged(bool productOwnerDisposition)
+    {
+        var result = ValidateSyntheticDownstreamRecordWithChangedField(
+            productOwnerDisposition,
+            "| Private append-only event attestations, or NONE | NONE — no private event attested through audit instant |",
+            "| Private append-only event attestations, or NONE | ATTESTED — custodian-ref=CUST-NONE-01 |");
+
+        Assert.True(result.IsValid, Describe(result));
+    }
+
     [Fact]
     public void Feasibility_version_two_binds_its_immediate_predecessor()
     {
@@ -3279,6 +3348,55 @@ public class AtlasCouncilRecordValidatorTests
             issue => issue.Code == "atlas.session.participation-coverage-mismatch");
     }
 
+    [Theory]
+    [InlineData("1")]
+    [InlineData("60")]
+    [InlineData("1440")]
+    public void Session_duration_accepts_positive_one_UTC_day_boundaries(string minutes)
+    {
+        var record = SyntheticRecord(
+            AtlasCouncilRecordValidator.SessionRecordStatus,
+            sessionComplete: true,
+            includeRecommendation: true);
+        if (minutes != "60")
+        {
+            record = ReplaceRequired(
+                record,
+                "| Session date and duration | 2030-01-02 · 60 minutes |",
+                $"| Session date and duration | 2030-01-02 · {minutes} minutes |");
+        }
+
+        var result = AtlasCouncilRecordValidator.Validate(RecordFile, record);
+
+        Assert.True(result.IsValid, Describe(result));
+        Assert.Equal(AtlasCouncilRecordStatus.SessionRecord, result.Status);
+    }
+
+    [Theory]
+    [InlineData("0")]
+    [InlineData("-1")]
+    [InlineData("1441")]
+    [InlineData("2147483647")]
+    [InlineData("2147483648")]
+    public void Session_duration_refuses_values_outside_one_UTC_day(string minutes)
+    {
+        // Synthetic terms cover January 2 and expire at the next UTC midnight.
+        var record = ReplaceRequired(
+            SyntheticRecord(
+                AtlasCouncilRecordValidator.SessionRecordStatus,
+                sessionComplete: true,
+                includeRecommendation: true),
+            "| Session date and duration | 2030-01-02 · 60 minutes |",
+            $"| Session date and duration | 2030-01-02 · {minutes} minutes |");
+
+        var result = AtlasCouncilRecordValidator.Validate(RecordFile, record);
+
+        Assert.False(
+            result.IsValid,
+            $"The session validator accepted duration '{minutes}' minutes outside the positive one-UTC-day bound.");
+        Assert.Contains(result.Issues, issue => issue.Code == "atlas.session.date-invalid");
+    }
+
     [Fact]
     public void Terminal_boundaries_refuse_unheaded_later_authority_text()
     {
@@ -3356,6 +3474,41 @@ public class AtlasCouncilRecordValidatorTests
             SyntheticRecord(AtlasCouncilRecordValidator.UnrunStatus));
 
         Assert.Contains(result.Issues, issue => issue.Code == expectedCode);
+    }
+
+    private static AtlasCouncilArtifactValidation ValidateSyntheticDownstreamRecordWithChangedField(
+        bool productOwnerDisposition,
+        string expectedField,
+        string replacementField)
+    {
+        var recordBytes = CompletedRecordBytes();
+        var manifestBytes = Utf8(SyntheticManifest(recordBytes));
+        var feasibility = SyntheticFeasibility(recordBytes, manifestBytes);
+        if (!productOwnerDisposition)
+        {
+            return AtlasCouncilRecordValidator.ValidateFeasibilityRecord(
+                FeasibilityFile,
+                Utf8(ReplaceRequired(feasibility, expectedField, replacementField)),
+                RecordFile,
+                recordBytes,
+                ManifestFile,
+                manifestBytes);
+        }
+
+        var feasibilityBytes = Utf8(feasibility);
+        var disposition = ReplaceRequired(
+            SyntheticDisposition(recordBytes, manifestBytes, feasibilityBytes),
+            expectedField,
+            replacementField);
+        return AtlasCouncilRecordValidator.ValidateDispositionRecord(
+            DispositionFile,
+            Utf8(disposition),
+            RecordFile,
+            recordBytes,
+            ManifestFile,
+            manifestBytes,
+            FeasibilityFile,
+            feasibilityBytes);
     }
 
     private static byte[] CompletedRecordBytes()
