@@ -1,0 +1,26 @@
+{
+  "format": "ocf.changed-file-manifest.v1",
+  "preparedDate": "2026-09-05",
+  "sourceBaseline": "4e7c6d7bfbd1d78e48646ea73e7a323c9cae5401",
+  "scope": "The two evidence-only files in the first commit that contains this manifest; no executable source change. The earlier implementation manifest remains immutable historical evidence.",
+  "normalization": "Strict UTF-8; literal CRLF converted to LF, no other normalization. Length and SHA-256 apply to canonical bytes.",
+  "derivation": "Two independent complete file reads produced identical ordered inventories, lengths and SHA-256 values.",
+  "exclusions": [
+    {
+      "path": "docs/governance/accepted-improvement-hosted-files.json",
+      "reason": "Detached manifest; no circular self-hash."
+    }
+  ],
+  "files": [
+    {
+      "path": "docs/evidence/evidence-ledger.json",
+      "canonicalUtf8Bytes": 56234,
+      "sha256": "471B4A089E5B5E6D82A53D46E31DBF6192AF97E2596A0FC3D5F8272A0EE28FA9"
+    },
+    {
+      "path": "docs/governance/accepted-improvement-hosted-evidence.md",
+      "canonicalUtf8Bytes": 5461,
+      "sha256": "7B4303A2F5410007F4D17FEF00BF87EC417B8F399AA25BECD9643EC77B4A8D75"
+    }
+  ]
+}
