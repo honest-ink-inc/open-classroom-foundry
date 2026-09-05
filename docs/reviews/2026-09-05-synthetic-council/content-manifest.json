@@ -1,0 +1,85 @@
+{
+  "format": "honest-ink-synthetic-advisory-manifest.v1",
+  "baselineCommit": "965a59abb80a4f1671f34d13ee34f82cb7f5a624",
+  "hashBasis": "UTF-8 without BOM, CRLF normalized to LF; canonical Git text content, not platform checkout bytes.",
+  "scope": "Narrative and supporting maintenance files; excludes this detached manifest. Report integrity only, not authenticated human review, consent, a freeze manifest, or release approval.",
+  "verdict": "Packet audit passed: 8 sessions; 12 habits; 10 fictional lenses; 40 proposals; 25 studios; 13 modules; 227 atlas rows; 44 gates; 34 DoD; 13 stop-ship rows; 47 relative links.",
+  "files": [
+    {
+      "path": "docs/evidence/evidence-ledger.json",
+      "canonicalBytes": 49162,
+      "canonicalSha256": "F419EEFEAA9AF4930A1D4510A7A2B845EA61AC7E98DBDD4BC83A1D3054B71D94",
+      "canonicalGitBlob": "e2801a38926469a3e532e9024d3d9ffac0b328d3"
+    },
+    {
+      "path": "docs/README.md",
+      "canonicalBytes": 12243,
+      "canonicalSha256": "E90655CB40A303DC2442D98FB3A4D2DB6491BA853ED8419E1B4B3B2995925A93",
+      "canonicalGitBlob": "582ab85085f8e5626b52d1cac7c3a8e2afb05903"
+    },
+    {
+      "path": "docs/reviews/2026-09-05-synthetic-council/atlas-dispositions.md",
+      "canonicalBytes": 52913,
+      "canonicalSha256": "BF78F8ED39F1F274552FC961E4AA14BA615525B740C257EEA3CC4CBF815F331E",
+      "canonicalGitBlob": "336037d6ee414daed89c6621cc71356b86c8fd05"
+    },
+    {
+      "path": "docs/reviews/2026-09-05-synthetic-council/evidence-and-completion.md",
+      "canonicalBytes": 33491,
+      "canonicalSha256": "563A8B3D484A026A20F472F2AEC34CE900DF32F2B6B11890EFACEB873251E6AD",
+      "canonicalGitBlob": "08362bfc276725beb73bbab3577a0e459f282d2f"
+    },
+    {
+      "path": "docs/reviews/2026-09-05-synthetic-council/README.md",
+      "canonicalBytes": 24616,
+      "canonicalSha256": "FC466E84C5B1090210DA0AF6245F17C6B233E1AEE041BBFB6A89A29A18C0654D",
+      "canonicalGitBlob": "d16e1365778e5a4d9f797899736259251c275b96"
+    },
+    {
+      "path": "docs/reviews/2026-09-05-synthetic-council/teacher-practice-and-improvements.md",
+      "canonicalBytes": 39920,
+      "canonicalSha256": "095CDDC41A561FF26DB7B34911F926B3A52DE3171A742D3D46AA7D4FFB5A33C0",
+      "canonicalGitBlob": "fe0c11c5636b3dd4031eade84d8ac07165ad8664"
+    },
+    {
+      "path": "docs/reviews/2026-09-05-synthetic-council/verify-packet.ps1",
+      "canonicalBytes": 8996,
+      "canonicalSha256": "CCDEA7D0BA70A246E53AFEBEA2B6948FB1A8C4C248B096EBA96612CC7A67BBB4",
+      "canonicalGitBlob": "e2cd7ac768fba92444e2837cc30f3db98e013127"
+    }
+  ],
+  "sourceBindings": [
+    {
+      "path": "AGENTS.md",
+      "baselineGitBlob": "7c8836f68a6946124bf9051ee7380b97a084e873"
+    },
+    {
+      "path": "CONTRIBUTING.md",
+      "baselineGitBlob": "27fc0d091d08933b0012702b2bea826ce0996f4b"
+    },
+    {
+      "path": "GOVERNANCE.md",
+      "baselineGitBlob": "823b09f4f2a83ab0917f6fcf00bda64a6b801c05"
+    },
+    {
+      "path": "docs/idea-atlas.md",
+      "baselineGitBlob": "4cde63c7109da988e4f0dc58b282c397a145831f"
+    },
+    {
+      "path": "docs/implementation-plan.md",
+      "baselineGitBlob": "7446ef18f09b93d986bbc2c883abeff54df498d9"
+    },
+    {
+      "path": "docs/governance/stage-gate-disposition-register.md",
+      "baselineGitBlob": "2f24b1fc97b10971f22a6f2ce3ea5652e4eba4bb"
+    },
+    {
+      "path": "docs/release/release-requirement-test-traceability.md",
+      "baselineGitBlob": "d2b23b47125ce428a25ed7b0ac4bd68addb5eb2d"
+    },
+    {
+      "path": "docs/council/bounded-commission-review-ledger.md",
+      "baselineGitBlob": "f898a30faad4b09c6f14a118ada9abd365af700e"
+    }
+  ]
+}

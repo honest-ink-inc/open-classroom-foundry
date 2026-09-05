@@ -7,6 +7,7 @@ The copies in this directory are canonical for the repository from the initial c
 | [idea-atlas.md](idea-atlas.md) | The 227-candidate atlas (version 2.0): every idea, its data lane, the studios, the engine consolidation, the build order |
 | [implementation-plan.md](implementation-plan.md) | The audited implementation plan (version 2.0): constitution, lane contract, gates, architecture, module specifications 10.0–10.12, Definition of Done, roadmap, risks, stop-ship conditions |
 | [reviews/masters-review-1.0.md](reviews/masters-review-1.0.md) | The Master's Review 1.0: findings F1–F13 and the amendments the version-2.0 documents apply |
+| [reviews/2026-09-05-synthetic-council/README.md](reviews/2026-09-05-synthetic-council/README.md) | Synthetic advisory sessions 13–20: fictional master-educator lenses, 40 implementable proposals, all 227 atlas dispositions, and a complete evidence/requirements audit; not an adopted backlog, real council record, ratification, or release approval |
 | [modules/deterministic-press-spec.md](modules/deterministic-press-spec.md) | Full specification of Module Zero, the Deterministic Press |
 | [adr/](adr/) | Architecture decision records, ADR-001 onward |
 | [pilots/](pilots/) | The human-gates coordination plan and the staff-pilot instruments: think-aloud protocol, seeded-error study, print inspection checklist |
