@@ -825,11 +825,19 @@ public static class ModuleStudioCatalog
             .Concat(prompts.Sourcing)
             .Concat(prompts.Corroboration)
             .ToList();
+        // Preserve the builder's rendered values, including optional "not
+        // recorded" cells and citation formatting. This is revision-local
+        // comparison evidence, not authentication of the supplied source.
+        var sourceStructure = new SourceReviewStructure(
+            result.Document.Nodes.OfType<Heading>().Single(heading => heading.Level == 1),
+            result.Document.Nodes.OfType<TableNode>().First(),
+            result.Document.Nodes.OfType<Heading>().First(heading => heading.Level == 2),
+            result.Document.Nodes.OfType<Paragraph>().Single(),
+            result.Document.Nodes.OfType<Citation>().Single());
 
         return Outcome(result.Document, SourceLensBuilder.Recipe, DataLane.Green, result.Issues,
             document => ValidateRequiredStructure(document, "lens.structure", requiredFacts, [],
-                requiredNode: candidate => candidate.Nodes.OfType<Citation>().Any()
-                    && candidate.Nodes.OfType<TableNode>().Count() >= 2));
+                requiredNode: candidate => SourceReviewStructureSurvives(candidate, sourceStructure)));
     }
 
     private static ModuleBuildOutcome BuildFamily(ModuleInputValues inputs)
@@ -986,6 +994,86 @@ public static class ModuleStudioCatalog
         RequireNotices(document, requiredNotices, code, issues);
         return issues;
     }
+
+    private static bool SourceReviewStructureSurvives(ArtifactDocument document, SourceReviewStructure expected)
+    {
+        // An exact string elsewhere cannot stand in for a source role. Identify
+        // the designated section without fixing its absolute document position;
+        // two competing anchors cannot be resolved by taking the first match.
+        var nodes = document.Nodes;
+        var anchors = nodes.Select((node, index) => (node, index))
+            .Where(item => item.node is Heading heading
+                && heading.Level == expected.ExcerptHeading.Level
+                && string.Equals(heading.Text, expected.ExcerptHeading.Text, StringComparison.Ordinal))
+            .ToArray();
+        if (anchors.Length != 1
+            || nodes.OfType<Heading>().Count(heading => heading.Level == expected.Title.Level
+                && string.Equals(heading.Text, expected.Title.Text, StringComparison.Ordinal)) != 1)
+        {
+            return false;
+        }
+
+        var anchorIndex = anchors[0].index;
+        var titleIndex = -1;
+        for (var index = anchorIndex - 1; index >= 0; index--)
+        {
+            if (nodes[index] is Heading { Level: 1 })
+            {
+                titleIndex = index;
+                break;
+            }
+        }
+
+        if (titleIndex < 0 || nodes[titleIndex] is not Heading title
+            || !string.Equals(title.Text, expected.Title.Text, StringComparison.Ordinal))
+        {
+            return false;
+        }
+
+        // The source card belongs to that title's introductory region, not an
+        // unrelated inquiry or teacher-note section. Separate notes may precede
+        // the card or excerpt; row order is not a field-value association.
+        var sourceCards = nodes.Skip(titleIndex + 1)
+            .TakeWhile(node => node is not Heading)
+            .OfType<TableNode>()
+            .Where(table => table.HeaderRow is not null
+                && table.HeaderRow.SequenceEqual(expected.Metadata.HeaderRow!, StringComparer.Ordinal))
+            .ToArray();
+        if (sourceCards.Length != 1 || nodes.OfType<TableNode>().Count() < 2
+            || sourceCards[0].Rows.Count != expected.Metadata.Rows.Count)
+        {
+            return false;
+        }
+
+        foreach (var expectedRow in expected.Metadata.Rows)
+        {
+            var matchingRows = sourceCards[0].Rows
+                .Where(row => row.Count > 0 && string.Equals(row[0], expectedRow[0], StringComparison.Ordinal))
+                .ToArray();
+            if (matchingRows.Length != 1
+                || !matchingRows[0].SequenceEqual(expectedRow, StringComparer.Ordinal))
+            {
+                return false;
+            }
+        }
+
+        var excerptBody = nodes.Skip(anchorIndex + 1)
+            .TakeWhile(node => node is not Heading heading || heading.Level > expected.ExcerptHeading.Level)
+            .Where(node => node is not TeacherOnlyNotice and not PageBreak)
+            .ToArray();
+        return excerptBody.Length == 2
+            && excerptBody[0] is Paragraph excerpt
+            && string.Equals(excerpt.Text, expected.Excerpt.Text, StringComparison.Ordinal)
+            && excerptBody[1] is Citation citation
+            && string.Equals(citation.Text, expected.Citation.Text, StringComparison.Ordinal);
+    }
+
+    private sealed record SourceReviewStructure(
+        Heading Title,
+        TableNode Metadata,
+        Heading ExcerptHeading,
+        Paragraph Excerpt,
+        Citation Citation);
 
     private static List<ValidationIssue> ValidateLesson(
         ArtifactDocument document,
