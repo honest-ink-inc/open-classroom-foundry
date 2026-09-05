@@ -4,6 +4,11 @@
 `codex/accepted-improvement-implementation`. **Starting source:**
 `554ec87b256c5cbd8f6efba453070f27941c9257`.
 
+**Superseded for current navigation by the later same-day
+[layout and console continuation](2026-09-05-layout-and-console-evidence.md).**
+The source, measurements and next-work assessment below remain historical at
+this handover's own cutoff.
+
 This continues and supersedes the
 [3 September handover](2026-09-03-bounded-commission-hardening.md) for current
 repository navigation, not for its dated historical evidence. The

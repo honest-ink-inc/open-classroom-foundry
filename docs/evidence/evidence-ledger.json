@@ -1065,6 +1065,38 @@
       "tests": null,
       "record": "docs/governance/accepted-improvement-hosted-evidence.md",
       "notes": "Paired exact implementation head. The workflow's own completed/success conclusion was read directly. Retained csharp.sarif was SARIF 2.1.0 with one run and zero results, 635,785 bytes, SHA-256 5D1D79094B44A16155EBBD14D24426798858463B869FC599A114894BB70746C2. This is the uncompressed file hash, not an uploaded-artifact digest. No security setting or human/release authority changed."
+    },
+    {
+      "id": "ci-33969243572",
+      "kind": "hosted-ci",
+      "runId": 33969243572,
+      "workflow": "CI",
+      "event": "pull_request",
+      "branch": "codex/accepted-improvement-implementation",
+      "headSha": "bb788aa8d74fc3e230b6712876a6ea6c3ccce9d5",
+      "checkoutSha": "5d1addd3fffa50dc8906676cbf41d51850563789",
+      "conclusion": "success",
+      "createdUtc": "2026-09-05T13:33:34Z",
+      "receipt": "20260905T133605Z-1b3f44193d5e43e9822ed8dab6d7bfe6",
+      "tests": { "passed": 2405, "total": 2405 },
+      "record": "docs/governance/layout-console-evidence.md",
+      "notes": "Final record-only PR16 head. The run's own completed/success conclusion and all three successful jobs were read directly. Retained clean synthetic-merge summary measured 2,405/2,405 across seven suites, zero failures, no timeout, stable source/assembly identity and no identity/completeness errors. Summary SHA-256 99134EE6CC8DA2329E465C7BE9A576C5DEF8B11F57A06FCB6DBD9DE5A39CB925. This closes a historical ledger gap; it is not evidence of the later layout/console candidate, a main merge, human authority, publication or release."
+    },
+    {
+      "id": "codeql-33969243592",
+      "kind": "hosted-codeql",
+      "runId": 33969243592,
+      "workflow": "CodeQL SAST",
+      "event": "pull_request",
+      "branch": "codex/accepted-improvement-implementation",
+      "headSha": "bb788aa8d74fc3e230b6712876a6ea6c3ccce9d5",
+      "checkoutSha": null,
+      "conclusion": "success",
+      "createdUtc": "2026-09-05T13:33:34Z",
+      "receipt": null,
+      "tests": null,
+      "record": "docs/governance/layout-console-evidence.md",
+      "notes": "Paired final record-only PR16 head. The run's own completed/success conclusion was read directly. Retained csharp.sarif was SARIF 2.1.0, one run and zero results, 635,785 bytes, SHA-256 69477839E22AC092795C790DA166877CC995411F53AD48EF8C8BF063F526BF95. This is the uncompressed file hash, not an uploaded-artifact digest. No security setting, main merge or human/release authority is asserted."
     }
   ]
 }
