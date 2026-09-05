@@ -300,3 +300,41 @@ applicable to Honest Ink. No sub-agents or independent reviewers were used.
 No canonical governing text, runtime code, sample corpus or human field was
 changed. A public proof record cannot erase the known history or manufacture
 consent, and future human findings may overturn these recommendations.
+
+## Exact-commit and hosted continuation — 5 September 2026
+
+The advisory packet was committed as `62c166b9ba2a19f630f10e2efad7e24b196e63c7`
+and pushed in pull request 15. A further local bounded run,
+`20260905T100116Z-8e9c05b776104f219cba34d9ce2d978f`, tested that exact commit
+and recorded 2,346/2,346, exit 0, no timeout, stable source/assembly identities,
+no evidence-completeness errors, and a clean worktree both before and after.
+The final focused governance/truth/hygiene/ledger/traceability check passed
+21/21 after the local record-only changes. The detached manifest was emitted
+twice with byte-identical output; all seven listed blobs matched the committed
+Git content. Its normalization does not pretend checkout CRLF bytes are LF bytes.
+
+The [hosted ledger](../../evidence/evidence-ledger.json) now records
+`ci-33959352772` and `codeql-33959352810`, each read from the run's own final
+conclusion for the exact initial PR head. [CI](https://github.com/honest-ink-inc/open-classroom-foundry/actions/runs/33959352772)
+and [CodeQL](https://github.com/honest-ink-inc/open-classroom-foundry/actions/runs/33959352810)
+both concluded success. The inspected CI receipt identifies the synthetic PR
+test checkout separately from the branch head; the ledger carries that checkout,
+test totals, summary digest and uploaded-artifact digests. CodeQL's uncompressed
+SARIF file and uploaded artifact have separately named hashes; neither stands in
+for the other. No adverse test result is omitted or promoted by a wrapper exit.
+
+This continuation changes only the evidence ledger, this record and its detached
+content manifest. It does not alter the recommendations, their coverage, runtime
+code or any human hold. The manifest is regenerated for these new report bytes;
+it was never an authenticated or immutable H0–H7 record. Any later exact-head
+workflow conclusions must still be read directly and not inferred from this
+initial-head proof. Pull-request visibility is not a site deployment, merge,
+license enactment, protected review, schema ratification or application release.
+
+The record-only follow-up remeasurement returned `Measured 65 ledger entries;
+0 mismatch(es).`, with receipt
+`out/evidence-ledger-measurement/20260905T101343Z-7faa73386e944e3aadb102675d0c5f6f.json`.
+Its focused checks again passed 21/21. The packet audit retains all coverage
+counts and now resolves 48 relative links, including this continuation's ledger
+link. The updated detached manifest was again emitted twice identically and
+matched all seven staged Git blobs before commit.

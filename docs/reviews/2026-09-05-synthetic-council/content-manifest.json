@@ -3,13 +3,13 @@
   "baselineCommit": "965a59abb80a4f1671f34d13ee34f82cb7f5a624",
   "hashBasis": "UTF-8 without BOM, CRLF normalized to LF; canonical Git text content, not platform checkout bytes.",
   "scope": "Narrative and supporting maintenance files; excludes this detached manifest. Report integrity only, not authenticated human review, consent, a freeze manifest, or release approval.",
-  "verdict": "Packet audit passed: 8 sessions; 12 habits; 10 fictional lenses; 40 proposals; 25 studios; 13 modules; 227 atlas rows; 44 gates; 34 DoD; 13 stop-ship rows; 47 relative links.",
+  "verdict": "Packet audit passed: 8 sessions; 12 habits; 10 fictional lenses; 40 proposals; 25 studios; 13 modules; 227 atlas rows; 44 gates; 34 DoD; 13 stop-ship rows; 48 relative links.",
   "files": [
     {
       "path": "docs/evidence/evidence-ledger.json",
-      "canonicalBytes": 49162,
-      "canonicalSha256": "F419EEFEAA9AF4930A1D4510A7A2B845EA61AC7E98DBDD4BC83A1D3054B71D94",
-      "canonicalGitBlob": "e2801a38926469a3e532e9024d3d9ffac0b328d3"
+      "canonicalBytes": 51917,
+      "canonicalSha256": "7781C00BDF2F03395DC049544B2DBEBF4C025C628CCE179BEFA15E75E2520B48",
+      "canonicalGitBlob": "345e5c100955817dc941c919d745217aa544880f"
     },
     {
       "path": "docs/README.md",
@@ -25,9 +25,9 @@
     },
     {
       "path": "docs/reviews/2026-09-05-synthetic-council/evidence-and-completion.md",
-      "canonicalBytes": 33491,
-      "canonicalSha256": "563A8B3D484A026A20F472F2AEC34CE900DF32F2B6B11890EFACEB873251E6AD",
-      "canonicalGitBlob": "08362bfc276725beb73bbab3577a0e459f282d2f"
+      "canonicalBytes": 36058,
+      "canonicalSha256": "D9B2CE934D4B23D2095C86D7634CD87E065EA1C38511E6EBA846EFDF3A19671F",
+      "canonicalGitBlob": "8e3cd6cbf02c42e2c317add4342c44a0d9a465b6"
     },
     {
       "path": "docs/reviews/2026-09-05-synthetic-council/README.md",
