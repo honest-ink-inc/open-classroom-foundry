@@ -1161,6 +1161,41 @@
       "tests": null,
       "record": "docs/governance/accessibility-console-evidence.md",
       "notes": "Paired exact record-only PR17 head, attempt 1, read directly as completed/success. Retained uncompressed csharp.sarif is SARIF 2.1.0, one run and zero results, 636,237 bytes, SHA-256 00C82D4C26F30F380E52375A526FE8B298DF77F63F0B6C748FBC9A8BBA89A77D. This is a file hash rather than an uploaded-artifact digest. This successful analysis does not override paired red CI or confer main, human-review, publication or release evidence."
+    },
+    {
+      "id": "ci-33983187473",
+      "kind": "hosted-ci",
+      "runId": 33983187473,
+      "workflow": "CI",
+      "event": "pull_request",
+      "branch": "codex/accessibility-and-console-boundaries",
+      "headSha": "483649cad1a8f3f233d6065aaac404dac553bdc0",
+      "checkoutSha": "153bb8bb0acfced42b2e861ba2cb2f4b29b66e6d",
+      "conclusion": "success",
+      "createdUtc": "2026-09-05T18:09:49Z",
+      "receipt": "20260905T181316Z-7d8a0a69b73b425dbb0c547e5cabcec7",
+      "tests": {
+        "passed": 2510,
+        "total": 2510
+      },
+      "record": "docs/governance/fixture-process-evidence.md",
+      "notes": "Exact draft PR18 head, attempt 1. Own completed/success conclusion and all three successful jobs read directly. The clean synthetic-merge tree equals the head tree; this is not main. Seven complete TRXs measured 2,510/2,510 with no skips, errors, aborts or non-passes; duplicate retained summary and TRX bytes agreed. Native/runner exit 0, 343395 ms within the 900-second outer cap, stable identities, no identity/completeness errors, and observed root exit/output drain. Summary SHA-256 A302C4E6E7AA39A7B40CA2D277C5DD496E7736C562B0F669E8ADDE03C61EA769. Coverage 92.7 percent; 130-commit secret scan found no leaks. All 40 downloaded Windows/Linux file pairs matched directly and the original baseline; hosted logs also retain within-producer twins. Dependency/vulnerability and scoped SBOM gates passed. Calibration visual-QA failure, exact compatibility/admission holds, open sightings and all human/publication gates remain; this is not evidence for the later fixture-helper tree."
+    },
+    {
+      "id": "codeql-33983187527",
+      "kind": "hosted-codeql",
+      "runId": 33983187527,
+      "workflow": "CodeQL SAST",
+      "event": "pull_request",
+      "branch": "codex/accessibility-and-console-boundaries",
+      "headSha": "483649cad1a8f3f233d6065aaac404dac553bdc0",
+      "checkoutSha": null,
+      "conclusion": "success",
+      "createdUtc": "2026-09-05T18:09:49Z",
+      "receipt": null,
+      "tests": null,
+      "record": "docs/governance/fixture-process-evidence.md",
+      "notes": "Paired exact draft PR18 head, attempt 1. Own completed/success conclusion read directly. Retained csharp.sarif was inspected as SARIF 2.1.0, one run, zero results, successful invocation and 441 tool notifications all level none (zero warnings/errors). Uncompressed file: 637,120 bytes, SHA-256 F6E864577D9FA1ECCCE80B7C88880986C13B65D70483E64C56834CE0A6CF617C, read twice unchanged. This file hash is not the uploaded ZIP digest, nor a second independent analysis. No later-tree, recipe admission, main merge, council, publication or release claim."
     }
   ]
 }

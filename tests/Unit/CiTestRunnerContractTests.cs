@@ -1,11 +1,13 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 using System.Diagnostics;
 using System.Text.Json;
+using Xunit.Abstractions;
 
 namespace Foundry.Tests.Unit;
 
-public sealed class CiTestRunnerContractTests
+public sealed class CiTestRunnerContractTests(ITestOutputHelper testOutput)
 {
+    private static readonly FixtureProcessRunner PowerShellFixtureRunner = new();
     private static readonly string RepositoryRoot = FindRepositoryRoot();
     private static readonly string RunnerPath = Path.Combine(
         RepositoryRoot,
@@ -1635,7 +1637,7 @@ public sealed class CiTestRunnerContractTests
         }
     }
 
-    private static JsonDocument RunEvidenceScenario(string repository, string mutation)
+    private JsonDocument RunEvidenceScenario(string repository, string mutation)
     {
         var script = $$"""
             $validTrx = @'
@@ -1770,7 +1772,7 @@ public sealed class CiTestRunnerContractTests
         return JsonDocument.Parse(process.StandardOutput);
     }
 
-    private static PowerShellResult RunPowerShell(string repository, string script)
+    private PowerShellResult RunPowerShell(string repository, string script)
     {
         var startInfo = new ProcessStartInfo
         {
@@ -1795,21 +1797,13 @@ public sealed class CiTestRunnerContractTests
         // captured contract text itself to remain deterministic plain text.
         startInfo.Environment["TERM"] = "xterm";
 
-        using var process = new Process { StartInfo = startInfo };
-        Assert.True(process.Start(), "The PowerShell evidence-fixture process did not start.");
-        var standardOutput = process.StandardOutput.ReadToEndAsync();
-        var standardError = process.StandardError.ReadToEndAsync();
-        var exited = process.WaitForExit(30_000);
-        if (!exited)
-        {
-            process.Kill(entireProcessTree: true);
-            process.WaitForExit();
-        }
-
-        var output = standardOutput.GetAwaiter().GetResult();
-        var error = standardError.GetAwaiter().GetResult();
-        Assert.True(exited, "The PowerShell evidence-fixture process exceeded 30 seconds.");
-        return new PowerShellResult(process.ExitCode, output, error);
+        var result = PowerShellFixtureRunner.Run(() => new NativeFixtureProcess(startInfo));
+        // Retain both streams before a caller's assertion (including an expected
+        // nonzero exit) can discard them. Instrument failures carry this same
+        // separated report in FixtureProcessException instead.
+        testOutput.WriteLine("Native PowerShell evidence-fixture result:");
+        testOutput.WriteLine(result.Describe());
+        return new PowerShellResult(result.ExitCode!.Value, result.StandardOutput, result.StandardError);
     }
 
     private static string CreateSyntheticEvidenceRepository(params string[] suiteNames)
