@@ -49,6 +49,57 @@ internal sealed record FixtureProcessLimits(
 
 internal sealed record FixtureStreamSnapshot(string Text, string State, string? Failure, bool Truncated);
 
+internal interface IFixtureSettlementClock
+{
+    long ElapsedMilliseconds { get; }
+}
+
+internal sealed class StopwatchFixtureSettlementClock : IFixtureSettlementClock
+{
+    private readonly Stopwatch clock = Stopwatch.StartNew();
+    public long ElapsedMilliseconds => clock.ElapsedMilliseconds;
+}
+
+internal enum FixtureDisposalStage { NotRequired, Deferred, Queued, Entered, CallbackExited }
+
+[Flags]
+internal enum FixtureDisposalDeferral
+{
+    None = 0,
+    RootExitUnobserved = 1,
+    CleanupUnsettled = 2,
+    CaptureUnsettled = 4,
+    SettlementBudgetExhausted = 8,
+}
+
+internal sealed record FixtureDisposalObservation(
+    FixtureDisposalStage Stage,
+    FixtureDisposalDeferral DeferredReasons,
+    int SettlementBudgetMilliseconds,
+    long DecisionElapsedMilliseconds,
+    int RemainingAtDecisionMilliseconds,
+    long? WaitElapsedMilliseconds,
+    int? RemainingAtWaitMilliseconds,
+    long? CallbackEntryElapsedMilliseconds,
+    long? CallbackExitElapsedMilliseconds,
+    long SnapshotElapsedMilliseconds,
+    bool TaskCompletionObserved,
+    bool TaskFaultObserved,
+    bool? WaitReturnedSettled)
+{
+    internal string Describe() =>
+        $"Stage: {Stage}; DeferredReasons: {DeferredReasons}; SharedBudgetMs: {SettlementBudgetMilliseconds}; " +
+        $"DecisionElapsedMs: {DecisionElapsedMilliseconds}; RemainingAtDecisionMs: {RemainingAtDecisionMilliseconds}; " +
+        $"WaitElapsedMs: {Observed(WaitElapsedMilliseconds)}; RemainingAtWaitMs: {Observed(RemainingAtWaitMilliseconds)}; " +
+        $"CallbackEntryElapsedMs: {Observed(CallbackEntryElapsedMilliseconds)}; " +
+        $"CallbackExitElapsedMs: {Observed(CallbackExitElapsedMilliseconds)}; SnapshotElapsedMs: {SnapshotElapsedMilliseconds}; " +
+        $"TaskCompletionAtSnapshot: {TaskCompletionObserved}; TaskFaultAtSnapshot: {TaskFaultObserved}; " +
+        $"WaitReturnedSettled: {WaitReturnedSettled?.ToString() ?? "NotObserved"}; TimelySettlement: NotEstablishedByObservations";
+
+    private static string Observed(long? milliseconds) =>
+        milliseconds?.ToString(System.Globalization.CultureInfo.InvariantCulture) ?? "NotObserved";
+}
+
 internal sealed record FixtureProcessResult(
     int? ExitCode,
     FixtureStreamSnapshot Output,
@@ -66,6 +117,7 @@ internal sealed record FixtureProcessResult(
     // Test controls may release their synthetic operations and await this exact
     // aggregate. Completion does not settle deferred disposal or prove tree exit.
     internal Task StartedOperations { get; init; } = Task.CompletedTask;
+    internal FixtureDisposalObservation? DisposalObservation { get; init; }
 
     internal string Describe() =>
         $"Primary: {PrimaryFailure ?? "None"}{Environment.NewLine}" +
@@ -73,6 +125,7 @@ internal sealed record FixtureProcessResult(
         $"RootExitObserved: {RootExitObserved}; DescendantExit: NotEstablished{Environment.NewLine}" +
         $"CleanupSettled: {CleanupSettled}; CaptureSettled: {CaptureSettled}; " +
         $"DisposalSettled: {DisposalSettled}; SafeToStartAnotherFixture: {SafeToStartAnotherFixture}{Environment.NewLine}" +
+        $"DisposalObservation: {DisposalObservation?.Describe() ?? "Unavailable"}{Environment.NewLine}" +
         $"Secondary outcomes:{Environment.NewLine}{string.Join(Environment.NewLine, SecondaryOutcomes)}{Environment.NewLine}" +
         $"--- stdout ({Output.State}; truncated={Output.Truncated}) ---{Environment.NewLine}" +
         $"{Output.Text}{Environment.NewLine}{Output.Failure}{Environment.NewLine}" +
@@ -89,13 +142,18 @@ internal sealed class FixtureProcessRunner
 {
     private readonly Lock runGate = new();
     private readonly FixtureProcessLimits limits;
+    private readonly Func<Action, Task> scheduleDisposal;
+    private readonly Func<IFixtureSettlementClock> startSettlementClock;
     private FixtureProcessResult? unsafePriorResult;
 
     // Keep ownership of an unsettled adapter. Timed waits do not cancel Kill,
     // Dispose, or a reader which ignores cancellation, and do not make them safe.
     private IFixtureProcess? unsettledProcess;
 
-    internal FixtureProcessRunner(FixtureProcessLimits? requestedLimits = null)
+    internal FixtureProcessRunner(
+        FixtureProcessLimits? requestedLimits = null,
+        Func<Action, Task>? disposalScheduler = null,
+        Func<IFixtureSettlementClock>? settlementClockFactory = null)
     {
         limits = requestedLimits ?? new();
         if (limits.WorkMilliseconds is <= 0 or > 30_000
@@ -106,6 +164,11 @@ internal sealed class FixtureProcessRunner
         {
             throw new ArgumentOutOfRangeException(nameof(requestedLimits));
         }
+
+        // Trusted, process-free controls may inject only these two boundaries.
+        // Normal disposal scheduling and the shared monotonic clock are unchanged.
+        scheduleDisposal = disposalScheduler ?? (static action => Task.Run(action));
+        startSettlementClock = settlementClockFactory ?? (static () => new StopwatchFixtureSettlementClock());
     }
 
     internal FixtureProcessResult Run(Func<IFixtureProcess> createProcess)
@@ -198,7 +261,7 @@ internal sealed class FixtureProcessRunner
         // CancelAsync avoids running a reader's cancellation callback on this
         // thread. Settlement has its own shared clock; pending operations remain
         // pending even after the caller has stopped waiting for them.
-        var settlementClock = Stopwatch.StartNew();
+        var settlementClock = startSettlementClock();
         var outputCancellation = output?.CancelAsync() ?? Task.CompletedTask;
         var errorCancellation = error?.CancelAsync() ?? Task.CompletedTask;
         var cancellation = Task.WhenAll(outputCancellation, errorCancellation);
@@ -265,19 +328,41 @@ internal sealed class FixtureProcessRunner
         var disposalSettled = process is null;
         var disposalSucceeded = process is null;
         Task? disposal = null;
+        long? waitElapsed = null;
+        int? remainingAtWait = null;
+        bool? waitReturnedSettled = null;
+        var deferredReasons = FixtureDisposalDeferral.None;
+        var callbackProgress = new DisposalCallbackProgress(null, null);
+        var decisionElapsed = settlementClock.ElapsedMilliseconds;
+        var remainingAtDecision = Remaining(decisionElapsed, limits.SettlementMilliseconds);
         if (process is not null && (!started || rootExited) && cleanupSettled && captureSettled
-            && Remaining(settlementClock, limits.SettlementMilliseconds) > 0)
+            && remainingAtDecision > 0)
         {
-            disposal = Task.Run(() =>
+            disposal = scheduleDisposal(() =>
             {
-                try { process.Dispose(); }
+                var entry = new DisposalCallbackProgress(settlementClock.ElapsedMilliseconds, null);
+                Volatile.Write(ref callbackProgress, entry);
+                try
+                {
+                    try { process.Dispose(); }
+                    finally
+                    {
+                        output?.Dispose();
+                        error?.Dispose();
+                    }
+                }
                 finally
                 {
-                    output?.Dispose();
-                    error?.Dispose();
+                    // Callback exit, including a fault, is not task completion or
+                    // proof that the shared budget was met.
+                    Volatile.Write(ref callbackProgress,
+                        entry with { ExitElapsedMilliseconds = settlementClock.ElapsedMilliseconds });
                 }
             });
-            var disposalWithinLimit = WaitSettled(disposal, Remaining(settlementClock, limits.SettlementMilliseconds));
+            waitElapsed = settlementClock.ElapsedMilliseconds;
+            remainingAtWait = Remaining(waitElapsed.Value, limits.SettlementMilliseconds);
+            var disposalWithinLimit = WaitSettled(disposal, remainingAtWait.Value);
+            waitReturnedSettled = disposalWithinLimit;
             disposalSettled = disposal.IsCompleted;
             disposalSucceeded = disposalWithinLimit && disposal.IsCompletedSuccessfully;
             if (!disposalSucceeded)
@@ -292,6 +377,26 @@ internal sealed class FixtureProcessRunner
         }
         else if (process is not null)
         {
+            if (started && !rootExited)
+            {
+                deferredReasons |= FixtureDisposalDeferral.RootExitUnobserved;
+            }
+
+            if (!cleanupSettled)
+            {
+                deferredReasons |= FixtureDisposalDeferral.CleanupUnsettled;
+            }
+
+            if (!captureSettled)
+            {
+                deferredReasons |= FixtureDisposalDeferral.CaptureUnsettled;
+            }
+
+            if (remainingAtDecision <= 0)
+            {
+                deferredReasons |= FixtureDisposalDeferral.SettlementBudgetExhausted;
+            }
+
             secondary.Add("DisposalDeferred: ownership is retained because a root or operation is unresolved, or no settlement budget remains.");
         }
 
@@ -306,10 +411,28 @@ internal sealed class FixtureProcessRunner
             primary ??= "OwnershipUncertain: no further fixture may start through this runner.";
         }
 
+        // Observe task completion first, then acquire the atomically published
+        // entry/exit pair. Reading the pair first could combine an old absent
+        // entry with a task that completed between those reads. Later callback
+        // progress cannot mutate the value copied into this result or its verdict.
+        var taskCompletionObserved = disposal?.IsCompleted ?? false;
+        var taskFaultObserved = taskCompletionObserved && disposal!.IsFaulted;
+        var callbackSnapshot = Volatile.Read(ref callbackProgress);
+        var stage = process is null ? FixtureDisposalStage.NotRequired
+            : disposal is null ? FixtureDisposalStage.Deferred
+            : callbackSnapshot.ExitElapsedMilliseconds is not null ? FixtureDisposalStage.CallbackExited
+            : callbackSnapshot.EntryElapsedMilliseconds is not null ? FixtureDisposalStage.Entered
+            : FixtureDisposalStage.Queued;
+        var disposalObservation = new FixtureDisposalObservation(
+            stage, deferredReasons, limits.SettlementMilliseconds, decisionElapsed, remainingAtDecision,
+            waitElapsed, remainingAtWait, callbackSnapshot.EntryElapsedMilliseconds,
+            callbackSnapshot.ExitElapsedMilliseconds, settlementClock.ElapsedMilliseconds,
+            taskCompletionObserved, taskFaultObserved, waitReturnedSettled);
         var result = new FixtureProcessResult(
             exitCode, outputSnapshot, errorSnapshot, primary, [.. secondary],
             rootExited, cleanupSettled, captureSettled, disposalSettled, safe)
         {
+            DisposalObservation = disposalObservation,
             StartedOperations = Task.WhenAll(
                 captures, cancellation, (Task?)cleanup ?? Task.CompletedTask, disposal ?? Task.CompletedTask),
         };
@@ -368,6 +491,12 @@ internal sealed class FixtureProcessRunner
     private static int Remaining(Stopwatch clock, int budget) =>
         (int)Math.Max(0, budget - clock.ElapsedMilliseconds);
 
+    private static int Remaining(IFixtureSettlementClock clock, int budget) =>
+        Remaining(clock.ElapsedMilliseconds, budget);
+
+    private static int Remaining(long elapsedMilliseconds, int budget) =>
+        (int)Math.Max(0, budget - elapsedMilliseconds);
+
     private static bool WaitSettled(Task task, int milliseconds)
     {
         if (task.IsCompleted)
@@ -392,6 +521,8 @@ internal sealed class FixtureProcessRunner
     }
 
     private sealed record CleanupOutcome(bool RootExitObserved, bool KillRequestReturned, IReadOnlyList<string> Outcomes);
+
+    private sealed record DisposalCallbackProgress(long? EntryElapsedMilliseconds, long? ExitElapsedMilliseconds);
 
     private sealed class StreamCapture : IDisposable
     {
