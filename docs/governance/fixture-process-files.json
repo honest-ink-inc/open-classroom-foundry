@@ -1,0 +1,71 @@
+{
+  "format": "ocf.changed-file-manifest.v1",
+  "preparedDate": "2026-09-05",
+  "sourceBaseline": "483649cad1a8f3f233d6065aaac404dac553bdc0",
+  "scope": "The eleven non-self changed files in the first fixture-process continuation commit containing this manifest. Test-only failure-reporting repair, retained red and revised local proof, exact predecessor hosted evidence and scoped compatibility inventory; no recipe admission, main merge or publication. Later factual continuations do not replace this historical manifest.",
+  "normalization": "Strict UTF-8; literal CRLF converted to LF, no other normalization. Length and SHA-256 apply to those canonical bytes, not platform checkout representation.",
+  "derivation": "Two independent complete file reads produced identical ordered inventories, lengths and SHA-256 values.",
+  "exclusions": [
+    {
+      "path": "docs/governance/fixture-process-files.json",
+      "reason": "Detached manifest: no circular self-hash. Ignored generated outputs and receipts are separately identified in fixture-process-evidence.md."
+    }
+  ],
+  "files": [
+    {
+      "path": "README.md",
+      "canonicalUtf8Bytes": 14046,
+      "sha256": "2C14DFD466856440AC41F411601241CBD9519F33F547056B09568082FDBA984D"
+    },
+    {
+      "path": "docs/README.md",
+      "canonicalUtf8Bytes": 14609,
+      "sha256": "B08266A6B4B994D53377AA1B2CD57E7E011A9F16139FFCF799E46C1631A4D42C"
+    },
+    {
+      "path": "docs/evidence/evidence-ledger.json",
+      "canonicalUtf8Bytes": 65659,
+      "sha256": "78C7E764DA2AD8E0AFFD47D12381C8A03AF707C3596D6A7C74B8814F69E7BA2A"
+    },
+    {
+      "path": "docs/evidence/sightings-register.md",
+      "canonicalUtf8Bytes": 22930,
+      "sha256": "9935C8C8F27DA4CEB6FCEA70B6C4C3D5C1D62FC740842A7CBF7880AC79A7F27D"
+    },
+    {
+      "path": "docs/governance/accepted-improvement-register.md",
+      "canonicalUtf8Bytes": 17427,
+      "sha256": "47970DC4D053E3E0ED533358F20D9F8BDFE9AE10A61A881786AA1F3152697A17"
+    },
+    {
+      "path": "docs/governance/fixture-process-evidence.md",
+      "canonicalUtf8Bytes": 27844,
+      "sha256": "678032DBC83DF82DF9074B9150D8DB38FBE2427580E9D214D61E044B410C3926"
+    },
+    {
+      "path": "docs/handover/2026-09-05-fixture-process-evidence.md",
+      "canonicalUtf8Bytes": 3529,
+      "sha256": "63FB8A23BB7D4E1879FCEAB36687B718A40BB522496439975E0D8214C48A3ADD"
+    },
+    {
+      "path": "docs/implementation-plan.md",
+      "canonicalUtf8Bytes": 84279,
+      "sha256": "EE34DA82685C9BF09A03A495FC7885428993CFFE1E0CF5A93F522AFFEC0F4BC4"
+    },
+    {
+      "path": "tests/Unit/CiTestRunnerContractTests.cs",
+      "canonicalUtf8Bytes": 94253,
+      "sha256": "99A8BE660BDE45D94997C6CF3ECAE86D6F8D6844EDE548CEEF6A35CD03DFC5D8"
+    },
+    {
+      "path": "tests/Unit/FixtureProcessRunner.cs",
+      "canonicalUtf8Bytes": 17743,
+      "sha256": "1819FEB7209E35EBA52CDFFF8286E8629E211D4FC5FFCBDF42A87E8CC66A268B"
+    },
+    {
+      "path": "tests/Unit/FixtureProcessRunnerTests.cs",
+      "canonicalUtf8Bytes": 23165,
+      "sha256": "32B769D033EE85E02973DE200AA46B39F1B382EA2DAADCC47B2E46165AE74098"
+    }
+  ]
+}
