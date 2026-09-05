@@ -18,6 +18,18 @@
 | District readiness (Gate 3) | **HUMAN — packet ready, date pending** | `docs/district/gate-3-readiness-packet.md` includes the written-approval instrument; delivery follows Maryland and the moved calendar, with no replacement date inferred |
 | Second maintainer | **HUMAN** | The sustainability DoD item; recruitment plan in the coordination plan; still the bus factor's only cure |
 
+> **Engineering continuation — 5 September 2026:** the earlier table retains
+> its stated historical measurements. The new recovery statuses produce a
+> 1,080-id neutral UI packet at 165,577 bytes, SHA-256
+> `62EFC47E009FC6E581C09C0FB92194E35561636EC1A3847D74B8734BAA6E4D84`,
+> source digest `42a156dd667d317806f4b66a379391794a7b47b4af2d1582cdeb20a5866e5b8c`.
+> Fresh exports matched byte-for-byte; the packet is still draft/und and the
+> production language allowlist is empty. The [current handover](../handover/2026-09-05-accepted-improvement-implementation.md)
+> and [implementation evidence](../governance/accepted-improvement-evidence.md)
+> distinguish two local 2,405/2,405 full passes, their retained earlier failure,
+> unchanged 40-file first-admission samples, later hosted evidence and every
+> still-open human/publication gate. These results close no release row.
+
 > **Migration-evidence continuation — 1 September 2026:** the current focused
 > upgrade boundary is **56/56**, superseding the 55/55 count above. Read-only
 > review now emits every ordinal-sorted, content-free recipe constituent, and the

@@ -4,7 +4,7 @@
 
 **Plan version:** 2.0 — regenerated 29 August 2026, applying The Master's Review 1.0 (amendments 1–7; findings F2, F5–F11 incorporated)  
 **Date:** 29 August 2026  
-**Status (3 September 2026):** Foundation and the deterministic press are implemented; SequenceSlate and the reachable Green built-in studios are engineering prototypes, not protected-seat or classroom-validated products. SequenceSlate's constitutionally required AAC/SLP co-design, every other protected-seat review, pilot evidence, packaging, release, and the remaining roadmap stay open. ADR-008 fixes current public display names and ADR-009 corrects the lesson-design display to StrandPlan, while preserving all stable internal identifiers. The bounded commission prepared non-operative governance terms, hardened approval and output seams, and filed ADR-010 as Proposed without convening or ratifying any human decision. See the [current handover](handover/2026-09-03-bounded-commission-hardening.md).
+**Status (5 September 2026):** Foundation and the deterministic press are implemented; SequenceSlate and the reachable Green built-in studios are engineering prototypes, not protected-seat or classroom-validated products. SequenceSlate's constitutionally required AAC/SLP co-design, every other protected-seat review, pilot evidence, packaging, release, and the remaining roadmap stay open. ADR-008 fixes current public display names and ADR-009 corrects the lesson-design display to StrandPlan, while preserving all stable internal identifiers. The bounded commission prepared non-operative governance terms, hardened approval and output seams, and filed ADR-010 as Proposed without convening or ratifying any human decision. The accepted-improvement continuation repairs existing recovery, quantitative, source-integrity and evidence contracts while retaining the complete proposal scope and those human holds. See the [current handover](handover/2026-09-05-accepted-improvement-implementation.md).
 **License intention:** Application code and first-party recipes under GNU GPL-3.0-or-later; other content and assets governed by explicit, compatible licenses  
 **Initial operating environment:** .NET 10 on managed Windows 10/11 devices, local-first authoring, optional district-governed Azure OpenAI inference  
 
@@ -797,7 +797,8 @@ Unlimited unsupported languages, speech interpretation, dialect guarantees, pers
 - Cluster-matched instructional routes
 - Short reteach draft
 - One or two hinge questions with conditional teacher responses
-- The approved cluster summary — already teacher-approved Green output — may seed tomorrow's Hinge Question Forge session without persisting any response-level data
+- ~~The approved cluster summary — already teacher-approved Green output — may seed tomorrow's Hinge Question Forge session without persisting any response-level data~~ **Corrected 5 September 2026 (I35):** approval does not change a data lane. A response-derived summary retains the highest input lane, including Amber; suppression, purging raw responses, a teacher checkbox, and the word "anonymous" do not authorize a downgrade or a persistent handoff.
+- A separately authored generic pattern description may enter a new Green planning task only under §4's qualifying-content, rights, and accumulation rules. It must contain no response-derived text, image, quotation, per-check trace, or date-to-roster linkage. Copying or paraphrasing a response-derived summary is not this independent authoring route. Actual Amber operation and any exceptional lane reduction remain subject to the district/privacy/records process; the current production sinks admit Green only.
 - No named group, ranking, or response-level export
 
 **Invariants**

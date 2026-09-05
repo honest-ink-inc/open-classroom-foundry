@@ -35,6 +35,11 @@ public static class LessonLoomBuilder
 
         var issues = new List<ValidationIssue>();
 
+        if (string.IsNullOrWhiteSpace(target.EvidenceOfLearning))
+        {
+            issues.Add(ValidationIssue.Blocking("loom.evidence", "A lesson needs declared evidence of learning."));
+        }
+
         if (phases.Count == 0)
         {
             issues.Add(ValidationIssue.Blocking("loom.phases", "A lesson needs phases."));
@@ -54,7 +59,7 @@ public static class LessonLoomBuilder
             }
         }
 
-        var sum = phases.Sum(p => p.Minutes);
+        var sum = phases.Sum(p => (long)p.Minutes);
         if (phases.Count > 0 && sum != totalMinutes)
         {
             issues.Add(ValidationIssue.Blocking("loom.timing",

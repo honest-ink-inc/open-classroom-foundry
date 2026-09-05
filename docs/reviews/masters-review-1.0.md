@@ -147,7 +147,7 @@ Tight refinements only; each module's plan specification otherwise stands as aud
 
 **Directions Duet.** Version the approved glossary and stamp each artifact with the glossary version used; a district's terminology changes midyear and silent drift across handouts is a real failure mode.
 
-**Exit Lens.** Close the loop with Hinge Question Forge explicitly: yesterday's approved cluster summary should be offerable as *tomorrow's hinge-question seed* without persisting any response-level data — the summary is already teacher-approved Green output. This is the highest-value legal reuse of Amber work.
+**Exit Lens.** ~~Close the loop with Hinge Question Forge explicitly: yesterday's approved cluster summary should be offerable as *tomorrow's hinge-question seed* without persisting any response-level data — the summary is already teacher-approved Green output. This is the highest-value legal reuse of Amber work.~~ **Corrected 5 September 2026 (I35):** this historical recommendation contradicted the adopted lane-inheritance and accumulation rules. Approval does not change a data lane. The [implementation plan §10.6](../implementation-plan.md#106-reteachsignal--formative-evidence) now distinguishes an Amber response-derived summary from a separately authored generic pattern description. Neither this correction nor a suppressed count supplies district/privacy/records authority or a legal finding.
 
 **Lesson Loom.** Add deterministic timing arithmetic as a validator (minutes sum, transitions counted, closure protected) so the model never does math the engine can check.
 

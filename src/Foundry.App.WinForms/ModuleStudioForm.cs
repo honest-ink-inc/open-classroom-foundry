@@ -24,6 +24,7 @@ public sealed class ModuleStudioForm : Form
     private readonly Func<string, ReadOnlyMemory<byte>, CancellationToken, Task> _exportWriter;
     private readonly Func<Func<Task>, CancellationToken, Task> _exportWorkRunner;
     private readonly Func<ApprovedArtifact, string, RenderAudience, double, bool, IAssetCatalog?, Task> _printViewOpener;
+    private readonly ProjectLibrarySaveOperation _librarySaver;
     private readonly Func<IWin32Window, IReadOnlyList<BriefLine>?> _boardIntakeRunner;
     private readonly bool _modalReview;
     private readonly ListBox _doorList;
@@ -78,14 +79,16 @@ public sealed class ModuleStudioForm : Form
         Func<ExportChoice?>? exportPicker = null,
         Func<string, ReadOnlyMemory<byte>, CancellationToken, Task>? exportWriter = null,
         Func<ApprovedArtifact, string, RenderAudience, double, bool, IAssetCatalog?, Task>? printViewOpener = null,
-        Func<IWin32Window, IReadOnlyList<BriefLine>?>? boardIntakeRunner = null)
+        Func<IWin32Window, IReadOnlyList<BriefLine>?>? boardIntakeRunner = null,
+        ProjectLibrarySaveOperation? librarySaver = null)
         : this(
             reviewRunner,
             exportPicker,
             exportWriter,
             printViewOpener,
             boardIntakeRunner,
-            RunExportWorkInBackground)
+            RunExportWorkInBackground,
+            librarySaver)
     {
     }
 
@@ -95,7 +98,8 @@ public sealed class ModuleStudioForm : Form
         Func<string, ReadOnlyMemory<byte>, CancellationToken, Task>? exportWriter,
         Func<ApprovedArtifact, string, RenderAudience, double, bool, IAssetCatalog?, Task>? printViewOpener,
         Func<IWin32Window, IReadOnlyList<BriefLine>?>? boardIntakeRunner,
-        Func<Func<Task>, CancellationToken, Task> exportWorkRunner)
+        Func<Func<Task>, CancellationToken, Task> exportWorkRunner,
+        ProjectLibrarySaveOperation? librarySaver = null)
     {
         _modalReview = reviewRunner is null;
         _reviewRunner = reviewRunner ?? RunModalReview;
@@ -105,6 +109,7 @@ public sealed class ModuleStudioForm : Form
                 AppServices.WriteExportBytesAsync(destination, content, cancellationToken));
         _exportWorkRunner = exportWorkRunner;
         _printViewOpener = printViewOpener ?? AppServices.OpenPrintViewAsync;
+        _librarySaver = librarySaver ?? AppServices.SaveToLibrary;
         _boardIntakeRunner = boardIntakeRunner ?? RunBoardIntake;
 
         Text = UiStrings.WithoutMnemonic(UiStrings.ModuleStudioWindowTitle);
@@ -1112,16 +1117,29 @@ public sealed class ModuleStudioForm : Form
             return;
         }
 
-        var name = AppServices.SaveToLibrary(
-            ApprovedResult,
-            PublicFileStem(_context),
-            _context.Door.Id,
-            _context.Mode.Recipe.Id,
-            _context.Mode.Recipe.Version,
-            AppServices.SymbolCatalog(),
-            _validationEnvelope,
-            _renderProfile);
-        SetStatus(UiStrings.StatusSaved, name);
+        ArtifactSinkAuthorizationGate.DemandGreenSave(ApprovedResult);
+        var catalog = AppServices.SymbolCatalog();
+        try
+        {
+            var name = _librarySaver(
+                ApprovedResult,
+                PublicFileStem(_context),
+                _context.Door.Id,
+                _context.Mode.Recipe.Id,
+                _context.Mode.Recipe.Version,
+                catalog,
+                _validationEnvelope,
+                _renderProfile);
+            SetStatus(UiStrings.StatusSaved, name);
+        }
+        catch (OperationCanceledException)
+        {
+            SetStatus(UiStrings.StatusSaveCancelled);
+        }
+        catch (Exception failure) when (failure is IOException or UnauthorizedAccessException)
+        {
+            SetStatus(UiStrings.StatusSaveFailed);
+        }
     }
 
     private void PopulateNotes(
