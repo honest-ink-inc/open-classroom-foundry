@@ -1,0 +1,76 @@
+{
+  "format": "ocf.changed-file-manifest.v1",
+  "preparedDate": "2026-09-05",
+  "sourceBaseline": "8857a6474cc17cdfc7357dc56665b45dcced4fac",
+  "scope": "The twelve non-self changed files in the first source-role-integrity continuation commit containing this manifest. Bounded SourceLens validator repair, test-instrument corrections, exact red predecessor hosted evidence and current local closing; no equivalent-load diagnosis, recipe admission, main merge or publication. Later continuations do not replace this historical manifest.",
+  "normalization": "Strict UTF-8; literal CRLF converted to LF, no other normalization. Length and SHA-256 apply to those canonical bytes, not platform checkout representation.",
+  "derivation": "Two independent complete file reads produced identical ordered inventories, lengths and SHA-256 values.",
+  "exclusions": [
+    {
+      "path": "docs/governance/source-role-integrity-files.json",
+      "reason": "Detached manifest: no circular self-hash. Ignored generated outputs and receipts are separately identified in source-role-integrity.md."
+    }
+  ],
+  "files": [
+    {
+      "path": "README.md",
+      "canonicalUtf8Bytes": 14132,
+      "sha256": "FD1F4BE1D066413AD73464E7A902ECA50A7274A7D06477CF309C215EA84A6558"
+    },
+    {
+      "path": "docs/README.md",
+      "canonicalUtf8Bytes": 15477,
+      "sha256": "300D3F771AFF116E5DE0A1209C707C5994F2FD76F95AF18B97D54D15E8CE4697"
+    },
+    {
+      "path": "docs/evidence/evidence-ledger.json",
+      "canonicalUtf8Bytes": 74435,
+      "sha256": "A4396C91E9DE4DBB78A1428C3BC11B2BECA7365A26ED73D3C4652B261CAB23BE"
+    },
+    {
+      "path": "docs/evidence/sightings-register.md",
+      "canonicalUtf8Bytes": 29715,
+      "sha256": "EB443E0F52EFBDD298DDE53C0A9A3D82A5714BB2FFD8BC0C5C1F27B1D3511401"
+    },
+    {
+      "path": "docs/governance/accepted-improvement-register.md",
+      "canonicalUtf8Bytes": 20093,
+      "sha256": "A45BDC36BDFE851AAA06FA6CB6E6FBC164F39BFAF8E623CE7ED6F7732E751B8D"
+    },
+    {
+      "path": "docs/governance/source-role-integrity.md",
+      "canonicalUtf8Bytes": 28681,
+      "sha256": "D1F86E40D494818B4B99DD12775CE830405120B4D4E09F719A57715BE1BF2C70"
+    },
+    {
+      "path": "docs/handover/2026-09-05-source-role-integrity.md",
+      "canonicalUtf8Bytes": 3705,
+      "sha256": "CE8461889228362F79044370A8901B3041100BB71C0EF8B99AECBBD8085B781B"
+    },
+    {
+      "path": "docs/implementation-plan.md",
+      "canonicalUtf8Bytes": 84288,
+      "sha256": "22F8BA006C338D5E92661F8DFC22AEFF2D020E2331BBCB6098FDE03862CFC121"
+    },
+    {
+      "path": "src/Foundry.Modules.BuiltIn/ModuleStudioCatalog.cs",
+      "canonicalUtf8Bytes": 80362,
+      "sha256": "D4D3DA5B4863939E654C62A6C1FFFA5C2A548B22499439AFB811E5B27E7A1A4E"
+    },
+    {
+      "path": "tests/Integration/EdgePdfExporterTests.cs",
+      "canonicalUtf8Bytes": 24764,
+      "sha256": "7F84DFEEA7BB5C544375C54B6824960A93296CBB7476E65693C98F0DB775646C"
+    },
+    {
+      "path": "tests/Unit/FixtureProcessRunnerTests.cs",
+      "canonicalUtf8Bytes": 42757,
+      "sha256": "3A77CBF6E9AB34FB07E7D8C17E8DFDAC472E4158F3F67B3A370F3D3E08FF774E"
+    },
+    {
+      "path": "tests/Unit/SourceLensReviewIntegrityTests.cs",
+      "canonicalUtf8Bytes": 23355,
+      "sha256": "0009656068CE6B57C39A1AFB70CDBD6A2754DE7F5EC384548786DB1E8B817A07"
+    }
+  ]
+}

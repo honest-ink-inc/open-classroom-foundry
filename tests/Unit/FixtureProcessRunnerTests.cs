@@ -463,24 +463,61 @@ public sealed class FixtureProcessRunnerTests(ITestOutputHelper output)
     [Fact]
     public async Task Disposal_observation_keeps_zero_elapsed_entry_exit_and_task_completion_distinct()
     {
+        // A known-unstarted adapter isolates disposal observations from real
+        // capture scheduling. This is not started-process or stream-drain proof.
+        var disposalCalls = 0;
+        var process = new SyntheticProcess
+        {
+            StartReturned = false,
+            DisposeAction = () => Interlocked.Increment(ref disposalCalls),
+        };
         var clock = new ManualSettlementClock();
         var runner = new FixtureProcessRunner(ControlLimits, ExecuteDisposalImmediately, () => clock);
         FixtureProcessResult? result = null;
+        Task? startedOperations = null;
         try
         {
-            result = ObserveSyntheticRun(runner, () => new SyntheticProcess());
+            output.WriteLine("Known-unstarted synthetic adapter; no started-process or capture-scheduling proof:");
+            result = ObserveSyntheticRun(runner, () => process);
+            startedOperations = result.StartedOperations;
+            Assert.Equal("StartupFailure: the process API returned false.", result.PrimaryFailure);
+            var unavailable = new FixtureStreamSnapshot(string.Empty, "Unavailable", null, false);
+            Assert.Equal(unavailable, result.Output);
+            Assert.Equal(unavailable, result.Error);
+            Assert.False(result.RootExitObserved);
+            Assert.Null(result.ExitCode);
+            Assert.Empty(process.WaitBudgets);
+            Assert.Empty(result.SecondaryOutcomes);
+            Assert.True(process.Disposed);
+            Assert.Equal(1, Volatile.Read(ref disposalCalls));
+            Assert.True(result.DisposalSettled);
             Assert.True(result.SafeToStartAnotherFixture);
             var observation = RequireDisposalObservation(result);
             Assert.Equal(FixtureDisposalStage.CallbackExited, observation.Stage);
+            Assert.Equal(FixtureDisposalDeferral.None, observation.DeferredReasons);
+            Assert.Equal(0, observation.DecisionElapsedMilliseconds);
+            Assert.Equal(0, observation.WaitElapsedMilliseconds);
             Assert.Equal(0, observation.CallbackEntryElapsedMilliseconds);
             Assert.Equal(0, observation.CallbackExitElapsedMilliseconds);
+            Assert.Equal(0, observation.SnapshotElapsedMilliseconds);
             Assert.True(observation.TaskCompletionObserved);
             Assert.False(observation.TaskFaultObserved);
             Assert.True(observation.WaitReturnedSettled);
         }
         finally
         {
-            await AwaitSyntheticOperations(result);
+            if (startedOperations is not null)
+            {
+                await startedOperations.WaitAsync(TimeSpan.FromSeconds(2));
+                Assert.True(startedOperations.IsCompletedSuccessfully);
+                output.WriteLine("Known-unstarted adapter's exact StartedOperations aggregate settled; the captured verdict is unchanged.");
+                if (!process.Disposed)
+                {
+                    // Only after the exact owned operations settle may this
+                    // control clean up its adapter; no failed verdict is cleared.
+                    process.Dispose();
+                }
+            }
         }
     }
 
@@ -583,6 +620,8 @@ public sealed class FixtureProcessRunnerTests(ITestOutputHelper output)
             var observation = RequireDisposalObservation(result);
             Assert.Equal(FixtureDisposalStage.NotRequired, observation.Stage);
             Assert.Equal(FixtureDisposalDeferral.None, observation.DeferredReasons);
+            Assert.Equal(0, observation.DecisionElapsedMilliseconds);
+            Assert.Equal(0, observation.SnapshotElapsedMilliseconds);
             Assert.Null(observation.CallbackEntryElapsedMilliseconds);
             Assert.Null(observation.CallbackExitElapsedMilliseconds);
             Assert.False(observation.TaskCompletionObserved);

@@ -1,14 +1,16 @@
 using System.Diagnostics;
+using System.Runtime.ExceptionServices;
 using System.Security.Cryptography;
 using System.Text;
 using Foundry.Contracts;
 using Foundry.Domain;
 using Foundry.Infrastructure.Windows;
 using Foundry.Rendering;
+using Xunit.Abstractions;
 
 namespace Foundry.Tests.Integration;
 
-public class EdgePdfExporterTests
+public class EdgePdfExporterTests(ITestOutputHelper output)
 {
     private static readonly DateTimeOffset SomeInstant = new(2026, 8, 29, 12, 0, 0, TimeSpan.Zero);
 
@@ -223,28 +225,167 @@ public class EdgePdfExporterTests
         var directory = Path.Combine(Path.GetTempPath(), "ocf-tests", Guid.NewGuid().ToString("N"));
         var path = Path.Combine(directory, "handoff.pdf");
         Directory.CreateDirectory(directory);
+        var clock = Stopwatch.StartNew();
+        Task? wait = null;
+        Exception? primaryFailure = null;
         try
         {
-            var wait = EdgePdfExporter.WaitForCompletePdfAsync(
+            output.WriteLine("Current file-waiter instrument; no Edge child is launched and no hosted cause is inferred.");
+            WritePdfWaiterPhase(clock, "before-waiter-creation");
+            wait = EdgePdfExporter.WaitForCompletePdfAsync(
                 path,
                 TimeSpan.FromSeconds(5),
                 TimeSpan.FromMilliseconds(20),
                 CancellationToken.None,
                 Task.CompletedTask,
                 TimeSpan.FromSeconds(1));
+            WritePdfWaiterPhase(clock, "after-waiter-creation");
 
-            // The launcher is already gone, but its child creates a partial PDF
-            // inside the grace window and completes it after that grace expires.
+            // Model a completed launcher, followed by partial child output and
+            // completion after the intended grace interval. Scheduling is observed,
+            // not assumed to keep these continuations inside any deadline.
+            WritePdfWaiterPhase(clock, "before-partial-replacement");
             await ReplaceTextWithRetryAsync(path, "%PDF-1.7\nnot finished");
+            WritePdfWaiterPhase(clock, "after-partial-replacement");
             await Task.Delay(TimeSpan.FromMilliseconds(1_100));
-            Assert.False(wait.IsCompleted, "A child-owned partial PDF was mistaken for launcher failure or completion.");
+            await AssertPartialPdfWaiterPendingAsync(wait, clock, WritePdfCheckpoint);
 
+            WritePdfWaiterPhase(clock, "before-complete-replacement");
             await ReplaceTextWithRetryAsync(path, "%PDF-1.7\nbody\n%%EOF\n");
+            WritePdfWaiterPhase(clock, "after-complete-replacement");
             await wait;
+            WritePdfWaiterPhase(clock, "final-waiter-await-succeeded");
+        }
+        catch (Exception failure)
+        {
+            primaryFailure = failure;
+            throw;
         }
         finally
         {
-            Directory.Delete(directory, recursive: true);
+            await CleanupOwnedPdfWaiterAsync(wait, directory, primaryFailure);
+        }
+    }
+
+    [Fact]
+    public async Task An_incomplete_pdf_timeout_is_terminal_but_not_successful()
+    {
+        var directory = Path.Combine(Path.GetTempPath(), "ocf-tests", Guid.NewGuid().ToString("N"));
+        var path = Path.Combine(directory, "incomplete.pdf");
+        Directory.CreateDirectory(directory);
+        var clock = Stopwatch.StartNew();
+        Task? wait = null;
+        Exception? primaryFailure = null;
+        Exception? expectedWaiterFailure = null;
+        try
+        {
+            output.WriteLine("Current real-waiter timeout counterexample; pre-created incomplete output, not a hosted handoff replay.");
+            await File.WriteAllTextAsync(path, "%PDF-1.7\nnot finished");
+            WritePdfWaiterPhase(clock, "before-waiter-creation");
+            wait = EdgePdfExporter.WaitForCompletePdfAsync(
+                path,
+                TimeSpan.FromSeconds(5),
+                TimeSpan.FromMilliseconds(20),
+                CancellationToken.None,
+                Task.CompletedTask,
+                TimeSpan.FromSeconds(1));
+            WritePdfWaiterPhase(clock, "after-waiter-creation");
+
+            var timeout = await Assert.ThrowsAsync<TimeoutException>(() => wait);
+            expectedWaiterFailure = timeout;
+            var status = wait.Status;
+            output.WriteLine("Observed timeout: {0}: {1}", timeout.GetType().Name, timeout.Message);
+            output.WriteLine("Terminal observation: elapsed_ms={0:F3}; status={1}; IsCompleted={2}; IsCompletedSuccessfully={3}",
+                clock.Elapsed.TotalMilliseconds, status, wait.IsCompleted, wait.IsCompletedSuccessfully);
+            Assert.Equal(TaskStatus.Faulted, status);
+            Assert.True(wait.IsCompleted);
+            Assert.False(wait.IsCompletedSuccessfully);
+        }
+        catch (Exception failure)
+        {
+            primaryFailure = failure;
+            throw;
+        }
+        finally
+        {
+            await CleanupOwnedPdfWaiterAsync(wait, directory, primaryFailure, expectedWaiterFailure);
+        }
+    }
+
+    [Theory]
+    [InlineData(TaskStatus.WaitingForActivation)]
+    [InlineData(TaskStatus.RanToCompletion)]
+    [InlineData(TaskStatus.Faulted)]
+    [InlineData(TaskStatus.Canceled)]
+    public async Task Partial_pdf_checkpoint_preserves_the_observed_pending_success_fault_or_cancellation(TaskStatus status)
+    {
+        var completion = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var syntheticFault = new IOException("Synthetic checkpoint fault.");
+        var canceledToken = new CancellationToken(canceled: true);
+        switch (status)
+        {
+            case TaskStatus.RanToCompletion:
+                completion.SetResult();
+                break;
+            case TaskStatus.Faulted:
+                completion.SetException(syntheticFault);
+                break;
+            case TaskStatus.Canceled:
+                completion.SetCanceled(canceledToken);
+                break;
+        }
+
+        var observations = new List<PdfCheckpointObservation>();
+        try
+        {
+            output.WriteLine("Synthetic task-state instrument control; no file, native child, or hosted reproduction.");
+            var failure = await Record.ExceptionAsync(() => AssertPartialPdfWaiterPendingAsync(
+                completion.Task,
+                Stopwatch.StartNew(),
+                observation =>
+                {
+                    observations.Add(observation);
+                    WritePdfCheckpoint(observation);
+                }));
+
+            var observed = Assert.Single(observations);
+            Assert.Equal(status, observed.Status);
+            Assert.True(observed.BeforeStatus >= TimeSpan.Zero);
+            Assert.True(observed.AfterStatus >= observed.BeforeStatus);
+            switch (status)
+            {
+                case TaskStatus.WaitingForActivation:
+                    Assert.Null(failure);
+                    break;
+                case TaskStatus.RanToCompletion:
+                    var assertion = Assert.IsType<Xunit.Sdk.XunitException>(failure, exactMatch: false);
+                    Assert.Contains("completed successfully", assertion.Message, StringComparison.Ordinal);
+                    break;
+                case TaskStatus.Faulted:
+                    Assert.Same(syntheticFault, failure);
+                    break;
+                case TaskStatus.Canceled:
+                    var canceled = Assert.IsType<OperationCanceledException>(failure, exactMatch: false);
+                    Assert.Equal(canceledToken, canceled.CancellationToken);
+                    break;
+            }
+        }
+        finally
+        {
+            completion.TrySetResult();
+            try
+            {
+                await completion.Task;
+            }
+            catch (Exception failure) when (ReferenceEquals(failure, syntheticFault))
+            {
+                // Re-observe the exact configured fault after asserting its propagation.
+            }
+            catch (OperationCanceledException failure) when (
+                status == TaskStatus.Canceled && failure.CancellationToken == canceledToken)
+            {
+                // Re-observe the exact configured canceled task; no worker remains.
+            }
         }
     }
 
@@ -347,6 +488,98 @@ public class EdgePdfExporterTests
         await Assert.ThrowsAsync<NotSupportedException>(
             () => new EdgePdfExporter(new AccessibleHtmlRenderer()).ExportAsync(
                 artifact, new ExportRequest(RenderTarget.Svg, "x.svg"), CancellationToken.None));
+    }
+
+    private readonly record struct PdfCheckpointObservation(TimeSpan BeforeStatus, TaskStatus Status, TimeSpan AfterStatus);
+
+    private static async Task AssertPartialPdfWaiterPendingAsync(
+        Task wait,
+        Stopwatch clock,
+        Action<PdfCheckpointObservation> observe)
+    {
+        var beforeStatus = clock.Elapsed;
+        var status = wait.Status;
+        var afterStatus = clock.Elapsed;
+        observe(new PdfCheckpointObservation(beforeStatus, status, afterStatus));
+
+        // These are sequential observations, not the waiter's private deadline epoch.
+        // A pending observation is not a test pass: the caller must still await this task.
+        if (status is TaskStatus.RanToCompletion or TaskStatus.Faulted or TaskStatus.Canceled)
+        {
+            await wait;
+        }
+
+        Assert.False(status == TaskStatus.RanToCompletion, "The partial PDF waiter completed successfully at the checkpoint.");
+    }
+
+    private void WritePdfWaiterPhase(Stopwatch clock, string phase)
+        => output.WriteLine("Sequential waiter observation: phase={0}; elapsed_ms={1:F3}", phase, clock.Elapsed.TotalMilliseconds);
+
+    private void WritePdfCheckpoint(PdfCheckpointObservation observation)
+        => output.WriteLine("Sequential checkpoint observations: before_status_ms={0:F3}; status={1}; after_status_ms={2:F3}; no outer-clock acceptance gate",
+            observation.BeforeStatus.TotalMilliseconds, observation.Status, observation.AfterStatus.TotalMilliseconds);
+
+    private async Task CleanupOwnedPdfWaiterAsync(
+        Task? wait,
+        string directory,
+        Exception? primaryFailure,
+        Exception? expectedWaiterFailure = null)
+    {
+        var cleanupFailures = new List<Exception>();
+        if (wait is not null)
+        {
+            try
+            {
+                // Observe the exact owned waiter under its existing budget, including
+                // an outcome reached after a failed checkpoint or replacement.
+                await wait;
+            }
+            catch (Exception failure)
+            {
+                var alreadyObserved = ReferenceEquals(failure, primaryFailure) || ReferenceEquals(failure, expectedWaiterFailure);
+                ReportCleanup(alreadyObserved ? "Re-observed owned waiter outcome" : "Secondary waiter cleanup failure", failure);
+                if (!alreadyObserved)
+                {
+                    cleanupFailures.Add(failure);
+                }
+            }
+        }
+
+        try
+        {
+            Directory.Delete(directory, recursive: true);
+        }
+        catch (Exception failure)
+        {
+            ReportCleanup("Secondary directory cleanup failure", failure);
+            cleanupFailures.Add(failure);
+        }
+
+        if (primaryFailure is not null || cleanupFailures.Count == 0)
+        {
+            return;
+        }
+
+        if (cleanupFailures.Count == 1)
+        {
+            ExceptionDispatchInfo.Capture(cleanupFailures[0]).Throw();
+        }
+
+        throw new AggregateException("PDF waiter cleanup failed without an earlier primary failure.", cleanupFailures);
+
+        void ReportCleanup(string label, Exception failure)
+        {
+            try
+            {
+                output.WriteLine("{0}: {1}", label, failure);
+            }
+            catch (Exception reportingFailure)
+            {
+                // Even a diagnostic-output failure must not replace an original
+                // test failure. Without one, retain it as a failing cleanup outcome.
+                cleanupFailures.Add(reportingFailure);
+            }
+        }
     }
 
     private sealed class OneAssetCatalog : IAssetCatalog
