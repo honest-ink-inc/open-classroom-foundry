@@ -1196,6 +1196,38 @@
       "tests": null,
       "record": "docs/governance/fixture-process-evidence.md",
       "notes": "Paired exact draft PR18 head, attempt 1. Own completed/success conclusion read directly. Retained csharp.sarif was inspected as SARIF 2.1.0, one run, zero results, successful invocation and 441 tool notifications all level none (zero warnings/errors). Uncompressed file: 637,120 bytes, SHA-256 F6E864577D9FA1ECCCE80B7C88880986C13B65D70483E64C56834CE0A6CF617C, read twice unchanged. This file hash is not the uploaded ZIP digest, nor a second independent analysis. No later-tree, recipe admission, main merge, council, publication or release claim."
+    },
+    {
+      "id": "ci-33987933433",
+      "kind": "hosted-ci",
+      "runId": 33987933433,
+      "workflow": "CI",
+      "event": "pull_request",
+      "branch": "codex/fixture-process-evidence",
+      "headSha": "94971ed806422c851ed4bdd137b9a37f17fe9875",
+      "checkoutSha": "6e400f26734fa66ff038eec76010d0355fd64e29",
+      "conclusion": "failure",
+      "createdUtc": "2026-09-05T19:42:44Z",
+      "receipt": "20260905T194539Z-52c6aefa2df94c44a4a405012078c3a3",
+      "tests": { "passed": 2508, "total": 2532 },
+      "record": "docs/governance/governance-record-guard-evidence.md",
+      "notes": "Exact draft PR19 head, attempt 1. Own completed/failure conclusion and actual seven TRXs read directly: 2,508/2,532, 24 Unit failures, no skips/errors/aborts. First failure retained DisposalFailure with root exit and EOF streams observed but disposal unsettled; the following 23 failures identically refused a new fixture because of prior uncertain ownership. Cause and later disposal completion are unestablished. Native/runner 1/1, no outer timeout, 340871 ms of the unchanged 900-second cap, stable source/assembly snapshots, empty identity errors and one completeness error naming the coherent failed Unit run. Summary SHA-256 85A432CEC1AA7A3E2E7194C965ADF756C97BF5FD3C7567BBA0064374AE996D61; Unit TRX 30297CB8E4A9E11C8CF7A60FB92DA5A3D2778229667734DC05A775F037AD6CE2. Secret scan passed; sample, coverage-threshold, dependency/vulnerability and SBOM gates were skipped. The later local isolated pass used different local bytes, not equivalent hosted load. No rerun, diagnosis, main merge, recipe admission, publication or release is inferred."
+    },
+    {
+      "id": "codeql-33987933434",
+      "kind": "hosted-codeql",
+      "runId": 33987933434,
+      "workflow": "CodeQL SAST",
+      "event": "pull_request",
+      "branch": "codex/fixture-process-evidence",
+      "headSha": "94971ed806422c851ed4bdd137b9a37f17fe9875",
+      "checkoutSha": null,
+      "conclusion": "success",
+      "createdUtc": "2026-09-05T19:42:44Z",
+      "receipt": null,
+      "tests": null,
+      "record": "docs/governance/governance-record-guard-evidence.md",
+      "notes": "Paired exact draft PR19 head, attempt 1. Own completed/success conclusion read directly. Actual uncompressed csharp.sarif: 637,937 bytes, SHA-256 7250982C47C4BC19AC167B93FE3CFABF1DEC5A72A3BA468FC90AFCA381981BF3, SARIF 2.1.0, CodeQL 2.26.4, one successful invocation, zero results and 443 execution notifications all level none. Archive digest/size and API/checkout identity were independently checked; no absent SARIF provenance field is invented. This file hash is not an uploaded ZIP digest. Successful analysis does not override red CI or confer later-head, main, human-review, publication or release evidence."
     }
   ]
 }

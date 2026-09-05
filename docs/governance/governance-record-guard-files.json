@@ -1,0 +1,71 @@
+{
+  "format": "ocf.changed-file-manifest.v1",
+  "preparedDate": "2026-09-05",
+  "sourceBaseline": "94971ed806422c851ed4bdd137b9a37f17fe9875",
+  "scope": "The eleven non-self changed files in the first governance-record-guard continuation commit containing this manifest. Two bounded record-validation repairs, a historical comment correction, exact red predecessor hosted evidence and current local closing; no fixture-helper or deadline change, recipe admission, main merge or publication. Later continuations do not replace this historical manifest.",
+  "normalization": "Strict UTF-8; literal CRLF converted to LF, no other normalization. Length and SHA-256 apply to those canonical bytes, not platform checkout representation.",
+  "derivation": "Two independent complete file reads produced identical ordered inventories, lengths and SHA-256 values.",
+  "exclusions": [
+    {
+      "path": "docs/governance/governance-record-guard-files.json",
+      "reason": "Detached manifest: no circular self-hash. Ignored generated outputs and receipts are separately identified in governance-record-guard-evidence.md."
+    }
+  ],
+  "files": [
+    {
+      "path": "README.md",
+      "canonicalUtf8Bytes": 14028,
+      "sha256": "F90C5E14B6B643EC1C4FC4A328AAC9B9E2611ACD848223211D61BCF8C844FF44"
+    },
+    {
+      "path": "docs/README.md",
+      "canonicalUtf8Bytes": 14893,
+      "sha256": "DBFF15DAA60DE68B9B58E19585484FEF6A3FD97544DC60816FECEBBD2BF2645F"
+    },
+    {
+      "path": "docs/evidence/evidence-ledger.json",
+      "canonicalUtf8Bytes": 68447,
+      "sha256": "E31062C6C2A174B10E5FA42A58D38AA5F7A4C3A2204C5A938B84F1F24CA2C17F"
+    },
+    {
+      "path": "docs/evidence/sightings-register.md",
+      "canonicalUtf8Bytes": 24266,
+      "sha256": "4AF514E49907BBE34B7A58CDC9CC9753FC4150E902361870C816C40606AB53EB"
+    },
+    {
+      "path": "docs/governance/accepted-improvement-register.md",
+      "canonicalUtf8Bytes": 17977,
+      "sha256": "3414092FAE79FDD1C2650913C17D3A16A0ACE412534CB9667282D4C7D858A489"
+    },
+    {
+      "path": "docs/governance/governance-record-guard-evidence.md",
+      "canonicalUtf8Bytes": 16485,
+      "sha256": "81965F344D9639AE54E682842CC05E55751D4566A4A9333D79BB28FD7E422CCA"
+    },
+    {
+      "path": "docs/handover/2026-09-05-governance-record-guards.md",
+      "canonicalUtf8Bytes": 2907,
+      "sha256": "ABC6924576A33CD2C609CE56BBFFA511F07B15697B14767737F2494AB003B792"
+    },
+    {
+      "path": "docs/implementation-plan.md",
+      "canonicalUtf8Bytes": 84279,
+      "sha256": "555847AA1ACAF4F31ABFA5C8A2B04967833F8356D92D6F7FA49D18464CC18A1D"
+    },
+    {
+      "path": "tests/Unit/AtlasCouncilRecordValidatorTests.cs",
+      "canonicalUtf8Bytes": 201570,
+      "sha256": "37307D60D34513562E2D70145AC256CDF294E78DB15E8D67F2A66F55A58349DC"
+    },
+    {
+      "path": "tests/Unit/RepositoryHygieneTests.cs",
+      "canonicalUtf8Bytes": 10335,
+      "sha256": "C2B63E71348BE3D931639436C706C76D3EEA0F4C19800BED37F3BB372B523077"
+    },
+    {
+      "path": "tools/AtlasCouncilRecords/AtlasCouncilRecordValidator.cs",
+      "canonicalUtf8Bytes": 229951,
+      "sha256": "16E508C3211D70D8D43BAC6E75D3B6BD4F3115D72E5D429B1E1BB3414056A944"
+    }
+  ]
+}
