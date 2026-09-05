@@ -2,8 +2,8 @@
 
 **5 September 2026 — engineering instructions, not installation or release rites.**
 This is the existing repository workflow, made explicit for I31. The current
-candidate's measured results belong in the
-[implementation evidence](../governance/accepted-improvement-evidence.md).
+candidate's measured results belong in the evidence record linked by the
+[indexed current handover](../README.md).
 A maintainer running these commands is not an independent stranger rebuild,
 teacher evaluation, or acceptance by a second maintainer.
 

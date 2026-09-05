@@ -1,0 +1,81 @@
+{
+  "format": "ocf.changed-file-manifest.v1",
+  "preparedDate": "2026-09-05",
+  "sourceBaseline": "bb788aa8d74fc3e230b6712876a6ea6c3ccce9d5",
+  "scope": "The 13 changed files in the first layout/console-evidence commit that contains this manifest. Later record-only continuations do not replace this historical manifest.",
+  "normalization": "Strict UTF-8; literal CRLF converted to LF, no other normalization. Length and SHA-256 apply to those canonical bytes, not platform checkout representation.",
+  "derivation": "Two independent complete file reads produced identical ordered inventories, lengths and SHA-256 values.",
+  "exclusions": [
+    {
+      "path": "docs/governance/layout-console-files.json",
+      "reason": "Detached manifest: no circular self-hash. Ignored generated outputs and receipts are separately identified in layout-console-evidence.md."
+    }
+  ],
+  "files": [
+    {
+      "path": "README.md",
+      "canonicalUtf8Bytes": 13546,
+      "sha256": "92CDFBFE16A4BB5A1F386909384BED8EE668B2FE2A11FF95FD6B5825F0CB5232"
+    },
+    {
+      "path": "docs/README.md",
+      "canonicalUtf8Bytes": 13678,
+      "sha256": "512B83E040A2B3FEDFB01D4D8AB40353CA3C1B0CF7382AE521E20AFB2661C86D"
+    },
+    {
+      "path": "docs/development/source-build-and-verification.md",
+      "canonicalUtf8Bytes": 6228,
+      "sha256": "B487DA1520CA871631788B90879539AE52AD71388225675D8A07EF42851844EB"
+    },
+    {
+      "path": "docs/evidence/evidence-ledger.json",
+      "canonicalUtf8Bytes": 58289,
+      "sha256": "B121247C7F87995EE5CDAA82995E50B2E03ADC9E60FDCF299D864B7725C62E3C"
+    },
+    {
+      "path": "docs/evidence/sightings-register.md",
+      "canonicalUtf8Bytes": 17591,
+      "sha256": "C891D5FFF00E0C0A2E731E5D9A3693B9979794CAC18DE7ADA7AF01BB595B0C80"
+    },
+    {
+      "path": "docs/governance/accepted-improvement-register.md",
+      "canonicalUtf8Bytes": 14935,
+      "sha256": "DB279BE43B07642045E56D7A36ECC17AC62B76F1B6C33925F47B0152E205F523"
+    },
+    {
+      "path": "docs/governance/layout-console-evidence.md",
+      "canonicalUtf8Bytes": 12883,
+      "sha256": "E26B825E834DCD538C935D878827972673070629605EE15C37CC89A33F5C4517"
+    },
+    {
+      "path": "docs/handover/2026-09-05-accepted-improvement-implementation.md",
+      "canonicalUtf8Bytes": 4390,
+      "sha256": "4F389E0FE4A911D69574B90322A5D5EEBF0BE05349DFFA520D5942A9B23E1921"
+    },
+    {
+      "path": "docs/handover/2026-09-05-layout-and-console-evidence.md",
+      "canonicalUtf8Bytes": 3652,
+      "sha256": "66B0DC6D106A3ECF7D8733E2B503AD3885F042D85695C0A0EC8A7BDBFA8CED5A"
+    },
+    {
+      "path": "docs/implementation-plan.md",
+      "canonicalUtf8Bytes": 83800,
+      "sha256": "419AC3C580783480793F75B6453EA1D08804B645997C1F3264913A2486C6B82A"
+    },
+    {
+      "path": "src/Foundry.Modules.DeterministicPress/LearnerHeldKit.cs",
+      "canonicalUtf8Bytes": 11774,
+      "sha256": "2C10D23698459B2E56BA4557671691824481A3ECCDB164C3E5B2343CE1BF83B4"
+    },
+    {
+      "path": "tests/Rendering/LearnerHeldKitLayoutTests.cs",
+      "canonicalUtf8Bytes": 10843,
+      "sha256": "13ED4DF9938494257AC8C79D58D5EDA48F6B695A71D91433905B54421645BACF"
+    },
+    {
+      "path": "tests/Unit/SightingsRegisterTests.cs",
+      "canonicalUtf8Bytes": 11530,
+      "sha256": "2CD72C8361E431D773F3FEB07CEA78CD0933E74BE15111646BC5F8D7E34E650B"
+    }
+  ]
+}

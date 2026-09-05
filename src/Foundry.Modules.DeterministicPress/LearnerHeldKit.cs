@@ -10,6 +10,11 @@ namespace Foundry.Modules.DeterministicPress;
 
 public static class LearnerHeldKit
 {
+    private const int LinesPerPrompt = 3;
+    private const double PromptLineSpacingMm = 9;
+    private const double PromptRuleOffsetMm = 7;
+    private const double PromptRuleStrokeMm = 0.3;
+
     /// <summary>Portfolio Passport (atlas #224): table of contents, selection slips, caption frames, and growth-reflection pages the learner maintains.</summary>
     public static ArtifactDocument PortfolioPassport(
         IReadOnlyList<string> selectionPrompts,
@@ -96,9 +101,62 @@ public static class LearnerHeldKit
         ArgumentException.ThrowIfNullOrWhiteSpace(pledge);
 
         var (width, height) = BlankformsPress.Dimensions(size);
-        return new ArtifactDocument([PromptedLinesPage(width, height, marginMm, prompts, pledge,
-            "A learner-held goal sheet: each prompt followed by ruled lines the learner fills")]);
+        var availableHeight = height - 2 * marginMm - 10;
+        if (!double.IsFinite(marginMm) || marginMm < 0
+            || !double.IsFinite(availableHeight) || width <= 2 * marginMm)
+        {
+            throw new ArgumentException("The goal sheet needs finite non-negative margins that leave room on the page.", nameof(marginMm));
+        }
+
+        // Preserve the existing 5 mm label and three 9 mm-spaced rules. The
+        // next label's nominal top is its block top, so the preceding rule's
+        // full stroke must end before it. Only overflowing inputs paginate;
+        // every already-fitting one-page layout follows the unchanged builder.
+        var promptsPerPage = prompts.Count;
+        while (promptsPerPage > 0 && !PromptBlocksFit(availableHeight, marginMm, promptsPerPage))
+        {
+            promptsPerPage--;
+        }
+
+        if (promptsPerPage == 0)
+        {
+            throw new ArgumentException("The goal sheet margins leave no room for a prompt and its three writing lines.", nameof(marginMm));
+        }
+
+        return new ArtifactDocument([.. prompts.Chunk(promptsPerPage).Select(pagePrompts =>
+            PromptedLinesPage(width, height, marginMm, pagePrompts, pledge,
+                "A learner-held goal sheet: each prompt followed by ruled lines the learner fills"))]);
     }
+
+    private static bool PromptBlocksFit(double availableHeight, double marginMm, int count)
+    {
+        var block = availableHeight / count;
+        var inkHeight = PromptRuleOffsetMm + LinesPerPrompt * PromptLineSpacingMm + PromptRuleStrokeMm / 2;
+        if (block <= inkHeight)
+        {
+            return false;
+        }
+
+        // SVG serializes these millimeter coordinates with "0.###". A tiny
+        // positive model-space gap can become touching ink after rounding.
+        // Check the actual formatted coordinates, preserving even narrowly
+        // fitting layouts when their serialized gap remains positive.
+        for (var prompt = 0; prompt + 1 < count; prompt++)
+        {
+            var ruleY = marginMm + prompt * block + PromptRuleOffsetMm + LinesPerPrompt * PromptLineSpacingMm;
+            var nextLabelY = marginMm + (prompt + 1) * block + 5;
+            if (SerializedMillimeters(nextLabelY) - 5 <= SerializedMillimeters(ruleY) + 0.15m)
+            {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    private static decimal SerializedMillimeters(double value)
+        => decimal.Parse(value.ToString("0.###", System.Globalization.CultureInfo.InvariantCulture),
+            System.Globalization.CultureInfo.InvariantCulture);
 
     private static VectorGraphic ContentsPage(double width, double height, double marginMm, int rows, string pledge)
     {
@@ -159,17 +217,16 @@ public static class LearnerHeldKit
 
     private static VectorGraphic PromptedLinesPage(double width, double height, double marginMm, IReadOnlyList<string> prompts, string pledge, string description)
     {
-        const int linesPerPrompt = 3;
-        const double lineSpacing = 9;
         var primitives = new List<VectorPrimitive>();
         var block = (height - 2 * marginMm - 10) / prompts.Count;
         for (var p = 0; p < prompts.Count; p++)
         {
             var top = marginMm + p * block;
             primitives.Add(new TextLabel(marginMm, top + 5, prompts[p], 5, TextAnchor.Start));
-            for (var line = 1; line <= linesPerPrompt; line++)
+            for (var line = 1; line <= LinesPerPrompt; line++)
             {
-                primitives.Add(new LineSeg(marginMm, top + 7 + line * lineSpacing, width - marginMm, top + 7 + line * lineSpacing, 0.3));
+                primitives.Add(new LineSeg(marginMm, top + PromptRuleOffsetMm + line * PromptLineSpacingMm,
+                    width - marginMm, top + PromptRuleOffsetMm + line * PromptLineSpacingMm, PromptRuleStrokeMm));
             }
         }
 
