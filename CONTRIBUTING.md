@@ -39,8 +39,9 @@ Code contributions are active. Start with an issue and the current handover or r
 
 **Content-contribution hold:** do not submit outside or member-authored
 documentation prose, original printable content, translations, illustrations,
-or fixtures. The project has not chosen the outbound content license and
-therefore has no matching present inbound license or contributor-assent path for
+or fixtures. The [CC BY-SA 4.0 proposal has been selected](docs/governance/2026-09-05-content-license-selection.md),
+but no operative material scope or licensing authority has been established; the project
+still has no matching present inbound license or contributor-assent path for
 that material. Review findings may be reported without transferring authored
 replacement content. Project-owner-directed factual governance, status, and
 repository-maintenance prose is first-party maintenance under the current
@@ -51,7 +52,7 @@ the exact license and the contributor separately assents to those terms.
 
 ## Ground rules
 
-1. **Licensing is inbound = outbound.** Code, tests, and first-party recipes are contributed under GPL-3.0-or-later. Outside or member-authored documentation, printable content, translations, illustrations, and fixtures are not currently accepted: their content license and matching contributor-assent path have not yet been chosen (implementation plan §9). Project-owner-directed factual governance, status, and repository-maintenance prose may be accepted only as the bounded first-party maintenance exception above under the current all-rights-reserved documentation default. For material currently accepted, contributing certifies that you have the right to submit it under the stated terms.
+1. **Licensing is inbound = outbound.** Code, tests, and first-party recipes are contributed under GPL-3.0-or-later. Outside or member-authored documentation, printable content, translations, illustrations, and fixtures are not currently accepted: the selected CC BY-SA 4.0 proposal is not yet an operative, scope-specific grant and the matching contributor-assent path is not enacted (implementation plan §9). Project-owner-directed factual governance, status, and repository-maintenance prose may be accepted only as the bounded first-party maintenance exception above under the current all-rights-reserved documentation default. For material currently accepted, contributing certifies that you have the right to submit it under the stated terms.
 2. **Provenance or it doesn't ship.** Every asset (image, font, symbol, translation, template) carries source, creator, license, and modification history in the asset ledger. Unknown rights block distribution — CI will enforce this.
 3. **Bounded modules, structured output.** No contribution may add a "generate anything" surface, an unapproved network call, executable plugin loading, or a path that renders, prints, exports, or saves unapproved draft content (ADR-001, ADR-004).
 4. **Accessibility is not a later.** UI contributions use standard controls (ADR-002) and keep keyboard operation and UI Automation exposure intact.

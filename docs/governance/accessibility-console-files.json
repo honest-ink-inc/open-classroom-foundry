@@ -1,0 +1,106 @@
+{
+  "format": "ocf.changed-file-manifest.v1",
+  "preparedDate": "2026-09-05",
+  "sourceBaseline": "4970399bc1505b3bff453187891c1b72901c84fc",
+  "scope": "The 18 changed files in the first accessibility/console-boundary proposal commit containing this manifest. Tested proposed behavioral repairs only; admission and merge remain held for an exact compatibility disposition. Later factual continuations do not replace this historical manifest.",
+  "normalization": "Strict UTF-8; literal CRLF converted to LF, no other normalization. Length and SHA-256 apply to those canonical bytes, not platform checkout representation.",
+  "derivation": "Two independent complete file reads produced identical ordered inventories, lengths and SHA-256 values.",
+  "exclusions": [
+    {
+      "path": "docs/governance/accessibility-console-files.json",
+      "reason": "Detached manifest: no circular self-hash. Ignored generated outputs and receipts are separately identified in accessibility-console-evidence.md."
+    }
+  ],
+  "files": [
+    {
+      "path": "CONTRIBUTING.md",
+      "canonicalUtf8Bytes": 8267,
+      "sha256": "CF061A8BFDDAFE52A7373A01666C9397040C81490AC4CD6383BD16A2180CDAF4"
+    },
+    {
+      "path": "README.md",
+      "canonicalUtf8Bytes": 14072,
+      "sha256": "4B3516534196DF44CACA8A565DFAEFA2DAA2E6124FF1CF7F3D91962EA32D33AA"
+    },
+    {
+      "path": "docs/README.md",
+      "canonicalUtf8Bytes": 14352,
+      "sha256": "F0EBC9E9E60BC04406B12693908D721E1C13FB2F3DED59552589E0BF8370A6C9"
+    },
+    {
+      "path": "docs/evidence/evidence-ledger.json",
+      "canonicalUtf8Bytes": 62970,
+      "sha256": "BDB255168914C09B4EEFA7E9D723A74DB6CF88BADE9DFB290EDF9255DFDF592A"
+    },
+    {
+      "path": "docs/evidence/sightings-register.md",
+      "canonicalUtf8Bytes": 20912,
+      "sha256": "636CF9999E7EB03C05F507DA175E6632180449F8111C04D48867B76E1458C359"
+    },
+    {
+      "path": "docs/governance/2026-09-05-content-license-selection.md",
+      "canonicalUtf8Bytes": 4848,
+      "sha256": "DE92364DAE0F01B88C9AA52FE48F7DD0A103CA9DE953B0E1A2701A197755240E"
+    },
+    {
+      "path": "docs/governance/accepted-improvement-register.md",
+      "canonicalUtf8Bytes": 15746,
+      "sha256": "B25F076022981D8A95FDB83D01F6942ED7BA9C154C47D0036A8F3209A9C05084"
+    },
+    {
+      "path": "docs/governance/accessibility-console-evidence.md",
+      "canonicalUtf8Bytes": 27145,
+      "sha256": "1A4DA3495129A4DBF8128CC33E2D1757E18343A2888AEACC87286C27FEBAFA45"
+    },
+    {
+      "path": "docs/governance/content-ownership-use-inventory.md",
+      "canonicalUtf8Bytes": 21173,
+      "sha256": "1A289EB2D065518DFD545A7A8D85C95C8BE677769B44EFAFE899B1748D46A3DA"
+    },
+    {
+      "path": "docs/governance/decision-index.md",
+      "canonicalUtf8Bytes": 6121,
+      "sha256": "7E73534E32149036BE9CD58AFE4E19F35639E265FAD41571AA07E086EA88FBA9"
+    },
+    {
+      "path": "docs/handover/2026-09-05-accessibility-and-console-boundaries.md",
+      "canonicalUtf8Bytes": 4870,
+      "sha256": "973C57BBBC344B79F48874BC77CC67EC180DB1A791DE0B6D06BAE041D178F529"
+    },
+    {
+      "path": "docs/implementation-plan.md",
+      "canonicalUtf8Bytes": 84068,
+      "sha256": "32E7B1618819E0B136A198BB9662D7950B1EFD8470B5E3A9F6DC589E2073DFBD"
+    },
+    {
+      "path": "docs/release/hardening-checklist.md",
+      "canonicalUtf8Bytes": 20640,
+      "sha256": "6AD3BD835DCA8BD9BE6D8B7F3C92B3A10DE1D176F06DCBBF5EA0E7C04FE344CD"
+    },
+    {
+      "path": "src/Foundry.App.WinForms/PressRoomForm.cs",
+      "canonicalUtf8Bytes": 34513,
+      "sha256": "5C3CD994BCA2EE902E6B2441D2DB1AF377022411B83642B14BE0DA7D61C7A40F"
+    },
+    {
+      "path": "src/Foundry.Modules.DeterministicPress/LowInkPress.cs",
+      "canonicalUtf8Bytes": 1752,
+      "sha256": "94B54460F0E6D551EFCC65829BF95987C887EEF36153B996329C6FFC94B43259"
+    },
+    {
+      "path": "src/Foundry.Modules.DeterministicPress/PressRoom.cs",
+      "canonicalUtf8Bytes": 41356,
+      "sha256": "ECF5E714AF2A8E41D7C68283F8ED6B8F23D14A793E432EC1241A1A15D546199F"
+    },
+    {
+      "path": "tests/UiAutomation/PressRoomAccessBoundaryTests.cs",
+      "canonicalUtf8Bytes": 9066,
+      "sha256": "D473A6184E4B9CC72946817BD2B963ACFABC0DA73C807E7ACF627DAD4CB91E07"
+    },
+    {
+      "path": "tests/Unit/PressBuildReviewResultTests.cs",
+      "canonicalUtf8Bytes": 6439,
+      "sha256": "C7F99663BF7921BD4E0BBE4CA0EFF85A18D3BC1B3ED3A3AEAEA21407E183AD99"
+    }
+  ]
+}

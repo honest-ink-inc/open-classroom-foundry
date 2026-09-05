@@ -1129,6 +1129,38 @@
       "tests": null,
       "record": "docs/governance/layout-console-hosted-evidence.md",
       "notes": "Paired exact PR17 implementation head. The workflow's own completed/success conclusion was read directly. Retained csharp.sarif was inspected as SARIF 2.1.0, one analysis run and zero results, 636,237 bytes, SHA-256 BC785470156A9B03F8A065DF783AEDFD2B0F3A3EDCCC073482119954FE3BEF4E. This is the uncompressed file hash, not an artifact ZIP digest. No security setting or human/release authority changed."
+    },
+    {
+      "id": "ci-33977198151",
+      "kind": "hosted-ci",
+      "runId": 33977198151,
+      "workflow": "CI",
+      "event": "pull_request",
+      "branch": "codex/layout-and-console-evidence",
+      "headSha": "4970399bc1505b3bff453187891c1b72901c84fc",
+      "checkoutSha": "b202612cd2b159f90600bb5b4c64b4e6eb7fd072",
+      "conclusion": "failure",
+      "createdUtc": "2026-09-05T16:13:36Z",
+      "receipt": "20260905T161637Z-4d2d59b2c32947769c7767959f5a0f5c",
+      "tests": { "passed": 2438, "total": 2442 },
+      "record": "docs/governance/accessibility-console-evidence.md",
+      "notes": "Exact record-only PR17 head, attempt 1, read directly as completed/failure. Secret scan passed; build-and-test failed; portable-samples was skipped. Seven complete TRXs retained 2,438/2,442, four failed and zero skipped/error/aborted. Stable source/assembly identities, clean synthetic-merge checkout, native/runner exit 1, no outer timeout at 319650 ms of 900 seconds, and empty identity errors. Three completeness errors identify coherent failed Integration/UIA/Unit suites, not missing TRXs. Summary SHA-256 40C074618EE04384D3AB6301D53EC64818D6CFA72B6A14664C2F757C50D90981. Full names/messages retained for two Edge 90-second export failures, the S-01 Part3 element-wait recurrence and a Unit PowerShell fixture timeout. Later isolated local passes are non-reproductions, not diagnoses. Sample, coverage, dependency/vulnerability and SBOM gates were skipped. No rerun, main merge, publication or release is asserted."
+    },
+    {
+      "id": "codeql-33977198085",
+      "kind": "hosted-codeql",
+      "runId": 33977198085,
+      "workflow": "CodeQL SAST",
+      "event": "pull_request",
+      "branch": "codex/layout-and-console-evidence",
+      "headSha": "4970399bc1505b3bff453187891c1b72901c84fc",
+      "checkoutSha": null,
+      "conclusion": "success",
+      "createdUtc": "2026-09-05T16:13:36Z",
+      "receipt": null,
+      "tests": null,
+      "record": "docs/governance/accessibility-console-evidence.md",
+      "notes": "Paired exact record-only PR17 head, attempt 1, read directly as completed/success. Retained uncompressed csharp.sarif is SARIF 2.1.0, one run and zero results, 636,237 bytes, SHA-256 00C82D4C26F30F380E52375A526FE8B298DF77F63F0B6C748FBC9A8BBA89A77D. This is a file hash rather than an uploaded-artifact digest. This successful analysis does not override paired red CI or confer main, human-review, publication or release evidence."
     }
   ]
 }

@@ -75,11 +75,33 @@ public sealed class PressInputs(IReadOnlyDictionary<string, string> values)
         })];
 }
 
+/// <summary>The exact built document and a frozen copy of its builder's review issues.</summary>
+public sealed record PressBuildResult
+{
+    public PressBuildResult(ArtifactDocument document, IReadOnlyList<ValidationIssue> issues)
+    {
+        ArgumentNullException.ThrowIfNull(document);
+        ArgumentNullException.ThrowIfNull(issues);
+        var frozenIssues = issues.ToArray();
+        if (frozenIssues.Any(issue => issue is null))
+        {
+            throw new ArgumentException("A press review result contains a missing issue.", nameof(issues));
+        }
+
+        Document = document;
+        Issues = Array.AsReadOnly(frozenIssues);
+    }
+
+    public ArtifactDocument Document { get; }
+
+    public IReadOnlyList<ValidationIssue> Issues { get; }
+}
+
 public sealed record PressDefinition
 {
     public const string NeutralEnglishLanguage = "en";
 
-    private readonly Func<PressInputs, ArtifactDocument> _build;
+    private readonly Func<PressInputs, PressBuildResult> _buildForReview;
 
     public PressDefinition(
         string id,
@@ -87,6 +109,17 @@ public sealed record PressDefinition
         RecipeManifest recipe,
         IReadOnlyList<PressParameter> parameters,
         Func<PressInputs, ArtifactDocument> build,
+        string artifactFurnitureLanguage = NeutralEnglishLanguage)
+        : this(id, title, recipe, parameters, WithoutBuilderIssues(id, build), artifactFurnitureLanguage)
+    {
+    }
+
+    public PressDefinition(
+        string id,
+        string title,
+        RecipeManifest recipe,
+        IReadOnlyList<PressParameter> parameters,
+        Func<PressInputs, PressBuildResult> build,
         string artifactFurnitureLanguage = NeutralEnglishLanguage)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(id);
@@ -100,7 +133,7 @@ public sealed record PressDefinition
         Title = title;
         Recipe = recipe;
         Parameters = parameters;
-        _build = build;
+        _buildForReview = build;
         ArtifactFurnitureLanguage = artifactFurnitureLanguage;
     }
 
@@ -120,10 +153,23 @@ public sealed record PressDefinition
     public string ArtifactFurnitureLanguage { get; }
 
     public ArtifactDocument Build(PressInputs inputs)
+        => BuildForReview(inputs).Document;
+
+    public PressBuildResult BuildForReview(PressInputs inputs)
     {
         ArgumentNullException.ThrowIfNull(inputs);
-        return _build(inputs)
-            ?? throw new InvalidOperationException($"Press '{Id}' returned no document.");
+        return _buildForReview(inputs)
+            ?? throw new InvalidOperationException($"Press '{Id}' returned no build result.");
+    }
+
+    private static Func<PressInputs, PressBuildResult> WithoutBuilderIssues(
+        string id,
+        Func<PressInputs, ArtifactDocument> build)
+    {
+        ArgumentNullException.ThrowIfNull(build);
+        return inputs => new PressBuildResult(
+            build(inputs) ?? throw new InvalidOperationException($"Press '{id}' returned no document."),
+            []);
     }
 }
 
@@ -232,8 +278,12 @@ public static class PressRoomCatalog
 
         new("flashcards", "Flashcards", DeterministicPressRecipes.Flashcards,
             [new LinesParameter("pairs", "Cards, one per line as term | answer", "photosynthesis | how plants make food from light\nhabitat | where an organism lives")],
-            inputs => FlashcardFlywheel.Build(
-                [.. inputs.SplitLines("pairs").Select(pair => new FlashcardPair(pair.Left, pair.Right ?? ""))]).Document),
+            inputs =>
+            {
+                var result = FlashcardFlywheel.Build(
+                    [.. inputs.SplitLines("pairs").Select(pair => new FlashcardPair(pair.Left, pair.Right ?? ""))]);
+                return new PressBuildResult(result.Document, result.Issues);
+            }),
 
         new("booklet-guide", "Saddle-stitch booklet guide", DeterministicPressRecipes.BookletGuide,
             [new NumberParameter("pages", "Content pages", 1, 64, 8)],

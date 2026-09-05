@@ -24,7 +24,7 @@
 > `62EFC47E009FC6E581C09C0FB92194E35561636EC1A3847D74B8734BAA6E4D84`,
 > source digest `42a156dd667d317806f4b66a379391794a7b47b4af2d1582cdeb20a5866e5b8c`.
 > Fresh exports matched byte-for-byte; the packet is still draft/und and the
-> production language allowlist is empty. The [current handover](../handover/2026-09-05-accepted-improvement-implementation.md)
+> production language allowlist is empty. The [historical implementation handover](../handover/2026-09-05-accepted-improvement-implementation.md)
 > and [implementation evidence](../governance/accepted-improvement-evidence.md)
 > distinguish two local 2,405/2,405 full passes, their retained earlier failure,
 > unchanged 40-file first-admission samples, later hosted evidence and every
