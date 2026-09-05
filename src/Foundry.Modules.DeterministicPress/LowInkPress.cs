@@ -7,7 +7,9 @@ namespace Foundry.Modules.DeterministicPress;
 /// The low-ink variant spec §5.1 promises every form (third forge menu,
 /// item 8): a pure weight transformation applied BEFORE Gate B, so the
 /// teacher reviews exactly what will print. Geometry never moves — stroke
-/// weights scale down, filled shapes become outlines, text is untouched.
+/// weights scale down, filled circles become outlines, text is untouched.
+/// Filled rectangles retain their meaning-bearing density (the calibration
+/// ramp's solid endpoint must not turn into an empty patch).
 /// </summary>
 public static class LowInkPress
 {
@@ -34,7 +36,7 @@ public static class LowInkPress
     private static VectorPrimitive Lighten(VectorPrimitive primitive) => primitive switch
     {
         LineSeg line => line with { StrokeWidthMm = Thin(line.StrokeWidthMm) },
-        RectShape rect => rect with { StrokeWidthMm = Thin(rect.StrokeWidthMm), Filled = false },
+        RectShape rect => rect with { StrokeWidthMm = Thin(rect.StrokeWidthMm) },
         CircleShape circle => circle with { StrokeWidthMm = Thin(circle.StrokeWidthMm), Filled = false },
         _ => primitive,
     };

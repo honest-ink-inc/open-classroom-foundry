@@ -2,11 +2,19 @@
 
 **Prepared:** 5 September 2026 for proposal I01.
 
-**Status: PREPARATORY INVENTORY — NO CONTENT LICENSE SELECTED, NO CONTRIBUTOR
+**Status at initial preparation: PREPARATORY INVENTORY — NO CONTENT LICENSE SELECTED, NO CONTRIBUTOR
 ASSENT OBTAINED, NO RIGHTS OR PROTECTED-SEAT APPROVAL.** This is owner-directed
 factual repository maintenance under the existing documentation default, not an
 outbound license, a copyright assignment, an enacted contribution agreement, or
 a release decision.
+
+**Later 5 September 2026:** the typist expressly selected **CC BY-SA 4.0 as the
+proposal to carry forward**, with the [exact question, answer and reason
+recorded separately](2026-09-05-content-license-selection.md). This resolves
+the proposal choice, not an operative grant. Earlier unchosen/UNANSWERED
+statements below retain their original cutoff except where expressly updated;
+material coverage, licensing authority, rights review, notices, temporal scope
+and independent assent remain unresolved. No class is relicensed here.
 
 The [contribution rules](../../CONTRIBUTING.md),
 [current licensing boundary](../../README.md#licensing),
@@ -113,7 +121,7 @@ from the table's existence, a broad implementation instruction, or a test.
 
 | Decision field | Exact answer/evidence still required | Current state |
 |---|---|---|
-| License identity | Full selected license name, version, canonical legal text/URL, and reason for selecting it over the alternative | UNANSWERED |
+| License identity | Full selected license name, version, canonical legal text/URL, and reason for selecting it over the alternative | ~~UNANSWERED~~ **Later 5 September 2026:** CC BY-SA 4.0 selected as the proposal; [exact references and stated copyleft reason](2026-09-05-content-license-selection.md). No operative material grant |
 | Authorized licensor and ownership basis | Who can license each covered class; supporting authorship, grant, or other authority evidence; unresolved/third-party exclusions | UNANSWERED — no foundation-wide copyright assignment inferred |
 | Covered material | Enumerated material/classes with exact source revisions and byte bindings; explicit distinction between code, prose, printable expression, assets, and translations | UNANSWERED |
 | Temporal scope | Whether the decision covers only newly admitted material or also named existing material; separate authority for any existing material | UNANSWERED — no retrospective relicensing |

@@ -4,7 +4,7 @@
 
 **Plan version:** 2.0 — regenerated 29 August 2026, applying The Master's Review 1.0 (amendments 1–7; findings F2, F5–F11 incorporated)  
 **Date:** 29 August 2026  
-**Status (5 September 2026):** Foundation and the deterministic press are implemented; SequenceSlate and the reachable Green built-in studios are engineering prototypes, not protected-seat or classroom-validated products. SequenceSlate's constitutionally required AAC/SLP co-design, every other protected-seat review, pilot evidence, packaging, release, and the remaining roadmap stay open. ADR-008 fixes current public display names and ADR-009 corrects the lesson-design display to StrandPlan, while preserving all stable internal identifiers. The bounded commission prepared non-operative governance terms, hardened approval and output seams, and filed ADR-010 as Proposed without convening or ratifying any human decision. The accepted-improvement continuations repair existing recovery, quantitative, source-integrity, layout and evidence contracts while retaining the complete proposal scope and those human holds. See the [current handover](handover/2026-09-05-layout-and-console-evidence.md).
+**Status (5 September 2026):** Foundation and the deterministic press are implemented; SequenceSlate and the reachable Green built-in studios are engineering prototypes, not protected-seat or classroom-validated products. SequenceSlate's constitutionally required AAC/SLP co-design, every other protected-seat review, pilot evidence, packaging, release, and the remaining roadmap stay open. ADR-008 fixes current public display names and ADR-009 corrects the lesson-design display to StrandPlan, while preserving all stable internal identifiers. The bounded commission prepared non-operative governance terms, hardened approval and output seams, and filed ADR-010 as Proposed without convening or ratifying any human decision. The accepted-improvement continuations repair existing recovery, quantitative, source-integrity, layout, access and evidence contracts while retaining the complete proposal scope and those human holds. See the [current handover](handover/2026-09-05-accessibility-and-console-boundaries.md).
 **License intention:** Application code and first-party recipes under GNU GPL-3.0-or-later; other content and assets governed by explicit, compatible licenses  
 **Initial operating environment:** .NET 10 on managed Windows 10/11 devices, local-first authoring, optional district-governed Azure OpenAI inference  
 
@@ -497,7 +497,7 @@ Evidence for district review includes an ACR/VPAT, manual assistive-technology r
 
 ## Documentation and original printables
 
-Choose and declare a separate free-culture license, commonly CC BY or CC BY-SA, after project-specific review. Do not imply that GPL automatically governs every symbol, font, translation, photograph, or curriculum text.
+Choose and declare a separate free-culture license, commonly CC BY or CC BY-SA, after project-specific review. **Later 5 September 2026:** the typist [selected CC BY-SA 4.0 as the proposal to carry forward](governance/2026-09-05-content-license-selection.md); its material scope, licensing authority, matching assent and operative declaration remain unresolved. Do not imply that GPL automatically governs every symbol, font, translation, photograph, or curriculum text.
 
 ## Asset manifest
 

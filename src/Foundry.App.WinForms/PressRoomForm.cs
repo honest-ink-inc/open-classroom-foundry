@@ -396,10 +396,10 @@ public sealed class PressRoomForm : Form
 
         ClearApproval();
 
-        ArtifactDocument document;
+        PressBuildResult built;
         try
         {
-            document = definition.Build(new PressInputs(
+            built = definition.BuildForReview(new PressInputs(
                 _valueReaders.ToDictionary(pair => pair.Key, pair => pair.Value(), StringComparer.Ordinal)));
         }
         catch (ArgumentException refusal)
@@ -409,6 +409,7 @@ public sealed class PressRoomForm : Form
             return;
         }
 
+        var document = built.Document;
         if (_lowInk.Checked)
         {
             // Applied BEFORE Gate B: the teacher reviews what will print.
@@ -417,7 +418,7 @@ public sealed class PressRoomForm : Form
 
         var session = AppServices.SessionOverRecipe(
             DraftArtifact.New(document, DataLane.Green),
-            new DefaultArtifactValidator(),
+            new ReviewNoticeValidator(new DefaultArtifactValidator(), built.Issues),
             definition.Recipe);
         var context = new ApprovedContext(definition.Id, "deterministic-press", definition.Recipe.Id, definition.Recipe.Version);
         var generation = _stateGeneration;
