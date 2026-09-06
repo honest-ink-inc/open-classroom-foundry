@@ -1368,6 +1368,76 @@
       "tests": null,
       "record": "docs/governance/fixture-disposal-follow-up.md",
       "notes": "Paired exact draft PR23 head, attempt 1. Own completed/success conclusion, checkout log and actual uncompressed csharp.sarif read directly: 638,658 bytes, SHA-256 0186A3AA60237F54CC61098535C8EECA65E97CDFD77D76EEF6E7969EEC58F07B, SARIF 2.1.0, CodeQL 2.26.4, one successful invocation, zero results and 445 execution notifications all level none. Configuration-notification and embedded versionControlProvenance properties are absent; binding comes from run/artifact/archive/checkout evidence. The uploaded ZIP digest AAF4CA733FE7E3006AB6540525053BACACD80E948F7C93196A634A938098662F is distinct from the uncompressed file hash. Clean analysis does not override paired red CI or supply later-head, recipe admission, main, human-review, publication or release evidence."
+    },
+    {
+      "id": "codeql-34003598367",
+      "kind": "hosted-codeql",
+      "runId": 34003598367,
+      "workflow": "CodeQL SAST",
+      "event": "pull_request",
+      "branch": "codex/fixture-disposal-follow-up",
+      "headSha": "db40e9b673bceb65cd60d0e0fb88653b02ce66c6",
+      "checkoutSha": "8a934edf895b7d0ea4fea37ef949a4ac26a95b27",
+      "conclusion": "success",
+      "createdUtc": "2026-09-06T01:19:34Z",
+      "receipt": null,
+      "tests": null,
+      "record": "docs/governance/fixture-disposal-follow-up.md",
+      "notes": "Post-push local update-checkpoint record, separate from the frozen db40e9b pre-commit cutoff. Exact draft PR24 head, attempt 1: own completed/success conclusion and checkout log read. Actual uncompressed csharp.sarif is 638658 bytes, SHA-256 C0F9F6FD6E28875E17920A4843309B4E9E5F3CAD86EB85785708DC10457E4223; SARIF 2.1.0, CodeQL 2.26.4, one successful invocation, zero results and 445 execution notifications all level none. Configuration-notification and embedded version-control fields are absent; run/artifact/archive/checkout evidence supplies binding. Uploaded ZIP is 61295 bytes, SHA-256 7625116D05503AF479BDCBC20599C099B6ADD630F5B0EAF8179A3B52D115FC33, distinct from the actual file hash. Retained under out/fixture-follow-up-hosted-pr24/. Clean analysis does not override paired red CI or supply main, recipe admission, human-review, publication or release evidence."
+    },
+    {
+      "id": "ci-34003598435",
+      "kind": "hosted-ci",
+      "runId": 34003598435,
+      "workflow": "CI",
+      "event": "pull_request",
+      "branch": "codex/fixture-disposal-follow-up",
+      "headSha": "db40e9b673bceb65cd60d0e0fb88653b02ce66c6",
+      "checkoutSha": "8a934edf895b7d0ea4fea37ef949a4ac26a95b27",
+      "conclusion": "failure",
+      "createdUtc": "2026-09-06T01:19:35Z",
+      "receipt": "20260906T012305Z-f8867f08475149a4af40350da209432c",
+      "tests": {
+        "passed": 2599,
+        "total": 2625
+      },
+      "record": "docs/governance/fixture-disposal-follow-up.md",
+      "notes": "Post-push local update-checkpoint record, separate from the frozen db40e9b pre-commit cutoff. Exact draft PR24 head, attempt 1: own completed/failure conclusion and all seven actual TRXs read; 2599/2625 with 26 Unit failures and no skipped/error/aborted tests. First native fixture selector is Evidence_inventory_rejects_a_target_path_outside_its_target_directory: StreamDrainTimeout, native exit 1/root exit observed, frozen empty Pending streams, capture/disposal/safe false. Disposal Deferred for CaptureUnsettled and SettlementBudgetExhausted at decision/snapshot 502 ms against 500; no scheduled disposal task or observed callback. All 25 later refusal messages retain that frozen description. Separate StdOut contains attempts 1-26 at 503-752 ms, each Deferred/NotScheduled; these are not later capture-settlement observations or a cause. All 38 fixture-helper controls passed. Outer native/runner 1/1, no timeout, 342814 ms within unchanged 900-second cap; clean 554-source and seven-assembly snapshots stable, identity errors empty, one coherent failed-Unit completeness error. Summary SHA-256 D7D57D68445972819FD37AD7BEA3A3416D3A4287DC478052174B03F678D1A7B1; actual Unit TRX 36AD05360637B7DFCAC55AFB609755439C55DB3C4C34CADAA6EF204D049AB42E. All 14 curated evidence copies rehashed without mismatch. Build/format/secret scan passed; sample, coverage-threshold, dependency/vulnerability, SBOM and portable gates skipped. Retained under out/fixture-follow-up-hosted-pr24/; new signature recorded separately as S-18. No rerun, repair, common-cause finding, main merge, recipe admission, publication or release is inferred."
+    },
+    {
+      "id": "ci-34005321006",
+      "kind": "hosted-ci",
+      "runId": 34005321006,
+      "workflow": "CI",
+      "event": "push",
+      "branch": "main",
+      "headSha": "39897d2b58884d000398c5178e87e174f82f5402",
+      "checkoutSha": "39897d2b58884d000398c5178e87e174f82f5402",
+      "conclusion": "success",
+      "createdUtc": "2026-09-06T02:00:03Z",
+      "receipt": "20260906T020331Z-b88825733ce34df88c8f7c4f4facdb41",
+      "tests": {
+        "passed": 2346,
+        "total": 2346
+      },
+      "record": "docs/governance/fixture-async-waits.md",
+      "notes": "Exact-main push after ordinary merge of advisory-only PR15, attempt 1. Own completed/success conclusion and all seven actual TRXs read independently: 2346/2346, no nonpassing results; 14 curated copies rehashed without mismatch. Native/runner 0/0, no timeout, 303813 ms; source/assembly identity stable, identity/completeness errors empty and snapshot error null. Summary SHA-256 43C4630825BFCF46029ECE9F26D53BFD1DF05D4C2C7FE822BC8AA4A93B71AF30; Unit TRX 11B943B41D73BF929E14109DE29A9162FBB0D032369E7A49603BF41D93C3F98E. All three jobs concluded success. This verifies the exact advisory main merge, not the later dirty asynchronous fixture candidate, held production stack, rights, human reviews, publication or release. Raw observations, logs and artifacts retained under out/pr15-main-hosted/."
+    },
+    {
+      "id": "codeql-34005321007",
+      "kind": "hosted-codeql",
+      "runId": 34005321007,
+      "workflow": "CodeQL SAST",
+      "event": "push",
+      "branch": "main",
+      "headSha": "39897d2b58884d000398c5178e87e174f82f5402",
+      "checkoutSha": "39897d2b58884d000398c5178e87e174f82f5402",
+      "conclusion": "success",
+      "createdUtc": "2026-09-06T02:00:03Z",
+      "receipt": null,
+      "tests": null,
+      "record": "docs/governance/fixture-async-waits.md",
+      "notes": "Exact-main push after ordinary PR15 merge, attempt 1. Own completed/success conclusion and checkout log read; actual uncompressed csharp.sarif independently inspected: 716012 bytes, SHA-256 E484BF01D349451BDC921DEF5082C6941D3CA40282446E16C3F2FB8A45BF737F, SARIF 2.1.0, CodeQL 2.26.4, one successful invocation and zero results. The 707 execution notifications are all level none; embedded VCS property is absent, so binding comes from API/artifact/checkout evidence. Uploaded ZIP SHA-256 AC60EEA78C0AF74A26DD2D7A1782D67628147D12F64093690F2480E57E682F82 is distinct from the uncompressed hash. Retained under out/pr15-main-hosted/. No later candidate, recipe admission, protected review, site or release conclusion is transferred."
     }
   ]
 }

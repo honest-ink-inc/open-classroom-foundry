@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 using System.Collections.Concurrent;
 using System.Diagnostics;
+using System.Runtime.ExceptionServices;
 using Xunit.Abstractions;
 
 namespace Foundry.Tests.Unit;
@@ -11,6 +12,642 @@ public sealed class FixtureProcessRunnerTests(ITestOutputHelper output)
         CleanupMilliseconds: 50,
         DrainMilliseconds: 50,
         SettlementMilliseconds: 250);
+
+    [Fact]
+    public async Task Async_wait_yields_before_the_owned_disposal_completes()
+    {
+        var scheduler = new ControlledDisposalScheduler();
+        var process = new SyntheticProcess { StartReturned = false };
+        var runner = new FixtureProcessRunner(ControlLimits, scheduler.Schedule);
+        Task<FixtureProcessResult>? run = null;
+        FixtureProcessResult? result = null;
+        FixtureProcessException? synchronousFailure = null;
+        try
+        {
+            try { run = runner.RunAsync(() => process); }
+            catch (FixtureProcessException failure)
+            {
+                synchronousFailure = failure;
+                result = failure.Result;
+                output.WriteLine(failure.ToString());
+            }
+
+            Assert.True(synchronousFailure is null && run is not null,
+                "RunAsync consumed the disposal wait before returning control; " +
+                "the caller could not release its queued owned disposal. " + synchronousFailure);
+            Assert.True(scheduler.WasScheduled);
+            Assert.False(run.IsCompleted);
+            Assert.False(process.Disposed);
+            scheduler.Execute();
+            var expectedStartupFailure = await Assert.ThrowsAsync<FixtureProcessException>(() => run);
+            result = expectedStartupFailure.Result;
+            output.WriteLine(expectedStartupFailure.ToString());
+            Assert.StartsWith("StartupFailure", result.PrimaryFailure, StringComparison.Ordinal);
+            Assert.True(result.DisposalSettled);
+            Assert.True(result.SafeToStartAnotherFixture);
+            Assert.DoesNotContain(result.SecondaryOutcomes,
+                item => item.StartsWith("DisposalDeadline:", StringComparison.Ordinal));
+            Assert.True(process.Disposed);
+        }
+        finally
+        {
+            scheduler.Execute();
+            if (run is not null)
+            {
+                try { result = await run; }
+                catch (FixtureProcessException failure) { result = failure.Result; }
+            }
+
+            await AwaitSyntheticOperations(result, scheduler.Operation);
+            output.WriteLine("Controlled disposal and the exact started-operation aggregate settled after release; original failure evidence is retained.");
+        }
+    }
+
+    [Fact]
+    public async Task Async_callers_cannot_overlap_owned_disposal()
+    {
+        var scheduler = new ControlledDisposalScheduler();
+        var firstProcess = new SyntheticProcess { StartReturned = false };
+        var secondProcess = new SyntheticProcess { StartReturned = false };
+        var schedules = 0;
+        var runner = new FixtureProcessRunner(disposalScheduler: callback =>
+            ++schedules == 1 ? scheduler.Schedule(callback) : ExecuteDisposalImmediately(callback));
+        var first = runner.RunAsync(() => firstProcess);
+        Task<FixtureProcessResult>? second = null;
+        FixtureProcessResult? firstResult = null;
+        FixtureProcessResult? secondResult = null;
+        var secondCreations = 0;
+        Exception? primaryFailure = null;
+        try
+        {
+            Assert.True(scheduler.WasScheduled);
+            Assert.False(first.IsCompleted);
+            second = runner.RunAsync(() =>
+            {
+                secondCreations++;
+                Assert.True(firstProcess.Disposed, "A second factory overlapped the first owned disposal.");
+                return secondProcess;
+            });
+            Assert.False(second.IsCompleted);
+            Assert.Equal(0, secondCreations);
+            scheduler.Execute();
+            firstResult = (await Assert.ThrowsAsync<FixtureProcessException>(() => first)).Result;
+            secondResult = (await Assert.ThrowsAsync<FixtureProcessException>(() => second)).Result;
+            Assert.True(firstResult.SafeToStartAnotherFixture);
+            Assert.True(secondResult.SafeToStartAnotherFixture);
+            Assert.Equal(1, secondCreations);
+            Assert.Equal(2, schedules);
+        }
+        catch (Exception failure)
+        {
+            primaryFailure = failure;
+            throw;
+        }
+        finally
+        {
+            await ObserveNonoverlapCleanupAsync(first, second, scheduler, releaseAfterFirst: false,
+                primaryFailure, () => secondCreations != 0);
+        }
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task Async_disposal_deadline_preserves_failure_and_refuses_sync_and_async_followers(bool synchronousFollower)
+    {
+        var scheduler = new ControlledDisposalScheduler();
+        var process = new SyntheticProcess { StartReturned = false };
+        var runner = new FixtureProcessRunner(ControlLimits, scheduler.Schedule);
+        var run = runner.RunWithFailureFollowUpAsync(() => process,
+            _ => throw new IOException("synthetic-async-diagnostic-output-failure"));
+        FixtureProcessResult? result = null;
+        Task<FixtureProcessResult>? queuedFollower = null;
+        var created = false;
+        IFixtureProcess CreateUnexpected() { created = true; return new SyntheticProcess(); }
+        try
+        {
+            if (!synchronousFollower)
+            {
+                queuedFollower = runner.RunAsync(CreateUnexpected);
+                Assert.False(queuedFollower.IsCompleted);
+                Assert.False(created);
+            }
+
+            var failure = await Assert.ThrowsAsync<FixtureProcessException>(() => run);
+            result = failure.Result;
+            output.WriteLine(failure.ToString());
+            Assert.Equal(result.Describe(), failure.Message);
+            Assert.StartsWith("StartupFailure", result.PrimaryFailure, StringComparison.Ordinal);
+            Assert.Contains(result.SecondaryOutcomes,
+                item => item.StartsWith("DisposalDeadline:", StringComparison.Ordinal));
+            Assert.False(result.SafeToStartAnotherFixture);
+            var frozen = result.Describe();
+            var refusal = synchronousFollower
+                ? Assert.Throws<InvalidOperationException>(() => runner.Run(CreateUnexpected))
+                : await Assert.ThrowsAsync<InvalidOperationException>(() => queuedFollower!);
+            Assert.False(created);
+            Assert.EndsWith(frozen, refusal.Message, StringComparison.Ordinal);
+        }
+        finally
+        {
+            scheduler.Execute();
+            result = await ObserveOwnedRunAsync(run);
+            if (queuedFollower is not null)
+            {
+                try { await queuedFollower; }
+                catch (InvalidOperationException failure) { output.WriteLine(failure.ToString()); }
+            }
+
+            await AwaitSyntheticOperations(result, scheduler.Operation);
+        }
+
+        Assert.True(process.Disposed);
+        Assert.False(result.SafeToStartAnotherFixture);
+        AssertRefusesNextCreation(runner);
+    }
+
+    [Fact]
+    public async Task A_synchronous_owner_and_async_follower_share_the_same_nonoverlap_gate()
+    {
+        var scheduler = new ControlledDisposalScheduler();
+        var scheduled = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var firstProcess = new SyntheticProcess { StartReturned = false };
+        var secondProcess = new SyntheticProcess { StartReturned = false };
+        var schedules = 0;
+        var runner = new FixtureProcessRunner(disposalScheduler: callback =>
+        {
+            if (Interlocked.Increment(ref schedules) != 1) { return ExecuteDisposalImmediately(callback); }
+            var task = scheduler.Schedule(callback);
+            scheduled.SetResult();
+            return task;
+        });
+        // One explicitly owned process-free worker invokes the compatibility
+        // entry point; the controlling test must remain able to release disposal.
+        var first = Task.Factory.StartNew(() => runner.Run(() => firstProcess),
+            CancellationToken.None, TaskCreationOptions.LongRunning, TaskScheduler.Default);
+        Task<FixtureProcessResult>? second = null;
+        FixtureProcessResult? firstResult = null;
+        FixtureProcessResult? secondResult = null;
+        var secondCreations = 0;
+        Exception? primaryFailure = null;
+        try
+        {
+            await scheduled.Task.WaitAsync(TimeSpan.FromSeconds(2));
+            Assert.False(first.IsCompleted);
+            second = runner.RunAsync(() =>
+            {
+                secondCreations++;
+                Assert.True(firstProcess.Disposed, "The asynchronous factory overlapped the synchronous owner's disposal.");
+                return secondProcess;
+            });
+            Assert.False(second.IsCompleted);
+            Assert.Equal(0, secondCreations);
+            scheduler.Execute();
+            firstResult = (await Assert.ThrowsAsync<FixtureProcessException>(() => first)).Result;
+            secondResult = (await Assert.ThrowsAsync<FixtureProcessException>(() => second)).Result;
+            Assert.True(firstResult.SafeToStartAnotherFixture);
+            Assert.True(secondResult.SafeToStartAnotherFixture);
+            Assert.Equal(1, secondCreations);
+        }
+        catch (Exception failure)
+        {
+            primaryFailure = failure;
+            throw;
+        }
+        finally
+        {
+            await ObserveNonoverlapCleanupAsync(first, second, scheduler, releaseAfterFirst: true,
+                primaryFailure, () => secondCreations != 0);
+        }
+    }
+
+    [Theory]
+    [InlineData("success")]
+    [InlineData("timeout-fault")]
+    [InlineData("io-fault")]
+    [InlineData("canceled")]
+    public async Task Async_wait_distinguishes_terminal_owned_outcomes_from_its_deadline(string outcome)
+    {
+        var operation = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var wait = FixtureProcessRunner.WaitSettledAsync(operation.Task, 250);
+        try
+        {
+            Assert.False(wait.IsCompleted);
+            switch (outcome)
+            {
+                case "success": operation.SetResult(); break;
+                case "timeout-fault": operation.SetException(new TimeoutException("synthetic-owned-timeout-fault")); break;
+                case "io-fault": operation.SetException(new IOException("synthetic-owned-io-fault")); break;
+                case "canceled": operation.SetCanceled(); break;
+            }
+
+            Assert.True(await wait);
+            Assert.Equal(outcome == "success", operation.Task.IsCompletedSuccessfully);
+            Assert.Equal(outcome == "canceled", operation.Task.IsCanceled);
+            if (outcome.EndsWith("-fault", StringComparison.Ordinal))
+            {
+                Assert.True(operation.Task.IsFaulted);
+                Assert.Contains("synthetic-owned-", operation.Task.Exception.ToString(), StringComparison.Ordinal);
+            }
+        }
+        finally
+        {
+            operation.TrySetResult();
+            await wait;
+            try { await operation.Task; }
+            catch (Exception failure) when (failure is IOException or TimeoutException or TaskCanceledException)
+            {
+                output.WriteLine("Exact injected terminal operation retained: " + failure);
+            }
+        }
+    }
+
+    [Fact]
+    public async Task Async_wait_keeps_an_expired_deadline_false_after_later_owned_completion()
+    {
+        var operation = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var wait = FixtureProcessRunner.WaitSettledAsync(operation.Task, 50);
+        try
+        {
+            Assert.False(await wait);
+            Assert.False(operation.Task.IsCompleted);
+            operation.SetResult();
+            await operation.Task;
+            Assert.False(await wait);
+        }
+        finally
+        {
+            operation.TrySetResult();
+            await operation.Task;
+            await wait;
+        }
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task Async_wait_preserves_the_existing_completed_first_zero_budget_rule(bool completed)
+    {
+        var operation = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        try
+        {
+            if (completed) { operation.SetResult(); }
+            Assert.Equal(completed, await FixtureProcessRunner.WaitSettledAsync(operation.Task, 0));
+        }
+        finally
+        {
+            operation.TrySetResult();
+            await operation.Task;
+        }
+    }
+
+    [Fact]
+    public async Task Async_disposal_timeout_exception_is_a_settled_fault_not_the_wait_deadline()
+    {
+        var process = new SyntheticProcess
+        {
+            StartReturned = false,
+            DisposeFailure = new TimeoutException("synthetic-owned-disposal-timeout"),
+        };
+        var runner = new FixtureProcessRunner(ControlLimits, ExecuteDisposalImmediately);
+        var failure = await Assert.ThrowsAsync<FixtureProcessException>(() => runner.RunAsync(() => process));
+        var result = failure.Result;
+        output.WriteLine(failure.ToString());
+        Assert.StartsWith("StartupFailure", result.PrimaryFailure, StringComparison.Ordinal);
+        Assert.True(result.DisposalSettled);
+        Assert.False(result.SafeToStartAnotherFixture);
+        Assert.Contains(result.SecondaryOutcomes,
+            item => item.Contains("synthetic-owned-disposal-timeout", StringComparison.Ordinal));
+        Assert.DoesNotContain(result.SecondaryOutcomes,
+            item => item.StartsWith("DisposalDeadline:", StringComparison.Ordinal));
+        var terminal = await Assert.ThrowsAsync<TimeoutException>(() => result.StartedOperations);
+        Assert.Equal("synthetic-owned-disposal-timeout", terminal.Message);
+        AssertRefusesNextCreation(runner);
+    }
+
+    private async Task<FixtureProcessResult> ObserveOwnedRunAsync(Task<FixtureProcessResult> run)
+    {
+        try { return await run; }
+        catch (FixtureProcessException failure)
+        {
+            output.WriteLine(failure.ToString());
+            return failure.Result;
+        }
+    }
+
+    [Theory]
+    [InlineData(false, false)]
+    [InlineData(false, true)]
+    [InlineData(true, false)]
+    [InlineData(true, true)]
+    public async Task Nonoverlap_cleanup_preserves_primary_failure_and_observes_owned_aggregates(
+        bool releaseAfterFirst,
+        bool fixturePrimary)
+    {
+        var scheduler = new ControlledDisposalScheduler();
+        var process = new SyntheticProcess { StartReturned = false };
+        var runner = new FixtureProcessRunner(ControlLimits, scheduler.Schedule,
+            () => new ManualSettlementClock());
+        var first = runner.RunAsync(() => process);
+        var followerCreated = false;
+        var second = runner.RunAsync(() =>
+        {
+            followerCreated = true;
+            return new SyntheticProcess();
+        });
+        FixtureProcessResult? firstResult = null;
+        try
+        {
+            var firstFailure = await Assert.ThrowsAsync<FixtureProcessException>(() => first);
+            firstResult = firstFailure.Result;
+            Assert.False(firstResult.SafeToStartAnotherFixture);
+            Assert.False(process.Disposed);
+            Exception primary = fixturePrimary
+                ? firstFailure
+                : new Xunit.Sdk.XunitException("synthetic-original-nonoverlap-assertion");
+            var observedAggregates = new List<string>();
+            IReadOnlyList<Exception>? cleanupFailures = null;
+            var escaping = await Record.ExceptionAsync(async () =>
+            {
+                try { throw primary; }
+                finally
+                {
+                    cleanupFailures = await ObserveNonoverlapCleanupAsync(first, second, scheduler,
+                        releaseAfterFirst, primary, () => followerCreated, observedAggregates.Add);
+                }
+            });
+            output.WriteLine("Original injected primary: " + primary);
+            output.WriteLine("Escaping measured cleanup scope: " + escaping);
+            output.WriteLine("Aggregate observation sites reached: " + string.Join(",", observedAggregates));
+            Assert.Same(primary, escaping);
+            Assert.Equal(["first-owned-aggregate-observed", "second-owned-aggregate-observed"], observedAggregates);
+            Assert.False(followerCreated);
+            Assert.Empty(cleanupFailures!);
+        }
+        finally
+        {
+            scheduler.Execute();
+            try { firstResult = await first; }
+            catch (FixtureProcessException failure) { firstResult = failure.Result; }
+            scheduler.Execute();
+            try { await second; }
+            catch (InvalidOperationException refusal) when (firstResult is { SafeToStartAnotherFixture: false }
+                && !followerCreated
+                && string.Equals(refusal.Message,
+                    "A prior fixture has uncertain cleanup/capture; no new process was created. " +
+                    "A fresh test host is required after ownership is resolved." + Environment.NewLine + firstResult.Describe(),
+                    StringComparison.Ordinal))
+            {
+                output.WriteLine("Outer guaranteed-cleanup observed the exact sticky no-process refusal: " + refusal);
+            }
+
+            await AwaitSyntheticOperations(firstResult, scheduler.Operation);
+            output.WriteLine("Outer guaranteed-cleanup awaited the exact owned aggregate after release; a skipped inner observation site does not itself prove an unsettled task.");
+        }
+    }
+
+    [Theory]
+    [InlineData("unrelated", false)]
+    [InlineData("unrelated", true)]
+    [InlineData("altered-result", false)]
+    [InlineData("altered-result", true)]
+    [InlineData("factory-entered", false)]
+    [InlineData("factory-entered", true)]
+    public async Task Nonoverlap_cleanup_keeps_unexpected_refusals_failing_and_observes_every_aggregate(
+        string refusalKind,
+        bool hasPrimary)
+    {
+        var scheduler = new ControlledDisposalScheduler();
+        var runner = new FixtureProcessRunner(ControlLimits, scheduler.Schedule,
+            () => new ManualSettlementClock());
+        var first = runner.RunAsync(() => new SyntheticProcess { StartReturned = false });
+        FixtureProcessResult? firstResult = null;
+        Task<FixtureProcessResult>? second = null;
+        InvalidOperationException? injected = null;
+        try
+        {
+            firstResult = (await Assert.ThrowsAsync<FixtureProcessException>(() => first)).Result;
+            Assert.False(firstResult.SafeToStartAnotherFixture);
+            // This negative control injects the follower outcome only. The
+            // positive sticky-refusal cases above use the actual shared runner.
+            injected = new InvalidOperationException(refusalKind switch
+            {
+                "unrelated" => "synthetic-unrelated-invalid-operation",
+                "altered-result" => StickyRefusalMessage(firstResult) + "synthetic-altered-frozen-result",
+                "factory-entered" => StickyRefusalMessage(firstResult),
+                _ => throw new ArgumentOutOfRangeException(nameof(refusalKind)),
+            });
+            second = Task.FromException<FixtureProcessResult>(injected);
+            Exception? primary = hasPrimary ? new Xunit.Sdk.XunitException("synthetic-prior-control-assertion") : null;
+            var aggregateObservations = new List<string>();
+            var diagnostics = new List<string>();
+            IReadOnlyList<Exception>? cleanupFailures = null;
+            var escaping = await Record.ExceptionAsync(async () =>
+            {
+                try { if (primary is not null) { throw primary; } }
+                finally
+                {
+                    cleanupFailures = await ObserveNonoverlapCleanupAsync(first, second, scheduler,
+                        releaseAfterFirst: false, primary, () => refusalKind == "factory-entered",
+                        aggregateObservations.Add, diagnostics.Add);
+                }
+            });
+
+            Assert.Same(primary ?? injected, escaping);
+            Assert.Equal(["first-owned-aggregate-observed", "second-owned-aggregate-observed"], aggregateObservations);
+            Assert.Contains(diagnostics, message => message.StartsWith("Secondary non-overlap cleanup failure (follower outcome):", StringComparison.Ordinal)
+                && message.Contains(injected.Message, StringComparison.Ordinal));
+            Assert.DoesNotContain(diagnostics, message => message.StartsWith("Observed exact sticky refusal", StringComparison.Ordinal));
+            if (hasPrimary) { Assert.Same(injected, Assert.Single(cleanupFailures!)); }
+            output.WriteLine("Injected unexpected follower outcome retained separately: " + injected);
+            output.WriteLine("Escaping verdict after both aggregate observations: " + escaping);
+        }
+        finally
+        {
+            scheduler.Execute();
+            try { firstResult = await first; }
+            catch (FixtureProcessException failure) { firstResult = failure.Result; }
+            scheduler.Execute();
+            if (second is not null)
+            {
+                try { await second; }
+                catch (InvalidOperationException failure) when (ReferenceEquals(failure, injected)) { }
+            }
+
+            await AwaitSyntheticOperations(firstResult, scheduler.Operation);
+        }
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task Nonoverlap_cleanup_observes_both_real_owned_aggregates_when_diagnostics_throw(bool hasPrimary)
+    {
+        var firstScheduler = new ControlledDisposalScheduler();
+        var secondScheduler = new ControlledDisposalScheduler();
+        // Independent synthetic owners provide two actual, initially unsettled
+        // aggregates; this is not a claim that one unsafe runner admits a second.
+        var firstRunner = new FixtureProcessRunner(ControlLimits, firstScheduler.Schedule,
+            () => new ManualSettlementClock());
+        var secondRunner = new FixtureProcessRunner(ControlLimits, secondScheduler.Schedule,
+            () => new ManualSettlementClock());
+        var first = firstRunner.RunAsync(() => new SyntheticProcess { StartReturned = false });
+        var second = secondRunner.RunAsync(() => new SyntheticProcess { StartReturned = false });
+        FixtureProcessResult? firstResult = null;
+        FixtureProcessResult? secondResult = null;
+        try
+        {
+            firstResult = (await Assert.ThrowsAsync<FixtureProcessException>(() => first)).Result;
+            secondResult = (await Assert.ThrowsAsync<FixtureProcessException>(() => second)).Result;
+            Assert.False(firstResult.StartedOperations.IsCompleted);
+            Assert.False(secondResult.StartedOperations.IsCompleted);
+            var injected = new IOException("synthetic-nonoverlap-diagnostic-writer-failure");
+            void failingDiagnostic(string _) { throw injected; }
+            Exception? primary = hasPrimary ? new Xunit.Sdk.XunitException("synthetic-primary-before-writer-failure") : null;
+            var aggregateObservations = new List<string>();
+            IReadOnlyList<Exception>? cleanupFailures = null;
+            var escaping = await Record.ExceptionAsync(async () =>
+            {
+                try { if (primary is not null) { throw primary; } }
+                finally
+                {
+                    cleanupFailures = await ObserveNonoverlapCleanupAsync(first, second, firstScheduler,
+                        releaseAfterFirst: false, primary, () => true,
+                        stage =>
+                        {
+                            aggregateObservations.Add(stage);
+                            if (stage == "first-owned-aggregate-observed") { secondScheduler.Execute(); }
+                        },
+failingDiagnostic);
+                }
+            });
+
+            Assert.Same(primary ?? injected, escaping);
+            Assert.Equal(["first-owned-aggregate-observed", "second-owned-aggregate-observed"], aggregateObservations);
+            Assert.True(firstResult.StartedOperations.IsCompleted);
+            Assert.True(secondResult.StartedOperations.IsCompleted);
+            if (hasPrimary)
+            {
+                Assert.Equal(3, cleanupFailures!.Count);
+                Assert.All(cleanupFailures, failure => Assert.Same(injected, failure));
+            }
+
+            output.WriteLine("Injected diagnostic failure retained without aborting either exact owned-aggregate observation: " + injected);
+            output.WriteLine("Escaping verdict: " + escaping);
+        }
+        finally
+        {
+            firstScheduler.Execute();
+            secondScheduler.Execute();
+            try { firstResult = await first; }
+            catch (FixtureProcessException failure) { firstResult = failure.Result; }
+            try { secondResult = await second; }
+            catch (FixtureProcessException failure) { secondResult = failure.Result; }
+            firstScheduler.Execute();
+            secondScheduler.Execute();
+            // Independent finally clauses prevent one observation failure from
+            // skipping the other owner's guaranteed synthetic cleanup.
+            try { await AwaitSyntheticOperations(firstResult, firstScheduler.Operation); }
+            finally { await AwaitSyntheticOperations(secondResult, secondScheduler.Operation); }
+        }
+    }
+
+    private async Task<IReadOnlyList<Exception>> ObserveNonoverlapCleanupAsync(
+        Task<FixtureProcessResult> first,
+        Task<FixtureProcessResult>? second,
+        ControlledDisposalScheduler scheduler,
+        bool releaseAfterFirst,
+        Exception? primaryFailure,
+        Func<bool> followerFactoryEntered,
+        Action<string>? observeAggregate = null,
+        Action<string>? writeDiagnostic = null)
+    {
+        // Only these two non-overlap controls use this cleanup policy. It does
+        // not alter runner outcomes or make an unsafe fixture reusable. Every
+        // owned aggregate is attempted even after an observation/write failure.
+        var failures = new List<Exception>();
+        var write = writeDiagnostic ?? output.WriteLine;
+        FixtureProcessResult? firstResult = null;
+        FixtureProcessResult? secondResult = null;
+        if (primaryFailure is not null) { Report("Original non-overlap control failure: " + primaryFailure); }
+        await AttemptAsync("initial release", () => { scheduler.Execute(); return Task.CompletedTask; });
+        firstResult = await ObserveRunAsync(first, isFollower: false);
+        // A delayed synchronous owner can reach Schedule after the first release.
+        if (releaseAfterFirst)
+        {
+            await AttemptAsync("delayed-owner release", () => { scheduler.Execute(); return Task.CompletedTask; });
+        }
+
+        if (second is not null) { secondResult = await ObserveRunAsync(second, isFollower: true); }
+        await AttemptAsync("first owned aggregate", async () =>
+        {
+            await AwaitSyntheticOperations(firstResult, scheduler.Operation);
+            observeAggregate?.Invoke("first-owned-aggregate-observed");
+        });
+        await AttemptAsync("second owned aggregate", async () =>
+        {
+            await AwaitSyntheticOperations(secondResult);
+            observeAggregate?.Invoke("second-owned-aggregate-observed");
+        });
+
+        // An already propagating assertion/fixture failure remains the primary.
+        // Unexpected cleanup failures are reported and returned separately. With
+        // no primary, the first unexpected failure is rethrown after all attempts.
+        if (primaryFailure is null && failures.Count > 0)
+        {
+            ExceptionDispatchInfo.Capture(failures[0]).Throw();
+        }
+
+        return Array.AsReadOnly(failures.ToArray());
+
+        void Report(string message)
+        {
+            try { write(message); }
+            catch (Exception failure) { failures.Add(failure); }
+        }
+
+        void RetainUnexpected(string stage, Exception failure)
+        {
+            failures.Add(failure);
+            Report($"Secondary non-overlap cleanup failure ({stage}): {failure}");
+        }
+
+        async Task AttemptAsync(string stage, Func<Task> attempt)
+        {
+            try { await attempt(); }
+            catch (Exception failure) { RetainUnexpected(stage, failure); }
+        }
+
+        async Task<FixtureProcessResult?> ObserveRunAsync(Task<FixtureProcessResult> run, bool isFollower)
+        {
+            try { return await run; }
+            catch (FixtureProcessException failure)
+            {
+                // Capture the result before attempting a fallible diagnostic write.
+                var result = failure.Result;
+                Report("Observed owned non-overlap fixture outcome: " + failure);
+                return result;
+            }
+            catch (InvalidOperationException refusal) when (isFollower
+                && refusal.GetType() == typeof(InvalidOperationException)
+                && firstResult is { SafeToStartAnotherFixture: false }
+                && !followerFactoryEntered()
+                && string.Equals(refusal.Message, StickyRefusalMessage(firstResult), StringComparison.Ordinal))
+            {
+                Report("Observed exact sticky refusal; follower factory was not entered: " + refusal);
+                return null;
+            }
+            catch (Exception failure)
+            {
+                RetainUnexpected(isFollower ? "follower outcome" : "first outcome", failure);
+                return null;
+            }
+        }
+    }
+
+    private static string StickyRefusalMessage(FixtureProcessResult result)
+        => "A prior fixture has uncertain cleanup/capture; no new process was created. " +
+            "A fresh test host is required after ownership is resolved." + Environment.NewLine + result.Describe();
 
     [Fact]
     public void Timeout_retains_available_standard_output()
@@ -745,7 +1382,7 @@ public sealed class FixtureProcessRunnerTests(ITestOutputHelper output)
     }
 
     [Fact]
-    public void Native_childless_timeout_retains_owned_pid_exit_and_separate_streams_at_thirty_seconds()
+    public async Task Native_childless_timeout_retains_owned_pid_exit_and_separate_streams_at_thirty_seconds()
     {
         var startInfo = new ProcessStartInfo
         {
@@ -768,7 +1405,7 @@ public sealed class FixtureProcessRunnerTests(ITestOutputHelper output)
             "[Threading.Thread]::Sleep(35000); exit 91");
         var process = new NativeFixtureProcess(startInfo);
         var clock = Stopwatch.StartNew();
-        var exception = Assert.Throws<FixtureProcessException>(() => new FixtureProcessRunner().Run(() => process));
+        var exception = await Assert.ThrowsAsync<FixtureProcessException>(() => new FixtureProcessRunner().RunAsync(() => process));
         clock.Stop();
         output.WriteLine($"Native childless control; owned PID={process.StartedProcessId}; elapsed ms={clock.ElapsedMilliseconds}:");
         output.WriteLine(exception.ToString());

@@ -1,0 +1,81 @@
+{
+  "format": "ocf.changed-file-manifest.v1",
+  "preparedDate": "2026-09-05",
+  "sourceBaseline": "db40e9b673bceb65cd60d0e0fb88653b02ce66c6",
+  "scope": "The thirteen non-self changed files in the asynchronous-fixture-wait continuation commit containing this manifest. Controlled caller-yield red/green proof, bounded test-only async repair, exact predecessor and PR15 main evidence, stacked-PR deletion-order correction, and the typist's separate seven-replacement implementation authorization. No production behavior/version, timeout cap, safety predicate, historical sighting closure, recipe admission, publication or human ratification. Later records do not replace this historical manifest.",
+  "normalization": "Strict UTF-8; literal CRLF converted to LF, no other normalization. Length and SHA-256 apply to those canonical bytes, not platform checkout representation.",
+  "derivation": "Two independent complete file reads produced identical ordered inventories, lengths and SHA-256 values.",
+  "exclusions": [
+    {
+      "path": "docs/governance/fixture-async-waits-files.json",
+      "reason": "Detached manifest: no circular self-hash. Ignored generated evidence is separately identified in fixture-async-waits.md."
+    }
+  ],
+  "files": [
+    {
+      "path": "AGENTS.md",
+      "canonicalUtf8Bytes": 8473,
+      "sha256": "84F505305EA5F4C808843656A7714A51285CB449D5F069243DA095A4825CDF1B"
+    },
+    {
+      "path": "README.md",
+      "canonicalUtf8Bytes": 16061,
+      "sha256": "3BF7594B503ECEEB3DF447CCE4CDFC2C26CA5E98C8D32B7AE8B9F2C94EFD3AA3"
+    },
+    {
+      "path": "docs/README.md",
+      "canonicalUtf8Bytes": 17446,
+      "sha256": "897ED6B4622B71A3F5CAD76B82A09969A7FEE2E3F36374937D30CCD524016246"
+    },
+    {
+      "path": "docs/evidence/evidence-ledger.json",
+      "canonicalUtf8Bytes": 87158,
+      "sha256": "A3AA4DCB7FBD5DC87A5EA683FEBCE151708FB58DD9C9364CD980CABB28A92E59"
+    },
+    {
+      "path": "docs/evidence/sightings-register.md",
+      "canonicalUtf8Bytes": 34063,
+      "sha256": "CD7CBB41412867B2E6104021612F8D23F9795213B4B5313C52B6924FE74E1DE8"
+    },
+    {
+      "path": "docs/governance/2026-09-05-recipe-replacement-authorization.md",
+      "canonicalUtf8Bytes": 5041,
+      "sha256": "0D82D3D507DC5B140FC5B9DEB40B7F4D82FA56701523EC6F4A9B79A5A6B0DCA7"
+    },
+    {
+      "path": "docs/governance/accepted-improvement-register.md",
+      "canonicalUtf8Bytes": 24786,
+      "sha256": "48460DBF9D4E5EB374207B9A3F87047B1AC0BEDB8244B8F62C0AD26477CB6F98"
+    },
+    {
+      "path": "docs/governance/fixture-async-waits.md",
+      "canonicalUtf8Bytes": 21252,
+      "sha256": "5FF58BFADB4BE10EC31EB259F87E70A1742FAFC1DD6872EC88C9448EADCCD357"
+    },
+    {
+      "path": "docs/handover/2026-09-05-pr-stack-resumption.md",
+      "canonicalUtf8Bytes": 7042,
+      "sha256": "9A99E7C0E83922CF4BE56D82F660895B0A4365697D8B7B69AF7F317CA1ED0A10"
+    },
+    {
+      "path": "docs/implementation-plan.md",
+      "canonicalUtf8Bytes": 84302,
+      "sha256": "95243A893E940CAE0F43C4D9F4C08537C06E119A756C30F6F1E059F226EEF6BE"
+    },
+    {
+      "path": "tests/Unit/CiTestRunnerContractTests.cs",
+      "canonicalUtf8Bytes": 94836,
+      "sha256": "E9826019D1C7EC6BC125A8BC6F1AEB2D1D315A0BE9B5588F8D6D1347493D63A6"
+    },
+    {
+      "path": "tests/Unit/FixtureProcessRunner.cs",
+      "canonicalUtf8Bytes": 31463,
+      "sha256": "2F4AA2A71BD83131B1CA9F6246301D4622C77E1FC623A6747C8F043686DC662C"
+    },
+    {
+      "path": "tests/Unit/FixtureProcessRunnerTests.cs",
+      "canonicalUtf8Bytes": 82516,
+      "sha256": "E4114138D56B0E0A7A4990D6EA648FFA4520BC26816F1D4F231D7CD5AAD770B3"
+    }
+  ]
+}

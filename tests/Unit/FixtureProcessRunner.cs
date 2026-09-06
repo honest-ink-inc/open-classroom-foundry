@@ -174,6 +174,7 @@ internal sealed class FixtureProcessException(FixtureProcessResult result) : Exc
 internal sealed class FixtureProcessRunner
 {
     private readonly Lock runGate = new();
+    private Task runTail = Task.CompletedTask;
     private readonly FixtureProcessLimits limits;
     private readonly Func<Action, Task> scheduleDisposal;
     private readonly Func<IFixtureSettlementClock> startSettlementClock;
@@ -205,10 +206,27 @@ internal sealed class FixtureProcessRunner
         startSettlementClock = settlementClockFactory ?? (static () => new StopwatchFixtureSettlementClock());
     }
 
+    // Existing synchronous controls remain supported. Native callers use
+    // RunAsync so operation waits do not block their test worker. Start and the
+    // adapter's root WaitForExit are still synchronous OS boundaries in this slice.
     internal FixtureProcessResult Run(Func<IFixtureProcess> createProcess)
+        => RunAsync(createProcess).GetAwaiter().GetResult();
+
+    internal async Task<FixtureProcessResult> RunAsync(Func<IFixtureProcess> createProcess)
     {
+        var release = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        Task predecessor;
         lock (runGate)
         {
+            predecessor = runTail;
+            runTail = release.Task;
+        }
+
+        try
+        {
+            // The queue lock is never held across a wait or fixture operation.
+            // Both entry points share this predecessor/release ownership chain.
+            await predecessor.ConfigureAwait(false);
             if (unsafePriorResult is not null)
             {
                 GC.KeepAlive(unsettledProcess);
@@ -218,7 +236,11 @@ internal sealed class FixtureProcessRunner
                     unsafePriorResult.Describe());
             }
 
-            return RunOwned(createProcess);
+            return await RunOwnedAsync(createProcess).ConfigureAwait(false);
+        }
+        finally
+        {
+            release.SetResult();
         }
     }
 
@@ -228,10 +250,15 @@ internal sealed class FixtureProcessRunner
     internal FixtureProcessResult RunWithFailureFollowUp(
         Func<IFixtureProcess> createProcess,
         Action<string> writeFollowUp)
+        => RunWithFailureFollowUpAsync(createProcess, writeFollowUp).GetAwaiter().GetResult();
+
+    internal async Task<FixtureProcessResult> RunWithFailureFollowUpAsync(
+        Func<IFixtureProcess> createProcess,
+        Action<string> writeFollowUp)
     {
         try
         {
-            return Run(createProcess);
+            return await RunAsync(createProcess).ConfigureAwait(false);
         }
         catch
         {
@@ -261,7 +288,7 @@ internal sealed class FixtureProcessRunner
         }
     }
 
-    private FixtureProcessResult RunOwned(Func<IFixtureProcess> createProcess)
+    private async Task<FixtureProcessResult> RunOwnedAsync(Func<IFixtureProcess> createProcess)
     {
         IFixtureProcess? process = null;
         StreamCapture? output = null;
@@ -314,7 +341,7 @@ internal sealed class FixtureProcessRunner
             if (!rootExited)
             {
                 cleanup = Task.Run(() => RequestCleanup(process!));
-                cleanupWithinLimit = WaitSettled(cleanup, limits.CleanupMilliseconds);
+                cleanupWithinLimit = await WaitSettledAsync(cleanup, limits.CleanupMilliseconds).ConfigureAwait(false);
                 cleanupSettled = cleanup.IsCompleted;
                 if (!cleanupWithinLimit)
                 {
@@ -324,7 +351,7 @@ internal sealed class FixtureProcessRunner
         }
 
         var captures = Task.WhenAll(output?.Completion ?? Task.CompletedTask, error?.Completion ?? Task.CompletedTask);
-        var drained = WaitSettled(captures, limits.DrainMilliseconds);
+        var drained = await WaitSettledAsync(captures, limits.DrainMilliseconds).ConfigureAwait(false);
         if (!drained)
         {
             primary ??= "StreamDrainTimeout: redirected streams did not finish within the separate drain budget.";
@@ -339,7 +366,8 @@ internal sealed class FixtureProcessRunner
         var errorCancellation = error?.CancelAsync() ?? Task.CompletedTask;
         var cancellation = Task.WhenAll(outputCancellation, errorCancellation);
         var settlement = Task.WhenAll(captures, cancellation);
-        var settlementWithinLimit = WaitSettled(settlement, Remaining(settlementClock, limits.SettlementMilliseconds));
+        var settlementWithinLimit = await WaitSettledAsync(
+            settlement, Remaining(settlementClock, limits.SettlementMilliseconds)).ConfigureAwait(false);
         var captureSettled = captures.IsCompleted && cancellation.IsCompleted;
         if (!settlementWithinLimit)
         {
@@ -434,7 +462,7 @@ internal sealed class FixtureProcessRunner
             });
             waitElapsed = settlementClock.ElapsedMilliseconds;
             remainingAtWait = Remaining(waitElapsed.Value, limits.SettlementMilliseconds);
-            var disposalWithinLimit = WaitSettled(disposal, remainingAtWait.Value);
+            var disposalWithinLimit = await WaitSettledAsync(disposal, remainingAtWait.Value).ConfigureAwait(false);
             waitReturnedSettled = disposalWithinLimit;
             disposalSettled = disposal.IsCompleted;
             disposalSucceeded = disposalWithinLimit && disposal.IsCompletedSuccessfully;
@@ -572,7 +600,7 @@ internal sealed class FixtureProcessRunner
     private static int Remaining(long elapsedMilliseconds, int budget) =>
         (int)Math.Max(0, budget - elapsedMilliseconds);
 
-    private static bool WaitSettled(Task task, int milliseconds)
+    internal static async Task<bool> WaitSettledAsync(Task task, int milliseconds)
     {
         if (task.IsCompleted)
         {
@@ -584,15 +612,27 @@ internal sealed class FixtureProcessRunner
             return false;
         }
 
-        try
+        // Keep the winner, not a later IsCompleted read: late completion cannot
+        // turn an expired wait into success. A task's own TimeoutException is a
+        // settled fault, distinguishable from this separate deadline task.
+        using var deadlineCancellation = new CancellationTokenSource();
+        var deadline = Task.Delay(milliseconds, deadlineCancellation.Token);
+        var winner = await Task.WhenAny(task, deadline).ConfigureAwait(false);
+        if (ReferenceEquals(winner, deadline))
         {
-            return task.Wait(milliseconds);
+            return false;
         }
-        catch (AggregateException)
+
+        // Only the private timer is canceled, never the owned fixture operation.
+        deadlineCancellation.Cancel();
+        try { await task.ConfigureAwait(false); }
+        catch (Exception)
         {
-            // Faulted is settled, not successful. Callers retain the fault.
-            return true;
+            // Faulted/canceled is settled, not successful. Callers retain the
+            // exact task and still apply the existing success/safety predicate.
         }
+
+        return true;
     }
 
     private sealed record CleanupOutcome(bool RootExitObserved, bool KillRequestReturned, IReadOnlyList<string> Outcomes);

@@ -401,12 +401,12 @@ public sealed class CiTestRunnerContractTests(ITestOutputHelper testOutput)
     }
 
     [Fact]
-    public void Evidence_snapshot_accepts_one_changed_trx_and_one_new_direct_coverage_per_suite()
+    public async Task Evidence_snapshot_accepts_one_changed_trx_and_one_new_direct_coverage_per_suite()
     {
         var repository = CreateSyntheticEvidenceRepository("Alpha", "Beta");
         try
         {
-            using var result = RunEvidenceScenario(
+            using var result = await RunEvidenceScenarioAsync(
                 repository,
                 """
                 foreach ($suite in $inventory) {
@@ -454,12 +454,12 @@ public sealed class CiTestRunnerContractTests(ITestOutputHelper testOutput)
     }
 
     [Fact]
-    public void Evidence_snapshot_rejects_balanced_duplicates_and_omitted_suite_artifacts()
+    public async Task Evidence_snapshot_rejects_balanced_duplicates_and_omitted_suite_artifacts()
     {
         var balancedRepository = CreateSyntheticEvidenceRepository("Alpha", "Beta");
         try
         {
-            using var balanced = RunEvidenceScenario(
+            using var balanced = await RunEvidenceScenarioAsync(
                 balancedRepository,
                 """
                 foreach ($suite in $inventory) {
@@ -501,7 +501,7 @@ public sealed class CiTestRunnerContractTests(ITestOutputHelper testOutput)
         var omittedRepository = CreateSyntheticEvidenceRepository("Alpha", "Beta");
         try
         {
-            using var omitted = RunEvidenceScenario(
+            using var omitted = await RunEvidenceScenarioAsync(
                 omittedRepository,
                 """
                 $completed = $inventory[0]
@@ -535,12 +535,12 @@ public sealed class CiTestRunnerContractTests(ITestOutputHelper testOutput)
     }
 
     [Fact]
-    public void Evidence_snapshot_rejects_malformed_xml_but_retains_a_coherent_failed_trx_as_red()
+    public async Task Evidence_snapshot_rejects_malformed_xml_but_retains_a_coherent_failed_trx_as_red()
     {
         var repository = CreateSyntheticEvidenceRepository("Alpha", "Beta", "Gamma");
         try
         {
-            using var result = RunEvidenceScenario(
+            using var result = await RunEvidenceScenarioAsync(
                 repository,
                 """
                 $alpha = $inventory | Where-Object SuiteName -eq "Alpha"
@@ -628,12 +628,12 @@ public sealed class CiTestRunnerContractTests(ITestOutputHelper testOutput)
     }
 
     [Fact]
-    public void Evidence_semantics_rejects_a_result_name_not_bound_to_its_definition()
+    public async Task Evidence_semantics_rejects_a_result_name_not_bound_to_its_definition()
     {
         var repository = CreateSyntheticEvidenceRepository("Alpha");
         try
         {
-            using var result = RunEvidenceScenario(
+            using var result = await RunEvidenceScenarioAsync(
                 repository,
                 """
                 $suite = $inventory[0]
@@ -669,7 +669,7 @@ public sealed class CiTestRunnerContractTests(ITestOutputHelper testOutput)
     [Theory]
     [InlineData(1, 1, false)]
     [InlineData(0, 126, true)]
-    public void Runner_snapshot_retains_a_coherent_failed_trx_before_preserving_a_red_exit(
+    public async Task Runner_snapshot_retains_a_coherent_failed_trx_before_preserving_a_red_exit(
         int nativeExitCode,
         int expectedRunnerExitCode,
         bool expectsProcessAgreementError)
@@ -703,7 +703,7 @@ public sealed class CiTestRunnerContractTests(ITestOutputHelper testOutput)
                     "__NATIVE_EXIT__",
                     nativeExitCode.ToString(System.Globalization.CultureInfo.InvariantCulture),
                     StringComparison.Ordinal);
-            using var result = RunEvidenceScenario(repository, mutation);
+            using var result = await RunEvidenceScenarioAsync(repository, mutation);
 
             var snapshot = result.RootElement.GetProperty("Snapshot");
             var actualRunnerExitCode = result.RootElement.GetProperty("RunnerExit").GetInt32();
@@ -778,12 +778,12 @@ public sealed class CiTestRunnerContractTests(ITestOutputHelper testOutput)
     }
 
     [Fact]
-    public void Evidence_semantics_bind_the_trx_assembly_and_cobertura_root_counters()
+    public async Task Evidence_semantics_bind_the_trx_assembly_and_cobertura_root_counters()
     {
         var repository = CreateSyntheticEvidenceRepository("Alpha");
         try
         {
-            using var result = RunEvidenceScenario(
+            using var result = await RunEvidenceScenarioAsync(
                 repository,
                 """
                 $suite = $inventory[0]
@@ -821,7 +821,7 @@ public sealed class CiTestRunnerContractTests(ITestOutputHelper testOutput)
     }
 
     [Fact]
-    public void Evidence_inventory_rejects_a_solution_test_path_that_escapes_tests()
+    public async Task Evidence_inventory_rejects_a_solution_test_path_that_escapes_tests()
     {
         var repository = Path.Combine(
             Path.GetTempPath(),
@@ -843,7 +843,7 @@ public sealed class CiTestRunnerContractTests(ITestOutputHelper testOutput)
                 </Solution>
                 """);
 
-            var process = RunPowerShell(
+            var process = await RunPowerShellAsync(
                 repository,
                 "Get-CiTestSuiteInventory -RepositoryRoot $env:OCF_TEST_REPOSITORY_ROOT");
 
@@ -857,7 +857,7 @@ public sealed class CiTestRunnerContractTests(ITestOutputHelper testOutput)
     }
 
     [Fact]
-    public void Evidence_inventory_rejects_an_import_classified_test_project_outside_tests()
+    public async Task Evidence_inventory_rejects_an_import_classified_test_project_outside_tests()
     {
         var repository = Path.Combine(
             Path.GetTempPath(),
@@ -886,7 +886,7 @@ public sealed class CiTestRunnerContractTests(ITestOutputHelper testOutput)
                 </Solution>
                 """);
 
-            var process = RunPowerShell(
+            var process = await RunPowerShellAsync(
                 repository,
                 "Get-CiTestSuiteInventory -RepositoryRoot $env:OCF_TEST_REPOSITORY_ROOT");
 
@@ -900,7 +900,7 @@ public sealed class CiTestRunnerContractTests(ITestOutputHelper testOutput)
     }
 
     [Fact]
-    public void Evidence_inventory_rejects_unsupported_solution_project_kinds()
+    public async Task Evidence_inventory_rejects_unsupported_solution_project_kinds()
     {
         var repository = Path.Combine(
             Path.GetTempPath(),
@@ -921,7 +921,7 @@ public sealed class CiTestRunnerContractTests(ITestOutputHelper testOutput)
                 </Solution>
                 """);
 
-            var process = RunPowerShell(
+            var process = await RunPowerShellAsync(
                 repository,
                 "Get-CiTestSuiteInventory -RepositoryRoot $env:OCF_TEST_REPOSITORY_ROOT");
 
@@ -935,7 +935,7 @@ public sealed class CiTestRunnerContractTests(ITestOutputHelper testOutput)
     }
 
     [Fact]
-    public void Evidence_inventory_rejects_a_project_file_omitted_from_the_solution()
+    public async Task Evidence_inventory_rejects_a_project_file_omitted_from_the_solution()
     {
         var repository = CreateSyntheticEvidenceRepository("Alpha");
         try
@@ -947,7 +947,7 @@ public sealed class CiTestRunnerContractTests(ITestOutputHelper testOutput)
                 "<Project Sdk=\"Microsoft.NET.Sdk\"><PropertyGroup>" +
                 "<IsTestProject>true</IsTestProject></PropertyGroup></Project>");
 
-            var process = RunPowerShell(
+            var process = await RunPowerShellAsync(
                 repository,
                 "Get-CiTestSuiteInventory -RepositoryRoot $env:OCF_TEST_REPOSITORY_ROOT");
 
@@ -965,12 +965,12 @@ public sealed class CiTestRunnerContractTests(ITestOutputHelper testOutput)
     }
 
     [Fact]
-    public void Evidence_inventory_records_release_single_tfm_and_project_local_output()
+    public async Task Evidence_inventory_records_release_single_tfm_and_project_local_output()
     {
         var repository = CreateSyntheticEvidenceRepository("Alpha");
         try
         {
-            var process = RunPowerShell(
+            var process = await RunPowerShellAsync(
                 repository,
                 """
                 $suite = @(Get-CiTestSuiteInventory -RepositoryRoot $env:OCF_TEST_REPOSITORY_ROOT)[0]
@@ -1015,7 +1015,7 @@ public sealed class CiTestRunnerContractTests(ITestOutputHelper testOutput)
     [Theory]
     [InlineData("net10.0")]
     [InlineData("net10.0;net9.0")]
-    public void Evidence_inventory_rejects_outer_build_target_frameworks(string targetFrameworks)
+    public async Task Evidence_inventory_rejects_outer_build_target_frameworks(string targetFrameworks)
     {
         var repository = CreateSyntheticEvidenceRepository("Alpha");
         try
@@ -1031,7 +1031,7 @@ public sealed class CiTestRunnerContractTests(ITestOutputHelper testOutput)
                 </Project>
                 """);
 
-            var process = RunPowerShell(
+            var process = await RunPowerShellAsync(
                 repository,
                 "Get-CiTestSuiteInventory -RepositoryRoot $env:OCF_TEST_REPOSITORY_ROOT");
 
@@ -1045,7 +1045,7 @@ public sealed class CiTestRunnerContractTests(ITestOutputHelper testOutput)
     }
 
     [Fact]
-    public void Evidence_inventory_rejects_a_missing_target_framework()
+    public async Task Evidence_inventory_rejects_a_missing_target_framework()
     {
         var repository = CreateSyntheticEvidenceRepository("Alpha");
         try
@@ -1060,7 +1060,7 @@ public sealed class CiTestRunnerContractTests(ITestOutputHelper testOutput)
                 </Project>
                 """);
 
-            var process = RunPowerShell(
+            var process = await RunPowerShellAsync(
                 repository,
                 "Get-CiTestSuiteInventory -RepositoryRoot $env:OCF_TEST_REPOSITORY_ROOT");
 
@@ -1077,7 +1077,7 @@ public sealed class CiTestRunnerContractTests(ITestOutputHelper testOutput)
     }
 
     [Fact]
-    public void Evidence_inventory_rejects_debug_configuration()
+    public async Task Evidence_inventory_rejects_debug_configuration()
     {
         var repository = CreateSyntheticEvidenceRepository("Alpha");
         try
@@ -1094,7 +1094,7 @@ public sealed class CiTestRunnerContractTests(ITestOutputHelper testOutput)
                 </Project>
                 """);
 
-            var process = RunPowerShell(
+            var process = await RunPowerShellAsync(
                 repository,
                 "Get-CiTestSuiteInventory -RepositoryRoot $env:OCF_TEST_REPOSITORY_ROOT");
 
@@ -1109,7 +1109,7 @@ public sealed class CiTestRunnerContractTests(ITestOutputHelper testOutput)
     }
 
     [Fact]
-    public void Evidence_inventory_rejects_an_escaped_release_output()
+    public async Task Evidence_inventory_rejects_an_escaped_release_output()
     {
         var repository = CreateSyntheticEvidenceRepository("Alpha");
         try
@@ -1126,7 +1126,7 @@ public sealed class CiTestRunnerContractTests(ITestOutputHelper testOutput)
                 </Project>
                 """);
 
-            var process = RunPowerShell(
+            var process = await RunPowerShellAsync(
                 repository,
                 "Get-CiTestSuiteInventory -RepositoryRoot $env:OCF_TEST_REPOSITORY_ROOT");
 
@@ -1140,7 +1140,7 @@ public sealed class CiTestRunnerContractTests(ITestOutputHelper testOutput)
     }
 
     [Fact]
-    public void Evidence_inventory_rejects_a_target_path_outside_its_target_directory()
+    public async Task Evidence_inventory_rejects_a_target_path_outside_its_target_directory()
     {
         var repository = CreateSyntheticEvidenceRepository("Alpha");
         try
@@ -1161,7 +1161,7 @@ public sealed class CiTestRunnerContractTests(ITestOutputHelper testOutput)
                 </Project>
                 """);
 
-            var process = RunPowerShell(
+            var process = await RunPowerShellAsync(
                 repository,
                 "Get-CiTestSuiteInventory -RepositoryRoot $env:OCF_TEST_REPOSITORY_ROOT");
 
@@ -1178,7 +1178,7 @@ public sealed class CiTestRunnerContractTests(ITestOutputHelper testOutput)
     }
 
     [Fact]
-    public void Evidence_inventory_rejects_duplicate_normalized_test_assembly_paths()
+    public async Task Evidence_inventory_rejects_duplicate_normalized_test_assembly_paths()
     {
         var repository = Path.Combine(
             Path.GetTempPath(),
@@ -1209,7 +1209,7 @@ public sealed class CiTestRunnerContractTests(ITestOutputHelper testOutput)
                 </Solution>
                 """);
 
-            var processResult = RunPowerShell(
+            var processResult = await RunPowerShellAsync(
                 repository,
                 "Get-CiTestSuiteInventory -RepositoryRoot $env:OCF_TEST_REPOSITORY_ROOT");
 
@@ -1230,7 +1230,7 @@ public sealed class CiTestRunnerContractTests(ITestOutputHelper testOutput)
     }
 
     [Fact]
-    public void Evidence_snapshot_rejects_a_reparse_point_collector_directory_on_windows()
+    public async Task Evidence_snapshot_rejects_a_reparse_point_collector_directory_on_windows()
     {
         if (!OperatingSystem.IsWindows())
         {
@@ -1252,7 +1252,7 @@ public sealed class CiTestRunnerContractTests(ITestOutputHelper testOutput)
                 Path.Combine(outsideCollector, "coverage.cobertura.xml"),
                 "outside-evidence");
 
-            var process = RunPowerShell(
+            var process = await RunPowerShellAsync(
                 repository,
                 """
                 $collectorLink = Join-Path $env:OCF_TEST_REPOSITORY_ROOT "tests/Alpha/TestResults/linked-collector"
@@ -1280,7 +1280,7 @@ public sealed class CiTestRunnerContractTests(ITestOutputHelper testOutput)
     }
 
     [Fact]
-    public void Evidence_copy_rejects_source_and_destination_paths_outside_their_roots()
+    public async Task Evidence_copy_rejects_source_and_destination_paths_outside_their_roots()
     {
         var repository = Path.Combine(
             Path.GetTempPath(),
@@ -1294,7 +1294,7 @@ public sealed class CiTestRunnerContractTests(ITestOutputHelper testOutput)
             File.WriteAllText(Path.Combine(sourceRoot, "inside.trx"), "inside-source");
             File.WriteAllText(Path.Combine(repository, "outside-source.trx"), "outside-source");
 
-            var sourceEscape = RunPowerShell(
+            var sourceEscape = await RunPowerShellAsync(
                 repository,
                 """
                 $sourceRoot = Join-Path $env:OCF_TEST_REPOSITORY_ROOT "tests/Synthetic/TestResults"
@@ -1315,7 +1315,7 @@ public sealed class CiTestRunnerContractTests(ITestOutputHelper testOutput)
                 sourceEscape.StandardError,
                 StringComparison.Ordinal);
 
-            var destinationEscape = RunPowerShell(
+            var destinationEscape = await RunPowerShellAsync(
                 repository,
                 """
                 $sourceRoot = Join-Path $env:OCF_TEST_REPOSITORY_ROOT "tests/Synthetic/TestResults"
@@ -1343,7 +1343,7 @@ public sealed class CiTestRunnerContractTests(ITestOutputHelper testOutput)
     }
 
     [Fact]
-    public void Evidence_copy_records_and_enforces_equal_source_and_destination_hashes()
+    public async Task Evidence_copy_records_and_enforces_equal_source_and_destination_hashes()
     {
         var repository = Path.Combine(
             Path.GetTempPath(),
@@ -1372,7 +1372,7 @@ public sealed class CiTestRunnerContractTests(ITestOutputHelper testOutput)
                     -ExpectedSourceSha256 $expected |
                     ConvertTo-Json -Compress
                 """;
-            var process = RunPowerShell(repository, script);
+            var process = await RunPowerShellAsync(repository, script);
 
             Assert.Equal(0, process.ExitCode);
             using var result = JsonDocument.Parse(process.StandardOutput);
@@ -1382,7 +1382,7 @@ public sealed class CiTestRunnerContractTests(ITestOutputHelper testOutput)
                 result.RootElement.GetProperty("CopiedSha256").GetString());
             Assert.Equal(File.ReadAllText(source), File.ReadAllText(destination));
 
-            var rejectedCopy = RunPowerShell(
+            var rejectedCopy = await RunPowerShellAsync(
                 repository,
                 """
                 $sourceRoot = Join-Path $env:OCF_TEST_REPOSITORY_ROOT "tests/Synthetic/TestResults"
@@ -1406,7 +1406,7 @@ public sealed class CiTestRunnerContractTests(ITestOutputHelper testOutput)
     }
 
     [Fact]
-    public void Repository_state_hashes_tracked_and_untracked_bytes_but_excludes_ignored_outputs()
+    public async Task Repository_state_hashes_tracked_and_untracked_bytes_but_excludes_ignored_outputs()
     {
         var repository = Path.Combine(
             Path.GetTempPath(),
@@ -1414,7 +1414,7 @@ public sealed class CiTestRunnerContractTests(ITestOutputHelper testOutput)
         Directory.CreateDirectory(repository);
         try
         {
-            var process = RunPowerShell(
+            var process = await RunPowerShellAsync(
                 repository,
                 """
                 $root = $env:OCF_TEST_REPOSITORY_ROOT
@@ -1508,7 +1508,7 @@ public sealed class CiTestRunnerContractTests(ITestOutputHelper testOutput)
     }
 
     [Fact]
-    public void Test_assembly_snapshot_detects_same_length_byte_mutation()
+    public async Task Test_assembly_snapshot_detects_same_length_byte_mutation()
     {
         var repository = Path.Combine(
             Path.GetTempPath(),
@@ -1516,7 +1516,7 @@ public sealed class CiTestRunnerContractTests(ITestOutputHelper testOutput)
         Directory.CreateDirectory(repository);
         try
         {
-            var process = RunPowerShell(
+            var process = await RunPowerShellAsync(
                 repository,
                 """
                 $root = $env:OCF_TEST_REPOSITORY_ROOT
@@ -1558,7 +1558,7 @@ public sealed class CiTestRunnerContractTests(ITestOutputHelper testOutput)
     }
 
     [Fact]
-    public void Test_assembly_snapshot_fails_closed_when_the_dll_is_missing()
+    public async Task Test_assembly_snapshot_fails_closed_when_the_dll_is_missing()
     {
         var repository = Path.Combine(
             Path.GetTempPath(),
@@ -1566,7 +1566,7 @@ public sealed class CiTestRunnerContractTests(ITestOutputHelper testOutput)
         Directory.CreateDirectory(repository);
         try
         {
-            var process = RunPowerShell(
+            var process = await RunPowerShellAsync(
                 repository,
                 """
                 $root = $env:OCF_TEST_REPOSITORY_ROOT
@@ -1591,7 +1591,7 @@ public sealed class CiTestRunnerContractTests(ITestOutputHelper testOutput)
     }
 
     [Fact]
-    public void Test_assembly_snapshot_rejects_a_reparse_output_path_on_windows()
+    public async Task Test_assembly_snapshot_rejects_a_reparse_output_path_on_windows()
     {
         if (!OperatingSystem.IsWindows())
         {
@@ -1605,7 +1605,7 @@ public sealed class CiTestRunnerContractTests(ITestOutputHelper testOutput)
         Directory.CreateDirectory(Path.GetDirectoryName(linkedOutput)!);
         try
         {
-            var process = RunPowerShell(
+            var process = await RunPowerShellAsync(
                 repository,
                 """
                 $root = $env:OCF_TEST_REPOSITORY_ROOT
@@ -1637,7 +1637,7 @@ public sealed class CiTestRunnerContractTests(ITestOutputHelper testOutput)
         }
     }
 
-    private JsonDocument RunEvidenceScenario(string repository, string mutation)
+    private async Task<JsonDocument> RunEvidenceScenarioAsync(string repository, string mutation)
     {
         var script = $$"""
             $validTrx = @'
@@ -1764,7 +1764,7 @@ public sealed class CiTestRunnerContractTests(ITestOutputHelper testOutput)
                 RunnerExit = $runnerExit
             } | ConvertTo-Json -Depth 8 -Compress
             """;
-        var process = RunPowerShell(repository, script);
+        var process = await RunPowerShellAsync(repository, script);
         Assert.True(
             process.ExitCode == 0,
             $"PowerShell evidence scenario failed with exit {process.ExitCode}:{Environment.NewLine}" +
@@ -1772,7 +1772,7 @@ public sealed class CiTestRunnerContractTests(ITestOutputHelper testOutput)
         return JsonDocument.Parse(process.StandardOutput);
     }
 
-    private PowerShellResult RunPowerShell(string repository, string script)
+    private async Task<PowerShellResult> RunPowerShellAsync(string repository, string script)
     {
         var startInfo = new ProcessStartInfo
         {
@@ -1797,7 +1797,7 @@ public sealed class CiTestRunnerContractTests(ITestOutputHelper testOutput)
         // captured contract text itself to remain deterministic plain text.
         startInfo.Environment["TERM"] = "xterm";
 
-        var result = PowerShellFixtureRunner.RunWithFailureFollowUp(
+        var result = await PowerShellFixtureRunner.RunWithFailureFollowUpAsync(
             () => new NativeFixtureProcess(startInfo),
             message => testOutput.WriteLine(message));
         // Retain both streams before a caller's assertion (including an expected
