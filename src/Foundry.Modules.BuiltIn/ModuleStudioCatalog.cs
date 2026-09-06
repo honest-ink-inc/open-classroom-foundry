@@ -648,9 +648,16 @@ public static class ModuleStudioCatalog
             inputs.Text("language"),
             inputs.Text("materials-label"),
             inputs.Text("vocabulary-label"));
+        var originalNonTeacherTexts = DocumentText.CollectStrings(new ArtifactDocument(
+            [.. result.Document.Nodes.Where(node => node is not TeacherOnlyNotice)],
+            result.Document.Language));
+        // A teacher-only copy cannot replace an originally non-teacher occurrence.
+        // Locks originally supplied only in notes remain governed by the full document check.
+        var originallyNonTeacherLocks = locked.Where(field => originalNonTeacherTexts
+            .Any(text => LockedFieldValidator.ContainsExactOccurrence(text, field))).ToArray();
 
         return Outcome(result.Document, BoardToBriefBuilder.Recipe, DataLane.Green, result.Issues,
-            document => ValidateBoard(document, locked));
+            document => ValidateBoard(document, locked, originallyNonTeacherLocks));
     }
 
     private static ModuleBuildOutcome BuildDirections(ModuleInputValues inputs)
@@ -881,7 +888,10 @@ public static class ModuleStudioCatalog
                 requiredNotices));
     }
 
-    private static List<ValidationIssue> ValidateBoard(ArtifactDocument document, IReadOnlyList<LockedField> locked)
+    private static List<ValidationIssue> ValidateBoard(
+        ArtifactDocument document,
+        IReadOnlyList<LockedField> locked,
+        IReadOnlyList<LockedField> originallyNonTeacherLocks)
     {
         var issues = new List<ValidationIssue>();
         if (document.Nodes.OfType<Heading>().Count(heading => heading.Level == 1) != 1)
@@ -890,6 +900,16 @@ public static class ModuleStudioCatalog
         }
 
         issues.AddRange(LockedFieldValidator.Validate(document, locked));
+        var nonTeacherDocument = new ArtifactDocument(
+            [.. document.Nodes.Where(node => node is not TeacherOnlyNotice)], document.Language);
+        foreach (var issue in LockedFieldValidator.Validate(nonTeacherDocument, originallyNonTeacherLocks))
+        {
+            if (!issues.Contains(issue))
+            {
+                issues.Add(issue with { Message = $"Outside teacher-only notes: {issue.Message}" });
+            }
+        }
+
         return issues;
     }
 

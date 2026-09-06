@@ -1298,6 +1298,41 @@
       "tests": null,
       "record": "docs/governance/source-role-integrity.md",
       "notes": "Paired exact draft PR21 head, attempt 1. Own completed/success conclusion, retained checkout log and actual uncompressed csharp.sarif read directly: 637,842 bytes, SHA-256 8A8B4CC7B38FD9DF801EE825C941FDBE574A218F59BA768ABE1F4EE03CCFFF96, SARIF 2.1.0, CodeQL 2.26.4, one successful invocation, zero results and 443 execution notifications all level none. No configuration-notification or embedded versionControlProvenance property is invented; binding comes from run/artifact/archive/checkout evidence. The file hash is not the uploaded ZIP digest. Successful analysis does not override paired red CI or supply later-head, recipe admission, main, human-review, publication or release evidence."
+    },
+    {
+      "id": "ci-33997448266",
+      "kind": "hosted-ci",
+      "runId": 33997448266,
+      "workflow": "CI",
+      "event": "pull_request",
+      "branch": "codex/source-role-integrity",
+      "headSha": "aa7410085a02359988ac70d9f5a85e2e79968295",
+      "checkoutSha": "3182de76c7943cfa707dabaec6daa719fa442a32",
+      "conclusion": "failure",
+      "createdUtc": "2026-09-05T22:59:58Z",
+      "receipt": "20260905T230305Z-fb15bfce4f68472d9d22d47d47339a5b",
+      "tests": {
+        "passed": 2591,
+        "total": 2609
+      },
+      "record": "docs/governance/board-review-integrity.md",
+      "notes": "Exact draft PR22 head, attempt 1. Own completed/failure conclusion, checkout logs and seven actual TRXs read directly: 2,591/2,609, 18 Unit failures with no skipped/error/aborted tests. One native exit-1 containment-refusal fixture retained root exit and EOF streams but Queued disposal; decision/wait elapsed 0 with 500 ms remaining, callback entry/exit unobserved and task incomplete at snapshot 519 ms. The following 17 failures identically refused new creation and preserve that frozen description. All 32 fixture-runner, 26 SourceLens and 325 Integration tests passed on this same run; that is not a cure. Outer native/runner 1/1, no timeout, 347446 ms within the unchanged 900-second cap, stable clean 547-source/seven-assembly records, empty identity errors and one completeness error naming the coherent failed Unit suite. Summary SHA-256 362E3582F8FE708115E1F87467302423C6D74C9B89EE06E2CCCBC64CDE0CDDE8; Unit TRX C5EECEDF431F277222442C9DF557730EADDE768FBA1F15C17D21D35AF97D0A30. The 229-file retained manifest AAF40620A3FF3A4AF331725C5156E81349779F1215C9880F36107068D48EDDB7 rehashed without mismatch. Secret scan passed; sample, coverage-threshold, dependency/vulnerability, SBOM and portable gates were skipped. No common cause, later-head evidence, recipe admission, main merge, publication or release is inferred."
+    },
+    {
+      "id": "codeql-33997448198",
+      "kind": "hosted-codeql",
+      "runId": 33997448198,
+      "workflow": "CodeQL SAST",
+      "event": "pull_request",
+      "branch": "codex/source-role-integrity",
+      "headSha": "aa7410085a02359988ac70d9f5a85e2e79968295",
+      "checkoutSha": "3182de76c7943cfa707dabaec6daa719fa442a32",
+      "conclusion": "success",
+      "createdUtc": "2026-09-05T22:59:58Z",
+      "receipt": null,
+      "tests": null,
+      "record": "docs/governance/board-review-integrity.md",
+      "notes": "Paired exact draft PR22 head, attempt 1. Own completed/success conclusion, retained checkout log and actual uncompressed csharp.sarif read directly: 638,214 bytes, SHA-256 7C9D2C00E47FA02C00DC8932BE93C42F1EF95B8579FFCCF1DBCEDF7420F803F8, SARIF 2.1.0, CodeQL 2.26.4, one successful invocation, zero results and 444 execution notifications all level none. Configuration-notification and embedded versionControlProvenance properties are absent; binding comes from run/artifact/archive/checkout evidence. This file hash is not the uploaded ZIP digest. Successful analysis does not override paired red CI or supply later-head, recipe admission, main, human-review, publication or release evidence."
     }
   ]
 }
