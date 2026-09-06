@@ -272,6 +272,16 @@ public sealed class CiSupplyChainContractTests
             workflow,
             StringComparison.Ordinal);
         Assert.Contains("First-admission sample baseline drifted", workflow, StringComparison.Ordinal);
+        Assert.Contains("pwsh -NoProfile -File tools/verify-sample-baselines.ps1", workflow, StringComparison.Ordinal);
+        Assert.Contains(
+            "-CandidateManifestPath tests/Rendering/Fixtures/engine-0.8.0-alpha-candidate-samples.sha256",
+            workflow,
+            StringComparison.Ordinal);
+        Assert.Contains(
+            "-HistoricalPackagePath tests/Integration/Fixtures/upgrade/c1-first-admission-task-strip.ocfproj.base64",
+            workflow,
+            StringComparison.Ordinal);
+        Assert.Contains("if ($LASTEXITCODE -ne 0)", workflow, StringComparison.Ordinal);
         Assert.Contains("windows-sample-baseline", workflow, StringComparison.Ordinal);
         Assert.Contains(
             "actions/download-artifact@70fc10c6e5e1ce46ad2ea6f2b72d43f7d47b13c3 # v8.0.0",

@@ -4,7 +4,7 @@
 
 **Plan version:** 2.0 — regenerated 29 August 2026, applying The Master's Review 1.0 (amendments 1–7; findings F2, F5–F11 incorporated)  
 **Date:** 29 August 2026  
-**Status (6 September 2026):** Foundation and the deterministic press are implemented; SequenceSlate and the reachable Green built-in studios are engineering prototypes, not protected-seat or classroom-validated products. SequenceSlate's constitutionally required AAC/SLP co-design, every other protected-seat review, pilot evidence, packaging, release, and the remaining roadmap stay open. ADR-008 fixes current public display names and ADR-009 corrects the lesson-design display to StrandPlan, while preserving all stable internal identifiers. The bounded commission prepared non-operative governance terms, hardened approval and output seams, and filed ADR-010 as Proposed without convening or ratifying any human decision. The accepted-improvement continuations repair existing recovery, quantitative, source-integrity, layout, access and evidence contracts while retaining the complete proposal scope and those human holds. The changed Lesson Loom, chart, learner-held, calibration, flashcard, SourceLens and Board-to-Brief contracts remain unadmitted; exact seven-replacement implementation is authorized but compatibility proof is unfinished, with booklet disposition and shared failure/transcript semantics separate. The current narrow fixture continuation changes test grouping only. See the [current handover](handover/2026-09-06-fixture-lifecycle-isolation.md).
+**Status (6 September 2026):** Foundation and deterministic authoring are implemented; SequenceSlate and reachable Green studios remain engineering prototypes, not protected-seat or classroom-validated products. Governance terms are non-operative; ADR-007/010, real reviews, pilots and release remain held. The authorized engine 0.8.0-alpha and seven side-by-side replacements now have completed fixed-corpus compatibility evidence and a [bounded technical disposition](governance/seven-recipe-technical-disposition.md), not final admission. The last Press parameter-panel classification repair passed final ordered local closing, including 3,078/3,078 full tests twice and paired samples; own-head hosted verification remains pending. The typist has selected a finite [engineering closeout](governance/2026-09-06-bounded-engineering-closeout.md); all other proposals remain available for successive measured commissions. Booklet disposition and shared-engine/human boundaries remain explicit. No predecessor hosted result certifies this later candidate. See the [current handover](handover/2026-09-06-seven-recipe-compatibility.md).
 **License intention:** Application code and first-party recipes under GNU GPL-3.0-or-later; other content and assets governed by explicit, compatible licenses  
 **Initial operating environment:** .NET 10 on managed Windows 10/11 devices, local-first authoring, optional district-governed Azure OpenAI inference  
 
@@ -42,7 +42,7 @@ The public-facing priority sequence remains inspiring:
 11. Symbol Commons
 12. Inquirywright — Source & Inquiry
 
-Preceding the twelve as **Module Zero** is the **Deterministic Press** — the zero-inference printable studio specified in section 10.0. It carries no privacy risk, needs no district AI approval, exercises the entire pipeline except the inference provider, and establishes the trust every later module is measured against.
+Preceding the twelve as **Module Zero** is the **Deterministic Press** — the zero-inference printable studio specified in section 10.0. Its builders do not require an inference provider or cloud deployment. Teacher-entered text can still contain private or unauthorized material: offline operation does not classify that content or waive local policy. Only known generic catalog defaults or explicitly confirmed Green authored inputs may enter its review path; approval remains separate.
 
 The **engineering and release sequence must differ**:
 
@@ -530,10 +530,10 @@ Each module below states the safe MVP, invariants, proof, and deferrals. Every m
 
 ## 10.0 Deterministic Press (Module Zero)
 
-**Lane:** Structurally Green only — no capture, no inference, no egress is even expressible.  
+**Lane:** Green-only authoring and output policy, not structurally risk-free cargo. The builders have no capture or inference path; arbitrary text must not be classified Green merely because it was typed locally.
 **Problem:** Teachers buy graph paper, ten-frames, handwriting sheets, and flashcard stock with their own money; the atlas's engine promises offline deterministic function, yet every original idea assumed interpretation.
 
-**Scope:** The eight presses of Studio XXI (atlas entries 203–210): Blankforms Press, Handwriting Foundry, Manipulative Mint, Flashcard Flywheel, Foldables Foundry, Booklet Binder, Big Print Shop, and Label Lathe. Inputs are parameters, never prose; a press that wants prose is a different module.
+**Scope:** The eight presses of Studio XXI (atlas entries 203–210): Blankforms Press, Handwriting Foundry, Manipulative Mint, Flashcard Flywheel, Foldables Foundry, Booklet Binder, Big Print Shop, and Label Lathe. Inputs include bounded geometry/settings and teacher-entered list, prompt and label text. The text is placed into deterministic output, not interpreted or generated by a model. Press Room parameter-panel text edits require fresh Green confirmation and invalidate approval. Edits within Gate B separately invalidate revision approval and acknowledgements; they do not repeat the authoring checkbox.
 
 **Architecture position:** No dependency on IInferenceProvider, IOcrService, IRedactionAssistant, or the Amber machinery. Presses exercise IRenderer, IExporter, IPrinter, IProjectStore, and the ApprovedArtifact boundary — Gate B in its lightest form (parameter review plus exact print preview) still passes the architectural approval gate, preserving uniformity.
 
@@ -543,7 +543,7 @@ Each module below states the safe MVP, invariants, proof, and deferrals. Every m
 
 **Acceptance proof:** Measured geometry fixtures; physical print inspection on the hardware bench including the minimum-hardware machine; keyboard-only creation of each MVP artifact; static verification that Module Zero references no inference seam and produces no network egress.
 
-**Defer:** Non-Latin handwriting scripts pending qualified review; Label Lathe until the asset kernel exists; any generated decorative art; any press whose input is prose rather than parameters.
+**Defer:** Non-Latin handwriting scripts pending qualified review; Label Lathe until the asset kernel exists; any generated decorative art; source interpretation or unbounded prose generation. **Correction, 6 September 2026:** the former “no privacy risk,” “Structurally Green” and “parameters, never prose” claims confused deterministic computation with content classification; they do not govern teacher-entered text.
 
 The complete specification is the companion document `open-classroom-foundry-deterministic-press-spec.md`.
 

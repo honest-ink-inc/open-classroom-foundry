@@ -102,6 +102,7 @@ public sealed record PressDefinition
     public const string NeutralEnglishLanguage = "en";
 
     private readonly Func<PressInputs, PressBuildResult> _buildForReview;
+    private readonly Func<ArtifactDocument, ArtifactDocument> _applyLowInk;
 
     public PressDefinition(
         string id,
@@ -119,14 +120,41 @@ public sealed record PressDefinition
         string title,
         RecipeManifest recipe,
         IReadOnlyList<PressParameter> parameters,
+        Func<PressInputs, ArtifactDocument> build,
+        string artifactFurnitureLanguage,
+        Func<ArtifactDocument, ArtifactDocument> applyLowInk)
+        : this(id, title, recipe, parameters, WithoutBuilderIssues(id, build), artifactFurnitureLanguage, applyLowInk)
+    {
+    }
+
+    public PressDefinition(
+        string id,
+        string title,
+        RecipeManifest recipe,
+        IReadOnlyList<PressParameter> parameters,
         Func<PressInputs, PressBuildResult> build,
         string artifactFurnitureLanguage = NeutralEnglishLanguage)
+        // Keep the existing constructor signature and historical default. A
+        // compiled replacement must supply its transform through the overload.
+        : this(id, title, recipe, parameters, build, artifactFurnitureLanguage, HistoricalLowInkPress.Apply)
+    {
+    }
+
+    public PressDefinition(
+        string id,
+        string title,
+        RecipeManifest recipe,
+        IReadOnlyList<PressParameter> parameters,
+        Func<PressInputs, PressBuildResult> build,
+        string artifactFurnitureLanguage,
+        Func<ArtifactDocument, ArtifactDocument> applyLowInk)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(id);
         ArgumentException.ThrowIfNullOrWhiteSpace(title);
         ArgumentNullException.ThrowIfNull(recipe);
         ArgumentNullException.ThrowIfNull(parameters);
         ArgumentNullException.ThrowIfNull(build);
+        ArgumentNullException.ThrowIfNull(applyLowInk);
         LanguageTag.RequireValid(artifactFurnitureLanguage, nameof(artifactFurnitureLanguage));
 
         Id = id;
@@ -134,6 +162,7 @@ public sealed record PressDefinition
         Recipe = recipe;
         Parameters = parameters;
         _buildForReview = build;
+        _applyLowInk = applyLowInk;
         ArtifactFurnitureLanguage = artifactFurnitureLanguage;
     }
 
@@ -162,6 +191,17 @@ public sealed record PressDefinition
             ?? throw new InvalidOperationException($"Press '{Id}' returned no build result.");
     }
 
+    /// <summary>
+    /// Apply this selected definition's transform before review. It does not
+    /// approve a document or infer executable identity from mutable content.
+    /// </summary>
+    public ArtifactDocument ApplyLowInk(ArtifactDocument document)
+    {
+        ArgumentNullException.ThrowIfNull(document);
+        return _applyLowInk(document)
+            ?? throw new InvalidOperationException($"Press '{Id}' returned no low-ink document.");
+    }
+
     private static Func<PressInputs, PressBuildResult> WithoutBuilderIssues(
         string id,
         Func<PressInputs, ArtifactDocument> build)
@@ -185,7 +225,8 @@ public static class PressRoomCatalog
 
     private static NumberParameter Seed() => new("seed", "Seed (same seed, same pages)", 1, 99999999, 20260908);
 
-    public static IReadOnlyList<PressDefinition> All { get; } =
+    /// <summary>Historical definitions only. Unversioned selection never means latest.</summary>
+    public static IReadOnlyList<PressDefinition> All { get; } = Array.AsReadOnly<PressDefinition>(
     [
         new("calibration-proof", "Calibration & proof sheet", DeterministicPressRecipes.Calibration,
             [Page(), new NumberParameter("margin", "Margin (mm)", 5, 25, 12)],
@@ -278,12 +319,10 @@ public static class PressRoomCatalog
 
         new("flashcards", "Flashcards", DeterministicPressRecipes.Flashcards,
             [new LinesParameter("pairs", "Cards, one per line as term | answer", "photosynthesis | how plants make food from light\nhabitat | where an organism lives")],
-            inputs =>
-            {
-                var result = FlashcardFlywheel.Build(
-                    [.. inputs.SplitLines("pairs").Select(pair => new FlashcardPair(pair.Left, pair.Right ?? ""))]);
-                return new PressBuildResult(result.Document, result.Issues);
-            }),
+            // C1's catalog exposed only the document, omitting raw overflow
+            // warnings. Preserve that route; the replacement carries issues.
+            inputs => FlashcardFlywheel.Build(
+                [.. inputs.SplitLines("pairs").Select(pair => new FlashcardPair(pair.Left, pair.Right ?? ""))]).Document),
 
         new("booklet-guide", "Saddle-stitch booklet guide", DeterministicPressRecipes.BookletGuide,
             [new NumberParameter("pages", "Content pages", 1, 64, 8)],
@@ -439,8 +478,8 @@ public static class PressRoomCatalog
              new LinesParameter("data", "Bars, one per line as label | value", "Sun | 18\nShade | 9\nWindow | 12"),
              new ChoiceParameter("orientation", "Bars run", ["Up", "Across"], "Up"),
              Page("Letter landscape")],
-            inputs => ChartPress.Sheet(inputs.Text("title"),
-                ChartPress.Parse(inputs.SplitLines("data")),
+            inputs => HistoricalChartPress.Sheet(inputs.Text("title"),
+                HistoricalChartPress.Parse(inputs.SplitLines("data")),
                 inputs.Text("orientation") == "Across", inputs.Page())),
 
         // Bell-to-Bell (menu 4, item 3): the defaults meet the bell exactly —
@@ -522,20 +561,20 @@ public static class PressRoomCatalog
              new NumberParameter("contents", "Contents rows", 4, 14, 8),
              new TextParameter("pledge", "The pledge printed on every page", "This record belongs to the learner and lives on paper - never in a data system."),
              Page()],
-            inputs => LearnerHeldKit.PortfolioPassport(inputs.Lines("selection"), inputs.Lines("reflection"),
+            inputs => HistoricalLearnerHeldKit.PortfolioPassport(inputs.Lines("selection"), inputs.Lines("reflection"),
                 inputs.Whole("contents"), inputs.Text("pledge"), inputs.Page())),
 
         new("strategy-shelf", "Strategy shelf cards", DeterministicPressRecipes.LearnerHeld,
             [new LinesParameter("strategies", "Strategies offered, one per line (the learner chooses)", "Reread the sentence slowly\nBreak the problem into parts\nDraw what I know\nTake three slow breaths\nAsk: what exactly is stuck?\nCheck against an example"),
              new TextParameter("pledge", "The pledge printed on every page", "These cards are mine; I chose them."),
              Page()],
-            inputs => LearnerHeldKit.StrategyShelf(inputs.Lines("strategies"), inputs.Text("pledge"), inputs.Page())),
+            inputs => HistoricalLearnerHeldKit.StrategyShelf(inputs.Lines("strategies"), inputs.Text("pledge"), inputs.Page())),
 
         new("goal-post", "Goal sheet", DeterministicPressRecipes.LearnerHeld,
             [new LinesParameter("prompts", "Prompts, one per line", "My goal\nHow I will know I am getting there\nReview date and what I noticed\nEvidence I choose to keep"),
              new TextParameter("pledge", "The pledge printed on the page", "This sheet lives in my folder - never in a data system."),
              Page()],
-            inputs => LearnerHeldKit.GoalPost(inputs.Lines("prompts"), inputs.Text("pledge"), inputs.Page())),
+            inputs => HistoricalLearnerHeldKit.GoalPost(inputs.Lines("prompts"), inputs.Text("pledge"), inputs.Page())),
 
         // The rubric and criteria presses (menu 3, item 7).
         new("one-point-rubric", "One-point rubric", DeterministicPressRecipes.Rubrics,
@@ -565,13 +604,90 @@ public static class PressRoomCatalog
 
         // Big Print Shop stays out: its input is an existing approved artifact,
         // not parameters — it joins the room when the project library picker does.
-    ];
+    ]);
+
+    /// <summary>
+    /// Explicit candidate routes, not an automatic upgrade or admission. The
+    /// learner-held siblings share one exact replacement manifest identity.
+    /// </summary>
+    public static IReadOnlyList<PressDefinition> ReplacementCandidates { get; } = Array.AsReadOnly(
+    [
+        ReplacementDocument("calibration-proof", DeterministicPressRecipes.CalibrationReplacement,
+            inputs => CalibrationPressReplacement.ProofPage(inputs.Page(), inputs.Mm("margin"))),
+        ReplacementDocument("bar-chart", DeterministicPressRecipes.ChartsReplacement,
+            inputs => ChartPress.Sheet(inputs.Text("title"), ChartPress.Parse(inputs.SplitLines("data")),
+                inputs.Text("orientation") == "Across", inputs.Page())),
+        ReplacementDocument("portfolio-passport", DeterministicPressRecipes.LearnerHeldReplacement,
+            inputs => LearnerHeldKit.PortfolioPassport(inputs.Lines("selection"), inputs.Lines("reflection"),
+                inputs.Whole("contents"), inputs.Text("pledge"), inputs.Page())),
+        ReplacementDocument("strategy-shelf", DeterministicPressRecipes.LearnerHeldReplacement,
+            inputs => LearnerHeldKit.StrategyShelf(inputs.Lines("strategies"), inputs.Text("pledge"), inputs.Page())),
+        ReplacementDocument("goal-post", DeterministicPressRecipes.LearnerHeldReplacement,
+            inputs => LearnerHeldKit.GoalPost(inputs.Lines("prompts"), inputs.Text("pledge"), inputs.Page())),
+        ReplacementReview("flashcards", DeterministicPressRecipes.FlashcardsReplacement,
+            inputs =>
+            {
+                var result = FlashcardFlywheel.Build(
+                    [.. inputs.SplitLines("pairs").Select(pair => new FlashcardPair(pair.Left, pair.Right ?? ""))]);
+                return new PressBuildResult(result.Document, result.Issues);
+            }),
+    ]);
+
+    public static IReadOnlyList<PressDefinition> AllVersions { get; } =
+        CheckedVersions([.. All, .. ReplacementCandidates]);
 
     private const string DefaultBingoEntries = "sum\ndifference\nproduct\nquotient\nfactor\nmultiple\nnumerator\ndenominator\nfraction\ndecimal\npercent\nratio\narea\nperimeter\nvolume\nangle\nvertex\nedge\nprime\neven\nodd\nsquare\ncube\nhalf";
 
     public static PressDefinition ById(string id)
         => All.FirstOrDefault(d => d.Id == id)
             ?? throw new ArgumentException($"No press '{id}' in the catalog.", nameof(id));
+
+    /// <summary>Resolve one compiled definition/version pair exactly; no normalization or fallback.</summary>
+    public static PressDefinition ById(string id, string recipeVersion)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(id);
+        ArgumentException.ThrowIfNullOrWhiteSpace(recipeVersion);
+        return AllVersions.FirstOrDefault(definition => definition.Id == id && definition.Recipe.Version == recipeVersion)
+            ?? throw new ArgumentException($"No press '{id}' at recipe version '{recipeVersion}' in the catalog.", nameof(recipeVersion));
+    }
+
+    private static PressDefinition ReplacementDocument(string id, RecipeManifest recipe, Func<PressInputs, ArtifactDocument> build)
+    {
+        var historical = ById(id);
+        return new PressDefinition(id, historical.Title, recipe, historical.Parameters, build,
+            historical.ArtifactFurnitureLanguage, LowInkPress.Apply);
+    }
+
+    private static PressDefinition ReplacementReview(string id, RecipeManifest recipe, Func<PressInputs, PressBuildResult> build)
+    {
+        var historical = ById(id);
+        return new PressDefinition(id, historical.Title, recipe, historical.Parameters, build,
+            historical.ArtifactFurnitureLanguage, LowInkPress.Apply);
+    }
+
+    private static System.Collections.ObjectModel.ReadOnlyCollection<PressDefinition> CheckedVersions(PressDefinition[] definitions)
+    {
+        var executionKeys = new HashSet<(string Id, string Version)>();
+        var fingerprints = new Dictionary<(string Id, string Version), string>();
+        foreach (var definition in definitions)
+        {
+            if (!executionKeys.Add((definition.Id, definition.Recipe.Version)))
+            {
+                throw new InvalidOperationException($"Duplicate compiled press '{definition.Id}' at version '{definition.Recipe.Version}'.");
+            }
+
+            var key = (definition.Recipe.Id, definition.Recipe.Version);
+            var fingerprint = RecipeContractFingerprint.ComputeSha256(definition.Recipe);
+            if (fingerprints.TryGetValue(key, out var existing) && existing != fingerprint)
+            {
+                throw new InvalidOperationException($"Compiled press siblings disagree on recipe '{key.Id}' at version '{key.Version}'.");
+            }
+
+            fingerprints[key] = fingerprint;
+        }
+
+        return Array.AsReadOnly(definitions);
+    }
 
     /// <summary>Every parameter's declared default as the surface would submit it.</summary>
     public static Dictionary<string, string> Defaults(PressDefinition definition)

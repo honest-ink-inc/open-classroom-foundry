@@ -87,7 +87,7 @@ public sealed class SourceLensReviewIntegrityTests(ITestOutputHelper output)
         SyntheticEdit edit,
         bool expectedBlocker)
     {
-        var mode = ModuleStudioCatalog.ByModeKey("source-lens");
+        var mode = ModuleStudioCatalog.ByModeKey("source-lens", "0.2.0");
         var values = SyntheticValues(mode);
         if (edit is SyntheticEdit.OptionalMetadataNotRecorded or SyntheticEdit.OptionalMetadataInventedAfterBuild)
         {

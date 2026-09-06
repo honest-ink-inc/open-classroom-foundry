@@ -27,6 +27,7 @@ public sealed class PressRoomAccessBoundaryTests(ITestOutputHelper output)
             using var form = CreatePressRoom("flashcards", session => captured = session);
             var pairs = ReviewSurfaceContractTests.Flatten(form).OfType<TextBox>().Single();
             pairs.Text = "Synthetic term | " + answer;
+            PressRoomGreenInputTests.ConfirmSyntheticInputs(form);
             InvokeReview(form);
 
             var review = Assert.IsType<ReviewSession>(captured);
@@ -64,6 +65,7 @@ public sealed class PressRoomAccessBoundaryTests(ITestOutputHelper output)
             ReviewSession? captured = null;
             using var form = CreatePressRoom("flashcards", session => captured = session);
             ReviewSurfaceContractTests.Flatten(form).OfType<TextBox>().Single().Text = "Synthetic term | " + answer;
+            PressRoomGreenInputTests.ConfirmSyntheticInputs(form);
             InvokeReview(form);
             var first = Assert.IsType<ReviewSession>(captured);
             Assert.Contains(expected, first.Issues);
@@ -97,7 +99,8 @@ public sealed class PressRoomAccessBoundaryTests(ITestOutputHelper output)
         {
             ReviewSession? captured = null;
             using var form = CreatePressRoom("calibration-proof", session => captured = session);
-            ReviewSurfaceContractTests.Flatten(form).OfType<CheckBox>().Single().Checked = lowInk;
+            Assert.IsType<CheckBox>(ReviewSurfaceContractTests.ByName(form,
+                UiStrings.WithoutMnemonic(UiStrings.LowInkToggle))).Checked = lowInk;
             InvokeReview(form);
 
             Assert.Null(form.ApprovedResult);
@@ -123,8 +126,13 @@ public sealed class PressRoomAccessBoundaryTests(ITestOutputHelper output)
                 .Where(rectangle => rectangle.WidthMm == 22 && rectangle.HeightMm == 14)
                 .OrderBy(rectangle => rectangle.X).ToArray();
             Assert.Equal(6, ramp.Length);
-            var rampInstruction = graphic.Primitives.OfType<TextLabel>().Single(label =>
-                label.Text.StartsWith("5. The density ramp", StringComparison.Ordinal)).Text;
+            // The authorized replacement wraps instructions across labels.
+            // Reassemble only the contiguous instruction block, ending before
+            // the first instrument primitive, and retain every original word.
+            var rampInstruction = string.Join(' ', graphic.Primitives.Skip(3)
+                .TakeWhile(primitive => primitive is TextLabel).Cast<TextLabel>()
+                .SkipWhile(label => !label.Text.StartsWith("5. The density ramp", StringComparison.Ordinal))
+                .Select(label => label.Text));
             Assert.Equal(
                 "5. The density ramp must darken evenly left to right; jumps or banding are driver or toner trouble.",
                 rampInstruction);
@@ -166,6 +174,10 @@ public sealed class PressRoomAccessBoundaryTests(ITestOutputHelper output)
                 form, UiStrings.WithoutMnemonic(UiStrings.PressList));
             presses.SelectedIndex = PressRoomCatalog.All.ToList().FindIndex(definition => definition.Id == pressId);
             Assert.Equal(pressId, form.SelectedPress?.Id);
+            var versions = Assert.Single(ReviewSurfaceContractTests.Flatten(form).OfType<ComboBox>(),
+                control => control.Name == "recipe-version");
+            versions.SelectedIndex = 1;
+            Assert.Equal("0.2.0", form.SelectedPress?.Recipe.Version);
             return form;
         }
         catch

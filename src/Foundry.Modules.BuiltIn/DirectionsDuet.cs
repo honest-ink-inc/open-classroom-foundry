@@ -141,7 +141,7 @@ public static class DirectionsDuetBuilder
         Id: "directions-duet",
         Version: "0.1.0",
         License: "GPL-3.0-or-later",
-        MinimumEngineVersion: EngineIdentity.EngineVersion,
+        MinimumEngineVersion: "0.7.0-alpha",
         InstructionalPurpose: "Turn confirmed classroom directions into line-aligned bilingual microsteps with locked facts intact in both languages.",
         ProhibitedPurposes:
         [

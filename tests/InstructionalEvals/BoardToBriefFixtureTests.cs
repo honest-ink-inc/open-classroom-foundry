@@ -163,7 +163,10 @@ public sealed class BoardToBriefFixtureTests
 
     [Theory]
     [MemberData(nameof(FixtureIndexes))]
-    public async Task Every_fixture_preserves_source_structure_and_fails_closed_or_renders(int fixtureIndex)
+    public Task Every_fixture_preserves_source_structure_and_fails_closed_or_renders(int fixtureIndex)
+        => RecipeEvaluationDispatcher.RunAsync(new("board-to-brief", "0.1.0", "0.1"), fixtureIndex);
+
+    internal static async Task EvaluateHistoricalFixtureAsync(int fixtureIndex)
     {
         var fixture = Fixtures[fixtureIndex];
         var result = BoardToBriefBuilder.Build(

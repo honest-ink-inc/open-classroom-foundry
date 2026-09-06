@@ -36,7 +36,7 @@ public sealed class LearnerHeldKitLayoutTests(ITestOutputHelper output)
     public async Task Goal_prompt_rules_do_not_enter_the_next_prompt_label(PageSize size, int count)
     {
         var prompts = SyntheticPrompts(count);
-        var definition = PressRoomCatalog.ById("goal-post");
+        var definition = PressRoomCatalog.ById("goal-post", "0.2.0");
         var values = new Dictionary<string, string>(PressRoomCatalog.Defaults(definition), StringComparer.Ordinal)
         {
             ["prompts"] = string.Join('\n', prompts),

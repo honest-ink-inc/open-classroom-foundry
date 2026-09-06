@@ -13,7 +13,9 @@ namespace Foundry.Rendering;
 public static class PortableProjectSnapshot
 {
     public static bool IsAdmittedRendererVersion(string writerEngineVersion)
-        => string.Equals(writerEngineVersion, EngineIdentity.EngineVersion, StringComparison.Ordinal)
+        // A future engine constant must not silently add a reader or remove
+        // the exact first-admission route. Schema 1 remains hash-less.
+        => writerEngineVersion is "0.7.0-alpha" or "0.8.0-alpha"
             || string.Equals(
                 writerEngineVersion,
                 LegacyPortableSnapshotRenderer.EngineVersion,

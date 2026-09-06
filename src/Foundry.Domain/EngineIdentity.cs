@@ -9,7 +9,8 @@ public static class EngineIdentity
 {
     public const string InternalId = "OpenClassroomFoundry";
 
-    public const string EngineVersion = "0.7.0-alpha";
+    // Authorized compatibility implementation candidate, not a release or tag.
+    public const string EngineVersion = "0.8.0-alpha";
 
     /// <summary>The .ocfproj schema version this engine writes (ADR-003).</summary>
     public const string ProjectSchemaVersion = "1";

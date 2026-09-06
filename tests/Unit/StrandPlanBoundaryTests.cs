@@ -11,7 +11,7 @@ public sealed class StrandPlanBoundaryTests
     [Fact]
     public void Large_phase_minutes_reach_a_timing_refusal_instead_of_overflowing_the_builder()
     {
-        var mode = ModuleStudioCatalog.ByModeKey("lesson-loom");
+        var mode = ModuleStudioCatalog.ByModeKey("lesson-loom", "0.2.0");
         var values = ModuleStudioCatalog.Defaults(mode);
         values["phases"] = "Launch|2147483647|Synthetic launch work.|Synthetic launch check|Synthetic response\nWork|2147483647|Synthetic work.||\nClosure|47|Synthetic closure work.|Synthetic closure check|Synthetic closure response";
 
@@ -25,7 +25,7 @@ public sealed class StrandPlanBoundaryTests
     [Fact]
     public void Reviewed_phase_minutes_cannot_wrap_around_to_the_original_available_time()
     {
-        var mode = ModuleStudioCatalog.ByModeKey("lesson-loom");
+        var mode = ModuleStudioCatalog.ByModeKey("lesson-loom", "0.2.0");
         var outcome = mode.Build!(new ModuleInputValues(ModuleStudioCatalog.Defaults(mode)));
         var phaseTable = Assert.Single(outcome.Document.Nodes.OfType<TableNode>(), table =>
             table.HeaderRow!.SequenceEqual(["Phase", "Minutes", "Learners are doing"], StringComparer.Ordinal));
@@ -48,7 +48,7 @@ public sealed class StrandPlanBoundaryTests
     [InlineData(" \t ")]
     public void A_required_learning_evidence_value_cannot_be_replaced_by_its_generated_heading(string evidence)
     {
-        var mode = ModuleStudioCatalog.ByModeKey("lesson-loom");
+        var mode = ModuleStudioCatalog.ByModeKey("lesson-loom", "0.2.0");
         Assert.True(Assert.Single(mode.Fields, field => field.Key == "evidence").IsRequired);
         var values = ModuleStudioCatalog.Defaults(mode);
         values["evidence"] = evidence;

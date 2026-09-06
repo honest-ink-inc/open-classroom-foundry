@@ -67,10 +67,13 @@ public sealed class LessonLoomFixtureTests
 
     [Theory]
     [MemberData(nameof(FixtureIndexes))]
-    public async Task Every_fixture_fails_closed_or_approves_and_renders_deterministically(int fixtureIndex)
+    public Task Every_fixture_fails_closed_or_approves_and_renders_deterministically(int fixtureIndex)
+        => RecipeEvaluationDispatcher.RunAsync(new("lesson-loom", "0.1.0", "0.1"), fixtureIndex);
+
+    internal static async Task EvaluateHistoricalFixtureAsync(int fixtureIndex)
     {
         var fixture = Fixtures[fixtureIndex];
-        var result = LessonLoomBuilder.Build(
+        var result = LessonLoomBuilder.BuildHistorical(
             fixture.Title,
             fixture.Target,
             fixture.TotalMinutes,

@@ -6,6 +6,23 @@ namespace Foundry.Tests.Unit;
 public class TruthSurfaceDocumentationTests
 {
     [Fact]
+    public void Press_claims_distinguish_determinism_from_content_classification()
+    {
+        var plan = Read("docs", "implementation-plan.md");
+        var specification = Read("docs", "modules", "deterministic-press-spec.md");
+        var guide = Read("docs", "development", "source-build-and-verification.md");
+
+        Assert.DoesNotContain("It carries no privacy risk", plan, StringComparison.Ordinal);
+        Assert.DoesNotContain("**Lane:** Structurally Green only", plan, StringComparison.Ordinal);
+        Assert.DoesNotContain("Gate A and Gate C are structurally vacuous", specification, StringComparison.Ordinal);
+        Assert.Contains("Press Room parameter-panel text edits require fresh Green confirmation", plan, StringComparison.Ordinal);
+        Assert.Contains("incomplete confirmation refuses before building or opening review", specification, StringComparison.Ordinal);
+        Assert.Contains("not automatic detection or legal clearance", specification, StringComparison.Ordinal);
+        Assert.Contains("tools/verify-sample-baselines.ps1 -SamplesRoot", guide, StringComparison.Ordinal);
+        Assert.Contains("never overwrite the C1", guide, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void Public_status_uses_the_recorded_evidence_baseline_and_ruleset_state()
     {
         var readme = Read("README.md");

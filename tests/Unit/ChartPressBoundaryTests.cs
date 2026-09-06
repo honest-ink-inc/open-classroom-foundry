@@ -76,7 +76,7 @@ public sealed class ChartPressBoundaryTests
 
     private static ArtifactDocument BuildFromCatalog(string data, bool horizontal)
     {
-        var definition = PressRoomCatalog.ById("bar-chart");
+        var definition = PressRoomCatalog.ById("bar-chart", "0.2.0");
         var values = new Dictionary<string, string>(PressRoomCatalog.Defaults(definition), StringComparer.Ordinal)
         {
             ["data"] = data,

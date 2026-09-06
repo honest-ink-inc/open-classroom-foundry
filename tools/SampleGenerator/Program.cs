@@ -37,9 +37,10 @@ Directory.CreateDirectory(outputDirectory);
 var approvedAt = new DateTimeOffset(2026, 8, 29, 12, 0, 0, TimeSpan.Zero);
 var catalog = new JsonAssetCatalog(Path.Combine(repoRoot, "assets", "symbols"));
 var renderer = new AccessibleHtmlRenderer(catalog);
-// The 0.7 package snapshot format remains byte-compatible until the typist
-// versions it. Assets travel beside that accessible semantic fallback; live
-// HTML and print output above/below use the asset-aware renderer.
+// The explicitly supported 0.7 and 0.8 writers share this portable snapshot
+// body. The package records the actual executing engine, never an old stamp
+// for baseline convenience. Assets travel beside the semantic fallback;
+// live HTML and print output use the asset-aware renderer.
 var store = new OcfprojProjectStore(outputDirectory, new AccessibleHtmlRenderer(), catalog);
 
 if (args.Length == 4)
@@ -114,7 +115,9 @@ await File.WriteAllBytesAsync(Path.Combine(outputDirectory, "first-then.print.ht
 
 // Samples 4+: the Deterministic Press — calibration instrument and second wave
 // (handover 2026-08-29). All parameters, no prose; seeds fixed so the run is
-// byte-identical every time.
+// byte-identical every time. These retain the historical sample inputs and
+// builders; replacement-route controls live in their separately versioned
+// suites, not in a silent rewrite of the original canonical evidence.
 string[] bingoEntries =
 [
     "sum", "difference", "product", "quotient", "factor", "multiple",
@@ -159,9 +162,9 @@ var pressSamples = new (string Name, ArtifactDocument Document)[]
     ("timeline", TimelineWeaver.Sheet(
         TimelineWeaver.Parse([("1957", "Sputnik"), ("1969", "Moon landing"), ("1972-1975", "Final Apollo era")]),
         1950, 1980)),
-    ("bar-chart", ChartPress.Sheet(
+    ("bar-chart", HistoricalChartPress.Sheet(
         "Bean plants after three weeks (cm)",
-        ChartPress.Parse([("Sun", "18"), ("Shade", "9"), ("Window", "12")]))),
+        HistoricalChartPress.Parse([("Sun", "18"), ("Shade", "9"), ("Window", "12")]))),
     ("class-set-word-search", ClassSets.Compose(
         PressRoomCatalog.ById("word-search"),
         PressRoomCatalog.Defaults(PressRoomCatalog.ById("word-search")),
@@ -193,7 +196,7 @@ var pressSamples = new (string Name, ArtifactDocument Document)[]
         "Tuesday, period 2", "8:30",
         BellToBell.Parse([("5", "Warm-up"), ("15", "Mini-lesson"), ("20", "Guided practice"), ("8", "Share out")]),
         periodMinutes: 55, transitionMinutes: 1, "Pack up, reflect, and reset", closureMinutes: 3)),
-    ("portfolio-passport", LearnerHeldKit.PortfolioPassport(
+    ("portfolio-passport", HistoricalLearnerHeldKit.PortfolioPassport(
         ["What is it?", "Why I chose it"], ["Before, I...", "Now, I..."], contentsRows: 8,
         "This record belongs to the learner and lives on paper - never in a data system.")),
     ("one-point-rubric", RubricPresses.OnePointRubric(

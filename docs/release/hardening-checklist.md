@@ -1,5 +1,7 @@
 # 1.0 hardening checklist
 
+**6 September 2026 candidate continuation:** the [current handover](../handover/2026-09-06-seven-recipe-compatibility.md) tracks authorized engine `0.8.0-alpha` compatibility implementation, not a release. The opening engine version and dated evidence below remain historical measurements; their earlier use of "current" does not transfer those results to this candidate. Version separation alone does not close the assembly/tag/source-correspondence, schema-1, rights, human-review or publication stops. No publishing or packaging script has been run for this candidate.
+
 **Date opened:** 29 August 2026 · **Engine version:** 0.7.0-alpha · Maps implementation plan Release 1.0 to evidence. "Done" means the bounded artifact exists and its stated machine checks have run; it never closes named human, district, protected-seat, or exact-release evidence. **0.7.0-alpha is not 1.0**: every open human row below is why.
 
 | Item | Status | Notes |

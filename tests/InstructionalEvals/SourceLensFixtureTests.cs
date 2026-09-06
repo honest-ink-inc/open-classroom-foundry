@@ -89,7 +89,10 @@ public sealed class SourceLensFixtureTests
 
     [Theory]
     [MemberData(nameof(FixtureIndexes))]
-    public async Task Every_fixture_blocks_observes_unknown_rights_or_preserves_the_current_structure_and_renders_deterministically(int fixtureIndex)
+    public Task Every_fixture_blocks_observes_unknown_rights_or_preserves_the_current_structure_and_renders_deterministically(int fixtureIndex)
+        => RecipeEvaluationDispatcher.RunAsync(new("source-lens", "0.1.0", "0.1"), fixtureIndex);
+
+    internal static async Task EvaluateHistoricalFixtureAsync(int fixtureIndex)
     {
         var fixture = Fixtures[fixtureIndex];
         var result = SourceLensBuilder.Build(

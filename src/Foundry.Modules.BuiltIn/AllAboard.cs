@@ -262,7 +262,7 @@ public static class AllAboardRecipes
         Id: id,
         Version: "0.1.0",
         License: "GPL-3.0-or-later",
-        MinimumEngineVersion: EngineIdentity.EngineVersion,
+        MinimumEngineVersion: "0.7.0-alpha",
         InstructionalPurpose: purpose,
         ProhibitedPurposes: Prohibited,
         AllowedInputKinds: ["teacher-entered-text", "libre-symbol"],

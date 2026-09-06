@@ -2,6 +2,27 @@
 
 **Opened 5 September 2026. Active work, not completion or council ratification.**
 
+## Current commission boundary — typist clarification, 6 September 2026
+
+The typist explicitly included already-made improvements outside the opening
+audit and asked for a definite stopping point, with later enrichment based on
+measured analysis in successive sessions. The
+[bounded engineering closeout](2026-09-06-bounded-engineering-closeout.md)
+therefore governs completion of this session: finish and verify the accumulated
+repairs, factual records and technical disposition, then commit/push the reviewed
+draft and read its own hosted outcomes. The original sprawling objective and all
+forty proposals below are retained as historical direction and future work,
+not a demand to implement every unselected feature before this session can close.
+ACTIVE/HELD rows are not converted into successful human outcomes by that boundary.
+
+**I20/I36 update, 6 September:** the fixed corpus now has a completed
+[technical assessment](seven-recipe-technical-disposition.md), including eight
+generated calibration PDF layouts without the earlier instruction clipping,
+all raw differences and export refusals. This supersedes the earlier generated-
+PDF gap, not physical-print/AT review or final admission. The final Press
+parameter-panel confirmation repair has its own fresh verification; historical
+3,067-test results do not certify that later UI change.
+
 ## Full objective and evidence baseline
 
 The user-provided objective is retained in full:
@@ -13,7 +34,7 @@ The [synthetic advisory packet](../reviews/2026-09-05-synthetic-council/README.m
 at `554ec87b256c5cbd8f6efba453070f27941c9257` is the complete input: all
 [40 proposals](../reviews/2026-09-05-synthetic-council/teacher-practice-and-improvements.md),
 all [227 individual atlas dispositions](../reviews/2026-09-05-synthetic-council/atlas-dispositions.md),
-25 studios and 13 starting modules. Their identities, separate acceptance
+25 studios and 13 starting modules. **Historical 5 September scope statement:** their identities, separate acceptance
 questions and dependencies remain in scope, not merely whichever rows already
 have code. The packet's historical content manifest is evidence at that commit;
 do not regenerate it to disguise later changes to mutable repository indexes.
@@ -105,6 +126,48 @@ altering evidence values, fixture code or guard policy. ~~Fresh full closing
 remains pending.~~ **Struck later 6 September 2026:** the corrected pair
 passed at its recorded source/assembly cutoff; all 94 fixture controls also
 passed in the first failed full run, which remains retained.
+
+**I33/I34/I36 continuation, 6 September 2026:** the fixture-isolation
+baseline `7cb257e7df5dcc55a7414ef482bed035ee2b4fd8` now has its own green
+CI/CodeQL entries in the ledger, without closing earlier sightings. The
+[seven-recipe compatibility continuation](seven-recipe-compatibility.md)
+separates authorized implementation, fresh original-C1 observations and
+pending candidate verification. Exact old/new routes and replacement
+evaluations are being implemented; compile success is not test or admission
+evidence. The booklet-guide instruction change remains a separate held
+disposition. I06/I14/I20/I25/I33/I34/I36/I39 remain ACTIVE, not complete.
+
+**Later 6 September, 12:49 UTC:** the same continuation now records local
+closing with 3,049/3,049 full tests twice, 93% measured coverage in each run,
+forty directly byte-equal fresh sample pairs, and thirty-six genuine-C1
+package compatibility controls twice. These are source-bound local results,
+not merely compile success and not candidate hosted or admission evidence.
+
+**Later 6 September, 13:39 UTC:** the subsequent test-only edited-reopen/resave
+extension has its own [ordered local closing](seven-recipe-compatibility.md#edited-reopen-extension-closing-6-september-1339-utc):
+3,067/3,067 full tests twice, including all eighteen new cases; forty fresh
+byte-equal sample pairs with both unchanged baseline guards; and 93% coverage
+from each exact run separately. Earlier failures and the preceding 3,049-result
+cutoff remain evidence, not relabeled runs. Candidate boundary capture/final
+comparison, compatibility disposition, booklet authority and hosted admission
+remain outstanding; no ACTIVE/HELD item is closed by these local results alone.
+The original-package fixtures preserve measured C1 bytes; historical failures
+and the original forty-row baseline remain unchanged. The candidate press
+boundary capture and its final comparison, shared-engine/output-schema
+dispositions, separate booklet choice and human/physical reviews remain open.
+No I-number or atlas candidate is closed by those bounded measurements.
+
+**Later I20/I36 continuation, 6 September, 14:14 UTC:** bounded generated-PDF
+inspection now covers the authorized calibration replacement on Letter and A4,
+5/25 mm margins, ordinary/low-ink: eight source files and sixteen rasters, with
+all eight repeated-raster pairs byte-equal. The visible instructions and marks
+fit; both Poppler missing-font warnings remain recorded. This extends the
+earlier failed and default-only measurements rather than deleting or relabeling
+them. The [exact readback](seven-recipe-compatibility.md#neutral-catalog-refresh-and-calibration-margin-inspection-6-september-1414-utc)
+also binds two equal 1,084-entry neutral UI exports, still draft and without a
+production language pin. Browser/AT, physical print, full boundary comparison,
+compatibility admission and protected reviews remain separate; I20/I36 and all
+other ACTIVE/HELD rows remain open.
 
 ## Complete atlas and release coverage
 

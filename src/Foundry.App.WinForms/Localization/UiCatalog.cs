@@ -82,6 +82,7 @@ internal static class UiCatalogAccessKeyContexts
             nameof(UiStrings.OpenFromLibrary),
             nameof(UiStrings.AllAboardOpen),
             nameof(UiStrings.BuiltInStudiosOpen),
+            nameof(UiStrings.PressGreenInputAttestation),
             nameof(UiStrings.LowInkToggle)),
         Context("all-aboard",
             nameof(UiStrings.ReviewAndApprove),

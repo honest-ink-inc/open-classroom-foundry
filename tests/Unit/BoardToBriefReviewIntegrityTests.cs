@@ -56,7 +56,7 @@ public sealed class BoardToBriefReviewIntegrityTests(ITestOutputHelper output)
         SyntheticEdit edit,
         bool expectedBlocker)
     {
-        var mode = ModuleStudioCatalog.ByModeKey("board-to-brief");
+        var mode = ModuleStudioCatalog.ByModeKey("board-to-brief", "0.2.0");
         var values = ModuleStudioCatalog.Defaults(mode);
         var originallyTeacherOnly = edit is SyntheticEdit.TeacherOnlyLockUnchanged
             or SyntheticEdit.TeacherOnlyLockRemoved;

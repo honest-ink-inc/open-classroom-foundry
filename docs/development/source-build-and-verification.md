@@ -82,11 +82,24 @@ dotnet tools/SampleGenerator/bin/Release/net10.0/Foundry.Tools.SampleGenerator.d
 ```
 
 Compare complete recursive file inventories and every file's SHA-256, with no
-exclusions. Then compare the relative-path/hash rows against the immutable
-[first-admission baseline](../../tests/Rendering/Fixtures/recipe-first-admission-samples.sha256).
-The exact comparison is in the **Determinism gate** in
-[CI](../../.github/workflows/ci.yml). A mismatch is a finding; do not overwrite
-the baseline. Do not use `--seeded` for this public evidence workflow.
+exclusions. Then run the same strict
+[sample-baseline guard](../../tools/verify-sample-baselines.ps1) used by the
+**Determinism gate** in [CI](../../.github/workflows/ci.yml):
+
+```powershell
+pwsh tools/verify-sample-baselines.ps1 -SamplesRoot out/source-check-samples-a
+pwsh tools/verify-sample-baselines.ps1 -SamplesRoot out/source-check-samples-b
+```
+
+**Correction, 6 September 2026:** the earlier instruction to compare all current
+hashes directly to C1 was incomplete for the authorized `0.8.0-alpha` candidate.
+The guard preserves all forty immutable
+[first-admission rows](../../tests/Rendering/Fixtures/recipe-first-admission-samples.sha256),
+requires all thirty-nine nonpackage files unchanged, and accepts only the exact
+measured `0.7.0-alpha` to `0.8.0-alpha` writer-stamp relation in the canonical
+package. It separately checks all forty candidate rows. This is not a general
+package-difference exemption. A mismatch is a finding; never overwrite the C1
+baseline. Do not use `--seeded` for this public evidence workflow.
 
 ## From local evidence to a reviewed change
 

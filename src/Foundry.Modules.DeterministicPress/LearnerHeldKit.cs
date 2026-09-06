@@ -8,6 +8,11 @@ namespace Foundry.Modules.DeterministicPress;
 // only lane that never needed a gate — the identified, longitudinal record
 // exists solely in the learner's hands, and every sheet says so in ink.
 
+/// <summary>
+/// Raw learner-held producers bound by the catalog to press.learner-held 0.2.0.
+/// Goal Post includes the candidate pagination repair; the other siblings retain
+/// their layout. HistoricalLearnerHeldKit supplies the explicit C1 routes.
+/// </summary>
 public static class LearnerHeldKit
 {
     private const int LinesPerPrompt = 3;

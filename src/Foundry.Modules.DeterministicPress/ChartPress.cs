@@ -12,6 +12,11 @@ namespace Foundry.Modules.DeterministicPress;
 /// <summary>One bar: the teacher's label and value, verbatim.</summary>
 public sealed record ChartDatum(string Label, int Value);
 
+/// <summary>
+/// Corrected raw chart producer, bound by the catalog to press.charts 0.2.0.
+/// Raw helpers do not select a recipe version; use PressRoomCatalog for that.
+/// HistoricalChartPress retains the C1 producer, including its arithmetic defects.
+/// </summary>
 public static class ChartPress
 {
     private const int MaxGridlines = 8;

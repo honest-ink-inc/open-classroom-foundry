@@ -14,6 +14,36 @@ The pseudo-locale expansion contract is inventory-wide, not a four-string sample
 
 The reviewed-catalog path also has a full-surface mechanical projection. Complete synthetic catalogs with an exact test-only hash pin append a visible fixture marker, then traverse every shipped form, review tab, press, SequenceSlate mode, Built-in Studios door and mode, and node-editor variant in both LTR and RTL. The fixture identifies itself as **not protected-seat evidence**, never changes the production allowlist, and cannot establish translation quality. A separate structural guard binds the checked-in JSON schema, generated packet, runtime constants, exact neutral tables, and a successful strict-loader result so those three representations cannot drift silently.
 
+**Later candidate measurement, 6 September 2026, 13:56 UTC:** the seven-recipe
+candidate adds four chrome entries to the earlier 1,080-id packet:
+`ElementEditRefused`, `HistoricalRecipeVersion`, `RecipeVersion` and
+`ReplacementRecipeVersion` (all under `chrome.`). None of the earlier entries
+changed or disappeared. Two native exports from the post-Rebuild-32 application
+are directly byte-identical at **1,084 ids / 166,159 bytes**, packet SHA-256
+`DA3449386764E0257C8A9E70128039CB4F4E37A0A93C47EC56A571D1835056C9`,
+with independently recomputed source digest
+`415c60bc37b1dc4fa57a3ca61611b3b19a999acc2d32d51b6555d589b1994cb5`.
+The [current compatibility record](../governance/seven-recipe-compatibility.md)
+binds the exact local export gates. The packet remains `draft` / `und`, with
+blank reviewer identity, instant and provenance, and unchanged neutral values
+in its working translation table. Its `ltr` template default is not a seat's
+language-direction decision. The production allowlist remains empty; the
+earlier packet and test counts remain historical, not refreshed human review.
+
+**Later candidate measurement, 6 September 2026, 18:09 UTC:** the final Press
+authoring confirmation adds only `chrome.PressGreenInputAttestation`. Two native
+exports from the post-format-Rebuild-42 application match directly at **1,085 ids /
+166,573 bytes**, SHA-256
+`11B825CB4072B81FF740D32F167DD77BA2D9D346A4CC65DBAFB9F5153D23E412`.
+Independent canonical serialization recomputes source digest
+`c5459f88c9eb64ee314d58a031f4585f928e71c5929ad1c74abb4b3a36ff5afd`.
+No preceding neutral entry changed or disappeared. The
+[bounded closeout](../governance/2026-09-06-bounded-engineering-closeout.md)
+binds the actual exports and full 3,078-test pair, including catalog/floor
+controls. Draft/und, blank reviewer identity/instant and provenance, neutral working strings
+and the empty production allowlist remain unchanged. This supersedes packet
+identity only, not protected review or real translation acceptance.
+
 ## 1. Export the neutral review packet
 
 From the repository root:

@@ -1473,6 +1473,41 @@
       "tests": null,
       "record": "docs/governance/fixture-lifecycle-isolation.md",
       "notes": "Own attempt-1 conclusion success; exact PR24 synthetic merge into 77bb88f3e07b5d888ce0e5f0cc2601a96c8a9dee, not main. Actual SARIF 2.1.0 / CodeQL 2.26.4: one successful invocation, zero results, 445 execution notifications all none; embedded VCS and configuration-notification properties absent. SARIF is 638634 bytes, SHA-256 7B9D763B2A9F298C7C0C34FA00B7FB03A9A2AD5EF8E461CAB01B581FA07151BE; ZIP is 61256 bytes, SHA-256 2D2B6867D81B68986215278A65F51E638CCB12762387518AFF59DC4F6207974B. API/artifact/checkout binding and actual SARIF were read. Paired CI remains red; no general security, admission, human-review or release clearance. Retained under out/fixture-async-hosted-pr24/a73fe0d-20260906T034125Z/."
+    },
+    {
+      "id": "ci-34012750436",
+      "kind": "hosted-ci",
+      "runId": 34012750436,
+      "workflow": "CI",
+      "event": "pull_request",
+      "branch": "codex/fixture-disposal-follow-up",
+      "headSha": "7cb257e7df5dcc55a7414ef482bed035ee2b4fd8",
+      "checkoutSha": "4c6fc458259b30901743c3d1167fa5e56b6b240d",
+      "conclusion": "success",
+      "createdUtc": "2026-09-06T04:56:39Z",
+      "receipt": "20260906T045935Z-ef9b96011fd94b048ff2d752cccf021b",
+      "tests": {
+        "passed": 2651,
+        "total": 2651
+      },
+      "record": "docs/governance/seven-recipe-compatibility.md",
+      "notes": "Own attempt-1 success on exact PR24 synthetic checkout into 77bb88f3e07b5d888ce0e5f0cc2601a96c8a9dee, not main. Actual seven TRXs: 2651/2651 (26 Accessibility, 175 Contract, 336 InstructionalEvals, 325 Integration, 121 Rendering, 289 UiAutomation, 1379 Unit), no nonpassing or skipped; all 94 lifecycle-cohort cases passed. Native/runner 0/0, no timeout, safe, stable 562-source/seven-DLL records and empty identity/completeness errors. Summary SHA-256 F22AE2D294B5BFF38E063C9F64F89E436E612EABF8FA0AE80545B5D7D4BFC360; Unit TRX 41ADF1806C7C775680FF04CFB3F8B50C120433120A23FD7A5DEBA4DE05F2859B. All three jobs succeeded; only failure-only raw diagnostic retention was skipped. All 40 archived Windows/Linux sample members matched one another and the original first-admission baseline. Checkout ordered parents and tree were read independently. Retained under out/fixture-lifecycle-hosted/7cb257e-20260906T045835Z-6a11e27a596d4a2dbd06508152b05ad1/. This later exact success does not diagnose or close prior sightings, verify a later candidate, or clear compatibility, human-review or release holds."
+    },
+    {
+      "id": "codeql-34012750473",
+      "kind": "hosted-codeql",
+      "runId": 34012750473,
+      "workflow": "CodeQL SAST",
+      "event": "pull_request",
+      "branch": "codex/fixture-disposal-follow-up",
+      "headSha": "7cb257e7df5dcc55a7414ef482bed035ee2b4fd8",
+      "checkoutSha": "4c6fc458259b30901743c3d1167fa5e56b6b240d",
+      "conclusion": "success",
+      "createdUtc": "2026-09-06T04:56:39Z",
+      "receipt": null,
+      "tests": null,
+      "record": "docs/governance/seven-recipe-compatibility.md",
+      "notes": "Own attempt-1 success on the same exact PR24 synthetic checkout, not main. Actual SARIF 2.1.0 / CodeQL 2.26.4: one successful invocation, zero results, 446 execution notifications all level none; configuration-notifications and versionControlProvenance properties absent. Uncompressed SARIF is 639077 bytes, SHA-256 D07C249FE5AB7800857A6398BC83E1F1817758B4DED8600F5F48BB947C2749E3. Actual API, archive, checkout and Git-object parent/tree evidence retained under out/fixture-lifecycle-hosted/7cb257e-20260906T045835Z-6a11e27a596d4a2dbd06508152b05ad1/. Zero results are not a general security, later-candidate, compatibility, human or release clearance."
     }
   ]
 }

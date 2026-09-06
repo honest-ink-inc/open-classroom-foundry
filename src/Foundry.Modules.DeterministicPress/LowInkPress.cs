@@ -10,6 +10,9 @@ namespace Foundry.Modules.DeterministicPress;
 /// weights scale down, filled circles become outlines, text is untouched.
 /// Filled rectangles retain their meaning-bearing density (the calibration
 /// ramp's solid endpoint must not turn into an empty patch).
+/// This raw transform belongs to the authorized replacement definitions;
+/// callers selecting a recipe use PressDefinition.ApplyLowInk. Historical
+/// definitions bind HistoricalLowInkPress, which retains C1's outline behavior.
 /// </summary>
 public static class LowInkPress
 {

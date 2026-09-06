@@ -813,8 +813,9 @@ public static class ProjectUpgradeOperatorHost
 
     private static IEnumerable<RecipeManifest> ExecutingManifestBackedRecipes()
         => DeterministicPressRecipes.All
+            .Concat(PressRoomCatalog.ReplacementCandidates.Select(definition => definition.Recipe))
             .Concat(AllAboardRecipes.All)
-            .Concat(ModuleStudioCatalog.All.SelectMany(door => door.Modes).Select(mode => mode.Recipe));
+            .Concat(ModuleStudioCatalog.AllVersions.Select(mode => mode.Recipe));
 
     private static IEnumerable<string> PathSegments(string path)
     {

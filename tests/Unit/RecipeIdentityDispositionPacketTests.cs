@@ -286,7 +286,17 @@ public sealed partial class RecipeIdentityDispositionPacketTests
         Assert.DoesNotContain("[A/B/U]", packet, StringComparison.Ordinal);
         Assert.DoesNotContain("[exact]", packet, StringComparison.Ordinal);
 
-        var currentManifests = DiscoverDeclaredRecipeManifests();
+        var allManifests = DiscoverDeclaredRecipeManifests();
+        var currentManifests = allManifests.Where(manifest => manifest.Version == "0.1.0").ToArray();
+        Assert.Equal(
+            ["board-to-brief", "lesson-loom", "press.calibration", "press.charts", "press.flashcards", "press.learner-held", "source-lens"],
+            allManifests.Where(manifest => manifest.Version != "0.1.0").Select(manifest => manifest.Id));
+        Assert.All(allManifests.Where(manifest => manifest.Version != "0.1.0"), manifest =>
+        {
+            Assert.Equal("0.2.0", manifest.Version);
+            Assert.Equal("0.2", manifest.EvaluationSuiteVersion);
+            Assert.Equal("0.8.0-alpha", manifest.MinimumEngineVersion);
+        });
         var expectedCurrent = OutgoingRecipeIds
             .Concat(CandidateOnlyRecipeIds)
             .Select(recipeId => $"{recipeId}@0.1.0")

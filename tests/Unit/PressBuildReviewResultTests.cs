@@ -27,7 +27,7 @@ public sealed class PressBuildReviewResultTests
     {
         var answer = new string('x', 90);
         var direct = FlashcardFlywheel.Build([new FlashcardPair("Synthetic term", answer)]);
-        var definition = PressRoomCatalog.ById("flashcards");
+        var definition = PressRoomCatalog.ById("flashcards", "0.2.0");
         var values = PressRoomCatalog.Defaults(definition);
         values["pairs"] = "Synthetic term | " + answer;
 
