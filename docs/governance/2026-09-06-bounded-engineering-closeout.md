@@ -333,4 +333,4 @@ has been invented. Unselected measurement procedures remain pre-session work.
 Schema 1 is still release-blocked; seven replacement admission and the separate
 booklet question remain held. No main merge, old-PR closure, site dispatch,
 tagging, signing, installation, distribution, filing or correspondence is part
-of this bounded closeout.
+of this bounded closeout. **Note, 6 September 2026:** that statement is unchanged and remains true of this closeout, which performed none of those acts. A main merge and the old-PR closures were performed later the same day as a separate authorized act; see the [containment record](2026-09-06-stacked-pull-request-containment.md). Site dispatch, tagging, signing, installation, distribution, filing and correspondence remain unperformed.
