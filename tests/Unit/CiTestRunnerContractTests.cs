@@ -1797,7 +1797,9 @@ public sealed class CiTestRunnerContractTests(ITestOutputHelper testOutput)
         // captured contract text itself to remain deterministic plain text.
         startInfo.Environment["TERM"] = "xterm";
 
-        var result = PowerShellFixtureRunner.Run(() => new NativeFixtureProcess(startInfo));
+        var result = PowerShellFixtureRunner.RunWithFailureFollowUp(
+            () => new NativeFixtureProcess(startInfo),
+            message => testOutput.WriteLine(message));
         // Retain both streams before a caller's assertion (including an expected
         // nonzero exit) can discard them. Instrument failures carry this same
         // separated report in FixtureProcessException instead.

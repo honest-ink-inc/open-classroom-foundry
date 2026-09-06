@@ -100,6 +100,39 @@ internal sealed record FixtureDisposalObservation(
         milliseconds?.ToString(System.Globalization.CultureInfo.InvariantCulture) ?? "NotObserved";
 }
 
+// Each follow-up is a separate immutable value, never an update to the original
+// result. A completed task observed later cannot repair a missed wait or permit reuse.
+internal sealed record FixtureDisposalFollowUpObservation(
+    long ObservationNumber,
+    long OriginalSnapshotElapsedMilliseconds,
+    FixtureDisposalStage Stage,
+    long BeforeTaskObservationElapsedMilliseconds,
+    TaskStatus? DisposalTaskStatus,
+    long? CallbackEntryElapsedMilliseconds,
+    long? CallbackExitElapsedMilliseconds,
+    string? TaskFailure,
+    long AfterProgressObservationElapsedMilliseconds)
+{
+    internal bool TaskCompletionObserved => DisposalTaskStatus is
+        TaskStatus.RanToCompletion or TaskStatus.Faulted or TaskStatus.Canceled;
+    internal bool TaskFaultObserved => DisposalTaskStatus == TaskStatus.Faulted;
+
+    internal string Describe() =>
+        $"Later disposal follow-up (diagnostic-only; sequential observations): ObservationAttempt: {ObservationNumber}; " +
+        $"OriginalSnapshotElapsedMs: {OriginalSnapshotElapsedMilliseconds}; Stage: {Stage}; " +
+        $"BeforeTaskObservationElapsedMs: {BeforeTaskObservationElapsedMilliseconds}; " +
+        $"DisposalTaskStatus: {DisposalTaskStatus?.ToString() ?? "NotScheduled"}; " +
+        $"CallbackEntryElapsedMs: {Observed(CallbackEntryElapsedMilliseconds)}; " +
+        $"CallbackExitElapsedMs: {Observed(CallbackExitElapsedMilliseconds)}; " +
+        $"AfterProgressObservationElapsedMs: {AfterProgressObservationElapsedMilliseconds}; " +
+        $"TaskCompletionObserved: {TaskCompletionObserved}; TaskFaultObserved: {TaskFaultObserved}; " +
+        $"TaskFailure: {TaskFailure ?? "NotObserved"}; TaskCompletionTime: NotMeasured; " +
+        "TimelySettlement: NotEstablishedByFollowUp; OriginalResultAndReuseRefusal: Unchanged";
+
+    private static string Observed(long? milliseconds) =>
+        milliseconds?.ToString(System.Globalization.CultureInfo.InvariantCulture) ?? "NotObserved";
+}
+
 internal sealed record FixtureProcessResult(
     int? ExitCode,
     FixtureStreamSnapshot Output,
@@ -145,6 +178,7 @@ internal sealed class FixtureProcessRunner
     private readonly Func<Action, Task> scheduleDisposal;
     private readonly Func<IFixtureSettlementClock> startSettlementClock;
     private FixtureProcessResult? unsafePriorResult;
+    private RetainedDisposalProgress? retainedDisposalProgress;
 
     // Keep ownership of an unsettled adapter. Timed waits do not cancel Kill,
     // Dispose, or a reader which ignores cancellation, and do not make them safe.
@@ -185,6 +219,45 @@ internal sealed class FixtureProcessRunner
             }
 
             return RunOwned(createProcess);
+        }
+    }
+
+    internal FixtureDisposalFollowUpObservation? ObserveRetainedDisposal()
+        => Volatile.Read(ref retainedDisposalProgress)?.Observe();
+
+    internal FixtureProcessResult RunWithFailureFollowUp(
+        Func<IFixtureProcess> createProcess,
+        Action<string> writeFollowUp)
+    {
+        try
+        {
+            return Run(createProcess);
+        }
+        catch
+        {
+            try
+            {
+                string message;
+                try
+                {
+                    message = ObserveRetainedDisposal()?.Describe()
+                        ?? "Later disposal follow-up (diagnostic-only): No retained disposal observation.";
+                }
+                catch (Exception observationFailure)
+                {
+                    message = "Later disposal follow-up (diagnostic-only): Follow-up observation failed: " + observationFailure;
+                }
+
+                // One diagnostic-write attempt; no retry, new worker or wait.
+                writeFollowUp(message);
+            }
+            catch (Exception)
+            {
+                // An unavailable diagnostic channel must not replace the original
+                // fixture failure or refusal. No successful emission is claimed.
+            }
+
+            throw;
         }
     }
 
@@ -440,6 +513,8 @@ internal sealed class FixtureProcessRunner
         {
             unsafePriorResult = result;
             unsettledProcess = process;
+            Volatile.Write(ref retainedDisposalProgress, new RetainedDisposalProgress(
+                disposal, settlementClock, disposalObservation, () => Volatile.Read(ref callbackProgress)));
         }
 
         if (primary is not null)
@@ -523,6 +598,35 @@ internal sealed class FixtureProcessRunner
     private sealed record CleanupOutcome(bool RootExitObserved, bool KillRequestReturned, IReadOnlyList<string> Outcomes);
 
     private sealed record DisposalCallbackProgress(long? EntryElapsedMilliseconds, long? ExitElapsedMilliseconds);
+
+    private sealed class RetainedDisposalProgress(
+        Task? disposal,
+        IFixtureSettlementClock clock,
+        FixtureDisposalObservation originalObservation,
+        Func<DisposalCallbackProgress> readCallbackProgress)
+    {
+        private long observationNumber;
+
+        internal FixtureDisposalFollowUpObservation Observe()
+        {
+            var number = Interlocked.Increment(ref observationNumber);
+            var before = clock.ElapsedMilliseconds;
+            // Observe terminal task state BEFORE acquiring the published callback
+            // pair, as in the original snapshot. These separate reads are not atomic;
+            // a pending task may have progressed by the later callback-pair read.
+            var taskStatus = disposal?.Status;
+            var progress = readCallbackProgress();
+            var taskFailure = taskStatus == TaskStatus.Faulted ? disposal!.Exception?.ToString() : null;
+            var after = clock.ElapsedMilliseconds;
+            var stage = disposal is null ? originalObservation.Stage
+                : progress.ExitElapsedMilliseconds is not null ? FixtureDisposalStage.CallbackExited
+                : progress.EntryElapsedMilliseconds is not null ? FixtureDisposalStage.Entered
+                : FixtureDisposalStage.Queued;
+            return new FixtureDisposalFollowUpObservation(
+                number, originalObservation.SnapshotElapsedMilliseconds, stage, before, taskStatus,
+                progress.EntryElapsedMilliseconds, progress.ExitElapsedMilliseconds, taskFailure, after);
+        }
+    }
 
     private sealed class StreamCapture : IDisposable
     {

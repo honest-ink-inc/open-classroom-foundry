@@ -1333,6 +1333,41 @@
       "tests": null,
       "record": "docs/governance/board-review-integrity.md",
       "notes": "Paired exact draft PR22 head, attempt 1. Own completed/success conclusion, retained checkout log and actual uncompressed csharp.sarif read directly: 638,214 bytes, SHA-256 7C9D2C00E47FA02C00DC8932BE93C42F1EF95B8579FFCCF1DBCEDF7420F803F8, SARIF 2.1.0, CodeQL 2.26.4, one successful invocation, zero results and 444 execution notifications all level none. Configuration-notification and embedded versionControlProvenance properties are absent; binding comes from run/artifact/archive/checkout evidence. This file hash is not the uploaded ZIP digest. Successful analysis does not override paired red CI or supply later-head, recipe admission, main, human-review, publication or release evidence."
+    },
+    {
+      "id": "ci-34001098197",
+      "kind": "hosted-ci",
+      "runId": 34001098197,
+      "workflow": "CI",
+      "event": "pull_request",
+      "branch": "codex/board-review-integrity",
+      "headSha": "77bb88f3e07b5d888ce0e5f0cc2601a96c8a9dee",
+      "checkoutSha": "02be37f64bb52546a3c082a214136d04a7508df9",
+      "conclusion": "failure",
+      "createdUtc": "2026-09-06T00:22:04Z",
+      "receipt": "20260906T002503Z-e58d31644b7144fb93aaf066cb8daadf",
+      "tests": {
+        "passed": 2595,
+        "total": 2619
+      },
+      "record": "docs/governance/fixture-disposal-follow-up.md",
+      "notes": "Exact draft PR23 head, attempt 1. Own completed/failure conclusion and all seven actual TRXs read directly: 2,595/2,619, 24 Unit failures and no skipped/error/aborted tests. The original balanced-duplicates fixture retained native exit 0, root exit and separate EOF streams but Queued disposal at snapshot 508 ms; decision/wait elapsed 0 with 500 ms remaining, entry/exit unobserved and task incomplete. All 23 later refusal messages preserve that exact frozen description, not fresh callback observations. All ten Board, 32 fixture-runner, 26 SourceLens and 325 Integration controls passed on this same run. Outer native/runner 1/1, no timeout, 325090 ms within unchanged 900-second cap; clean 551-source/seven-assembly records stable, identity errors empty and one completeness error naming the coherent failed Unit suite. Summary SHA-256 64B69A91E11346220BCB0F42EE1C293CB4E213F02E3B0C86C0D347E107416E52; Unit TRX E962DD87B1D991D6A6BB412A70E0ADB325CF50E1122D6548D5488C5ADC7EABCF. All 14 curated TRX/coverage copies rehashed without mismatch. Build, format and secret scan passed; sample, coverage-threshold, dependency/vulnerability, SBOM and portable gates were skipped. No later callback state, scheduling/OS cause, later-head proof, recipe admission, main merge, publication or release is inferred."
+    },
+    {
+      "id": "codeql-34001098268",
+      "kind": "hosted-codeql",
+      "runId": 34001098268,
+      "workflow": "CodeQL SAST",
+      "event": "pull_request",
+      "branch": "codex/board-review-integrity",
+      "headSha": "77bb88f3e07b5d888ce0e5f0cc2601a96c8a9dee",
+      "checkoutSha": "02be37f64bb52546a3c082a214136d04a7508df9",
+      "conclusion": "success",
+      "createdUtc": "2026-09-06T00:22:05Z",
+      "receipt": null,
+      "tests": null,
+      "record": "docs/governance/fixture-disposal-follow-up.md",
+      "notes": "Paired exact draft PR23 head, attempt 1. Own completed/success conclusion, checkout log and actual uncompressed csharp.sarif read directly: 638,658 bytes, SHA-256 0186A3AA60237F54CC61098535C8EECA65E97CDFD77D76EEF6E7969EEC58F07B, SARIF 2.1.0, CodeQL 2.26.4, one successful invocation, zero results and 445 execution notifications all level none. Configuration-notification and embedded versionControlProvenance properties are absent; binding comes from run/artifact/archive/checkout evidence. The uploaded ZIP digest AAF4CA733FE7E3006AB6540525053BACACD80E948F7C93196A634A938098662F is distinct from the uncompressed file hash. Clean analysis does not override paired red CI or supply later-head, recipe admission, main, human-review, publication or release evidence."
     }
   ]
 }

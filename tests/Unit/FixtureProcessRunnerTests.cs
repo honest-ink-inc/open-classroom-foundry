@@ -288,16 +288,32 @@ public sealed class FixtureProcessRunnerTests(ITestOutputHelper output)
         }
     }
 
-    [Fact]
-    public async Task Disposal_observation_distinguishes_queued_callback_and_freezes_before_late_entry()
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task Disposal_observation_distinguishes_queued_callback_and_freezes_before_late_entry(bool faultAfterEntry)
     {
         var clock = new ManualSettlementClock();
         var scheduler = new ControlledDisposalScheduler();
-        var process = new SyntheticProcess();
-        var runner = new FixtureProcessRunner(
+        FixtureProcessRunner? runner = null;
+        FixtureDisposalFollowUpObservation? duringDisposal = null;
+        var process = new SyntheticProcess
+        {
+            DisposeAction = () =>
+            {
+                duringDisposal = runner!.ObserveRetainedDisposal();
+                if (faultAfterEntry)
+                {
+                    throw new IOException("synthetic-late-disposal-fault");
+                }
+            },
+        };
+        runner = new FixtureProcessRunner(
             new FixtureProcessLimits(SettlementMilliseconds: 250), scheduler.Schedule, () => clock);
         FixtureProcessResult? result = null;
         string? frozenDescription = null;
+        FixtureDisposalFollowUpObservation? frozenFollowUp = null;
+        string? frozenFollowUpDescription = null;
         try
         {
             result = ObserveSyntheticRun(runner, () => process);
@@ -313,14 +329,50 @@ public sealed class FixtureProcessRunnerTests(ITestOutputHelper output)
             Assert.Null(observation.CallbackExitElapsedMilliseconds);
             Assert.False(observation.TaskCompletionObserved);
             Assert.False(observation.WaitReturnedSettled);
+            frozenFollowUp = ObserveFollowUp(runner);
+            frozenFollowUpDescription = frozenFollowUp.Describe();
+            Assert.Equal(FixtureDisposalStage.Queued, frozenFollowUp.Stage);
+            Assert.False(frozenFollowUp.TaskCompletionObserved);
+            Assert.Null(frozenFollowUp.CallbackEntryElapsedMilliseconds);
+            Assert.Equal(observation.SnapshotElapsedMilliseconds, frozenFollowUp.OriginalSnapshotElapsedMilliseconds);
+            clock.AdvanceTo(10);
+            var stillQueued = ObserveFollowUp(runner);
+            Assert.Equal(FixtureDisposalStage.Queued, stillQueued.Stage);
+            Assert.False(stillQueued.TaskCompletionObserved);
+            Assert.Null(stillQueued.CallbackEntryElapsedMilliseconds);
+            Assert.Equal(frozenFollowUp.ObservationNumber + 1, stillQueued.ObservationNumber);
+            Assert.NotSame(frozenFollowUp, stillQueued);
         }
         finally
         {
+            clock.AdvanceTo(300);
             scheduler.Execute();
             await AwaitSyntheticOperations(result, scheduler.Operation);
         }
 
-        Assert.True(process.Disposed);
+        var completed = ObserveFollowUp(runner);
+        Assert.Equal(FixtureDisposalStage.CallbackExited, completed.Stage);
+        Assert.Equal(faultAfterEntry ? TaskStatus.Faulted : TaskStatus.RanToCompletion, completed.DisposalTaskStatus);
+        Assert.True(completed.TaskCompletionObserved);
+        Assert.Equal(faultAfterEntry, completed.TaskFaultObserved);
+        if (faultAfterEntry)
+        {
+            Assert.Contains("synthetic-late-disposal-fault", completed.TaskFailure, StringComparison.Ordinal);
+        }
+        else
+        {
+            Assert.Null(completed.TaskFailure);
+        }
+        Assert.Equal(300, completed.CallbackEntryElapsedMilliseconds);
+        Assert.Equal(300, completed.CallbackExitElapsedMilliseconds);
+        var enteredAfterOriginal = Assert.IsType<FixtureDisposalFollowUpObservation>(duringDisposal);
+        output.WriteLine(enteredAfterOriginal.Describe());
+        Assert.Equal(FixtureDisposalStage.Entered, enteredAfterOriginal.Stage);
+        Assert.False(enteredAfterOriginal.TaskCompletionObserved);
+        Assert.Equal(300, enteredAfterOriginal.CallbackEntryElapsedMilliseconds);
+        Assert.Null(enteredAfterOriginal.CallbackExitElapsedMilliseconds);
+        Assert.Equal(frozenFollowUpDescription, frozenFollowUp!.Describe());
+        Assert.Equal(!faultAfterEntry, process.Disposed);
         Assert.Equal(frozenDescription, result.Describe());
         AssertRefusesNextCreation(runner);
     }
@@ -345,6 +397,8 @@ public sealed class FixtureProcessRunnerTests(ITestOutputHelper output)
         var runner = new FixtureProcessRunner(
             new FixtureProcessLimits(SettlementMilliseconds: 250), Schedule, () => clock);
         FixtureProcessResult? result = null;
+        FixtureDisposalFollowUpObservation? enteredFollowUp = null;
+        string? frozenDescription = null;
         try
         {
             result = ObserveSyntheticRun(runner, () => process);
@@ -357,13 +411,27 @@ public sealed class FixtureProcessRunnerTests(ITestOutputHelper output)
             Assert.Null(observation.CallbackExitElapsedMilliseconds);
             Assert.False(observation.TaskCompletionObserved);
             Assert.False(observation.WaitReturnedSettled);
+            frozenDescription = result.Describe();
+            enteredFollowUp = ObserveFollowUp(runner);
+            Assert.Equal(FixtureDisposalStage.Entered, enteredFollowUp.Stage);
+            Assert.False(enteredFollowUp.TaskCompletionObserved);
+            Assert.Equal(0, enteredFollowUp.CallbackEntryElapsedMilliseconds);
+            Assert.Null(enteredFollowUp.CallbackExitElapsedMilliseconds);
         }
         finally
         {
+            clock.AdvanceTo(300);
             release.Set();
             await AwaitSyntheticOperations(result, operation);
         }
 
+        var exitedFollowUp = ObserveFollowUp(runner);
+        Assert.Equal(FixtureDisposalStage.CallbackExited, exitedFollowUp.Stage);
+        Assert.True(exitedFollowUp.TaskCompletionObserved);
+        Assert.Equal(300, exitedFollowUp.CallbackExitElapsedMilliseconds);
+        Assert.Null(enteredFollowUp.CallbackExitElapsedMilliseconds);
+        Assert.False(enteredFollowUp.TaskCompletionObserved);
+        Assert.Equal(frozenDescription, result.Describe());
         AssertRefusesNextCreation(runner);
     }
 
@@ -391,6 +459,12 @@ public sealed class FixtureProcessRunnerTests(ITestOutputHelper output)
             Assert.Null(observation.WaitElapsedMilliseconds);
             Assert.Null(observation.RemainingAtWaitMilliseconds);
             Assert.Null(observation.CallbackEntryElapsedMilliseconds);
+            var followUp = ObserveFollowUp(runner);
+            Assert.Equal(FixtureDisposalStage.Deferred, followUp.Stage);
+            Assert.Null(followUp.DisposalTaskStatus);
+            Assert.False(followUp.TaskCompletionObserved);
+            Assert.Null(followUp.CallbackEntryElapsedMilliseconds);
+            Assert.False(scheduler.WasScheduled);
         }
         finally
         {
@@ -529,6 +603,7 @@ public sealed class FixtureProcessRunnerTests(ITestOutputHelper output)
         var runner = new FixtureProcessRunner(
             new FixtureProcessLimits(SettlementMilliseconds: 250), scheduler.Schedule, () => clock);
         FixtureProcessResult? result = null;
+        FixtureDisposalFollowUpObservation? callbackOnlyFollowUp = null;
         try
         {
             result = ObserveSyntheticRun(runner, () => new SyntheticProcess());
@@ -541,6 +616,9 @@ public sealed class FixtureProcessRunnerTests(ITestOutputHelper output)
             Assert.Equal(0, observation.CallbackExitElapsedMilliseconds);
             Assert.False(observation.TaskCompletionObserved);
             Assert.False(observation.WaitReturnedSettled);
+            callbackOnlyFollowUp = ObserveFollowUp(runner);
+            Assert.Equal(FixtureDisposalStage.CallbackExited, callbackOnlyFollowUp.Stage);
+            Assert.False(callbackOnlyFollowUp.TaskCompletionObserved);
         }
         finally
         {
@@ -549,6 +627,10 @@ public sealed class FixtureProcessRunnerTests(ITestOutputHelper output)
         }
 
         Assert.False(result!.DisposalObservation!.TaskCompletionObserved);
+        var taskCompletedFollowUp = ObserveFollowUp(runner);
+        Assert.Equal(FixtureDisposalStage.CallbackExited, taskCompletedFollowUp.Stage);
+        Assert.True(taskCompletedFollowUp.TaskCompletionObserved);
+        Assert.False(callbackOnlyFollowUp!.TaskCompletionObserved);
         AssertRefusesNextCreation(runner);
     }
 
@@ -573,6 +655,12 @@ public sealed class FixtureProcessRunnerTests(ITestOutputHelper output)
             Assert.Equal(0, observation.CallbackExitElapsedMilliseconds);
             Assert.True(observation.TaskCompletionObserved);
             Assert.True(observation.TaskFaultObserved);
+            var followUp = ObserveFollowUp(runner);
+            Assert.Equal(FixtureDisposalStage.CallbackExited, followUp.Stage);
+            Assert.Equal(TaskStatus.Faulted, followUp.DisposalTaskStatus);
+            Assert.True(followUp.TaskCompletionObserved);
+            Assert.True(followUp.TaskFaultObserved);
+            Assert.Contains("synthetic-observed-disposal-fault", followUp.TaskFailure, StringComparison.Ordinal);
         }
         finally
         {
@@ -626,6 +714,13 @@ public sealed class FixtureProcessRunnerTests(ITestOutputHelper output)
             Assert.Null(observation.CallbackExitElapsedMilliseconds);
             Assert.False(observation.TaskCompletionObserved);
             Assert.Null(observation.WaitReturnedSettled);
+            var followUp = ObserveFollowUp(runner);
+            Assert.Equal(FixtureDisposalStage.NotRequired, followUp.Stage);
+            Assert.Null(followUp.DisposalTaskStatus);
+            Assert.Null(followUp.CallbackEntryElapsedMilliseconds);
+            Assert.Null(followUp.CallbackExitElapsedMilliseconds);
+            Assert.False(followUp.TaskCompletionObserved);
+            Assert.False(scheduler.WasScheduled);
         }
         finally
         {
@@ -712,12 +807,18 @@ public sealed class FixtureProcessRunnerTests(ITestOutputHelper output)
     [Fact]
     public void Failed_disposal_cannot_replace_timeout_or_discard_streams()
     {
+        var logCalls = 0;
         var result = RunFailure(new SyntheticProcess
         {
             WorkExited = false,
             DisposeFailure = new IOException("synthetic-dispose-failure"),
+        }, followUpWriter: _ =>
+        {
+            logCalls++;
+            throw new IOException("synthetic-follow-up-output-failure");
         }).Result;
 
+        Assert.Equal(1, logCalls);
         Assert.StartsWith("WorkTimeout", result.PrimaryFailure, StringComparison.Ordinal);
         Assert.Contains(result.SecondaryOutcomes, item => item.Contains("synthetic-dispose-failure", StringComparison.Ordinal));
         Assert.Equal("synthetic-standard-output", result.StandardOutput);
@@ -766,6 +867,85 @@ public sealed class FixtureProcessRunnerTests(ITestOutputHelper output)
         Assert.False(result.SafeToStartAnotherFixture);
     }
 
+    [Fact]
+    public void A_follow_up_without_retained_ownership_is_absent()
+    {
+        Assert.Null(new FixtureProcessRunner().ObserveRetainedDisposal());
+    }
+
+    [Theory]
+    [InlineData(false, false)]
+    [InlineData(true, false)]
+    [InlineData(false, true)]
+    [InlineData(true, true)]
+    public async Task Follow_up_diagnostic_failures_do_not_replace_the_original_refusal(
+        bool observationFails,
+        bool loggingFails)
+    {
+        var clock = new ManualSettlementClock(250);
+        var scheduler = new ControlledDisposalScheduler();
+        var process = new SyntheticProcess { StartReturned = false };
+        var runner = new FixtureProcessRunner(ControlLimits, scheduler.Schedule, () => clock);
+        FixtureProcessResult? result = null;
+        var factoryCalls = 0;
+        try
+        {
+            result = ObserveSyntheticRun(runner, () => { factoryCalls++; return process; });
+            var frozenDescription = result.Describe();
+            var originalRefusal = Assert.Throws<InvalidOperationException>(() => runner.Run(
+                () => { factoryCalls++; return process; }));
+            clock.ReadFailure = observationFails ? new IOException("synthetic-follow-up-clock-failure") : null;
+            var messages = new List<string>();
+            var refusal = Assert.Throws<InvalidOperationException>(() => runner.RunWithFailureFollowUp(
+                () => { factoryCalls++; return process; },
+                message =>
+                {
+                    messages.Add(message);
+                    if (loggingFails)
+                    {
+                        throw new IOException("synthetic-follow-up-output-failure");
+                    }
+                }));
+
+            Assert.Equal(originalRefusal.Message, refusal.Message);
+            Assert.Equal(frozenDescription, result.Describe());
+            Assert.False(result.SafeToStartAnotherFixture);
+            Assert.Equal(1, factoryCalls);
+            Assert.False(scheduler.WasScheduled);
+            var message = Assert.Single(messages);
+            output.WriteLine(message);
+            if (observationFails)
+            {
+                Assert.Contains("Follow-up observation failed", message, StringComparison.Ordinal);
+                Assert.Contains("synthetic-follow-up-clock-failure", message, StringComparison.Ordinal);
+            }
+            else
+            {
+                Assert.Contains("Later disposal follow-up", message, StringComparison.Ordinal);
+                Assert.Contains("Stage: Deferred", message, StringComparison.Ordinal);
+            }
+        }
+        finally
+        {
+            clock.ReadFailure = null;
+            await AwaitSyntheticOperations(result, scheduler.Operation);
+            process.Dispose();
+        }
+
+        AssertRefusesNextCreation(runner);
+    }
+
+    private FixtureDisposalFollowUpObservation ObserveFollowUp(FixtureProcessRunner runner)
+    {
+        var observation = Assert.IsType<FixtureDisposalFollowUpObservation>(runner.ObserveRetainedDisposal());
+        output.WriteLine(observation.Describe());
+        Assert.Contains("diagnostic-only; sequential observations", observation.Describe(), StringComparison.Ordinal);
+        Assert.Contains("TaskCompletionTime: NotMeasured", observation.Describe(), StringComparison.Ordinal);
+        Assert.Contains("TimelySettlement: NotEstablishedByFollowUp", observation.Describe(), StringComparison.Ordinal);
+        Assert.True(observation.AfterProgressObservationElapsedMilliseconds >= observation.BeforeTaskObservationElapsedMilliseconds);
+        return observation;
+    }
+
     private FixtureProcessResult ObserveSyntheticRun(FixtureProcessRunner runner, Func<IFixtureProcess> createProcess)
     {
         FixtureProcessResult result;
@@ -803,7 +983,8 @@ public sealed class FixtureProcessRunnerTests(ITestOutputHelper output)
     private sealed class ManualSettlementClock(long initialMilliseconds = 0) : IFixtureSettlementClock
     {
         private long elapsed = initialMilliseconds;
-        public long ElapsedMilliseconds => Interlocked.Read(ref elapsed);
+        internal Exception? ReadFailure { get; set; }
+        public long ElapsedMilliseconds => ReadFailure is null ? Interlocked.Read(ref elapsed) : throw ReadFailure;
         internal void AdvanceTo(long milliseconds)
         {
             Assert.True(milliseconds >= ElapsedMilliseconds, "Synthetic monotonic clock cannot move backwards.");
@@ -875,9 +1056,16 @@ public sealed class FixtureProcessRunnerTests(ITestOutputHelper output)
         Assert.Contains("no new process was created", failure.Message, StringComparison.Ordinal);
     }
 
-    private FixtureProcessException RunFailure(SyntheticProcess process, FixtureProcessRunner? runner = null)
+    private FixtureProcessException RunFailure(
+        SyntheticProcess process,
+        FixtureProcessRunner? runner = null,
+        Action<string>? followUpWriter = null)
     {
-        var failure = Assert.Throws<FixtureProcessException>(() => (runner ?? new FixtureProcessRunner()).Run(() => process));
+        var ownedRunner = runner ?? new FixtureProcessRunner();
+        var failure = Assert.Throws<FixtureProcessException>(() => followUpWriter is null
+            ? ownedRunner.Run(() => process)
+            : ownedRunner.RunWithFailureFollowUp(() => process, followUpWriter));
+        Assert.Equal(failure.Result.Describe(), failure.Message);
         output.WriteLine("Injected adapter failure (not a native process observation):");
         output.WriteLine(failure.ToString());
         return failure;
