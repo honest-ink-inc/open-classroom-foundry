@@ -16,6 +16,10 @@ public sealed record LessonResult(ArtifactDocument Document, IReadOnlyList<Valid
 /// </summary>
 public static class LessonLoomBuilder
 {
+    /// <summary>
+    /// The corrected raw builder. Select a recipe through ModuleStudioCatalog
+    /// to bind the builder, manifest and review validator to an exact version.
+    /// </summary>
     public static LessonResult Build(
         string title,
         LearningTarget target,
@@ -25,6 +29,30 @@ public static class LessonLoomBuilder
         IReadOnlyList<string> accessRoutes,
         IReadOnlyList<string>? contingencies = null,
         string language = "en")
+        => BuildCore(title, target, totalMinutes, phases, materials, accessRoutes, contingencies, language, replacement: true);
+
+    /// <summary>The outgoing C1 builder, including its Int32 Sum overflow behavior.</summary>
+    public static LessonResult BuildHistorical(
+        string title,
+        LearningTarget target,
+        int totalMinutes,
+        IReadOnlyList<LessonPhase> phases,
+        IReadOnlyList<string> materials,
+        IReadOnlyList<string> accessRoutes,
+        IReadOnlyList<string>? contingencies = null,
+        string language = "en")
+        => BuildCore(title, target, totalMinutes, phases, materials, accessRoutes, contingencies, language, replacement: false);
+
+    private static LessonResult BuildCore(
+        string title,
+        LearningTarget target,
+        int totalMinutes,
+        IReadOnlyList<LessonPhase> phases,
+        IReadOnlyList<string> materials,
+        IReadOnlyList<string> accessRoutes,
+        IReadOnlyList<string>? contingencies,
+        string language,
+        bool replacement)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(title);
         ArgumentNullException.ThrowIfNull(target);
@@ -34,6 +62,11 @@ public static class LessonLoomBuilder
         LanguageTag.RequireValid(language, nameof(language));
 
         var issues = new List<ValidationIssue>();
+
+        if (replacement && string.IsNullOrWhiteSpace(target.EvidenceOfLearning))
+        {
+            issues.Add(ValidationIssue.Blocking("loom.evidence", "A lesson needs declared evidence of learning."));
+        }
 
         if (phases.Count == 0)
         {
@@ -54,7 +87,7 @@ public static class LessonLoomBuilder
             }
         }
 
-        var sum = phases.Sum(p => p.Minutes);
+        var sum = replacement ? phases.Sum(p => (long)p.Minutes) : phases.Sum(p => p.Minutes);
         if (phases.Count > 0 && sum != totalMinutes)
         {
             issues.Add(ValidationIssue.Blocking("loom.timing",
@@ -136,7 +169,7 @@ public static class LessonLoomBuilder
         Id: "lesson-loom",
         Version: "0.1.0",
         License: "GPL-3.0-or-later",
-        MinimumEngineVersion: EngineIdentity.EngineVersion,
+        MinimumEngineVersion: "0.7.0-alpha",
         InstructionalPurpose: "Arrange an objective, time, and materials into a feasible lesson with checks that have planned responses.",
         ProhibitedPurposes:
         [

@@ -347,7 +347,7 @@ public static class FamilyBridgeBuilder
         Id: "family-bridge",
         Version: "0.1.0",
         License: "GPL-3.0-or-later",
-        MinimumEngineVersion: EngineIdentity.EngineVersion,
+        MinimumEngineVersion: "0.7.0-alpha",
         InstructionalPurpose: "Turn teacher-authored general information into a plain-language, optionally bilingual family communication with one clear ask, a deadline, and a named contact.",
         ProhibitedPurposes:
         [

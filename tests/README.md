@@ -12,4 +12,6 @@ Created during Days 16–30; directories exist now so the evidence structure is 
 | `UiAutomation` | Keyboard and UI Automation contracts plus real headed walkthroughs of capture→approve→print paths, including camera simulator and virtual print sink |
 | `InstructionalEvals` | Module invariants on the seven fixture families (implementation plan §12); model self-ratings are never release evidence |
 
-**Fixture rule, absolute:** all fixtures are synthetic, teacher-authored, public-domain, or openly licensed OER, marked as such with provenance. No student work or identifying classroom material — see CONTRIBUTING.md.
+**Fixture rule, absolute:** all fixtures and examples use project-supplied synthetic material, public-domain material, or compatibly openly licensed OER, marked as such with provenance. Outside or member-authored teacher material remains held until the exact applicable content license is chosen and the author separately assents to its matching contribution terms. No student work, student data, or identifying classroom material — [CONTRIBUTING.md](../CONTRIBUTING.md) governs admission.
+
+*Clarified 5 September 2026:* the earlier shorthand “synthetic, teacher-authored, public-domain, or openly licensed OER” did not supply a contributor license or override the current outside/member-authored content hold. Test code remains in the declared GPL-3.0-or-later class; a fixture's path is not permission for separately authored content.

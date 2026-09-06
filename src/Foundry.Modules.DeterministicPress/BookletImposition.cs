@@ -208,14 +208,36 @@ public static class DeterministicPressRecipes
         "Bilingual unit glossaries from the teacher's own terms, meanings, and translations — consistent terminology as aligned pairs with correct language tags.",
         "translating, correcting, or leveling the teacher's entries — the translations are the teacher's own, placed verbatim");
 
+    /// <summary>The outgoing C1 identities only; unversioned enumeration never selects replacements.</summary>
     public static IReadOnlyList<RecipeManifest> All { get; } =
         [Blankforms, Flashcards, BookletGuide, Manipulatives, Foldables, BigPrint, Handwriting, Labels, Calibration, Puzzles, Grouping, Computational, Retrieval, FieldJournal, MathScaffolds, History, LearnerHeld, Rubrics, Charts, Schedules, Fluency, Protocols, Glossary];
+
+    public static RecipeManifest ChartsReplacement { get; } = Replacement(Charts);
+
+    public static RecipeManifest LearnerHeldReplacement { get; } = Replacement(LearnerHeld);
+
+    public static RecipeManifest CalibrationReplacement { get; } = Replacement(Calibration);
+
+    public static RecipeManifest FlashcardsReplacement { get; } = Replacement(Flashcards);
+
+    /// <summary>Only the four authorized press replacements; declarations are not final admission.</summary>
+    public static IReadOnlyList<RecipeManifest> ReplacementCandidates { get; } =
+        [ChartsReplacement, LearnerHeldReplacement, CalibrationReplacement, FlashcardsReplacement];
+
+    public static IReadOnlyList<RecipeManifest> AllVersions { get; } = [.. All, .. ReplacementCandidates];
+
+    private static RecipeManifest Replacement(RecipeManifest historical) => historical with
+    {
+        Version = "0.2.0",
+        MinimumEngineVersion = "0.8.0-alpha",
+        EvaluationSuiteVersion = "0.2",
+    };
 
     private static RecipeManifest Manifest(string id, string purpose, params string[] alsoProhibited) => new(
         Id: id,
         Version: "0.1.0",
         License: "GPL-3.0-or-later",
-        MinimumEngineVersion: EngineIdentity.EngineVersion,
+        MinimumEngineVersion: "0.7.0-alpha",
         InstructionalPurpose: purpose,
         ProhibitedPurposes: [.. Prohibited, .. alsoProhibited],
         AllowedInputKinds: ["parameters", "teacher-entered-list"],

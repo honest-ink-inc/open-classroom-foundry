@@ -97,6 +97,23 @@ public sealed partial class SightingsRegisterTests
     }
 
     [Fact]
+    public void The_local_stall_record_distinguishes_configured_caps_and_the_separate_diagnosis()
+    {
+        var row = TableRows(Section(Register, OpenSightingsHeading, NamedBesideHeading), "S-")
+            .Single(candidate => candidate.Id == "S-08");
+        var observations = row.Cells[3];
+
+        Assert.Contains("20260904T035103Z-906577fa2b024bd9859cdc1e00936a7f", observations, StringComparison.Ordinal);
+        Assert.Contains("900-second outer bound", observations, StringComparison.Ordinal);
+        Assert.Contains("20260904T081350Z-c5320441d5ba40f0bef1fdae213c54ea", observations, StringComparison.Ordinal);
+        Assert.Contains("1,800-second configured cap", observations, StringComparison.Ordinal);
+        Assert.Contains("1,800,227 ms", observations, StringComparison.Ordinal);
+        Assert.Contains("separately diagnosed Board-to-Brief episode", observations, StringComparison.Ordinal);
+        Assert.Contains("does not diagnose these undumped episodes", observations, StringComparison.Ordinal);
+        Assert.Equal("Open sighting", row.Cells[^1]);
+    }
+
+    [Fact]
     public void Every_register_identifier_names_a_real_test_and_every_token_exists_in_the_sender()
     {
         var testSources = SourceFiles(Path.Combine(RepositoryRoot, "tests"));

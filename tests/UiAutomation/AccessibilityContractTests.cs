@@ -7,6 +7,8 @@ using Foundry.Infrastructure.Windows;
 using System.Drawing.Imaging;
 using System.IO;
 using System.Security.Cryptography;
+using System.Text.Json;
+using Xunit.Abstractions;
 
 namespace Foundry.Tests.UiAutomation;
 
@@ -17,7 +19,7 @@ namespace Foundry.Tests.UiAutomation;
 // script.md); the mapping lives in docs/accessibility/uia-harness-traceability.md.
 // What only a human ear can judge — actual speech — stays with the walkthrough.
 
-public class ReviewSurfaceContractTests
+public class ReviewSurfaceContractTests(ITestOutputHelper output)
 {
     private static void WithReviewForm(Action<ReviewForm> assert) => Sta.Run(() =>
     {
@@ -474,6 +476,247 @@ public class ReviewSurfaceContractTests
             Assert.Null(review.Result);
         });
 
+    [Theory]
+    [InlineData("synthetic.asset.missing")]
+    [InlineData("synthetic.asset.missing{0}&unavailable")]
+    public void GateB_unknown_asset_modal_edit_is_announced_without_changing_review_and_a_valid_edit_still_succeeds(string missingAssetId)
+        => Sta.Run(() =>
+        {
+            var original = new ImageReference(new AssetId("synthetic.asset.original"), "Synthetic original image");
+            var replacement = new ImageReference(new AssetId("synthetic.asset.replacement"), "Synthetic replacement image");
+            var missing = new ImageReference(new AssetId(missingAssetId), "Synthetic unavailable image");
+            var sourceCatalog = SyntheticAssetCatalog.ForDocument(new ArtifactDocument([original, replacement]));
+            Assert.Null(sourceCatalog.Find(missing.Asset));
+            var warning = ValidationIssue.Warning(
+                "synthetic.asset-edit-warning",
+                "Synthetic image warning requires fresh acknowledgement after an accepted edit.",
+                requiresAcknowledgement: true);
+            var session = AppServices.SessionOver(
+                DraftArtifact.New(new ArtifactDocument([original]), DataLane.Green),
+                new ReviewNoticeValidator(new DefaultArtifactValidator(), [warning]),
+                new ReviewViewContext(new RenderRequest(RenderTarget.AccessibleHtml), assetCatalog: sourceCatalog));
+            var review = new ReviewForm(session);
+            Exception? primaryFailure = null;
+            Exception? reviewCleanupFailure = null;
+            try
+            {
+                review.Show();
+                var acknowledge = EditorControl<CheckBox>(review, "I have reviewed the non-dismissable warnings");
+                var approve = EditorButton(review, "Approve");
+                var browser = Flatten(review).OfType<WebBrowser>().Single();
+                var tabs = Flatten(review).OfType<TabControl>().Single();
+                tabs.SelectedIndex = 2;
+                acknowledge.Checked = true;
+                AwaitApprovalReady(review);
+                tabs.SelectedIndex = 0;
+                System.Windows.Forms.Application.DoEvents();
+
+                var originalDraft = session.Draft;
+                var originalContext = session.ViewContext;
+                var originalCatalog = Assert.IsType<ExactAssetCatalogSnapshot>(originalContext.AssetCatalog);
+                var originalBindings = originalCatalog.Bindings.ToArray();
+                var originalIssues = session.Issues;
+                var originalRequired = session.RequiredAcknowledgements.ToArray();
+                var originalState = session.Machine.State;
+                var originalHash = ArtifactDocumentFingerprint.Compute(originalDraft.Revision.Document);
+                var originalPreview = browser.DocumentText;
+                var originalMarker = PreviewMarker();
+                Assert.False(string.IsNullOrWhiteSpace(originalMarker));
+                Assert.True(originalCatalog.TryGetContent(original.Asset, out var originalBytes, out var originalMime));
+                var originalContent = originalBytes.ToArray();
+                Assert.Single(originalBindings);
+                Assert.Equal(original.Asset, originalBindings[0].AssetId);
+                Assert.True(approve.Enabled);
+                Assert.True(session.CanApprove);
+                Assert.Null(review.Result);
+                WriteState("before-unknown-asset-edit");
+
+                var refused = ApplyAssetThroughOwnedModal(review, missing);
+                WriteModalObservation("unknown-asset-edit", refused);
+                WriteState("after-unknown-asset-edit");
+                output.WriteLine(JsonSerializer.Serialize(new
+                {
+                    Stage = "unchanged-state-observations-before-no-escape-assertion",
+                    SameDraft = ReferenceEquals(originalDraft, session.Draft),
+                    SameRevision = ReferenceEquals(originalDraft.Revision, session.Draft.Revision),
+                    SameContext = ReferenceEquals(originalContext, session.ViewContext),
+                    SameCatalog = ReferenceEquals(originalCatalog, session.ViewContext.AssetCatalog),
+                    SameIssues = ReferenceEquals(originalIssues, session.Issues),
+                    SameDocumentHash = originalHash == ArtifactDocumentFingerprint.Compute(session.Draft.Revision.Document),
+                    SamePreview = originalPreview == browser.DocumentText,
+                    SamePreviewMarker = originalMarker == PreviewMarker(),
+                    SameMachineState = originalState == session.Machine.State,
+                    Acknowledged = acknowledge.Checked,
+                    session.CanApprove,
+                    ApproveEnabled = approve.Enabled,
+                    NoApprovedResult = review.Result is null && session.ApprovedResult is null,
+                }));
+
+                // Retain the full escape and state above even when this first
+                // expectation fails against the unchanged production path.
+                AssertModalSettled(refused);
+                Assert.Equal(missing, refused.AppliedResult);
+                Assert.Equal(missing, refused.TerminalResult);
+                Assert.Null(refused.EscapedFailure);
+                Assert.Same(originalDraft, session.Draft);
+                Assert.Same(originalDraft.Revision, session.Draft.Revision);
+                Assert.Same(originalContext, session.ViewContext);
+                Assert.Same(originalCatalog, session.ViewContext.AssetCatalog);
+                Assert.Same(originalIssues, session.Issues);
+                Assert.Equal(originalRequired, session.RequiredAcknowledgements);
+                Assert.Equal(originalState, session.Machine.State);
+                Assert.Equal(originalHash, ArtifactDocumentFingerprint.Compute(session.Draft.Revision.Document));
+                Assert.Equal(original, Assert.Single(session.Draft.Revision.Document.Nodes));
+                Assert.Equal(originalBindings, originalCatalog.Bindings);
+                Assert.True(originalCatalog.TryGetContent(original.Asset, out var afterBytes, out var afterMime));
+                Assert.Equal(originalMime, afterMime);
+                Assert.Equal(originalContent, afterBytes.ToArray());
+                Assert.Equal(originalPreview, browser.DocumentText);
+                Assert.Equal(originalMarker, PreviewMarker());
+                Assert.True(acknowledge.Checked);
+                Assert.True(session.CanApprove);
+                Assert.True(approve.Enabled);
+                Assert.Null(review.Result);
+                Assert.Null(session.ApprovedResult);
+
+                // Do not prescribe a new sentence: the visible status must
+                // communicate refusal of this asset and expose that same text.
+                var refusalStatus = Assert.Single(Flatten(review).OfType<Label>(), label =>
+                    label.Visible
+                    && label.AccessibleRole == AccessibleRole.StatusBar
+                    && label.Text.Contains(missing.Asset.Value, StringComparison.Ordinal)
+                    && label.Text.Contains("refus", StringComparison.OrdinalIgnoreCase));
+                Assert.Equal(refusalStatus.Text, refusalStatus.AccessibilityObject.Name);
+                Assert.False(refusalStatus.UseMnemonic);
+                var refusalText = refusalStatus.Text;
+                acknowledge.Checked = false;
+                Assert.True(refusalStatus.Visible);
+                Assert.Equal(refusalText, refusalStatus.Text);
+                acknowledge.Checked = true;
+                Assert.True(refusalStatus.Visible);
+                Assert.Equal(refusalText, refusalStatus.Text);
+                Assert.Equal(refusalText, refusalStatus.AccessibilityObject.Name);
+                Assert.Equal(originalPreview, browser.DocumentText);
+                Assert.Equal(originalMarker, PreviewMarker());
+
+                var acceptedEdit = ApplyAssetThroughOwnedModal(review, replacement);
+                WriteModalObservation("available-asset-edit", acceptedEdit);
+                WriteState("after-available-asset-edit-before-fresh-acknowledgement");
+                AssertModalSettled(acceptedEdit);
+                Assert.Equal(replacement, acceptedEdit.AppliedResult);
+                Assert.Equal(replacement, acceptedEdit.TerminalResult);
+                Assert.Null(acceptedEdit.EscapedFailure);
+                Assert.False(refusalStatus.Visible);
+                Assert.Equal(string.Empty, refusalStatus.Text);
+                Assert.Equal(originalDraft.Revision.Number + 1, session.Draft.Revision.Number);
+                Assert.NotSame(originalDraft.Revision, session.Draft.Revision);
+                Assert.Equal(replacement, Assert.Single(session.Draft.Revision.Document.Nodes));
+                Assert.Equal(originalContext.PreviewRequest, session.ViewContext.PreviewRequest);
+                Assert.Same(originalContext.Source, session.ViewContext.Source);
+                var replacementCatalog = Assert.IsType<ExactAssetCatalogSnapshot>(session.ViewContext.AssetCatalog);
+                var replacementBinding = Assert.Single(replacementCatalog.Bindings);
+                Assert.Equal(replacement.Asset, replacementBinding.AssetId);
+                Assert.Null(replacementCatalog.Find(original.Asset));
+                Assert.Equal(sourceCatalog.Find(replacement.Asset), replacementCatalog.Find(replacement.Asset));
+                Assert.True(sourceCatalog.TryGetContent(replacement.Asset, out var expectedBytes, out var expectedMime));
+                Assert.True(replacementCatalog.TryGetContent(replacement.Asset, out var replacementBytes, out var replacementMime));
+                Assert.Equal(expectedMime, replacementMime);
+                Assert.Equal(expectedBytes.ToArray(), replacementBytes.ToArray());
+                Assert.Equal(originalRequired, session.RequiredAcknowledgements);
+                Assert.False(acknowledge.Checked);
+                Assert.False(session.CanApprove);
+                Assert.False(approve.Enabled);
+                Assert.Null(review.Result);
+                Assert.Null(session.ApprovedResult);
+
+                acknowledge.Checked = true;
+                tabs.SelectedIndex = 2;
+                AwaitApprovalReady(review);
+                Assert.NotEqual(originalMarker, PreviewMarker());
+                Assert.Contains(replacement.AltText, browser.DocumentText, StringComparison.Ordinal);
+                var approvedRevision = session.Draft.Revision;
+                approve.PerformClick();
+                var approved = Assert.IsType<ApprovedArtifact>(review.Result);
+                Assert.Same(session.ApprovedResult, approved);
+                Assert.Same(approvedRevision, approved.Revision);
+                Assert.Equal(replacementCatalog.Bindings, approved.AssetBindings);
+                output.WriteLine(JsonSerializer.Serialize(new
+                {
+                    Stage = "typed-approval-after-valid-recovery-no-sink-invoked",
+                    approved.Revision.Number,
+                    DocumentHash = ArtifactDocumentFingerprint.Compute(approved.Revision.Document),
+                    approved.Revision.Document,
+                    approved.AssetBindings,
+                    approved.ValidationIssues,
+                    MachineState = session.Machine.State.ToString(),
+                }));
+
+                string? PreviewMarker()
+                {
+                    return browser.Document?
+                    .GetElementById("honest-ink-preview-load-marker")?.GetAttribute("content");
+                }
+
+                void WriteState(string stage)
+                {
+                    var catalog = session.ViewContext.AssetCatalog as ExactAssetCatalogSnapshot;
+                    output.WriteLine(JsonSerializer.Serialize(new
+                    {
+                        Stage = stage,
+                        session.Draft.Revision.Id,
+                        session.Draft.Revision.Number,
+                        DocumentHash = ArtifactDocumentFingerprint.Compute(session.Draft.Revision.Document),
+                        session.Draft.Revision.Document,
+                        MachineState = session.Machine.State.ToString(),
+                        session.Issues,
+                        session.RequiredAcknowledgements,
+                        session.ViewContext.PreviewRequest,
+                        AssetBindings = catalog?.Bindings,
+                        Assets = catalog?.All.Select(asset =>
+                        {
+                            var found = catalog.TryGetContent(asset.Id, out var bytes, out var mime);
+                            return new
+                            {
+                                Provenance = asset,
+                                ContentFound = found,
+                                MimeType = mime,
+                                ContentSha256 = found ? Convert.ToHexString(SHA256.HashData(bytes.Span)) : null,
+                            };
+                        }).ToArray(),
+                        PreviewHtml = browser.DocumentText,
+                        PreviewLoadMarker = PreviewMarker(),
+                        Acknowledged = acknowledge.Checked,
+                        session.CanApprove,
+                        ApproveEnabled = approve.Enabled,
+                        NoApprovedResult = review.Result is null && session.ApprovedResult is null,
+                        Statuses = Flatten(review).OfType<Label>()
+                            .Where(label => label.AccessibleRole == AccessibleRole.StatusBar)
+                            .Select(label => new { label.Text, label.AccessibilityObject.Name, label.Visible })
+                            .ToArray(),
+                    }));
+                }
+            }
+            catch (Exception failure)
+            {
+                primaryFailure = failure;
+            }
+            finally
+            {
+                reviewCleanupFailure = Record.Exception(review.Dispose);
+                if (reviewCleanupFailure is not null)
+                {
+                    output.WriteLine("Owned review cleanup failure: " + reviewCleanupFailure);
+                }
+            }
+
+            if (primaryFailure is not null)
+            {
+                System.Runtime.ExceptionServices.ExceptionDispatchInfo.Capture(primaryFailure).Throw();
+            }
+
+            Assert.Null(reviewCleanupFailure);
+        });
+
     [Fact]
     public void GateB_dirty_paragraph_cannot_be_approved_selected_away_destroyed_or_silently_closed_before_apply()
         => Sta.Run(() =>
@@ -725,6 +968,145 @@ public class ReviewSurfaceContractTests
 
     private static Button EditorButton(Form form, string accessibleName)
         => EditorControl<Button>(form, accessibleName);
+
+    private static AssetModalObservation ApplyAssetThroughOwnedModal(ReviewForm review, ImageReference replacement)
+    {
+        NodeEditorForm? modal = null;
+        var callbackEntered = false;
+        var callbackExited = false;
+        var invocationActive = true;
+        var applyDialogResult = DialogResult.None;
+        DocumentNode? appliedResult = null;
+        Exception? callbackFailure = null;
+        var cleanupFailures = new List<Exception>();
+        var callback = review.BeginInvoke(() =>
+        {
+            callbackEntered = true;
+            try
+            {
+                if (!invocationActive || review.IsDisposed)
+                {
+                    return;
+                }
+
+                modal = review.OwnedForms.OfType<NodeEditorForm>().Single();
+                EditorControl<TextBox>(modal, "Asset identity").Text = replacement.Asset.Value;
+                EditorControl<TextBox>(modal, "Alternative text").Text = replacement.AltText;
+                EditorButton(modal, "Apply replacement").PerformClick();
+                applyDialogResult = modal.DialogResult;
+                appliedResult = modal.Result;
+            }
+            catch (Exception failure)
+            {
+                callbackFailure = failure;
+            }
+            finally
+            {
+                // An accepted modal may still be visible until its message loop
+                // resumes. Never cancel that result during cleanup. A dirty,
+                // unfinished modal can refuse ordinary Close; discard only this
+                // callback's owned unfinished modal and retain earlier failures.
+                if (modal is { IsDisposed: false, Visible: true, DialogResult: DialogResult.None })
+                {
+                    var discardFailure = Record.Exception(() => EditorButton(modal, "Discard replacement").PerformClick());
+                    if (discardFailure is not null)
+                    {
+                        cleanupFailures.Add(discardFailure);
+                    }
+
+                    if (!modal.IsDisposed && modal.Visible)
+                    {
+                        var disposeFailure = Record.Exception(modal.Dispose);
+                        if (disposeFailure is not null)
+                        {
+                            cleanupFailures.Add(disposeFailure);
+                        }
+                    }
+                }
+
+                callbackExited = true;
+            }
+        });
+        Exception? escapedFailure;
+        try
+        {
+            escapedFailure = Record.Exception(() => EditorButton(review, "Edit element…").PerformClick());
+        }
+        finally
+        {
+            invocationActive = false;
+            // Settle this exact callback before the review can be disposed.
+            // A queued callback after an early click failure is now inert.
+            var settlementFailure = Record.Exception(() => review.EndInvoke(callback));
+            if (settlementFailure is not null)
+            {
+                cleanupFailures.Add(settlementFailure);
+            }
+        }
+
+        return new AssetModalObservation(
+            callbackEntered,
+            callbackExited,
+            callback.IsCompleted,
+            modal is not null,
+            modal is not null && (modal.IsDisposed || !modal.Visible),
+            applyDialogResult,
+            appliedResult,
+            modal?.DialogResult,
+            modal?.Result,
+            escapedFailure,
+            callbackFailure,
+            cleanupFailures.AsReadOnly());
+    }
+
+    private void WriteModalObservation(string stage, AssetModalObservation observation)
+    {
+        output.WriteLine(JsonSerializer.Serialize(new
+        {
+            Stage = stage,
+            observation.CallbackEntered,
+            observation.CallbackExited,
+            observation.CallbackSettled,
+            observation.ModalObserved,
+            observation.ModalClosed,
+            ApplyDialogResult = observation.ApplyDialogResult.ToString(),
+            observation.AppliedResult,
+            TerminalDialogResult = observation.TerminalDialogResult?.ToString(),
+            observation.TerminalResult,
+            EscapedFailure = observation.EscapedFailure?.ToString(),
+            CallbackFailure = observation.CallbackFailure?.ToString(),
+            CleanupFailures = observation.CleanupFailures.Select(failure => failure.ToString()).ToArray(),
+        }));
+    }
+
+    private static void AssertModalSettled(AssetModalObservation observation)
+    {
+        Assert.True(observation.CallbackEntered);
+        Assert.True(observation.CallbackExited);
+        Assert.True(observation.CallbackSettled);
+        Assert.True(observation.ModalObserved);
+        Assert.True(observation.ModalClosed);
+        Assert.Equal(DialogResult.OK, observation.ApplyDialogResult);
+        Assert.NotNull(observation.AppliedResult);
+        Assert.Equal(DialogResult.OK, observation.TerminalDialogResult);
+        Assert.Equal(observation.AppliedResult, observation.TerminalResult);
+        Assert.Null(observation.CallbackFailure);
+        Assert.Empty(observation.CleanupFailures);
+    }
+
+    private sealed record AssetModalObservation(
+        bool CallbackEntered,
+        bool CallbackExited,
+        bool CallbackSettled,
+        bool ModalObserved,
+        bool ModalClosed,
+        DialogResult ApplyDialogResult,
+        DocumentNode? AppliedResult,
+        DialogResult? TerminalDialogResult,
+        DocumentNode? TerminalResult,
+        Exception? EscapedFailure,
+        Exception? CallbackFailure,
+        IReadOnlyList<Exception> CleanupFailures);
 
     internal static IEnumerable<Control> Flatten(Control root)
     {

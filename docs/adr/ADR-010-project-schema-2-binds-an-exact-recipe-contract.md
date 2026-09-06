@@ -35,6 +35,14 @@ Version identities also currently disagree: `EngineIdentity.EngineVersion` is
 unsigned `v0.7.0-alpha` tag points to an older development snapshot. A schema
 decision must not silently pretend that mismatch is a release decision.
 
+**6 September 2026 context clarification:** the preceding version observation
+is the historical 3 September context. The separately
+[authorized seven-recipe candidate](../governance/2026-09-05-recipe-replacement-authorization.md)
+now declares engine `0.8.0-alpha`; that implementation choice does not select
+this ADR's first schema-2 writer, cohere a release with its assembly/tag/source
+identity, or fill any decision or ratification field below. This ADR remains
+Proposed and schema 1's release stop remains open.
+
 If no decision is made, schema 1 remains readable and the release stop remains
 open. That is safer than an inferred migration.
 

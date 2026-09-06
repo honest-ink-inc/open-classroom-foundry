@@ -6,11 +6,43 @@ The mechanical loader validates a review **assertion** and binds it to the exact
 
 The catalog covers application chrome only: every static `UiStrings` entry, every dynamic Press Room title/field/choice label, every built-in module door/mode/field/table/choice label, and the SequenceSlate card labels. Artifact content, validation messages produced by the domain, teacher-entered text, symbol terminology, and the public name **Honest Ink** are outside this catalog. Submitted choice values are also outside it: a translated label never changes the stable value delivered to a builder. ADR-008 changes public display strings and load-bearing subtitles only; localization keys, submitted values, recipe IDs, schema IDs, and saved-project bindings deliberately retain their legacy tokens.
 
-The current neutral inventory measured **1,078 ids**. Two independent exports for the current source tree were byte-identical at **164,925 bytes**: packet SHA-256 `ADC01D0323AD6BBF766B1CC305A409165AD3D82118FF642A9B6576FE8CFF20C1`, bound to source digest `13cab42111782b29bc1d048b75d66a45a5a195210fe284072d3323b2d63d0e3e`. The focused catalog contract passed **28/28**. Those values identify the deterministic neutral review packet only. They are not a protected-seat review record, a second-language catalog, or a production activation pin; the current allowlist remains empty.
+**Candidate measurement, 5 September 2026:** after adding the two path-free library-save recovery statuses, the neutral inventory contains **1,080 ids**. Two independent exports were byte-identical at **165,577 bytes**: packet SHA-256 `62EFC47E009FC6E581C09C0FB92194E35561636EC1A3847D74B8734BAA6E4D84`, bound to source digest `42a156dd667d317806f4b66a379391794a7b47b4af2d1582cdeb20a5866e5b8c`. The related save/library/catalog/pseudo-locale UI contracts passed **153/153**, separately from **21/21** sink/localization Unit contracts. This is local candidate evidence, not an exact hosted or release claim; the [implementation evidence record](../governance/accepted-improvement-evidence.md) retains its scope. The packet remains `draft` / `und` and the production allowlist remains empty. No second-language or protected-seat review is supplied.
+
+*Historical measurement, before that recovery change:* the **1,078-id**, **164,925-byte** packet had SHA-256 `ADC01D0323AD6BBF766B1CC305A409165AD3D82118FF642A9B6576FE8CFF20C1` and source digest `13cab42111782b29bc1d048b75d66a45a5a195210fe284072d3323b2d63d0e3e`; its focused catalog contract passed **28/28**. Those values are retained as the earlier neutral packet, not relabeled as current bytes or human review.
 
 The pseudo-locale expansion contract is inventory-wide, not a four-string sample. A 31 August 2026 audit projected all **1,078** neutral entries through the runtime and found that the earlier letter-count padding left **178** complete strings below the claimed 1.40× length. Runtime padding now retains that letter stress while also meeting the complete-string threshold, and a reflection guard requires all nine shipped forms to have a deliberate pseudo surface scenario. Board-to-Brief and its grid role choices are included. The repeated accented `ẋ` at the end of a bracketed string is therefore expected diagnostic padding while pseudo mode is deliberately active; it is not an AAC symbol or translated product text.
 
 The reviewed-catalog path also has a full-surface mechanical projection. Complete synthetic catalogs with an exact test-only hash pin append a visible fixture marker, then traverse every shipped form, review tab, press, SequenceSlate mode, Built-in Studios door and mode, and node-editor variant in both LTR and RTL. The fixture identifies itself as **not protected-seat evidence**, never changes the production allowlist, and cannot establish translation quality. A separate structural guard binds the checked-in JSON schema, generated packet, runtime constants, exact neutral tables, and a successful strict-loader result so those three representations cannot drift silently.
+
+**Later candidate measurement, 6 September 2026, 13:56 UTC:** the seven-recipe
+candidate adds four chrome entries to the earlier 1,080-id packet:
+`ElementEditRefused`, `HistoricalRecipeVersion`, `RecipeVersion` and
+`ReplacementRecipeVersion` (all under `chrome.`). None of the earlier entries
+changed or disappeared. Two native exports from the post-Rebuild-32 application
+are directly byte-identical at **1,084 ids / 166,159 bytes**, packet SHA-256
+`DA3449386764E0257C8A9E70128039CB4F4E37A0A93C47EC56A571D1835056C9`,
+with independently recomputed source digest
+`415c60bc37b1dc4fa57a3ca61611b3b19a999acc2d32d51b6555d589b1994cb5`.
+The [current compatibility record](../governance/seven-recipe-compatibility.md)
+binds the exact local export gates. The packet remains `draft` / `und`, with
+blank reviewer identity, instant and provenance, and unchanged neutral values
+in its working translation table. Its `ltr` template default is not a seat's
+language-direction decision. The production allowlist remains empty; the
+earlier packet and test counts remain historical, not refreshed human review.
+
+**Later candidate measurement, 6 September 2026, 18:09 UTC:** the final Press
+authoring confirmation adds only `chrome.PressGreenInputAttestation`. Two native
+exports from the post-format-Rebuild-42 application match directly at **1,085 ids /
+166,573 bytes**, SHA-256
+`11B825CB4072B81FF740D32F167DD77BA2D9D346A4CC65DBAFB9F5153D23E412`.
+Independent canonical serialization recomputes source digest
+`c5459f88c9eb64ee314d58a031f4585f928e71c5929ad1c74abb4b3a36ff5afd`.
+No preceding neutral entry changed or disappeared. The
+[bounded closeout](../governance/2026-09-06-bounded-engineering-closeout.md)
+binds the actual exports and full 3,078-test pair, including catalog/floor
+controls. Draft/und, blank reviewer identity/instant and provenance, neutral working strings
+and the empty production allowlist remain unchanged. This supersedes packet
+identity only, not protected review or real translation acceptance.
 
 ## 1. Export the neutral review packet
 

@@ -17,6 +17,7 @@ public sealed partial class OcfprojUpgradeTests : IDisposable
     private const string PriorSchemaVersion = "1";
     private const string FrozenFixtureSha256 = "9B592AA00C2CCB31C5678D82C1685DBE99E023FA482AE25F103AE0D50D9A13FD";
     private const string PriorMainFixtureSha256 = "AE0C140FC4FCB1F9A4DF10FBDC32B2FE09384A5481016016B6223EB6DAAF0D5A";
+    private const string FirstAdmissionFixtureSha256 = "9014BFFB477FC9F470E3901393AF1B6D34ACF697B5E0CD174A12BF8D76A74C82";
     private const string SourceRelativePath = "prior/assets.ocfproj";
     private static readonly IReadOnlyList<ProjectUpgradeRecipeIdentity> CandidateRecipes =
     [
@@ -30,6 +31,7 @@ public sealed partial class OcfprojUpgradeTests : IDisposable
     private readonly string _sourcePath;
     private readonly byte[] _fixtureBytes;
     private readonly byte[] _priorMainFixtureBytes;
+    private readonly byte[] _firstAdmissionFixtureBytes;
 
     public OcfprojUpgradeTests()
     {
@@ -64,6 +66,11 @@ public sealed partial class OcfprojUpgradeTests : IDisposable
         _priorMainFixtureBytes = Convert.FromBase64String(File.ReadAllText(priorMainFixturePath));
         Assert.Equal(3323, _priorMainFixtureBytes.Length);
         Assert.Equal(PriorMainFixtureSha256, Sha256(_priorMainFixtureBytes));
+        _firstAdmissionFixtureBytes = Convert.FromBase64String(File.ReadAllText(Path.Combine(
+            repository.FullName, "tests", "Integration", "Fixtures", "upgrade",
+            "c1-first-admission-task-strip.ocfproj.base64")));
+        Assert.Equal(3338, _firstAdmissionFixtureBytes.Length);
+        Assert.Equal(FirstAdmissionFixtureSha256, Sha256(_firstAdmissionFixtureBytes));
 
         _sourceRoot = Path.Combine(_root, "source-library");
         _candidateRoot = Path.Combine(_root, "candidate-library");
@@ -101,6 +108,22 @@ public sealed partial class OcfprojUpgradeTests : IDisposable
         var destinationBytes = await File.ReadAllBytesAsync(destination);
         Assert.NotEqual(_fixtureBytes, destinationBytes);
         OcfprojZipAssertions.HasCanonicalMetadata(destinationBytes);
+        using (var originalStream = new MemoryStream(_fixtureBytes))
+        using (var preparedStream = new MemoryStream(destinationBytes))
+        using (var originalArchive = new ZipArchive(originalStream, ZipArchiveMode.Read))
+        using (var preparedArchive = new ZipArchive(preparedStream, ZipArchiveMode.Read))
+        {
+            Assert.Equal(originalArchive.Entries.Select(entry => entry.FullName)
+                    .Concat(["validation.json", "render-profile.json"]).Order(StringComparer.Ordinal),
+                preparedArchive.Entries.Select(entry => entry.FullName).Order(StringComparer.Ordinal));
+            foreach (var entry in originalArchive.Entries)
+            {
+                var copied = Assert.Single(preparedArchive.Entries, candidate => candidate.FullName == entry.FullName);
+                Assert.Equal(entry.LastWriteTime, copied.LastWriteTime);
+                Assert.Equal(await ReadFrozenMember(entry), await ReadFrozenMember(copied));
+            }
+        }
+
         Assert.Equal(PriorEngineVersion, receipt.SourceEngineVersion);
         Assert.Equal(PriorSchemaVersion, receipt.SourceSchemaVersion);
         Assert.Equal(FrozenFixtureSha256, receipt.SourceSha256);
@@ -162,7 +185,7 @@ public sealed partial class OcfprojUpgradeTests : IDisposable
     }
 
     [Fact]
-    public async Task A_frozen_prior_main_07_package_still_loads_and_prepares_under_the_unchanged_engine_identity()
+    public async Task A_frozen_prior_main_07_package_keeps_its_exact_reader_under_the_08_candidate()
     {
         const string sourceRelative = "prior/prior-main-07.ocfproj";
         const string destinationRelative = "prepared/prior-main-07.ocfproj";
@@ -170,7 +193,7 @@ public sealed partial class OcfprojUpgradeTests : IDisposable
         await File.WriteAllBytesAsync(source, _priorMainFixtureBytes);
 
         var loadedSource = await OcfprojProjectStore.LoadProjectFileAsync(source, CancellationToken.None);
-        Assert.Equal(EngineIdentity.EngineVersion, loadedSource.Manifest.EngineVersion);
+        Assert.Equal("0.7.0-alpha", loadedSource.Manifest.EngineVersion);
         Assert.Null(loadedSource.Validation);
         Assert.Equal("Watering the class plants", loadedSource.Document.Nodes.OfType<Heading>().Single().Text);
 
@@ -179,7 +202,7 @@ public sealed partial class OcfprojUpgradeTests : IDisposable
             _candidateRoot,
             sourceRelative,
             destinationRelative,
-            EngineIdentity.EngineVersion,
+            "0.7.0-alpha",
             EngineIdentity.ProjectSchemaVersion,
             PriorMainFixtureSha256,
             EngineIdentity.EngineVersion,

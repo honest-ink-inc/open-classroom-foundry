@@ -8,8 +8,8 @@ namespace Foundry.App.WinForms;
 
 /// <summary>
 /// The Press Room — the main surface (second forge menu, item 1). The press
-/// catalog's typed parameters generate the form; the parameters-never-prose
-/// invariant is therefore visible: there is nowhere to type prose. Nothing
+/// catalog's typed parameters generate the form. Free text requires a fresh
+/// Green confirmation after every edit; deterministic layout is not privacy classification. Nothing
 /// here renders, exports, or saves without the typed ApprovedArtifact that
 /// only the review surface can produce (ADR-004). Standard controls only.
 /// </summary>
@@ -18,6 +18,7 @@ public sealed class PressRoomForm : Form
     private readonly Func<ReviewSession, ApprovedArtifact?> _reviewRunner;
     private readonly bool _modalReview;
     private readonly ListBox _pressList;
+    private readonly ComboBox _recipeVersion;
     private readonly TableLayoutPanel _parameterPanel;
     private readonly Label _budget;
     private readonly Button _review;
@@ -32,12 +33,14 @@ public sealed class PressRoomForm : Form
     private readonly Button _allAboard;
     private readonly Button _builtInStudios;
     private readonly CheckBox _lowInk;
+    private readonly CheckBox _greenInput;
     private readonly Dictionary<string, Func<string>> _valueReaders = new(StringComparer.Ordinal);
     private readonly Func<string?> _libraryPicker;
     private readonly Func<ExportChoice?> _exportPicker;
     private readonly Func<Storage.LoadedProject, LoadedProjectGreenConfirmation?> _loadedProjectPreflight;
     private readonly Func<ApprovedArtifact, string, IAssetCatalog?, CancellationToken, Task> _pdfExporter;
     private readonly Func<ApprovedArtifact, string, RenderAudience, double, bool, IAssetCatalog?, Task> _printViewOpener;
+    private readonly ProjectLibrarySaveOperation _librarySaver;
     private bool _loadingParameters;
     private bool _reviewPending;
     private bool _exportInProgress;
@@ -71,7 +74,8 @@ public sealed class PressRoomForm : Form
         Func<ExportChoice?>? exportPicker = null,
         Func<Storage.LoadedProject, LoadedProjectGreenConfirmation?>? loadedProjectPreflight = null,
         Func<ApprovedArtifact, string, IAssetCatalog?, CancellationToken, Task>? pdfExporter = null,
-        Func<ApprovedArtifact, string, RenderAudience, double, bool, IAssetCatalog?, Task>? printViewOpener = null)
+        Func<ApprovedArtifact, string, RenderAudience, double, bool, IAssetCatalog?, Task>? printViewOpener = null,
+        ProjectLibrarySaveOperation? librarySaver = null)
     {
         _modalReview = reviewRunner is null;
         _reviewRunner = reviewRunner ?? RunModalReview;
@@ -85,6 +89,7 @@ public sealed class PressRoomForm : Form
                 assets,
                 cancellationToken: cancellationToken));
         _printViewOpener = printViewOpener ?? AppServices.OpenPrintViewAsync;
+        _librarySaver = librarySaver ?? AppServices.SaveToLibrary;
 
         Text = UiStrings.WithoutMnemonic(UiStrings.MainWindowTitle);
         MinimumSize = new Size(860, 560);
@@ -100,6 +105,14 @@ public sealed class PressRoomForm : Form
             _pressList.Items.Add(UiStrings.Localize(UiCatalogIds.PressTitle(definition.Id), definition.Title));
         }
 
+        _recipeVersion = new ComboBox
+        {
+            Name = "recipe-version",
+            Dock = DockStyle.Fill,
+            DropDownStyle = ComboBoxStyle.DropDownList,
+            AccessibleName = UiStrings.WithoutMnemonic(UiStrings.RecipeVersion),
+        };
+
         _budget = new Label
         {
             AutoSize = true,
@@ -107,6 +120,15 @@ public sealed class PressRoomForm : Form
             AccessibleName = UiStrings.FormatWithoutMnemonic(UiStrings.BudgetLine, PressRoomCatalog.BudgetMinutes),
         };
         _lowInk = new CheckBox { Text = UiStrings.LowInkToggle, AutoSize = true };
+        _greenInput = ReflowingCheckBox.Attach(new CheckBox
+        {
+            Name = "press-green-input",
+            Dock = DockStyle.Top,
+            Width = 400,
+            Text = UiStrings.PressGreenInputAttestation,
+            AccessibleName = UiStrings.WithoutMnemonic(UiStrings.PressGreenInputAttestation),
+            AccessibleDescription = UiStrings.LoadedProjectNoRestrictedContent,
+        }, minimumHeight: 36);
 
         _parameterPanel = new TableLayoutPanel
         {
@@ -139,13 +161,38 @@ public sealed class PressRoomForm : Form
         var buttons = new FlowLayoutPanel { Dock = DockStyle.Bottom, AutoSize = true, FlowDirection = FlowDirection.LeftToRight };
         buttons.Controls.AddRange([_review, _print, _printView, _export, _cancelExport, _save, _tile, _openLibrary, _allAboard, _builtInStudios]);
 
-        var right = new TableLayoutPanel { Dock = DockStyle.Fill, ColumnCount = 1, RowCount = 3 };
+        var versionRow = new TableLayoutPanel { Dock = DockStyle.Fill, ColumnCount = 2, AutoSize = true };
+        versionRow.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
+        versionRow.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
+        versionRow.Controls.Add(new Label { Text = UiStrings.RecipeVersion, AutoSize = true, Anchor = AnchorStyles.Left }, 0, 0);
+        versionRow.Controls.Add(_recipeVersion, 1, 0);
+
+        // A native ComboBox can be taller than the table's preferred row at
+        // large text scales. Reserve its actual height, including scaled
+        // margins, so this non-scrolling row never cuts off the selector.
+        void FitRecipeVersionRow(object? sender, EventArgs args)
+        {
+            var height = Math.Max(_recipeVersion.Height, _recipeVersion.PreferredHeight)
+                + _recipeVersion.Margin.Vertical + versionRow.Padding.Vertical;
+            if (versionRow.MinimumSize.Height != height)
+            {
+                versionRow.MinimumSize = new Size(0, height);
+            }
+        }
+
+        _recipeVersion.SizeChanged += FitRecipeVersionRow;
+        _recipeVersion.MarginChanged += FitRecipeVersionRow;
+        FitRecipeVersionRow(null, EventArgs.Empty);
+
+        var right = new TableLayoutPanel { Dock = DockStyle.Fill, ColumnCount = 1, RowCount = 4 };
+        right.RowStyles.Add(new RowStyle(SizeType.AutoSize));
         right.RowStyles.Add(new RowStyle(SizeType.AutoSize));
         right.RowStyles.Add(new RowStyle(SizeType.AutoSize));
         right.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
         right.Controls.Add(_budget, 0, 0);
-        right.Controls.Add(_lowInk, 0, 1);
-        right.Controls.Add(_parameterPanel, 0, 2);
+        right.Controls.Add(versionRow, 0, 1);
+        right.Controls.Add(_lowInk, 0, 2);
+        right.Controls.Add(_parameterPanel, 0, 3);
 
         var layout = new TableLayoutPanel { Dock = DockStyle.Fill, ColumnCount = 2, RowCount = 1 };
         layout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 34));
@@ -158,15 +205,25 @@ public sealed class PressRoomForm : Form
         Controls.Add(buttons);
         Controls.Add(_status);
 
-        _pressList.SelectedIndexChanged += (_, _) => LoadPress();
+        _pressList.SelectedIndexChanged += (_, _) => LoadPressVersions();
+        _recipeVersion.SelectedIndexChanged += (_, _) =>
+        {
+            if (!_loadingParameters)
+            {
+                LoadPress();
+            }
+        };
         _lowInk.CheckedChanged += (_, _) => InputChanged();
+        _greenInput.CheckedChanged += (_, _) => InputChanged();
         _pressList.SelectedIndex = 0;
 
         UiLocale.ApplyChrome(this);
     }
 
     public PressDefinition? SelectedPress
-        => _pressList.SelectedIndex >= 0 ? PressRoomCatalog.All[_pressList.SelectedIndex] : null;
+        => _pressList.SelectedIndex >= 0 && _recipeVersion.SelectedItem is RecipeVersionChoice version
+            ? PressRoomCatalog.ById(PressRoomCatalog.All[_pressList.SelectedIndex].Id, version.Version)
+            : null;
 
     /// <summary>Non-null only after the review surface produced a typed approval.</summary>
     public ApprovedArtifact? ApprovedResult { get; private set; }
@@ -181,17 +238,47 @@ public sealed class PressRoomForm : Form
         return button;
     }
 
+    private void LoadPressVersions()
+    {
+        if (_pressList.SelectedIndex < 0)
+        {
+            LoadPress();
+            return;
+        }
+
+        _loadingParameters = true;
+        var historical = PressRoomCatalog.All[_pressList.SelectedIndex];
+        _recipeVersion.Items.Clear();
+        foreach (var definition in PressRoomCatalog.AllVersions.Where(definition => definition.Id == historical.Id))
+        {
+            _recipeVersion.Items.Add(new RecipeVersionChoice(definition.Recipe.Version, definition.Recipe.Version != "0.1.0"));
+        }
+
+        _recipeVersion.SelectedIndex = 0;
+        ComboBoxReadingPath.EnsureEveryItemFits(_recipeVersion);
+        _loadingParameters = false;
+        LoadPress();
+    }
+
     private void LoadPress()
     {
         _stateGeneration++;
         _loadingParameters = true;
+        _greenInput.Checked = false;
         ApprovedResult = null;
         _context = null;
         UpdateGatedButtons();
 
         _parameterPanel.SuspendLayout();
         _parameterPanel.Controls.Clear();
-        _parameterPanel.RowCount = 0;
+        _parameterPanel.RowStyles.Clear();
+        _parameterPanel.RowCount = 1;
+        _parameterPanel.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+        // Confirmation and authored inputs share one scroll owner. Keeping
+        // this long caption in a fixed header can consume the entire input
+        // viewport at large text sizes; nested scroll owners are unnecessary.
+        _parameterPanel.Controls.Add(_greenInput, 0, 0);
+        _parameterPanel.SetColumnSpan(_greenInput, 2);
         _valueReaders.Clear();
 
         if (SelectedPress is not { } definition)
@@ -206,8 +293,13 @@ public sealed class PressRoomForm : Form
             AddParameterRow(parameter);
         }
 
+        // Only fresh construction from this closed, compiled catalog restores
+        // known generic defaults. This is not human assent or permission to
+        // trust imported/future catalogs, or text edited back to a default.
+        _greenInput.Checked = true;
         _parameterPanel.ResumeLayout();
         _loadingParameters = false;
+        UpdateGatedButtons();
         SetStatus(UiStrings.StatusReady);
     }
 
@@ -314,7 +406,7 @@ public sealed class PressRoomForm : Form
                 check.CheckedChanged += (_, _) => InputChanged();
                 break;
             case TextBox box:
-                box.TextChanged += (_, _) => InputChanged();
+                box.TextChanged += (_, _) => ContentInputChanged();
                 break;
         }
 
@@ -386,6 +478,11 @@ public sealed class PressRoomForm : Form
 
     private void ReviewAndApprove()
     {
+        if (_reviewPending || _exportDispatchPending || _exportInProgress || _printViewInProgress)
+        {
+            return;
+        }
+
         if (SelectedPress is not { } definition)
         {
             return;
@@ -393,10 +490,17 @@ public sealed class PressRoomForm : Form
 
         ClearApproval();
 
-        ArtifactDocument document;
+        if (!_greenInput.Checked)
+        {
+            SetStatus(UiStrings.StatusModuleGreenRequired);
+            _greenInput.Focus();
+            return;
+        }
+
+        PressBuildResult built;
         try
         {
-            document = definition.Build(new PressInputs(
+            built = definition.BuildForReview(new PressInputs(
                 _valueReaders.ToDictionary(pair => pair.Key, pair => pair.Value(), StringComparer.Ordinal)));
         }
         catch (ArgumentException refusal)
@@ -406,15 +510,16 @@ public sealed class PressRoomForm : Form
             return;
         }
 
+        var document = built.Document;
         if (_lowInk.Checked)
         {
             // Applied BEFORE Gate B: the teacher reviews what will print.
-            document = LowInkPress.Apply(document);
+            document = definition.ApplyLowInk(document);
         }
 
         var session = AppServices.SessionOverRecipe(
             DraftArtifact.New(document, DataLane.Green),
-            new DefaultArtifactValidator(),
+            new ReviewNoticeValidator(new DefaultArtifactValidator(), built.Issues),
             definition.Recipe);
         var context = new ApprovedContext(definition.Id, "deterministic-press", definition.Recipe.Id, definition.Recipe.Version);
         var generation = _stateGeneration;
@@ -684,11 +789,26 @@ public sealed class PressRoomForm : Form
             return;
         }
 
-        var hint = AppServices.SaveToLibrary(
-            ApprovedResult, _context!.Name, _context.ModuleId,
-            _context.RecipeId, _context.RecipeVersion,
-            _context.AssetCatalog ?? AppServices.SymbolCatalog());
-        SetStatus(UiStrings.StatusSaved, hint);
+        ArtifactSinkAuthorizationGate.DemandGreenSave(ApprovedResult);
+        var catalog = _context!.AssetCatalog ?? AppServices.SymbolCatalog();
+        try
+        {
+            var hint = _librarySaver(
+                ApprovedResult, _context.Name, _context.ModuleId,
+                _context.RecipeId, _context.RecipeVersion,
+                catalog,
+                null,
+                null);
+            SetStatus(UiStrings.StatusSaved, hint);
+        }
+        catch (OperationCanceledException)
+        {
+            SetStatus(UiStrings.StatusSaveCancelled);
+        }
+        catch (Exception failure) when (failure is IOException or UnauthorizedAccessException)
+        {
+            SetStatus(UiStrings.StatusSaveFailed);
+        }
     }
 
     /// <summary>Reversibility, visible: a saved project reopens into a fresh Gate B review — reopen, re-review, re-approve, reprint.</summary>
@@ -834,7 +954,7 @@ public sealed class PressRoomForm : Form
             && !_exportInProgress
             && !_printViewInProgress;
         var approved = idle && ApprovedResult is not null;
-        _review.Enabled = idle;
+        _review.Enabled = idle && SelectedPress is not null && _greenInput.Checked;
         _print.Enabled = approved;
         _printView.Enabled = approved;
         _export.Enabled = approved;
@@ -842,11 +962,26 @@ public sealed class PressRoomForm : Form
         _save.Enabled = approved;
         _tile.Enabled = approved;
         _pressList.Enabled = idle;
+        _recipeVersion.Enabled = idle && _recipeVersion.Items.Count > 1;
         _parameterPanel.Enabled = idle;
         _lowInk.Enabled = idle;
+        _greenInput.Enabled = idle && SelectedPress is not null;
         _openLibrary.Enabled = idle;
         _allAboard.Enabled = idle;
         _builtInStudios.Enabled = idle;
+    }
+
+    private void ContentInputChanged()
+    {
+        if (_loadingParameters)
+        {
+            return;
+        }
+
+        _loadingParameters = true;
+        _greenInput.Checked = false;
+        _loadingParameters = false;
+        InputChanged();
     }
 
     private void InputChanged()
@@ -858,7 +993,7 @@ public sealed class PressRoomForm : Form
 
         _stateGeneration++;
         ClearApproval();
-        SetStatus(UiStrings.StatusModuleChanged);
+        SetStatus(_greenInput.Checked ? UiStrings.StatusModuleChanged : UiStrings.StatusModuleGreenRequired);
     }
 
     private void ClearApproval()

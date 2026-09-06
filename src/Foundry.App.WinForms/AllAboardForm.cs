@@ -48,6 +48,7 @@ public sealed class AllAboardForm : Form
     private readonly Func<ExportChoice?> _exportPicker;
     private readonly Func<ApprovedArtifact, string, IAssetCatalog?, CancellationToken, Task> _pdfExporter;
     private readonly Func<ApprovedArtifact, string, RenderAudience, double, bool, IAssetCatalog?, Task> _printViewOpener;
+    private readonly ProjectLibrarySaveOperation _librarySaver;
 
     public sealed record ExportChoice(string Path, int FilterIndex);
 
@@ -56,7 +57,8 @@ public sealed class AllAboardForm : Form
         Func<ReviewSession, ApprovedArtifact?>? reviewRunner = null,
         Func<ExportChoice?>? exportPicker = null,
         Func<ApprovedArtifact, string, IAssetCatalog?, CancellationToken, Task>? pdfExporter = null,
-        Func<ApprovedArtifact, string, RenderAudience, double, bool, IAssetCatalog?, Task>? printViewOpener = null)
+        Func<ApprovedArtifact, string, RenderAudience, double, bool, IAssetCatalog?, Task>? printViewOpener = null,
+        ProjectLibrarySaveOperation? librarySaver = null)
     {
         _catalog = catalog ?? throw new ArgumentNullException(nameof(catalog));
         _modalReview = reviewRunner is null;
@@ -69,6 +71,7 @@ public sealed class AllAboardForm : Form
                 assets,
                 cancellationToken: cancellationToken));
         _printViewOpener = printViewOpener ?? AppServices.OpenPrintViewAsync;
+        _librarySaver = librarySaver ?? AppServices.SaveToLibrary;
 
         // The pack may hold two symbols with one meaning (it ships two Help
         // variants): meaning stays the name, and only duplicates append their
@@ -130,14 +133,28 @@ public sealed class AllAboardForm : Form
         _cancelExport = MakeButton(UiStrings.CancelExport, (_, _) => _exportCancellation?.Cancel());
         _save = MakeButton(UiStrings.SaveToLibrary, (_, _) => WithApproved(a =>
         {
-            var hint = AppServices.SaveToLibrary(
-                a,
-                PublicFileStem(_approvedRecipe),
-                ModulePublicIdentity.VisualSupport.LegacyId,
-                _approvedRecipe.Id,
-                _approvedRecipe.Version,
-                _catalog);
-            SetStatus(UiStrings.StatusSaved, hint);
+            ArtifactSinkAuthorizationGate.DemandGreenSave(a);
+            try
+            {
+                var hint = _librarySaver(
+                    a,
+                    PublicFileStem(_approvedRecipe),
+                    ModulePublicIdentity.VisualSupport.LegacyId,
+                    _approvedRecipe.Id,
+                    _approvedRecipe.Version,
+                    _catalog,
+                    null,
+                    null);
+                SetStatus(UiStrings.StatusSaved, hint);
+            }
+            catch (OperationCanceledException)
+            {
+                SetStatus(UiStrings.StatusSaveCancelled);
+            }
+            catch (Exception failure) when (failure is IOException or UnauthorizedAccessException)
+            {
+                SetStatus(UiStrings.StatusSaveFailed);
+            }
         }));
 
         // The message itself is what AT hears.

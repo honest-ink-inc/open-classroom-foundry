@@ -1,5 +1,7 @@
 # 1.0 hardening checklist
 
+**6 September 2026 candidate continuation:** the [current handover](../handover/2026-09-06-seven-recipe-compatibility.md) tracks authorized engine `0.8.0-alpha` compatibility implementation, not a release. The opening engine version and dated evidence below remain historical measurements; their earlier use of "current" does not transfer those results to this candidate. Version separation alone does not close the assembly/tag/source-correspondence, schema-1, rights, human-review or publication stops. No publishing or packaging script has been run for this candidate.
+
 **Date opened:** 29 August 2026 · **Engine version:** 0.7.0-alpha · Maps implementation plan Release 1.0 to evidence. "Done" means the bounded artifact exists and its stated machine checks have run; it never closes named human, district, protected-seat, or exact-release evidence. **0.7.0-alpha is not 1.0**: every open human row below is why.
 
 | Item | Status | Notes |
@@ -17,6 +19,18 @@
 | Six-week staff pilot and defect burn-down | **HUMAN — participant use held; no opening date authorized** | The coordination structure and draft instruments exist, but the NVDA, print, think-aloud, seeded-error, and pilot-kit materials are **not ready for participant or reviewer use**. Exact consent, withdrawal-right, credit, contribution, private-record, quorum, conflict/recusal, and seat-authority terms require the recorded human dispositions; each participant's applicable choices must be recorded and each must separately acknowledge the withdrawal right and route before any session. Every dependent review and any release consideration also require the [bounded-commission ledger's](../council/bounded-commission-review-ledger.md) fresh full-chain audit: all later correction, withdrawal, credit-change, and supersession events must be bound to the exact candidate revision and one current effective disposition, with uncertainty or an unresolved event held. Maryland acceptance and the ordered needs-first/protected-seat reviews remain downstream human gates; see [the coordination plan](../pilots/human-gates-coordination-plan.md) |
 | District readiness (Gate 3) | **HUMAN — packet ready, date pending** | `docs/district/gate-3-readiness-packet.md` includes the written-approval instrument; delivery follows Maryland and the moved calendar, with no replacement date inferred |
 | Second maintainer | **HUMAN** | The sustainability DoD item; recruitment plan in the coordination plan; still the bus factor's only cure |
+
+> **Engineering continuation — 5 September 2026:** the earlier table retains
+> its stated historical measurements. The new recovery statuses produce a
+> 1,080-id neutral UI packet at 165,577 bytes, SHA-256
+> `62EFC47E009FC6E581C09C0FB92194E35561636EC1A3847D74B8734BAA6E4D84`,
+> source digest `42a156dd667d317806f4b66a379391794a7b47b4af2d1582cdeb20a5866e5b8c`.
+> Fresh exports matched byte-for-byte; the packet is still draft/und and the
+> production language allowlist is empty. The [historical implementation handover](../handover/2026-09-05-accepted-improvement-implementation.md)
+> and [implementation evidence](../governance/accepted-improvement-evidence.md)
+> distinguish two local 2,405/2,405 full passes, their retained earlier failure,
+> unchanged 40-file first-admission samples, later hosted evidence and every
+> still-open human/publication gate. These results close no release row.
 
 > **Migration-evidence continuation — 1 September 2026:** the current focused
 > upgrade boundary is **56/56**, superseding the 55/55 count above. Read-only

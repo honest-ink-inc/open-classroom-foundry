@@ -1,0 +1,133 @@
+{
+  "formatVersion": 1,
+  "originalSourceCommit": "5cae09dcb40628265d51912aea98304557abfda6",
+  "materialClass": "project-supplied-synthetic",
+  "packages": [
+    {
+      "caseId": "lesson-default",
+      "contextShape": "contextless",
+      "fileName": "lesson-default-contextless.ocfproj.base64",
+      "bytes": 2060,
+      "sha256": "F1B3308E6B281E5A1BB7B4F4AFF48C8C5B97EDC936C930284765B98BD0322029"
+    },
+    {
+      "caseId": "lesson-default",
+      "contextShape": "exact-context",
+      "fileName": "lesson-default-exact-context.ocfproj.base64",
+      "bytes": 2674,
+      "sha256": "CCB4AD3B2694E9C5F5D5BB34D952152CE0AFFD9382398ADF236EA5B3424F22CB"
+    },
+    {
+      "caseId": "source-default",
+      "contextShape": "contextless",
+      "fileName": "source-default-contextless.ocfproj.base64",
+      "bytes": 2472,
+      "sha256": "4CA5B3CCAF5DC410292E47D7026926F34E52CB4F1F9253ECC9EEF1F76F89BB43"
+    },
+    {
+      "caseId": "source-default",
+      "contextShape": "exact-context",
+      "fileName": "source-default-exact-context.ocfproj.base64",
+      "bytes": 3081,
+      "sha256": "91243A3916C0192A0C4F37634BB1784D8A64D6302B21605C3E26B83A14FDC7A9"
+    },
+    {
+      "caseId": "board-default",
+      "contextShape": "contextless",
+      "fileName": "board-default-contextless.ocfproj.base64",
+      "bytes": 1315,
+      "sha256": "B8F1AAFE5AE5EE5AF456A0D71AECCFC7B8258EE5BCCA61A594A7FDE2A4F08B10"
+    },
+    {
+      "caseId": "board-default",
+      "contextShape": "exact-context",
+      "fileName": "board-default-exact-context.ocfproj.base64",
+      "bytes": 1928,
+      "sha256": "5E1A010C38044252692156E661C084DE76FDE3130F9DDA641D430A2C3F59410B"
+    },
+    {
+      "caseId": "default-bar-chart",
+      "contextShape": "contextless",
+      "fileName": "default-bar-chart-contextless.ocfproj.base64",
+      "bytes": 2299,
+      "sha256": "BFC3533CBB792D6F82FC6BFDAC18F5DDB4C23DC02627DE08DCEFD353B0DB1665"
+    },
+    {
+      "caseId": "default-bar-chart",
+      "contextShape": "exact-context",
+      "fileName": "default-bar-chart-exact-context.ocfproj.base64",
+      "bytes": 2903,
+      "sha256": "5C75537C4AD46BF66DCE5401B9FFB683CDE833EF0D4E9275DBCD7231E4C9330A"
+    },
+    {
+      "caseId": "default-portfolio-passport",
+      "contextShape": "contextless",
+      "fileName": "default-portfolio-passport-contextless.ocfproj.base64",
+      "bytes": 3424,
+      "sha256": "AFE77620DB55467FBCA9118B0E5FE71893B6DE3D98946ECB6E049757C6C80EB8"
+    },
+    {
+      "caseId": "default-portfolio-passport",
+      "contextShape": "exact-context",
+      "fileName": "default-portfolio-passport-exact-context.ocfproj.base64",
+      "bytes": 4038,
+      "sha256": "C954D782852198E617D439974CC8ADB2F9C0FE4088304091609D40D45D5FEE10"
+    },
+    {
+      "caseId": "default-strategy-shelf",
+      "contextShape": "contextless",
+      "fileName": "default-strategy-shelf-contextless.ocfproj.base64",
+      "bytes": 2024,
+      "sha256": "801AB840A29A415FEC8DE308C0AA8B8845A1EBEF8B30D5C5F1C9528E6E4C2A8B"
+    },
+    {
+      "caseId": "default-strategy-shelf",
+      "contextShape": "exact-context",
+      "fileName": "default-strategy-shelf-exact-context.ocfproj.base64",
+      "bytes": 2640,
+      "sha256": "31D2A7CBE4532D21E933EEFD08137E8AEE21BD7693B458EE0842E1AAAD9A7C41"
+    },
+    {
+      "caseId": "default-goal-post",
+      "contextShape": "contextless",
+      "fileName": "default-goal-post-contextless.ocfproj.base64",
+      "bytes": 2121,
+      "sha256": "3349A38320278A87FEBC11D43D683EFA15FE1D9B7E76E0C5BC638B3563AE7DD7"
+    },
+    {
+      "caseId": "default-goal-post",
+      "contextShape": "exact-context",
+      "fileName": "default-goal-post-exact-context.ocfproj.base64",
+      "bytes": 2737,
+      "sha256": "4A8DC9EDE830E1FBBFEEF4337FA1C9DEFEE7F49BA413C72257CE14E8F4908DCE"
+    },
+    {
+      "caseId": "default-calibration-proof",
+      "contextShape": "contextless",
+      "fileName": "default-calibration-proof-contextless.ocfproj.base64",
+      "bytes": 6584,
+      "sha256": "B96243C062AF6EDDE11A0756FA4C17ED5F3D3571F27D8CED226563DDAB5AB8E8"
+    },
+    {
+      "caseId": "default-calibration-proof",
+      "contextShape": "exact-context",
+      "fileName": "default-calibration-proof-exact-context.ocfproj.base64",
+      "bytes": 7198,
+      "sha256": "5A356FA21338FD686CA506944E126C04FB77C3844B14A87C41287765CDAA6B33"
+    },
+    {
+      "caseId": "default-flashcards",
+      "contextShape": "contextless",
+      "fileName": "default-flashcards-contextless.ocfproj.base64",
+      "bytes": 2125,
+      "sha256": "059A134DD3E1F40A6E6A3CC6ED1BBB813E276BDBAA2C0FDF08AE32EB48E4E223"
+    },
+    {
+      "caseId": "default-flashcards",
+      "contextShape": "exact-context",
+      "fileName": "default-flashcards-exact-context.ocfproj.base64",
+      "bytes": 2735,
+      "sha256": "C4EF135EE03D155174A782B7197ADF48DE159D3368289CFFE12E15A6B66C06DA"
+    }
+  ]
+}

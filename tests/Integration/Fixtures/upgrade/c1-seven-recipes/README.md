@@ -1,0 +1,37 @@
+# Genuine C1 seven-recipe package fixtures — original bytes retained
+
+~~Awaiting actual capture and installation.~~ Completed 6 September 2026: eighteen original packages and their measured index are installed. The regression consumer still fails with a missing-evidence message if any required fixture is absent. It has no skip, current-writer fallback, reconstructed package or placeholder hash.
+
+The producer prepared at `out/recipe-compatibility/package-c1-preparation-20260906T092009Z-429a71df940f40738aac57b067ffc21a/source` used the reconstructed, source-bound original C1 `5cae09dcb40628265d51912aea98304557abfda6` assemblies: engine `0.7.0-alpha`, recipe `0.1.0`, evaluation `0.1` and package schema `1`. Eighteen actual A/B children wrote thirty-six packages using the previously captured project-supplied synthetic default maps. No learner data, learner responses, outside-authored material or real human-review record belongs here.
+
+The fixed nine definitions are Lesson Loom, SourceLens, Board-to-Brief, bar-chart, portfolio-passport, strategy-shelf, goal-post, calibration-proof and flashcards. The three learner-held definitions share a recipe identity but remain distinct fixtures. Each requires one **contextless** and one **exact-context** package. The latter producer form stores a Teacher/150%/target-language-first profile; the portable snapshot still uses the learner audience. No image-bearing or low-ink coverage is inferred from these ordinary defaults.
+
+Each `<caseId>-<contextShape>.ocfproj.base64` encodes the unchanged original A package after direct comparison to its separately captured B counterpart. No candidate writer re-saved these fixtures. The mechanical encoding and index were independently derived twice; all nineteen files match byte for byte. Decoding each installed fixture was then directly compared to both actual original packages, with zero mismatches.
+
+`fixture-index.json` records these fields from actual retained bytes:
+
+- `formatVersion`: integer `1` for this **test inventory**, not a project-schema migration.
+- `originalSourceCommit`: the exact C1 above.
+- `materialClass`: `project-supplied-synthetic` (a provenance declaration, not independent rights authentication).
+- `packages`: exactly eighteen unique rows, each with `caseId`, `contextShape` (`contextless` or `exact-context`), the exact `fileName` described above, decoded-package `bytes`, and uppercase decoded-package `sha256`.
+
+Case IDs are `lesson-default`, `source-default`, `board-default`, `default-bar-chart`, `default-portfolio-passport`, `default-strategy-shelf`, `default-goal-post`, `default-calibration-proof` and `default-flashcards`. No invented example hash or empty index is included. The test's document/recipe fingerprints come from the already observed original defaults bound in that preparation's `package-bindings.json`; they are expressly **not forthcoming package hashes**.
+
+The thirty-six regression rows (eighteen variants in each of two theories) passed twice on 6 September after Release build 25: **36/36**, then a separate **36/36** stability run, with native exit zero, stable source and no skipped cases. They check both current loader entry points, exact historical document/manifest/lane/context and recipe-fingerprint selection, original source bytes, deterministic candidate copies, replacement-only selection refusal and an observed first candidate copy followed by injected second-copy failure and candidate-only rollback. The loader entry points share the same validator; they are not independent implementations. Contextless enrichment preserves each original ZIP member's uncompressed bytes and timestamp while adding the two context members; it does not claim unchanged compressed ZIP headers or whole-package bytes. Context-bearing copies remain whole-byte identical. The original library and its unrelated synthetic sentinel remain available after refusal/rollback.
+
+## Recorded provenance and verification cutoff
+
+The original package instrument DLL is SHA-256 `C765B7202CA02463CA4D8F27F15136C516D9A87929B551082F1176F756BBAF0D`; its source-bound preparation/build evidence remains under `out/recipe-compatibility/package-c1-preparation-20260906T092009Z-429a71df940f40738aac57b067ffc21a/`. The original eighteen-child index is SHA-256 `E2B7037CF1FBC5FF27103461B8C6BDA431C3BF17113D102940E527A2F79F7A5E`, under `out/recipe-compatibility/package-c1-plans-20260906T101305Z-215985693f604ab5bd899460c6fd4cbe/`.
+
+The final original child completed at `2026-09-06T12:02:32.3733145Z`; its audit finished before controller release at `2026-09-06T12:03:06.8661030Z`. Complete observations, actual exit records, source/copy pins and original failures remain in `out/recipe-compatibility/package-c1-final-20260906T120549Z-011cd09e092246d888f7aa30debdc633/`. Its independently executed comparison reports are identical: 691,992 bytes, SHA-256 `039072B51B46B453C33617A24F33C2A96CA70FC914EA37FD3CB66B49FB84BCE4`. They directly compare eighteen complete package pairs and seventy-two ZIP-member pairs, including entry order, sizes, compressed sizes and timestamps. Root's fresh 12:22:14 UTC readback verified all 1,421 retained source/copy pairs and 58 complete root censuses. The original failed v1 audit, narrow file-only v2 correction and auxiliary reader/orchestration mistakes remain separately recorded; no original package child was retried.
+
+The fixtures were installed at `2026-09-06T12:22:46.7860287Z`. The nineteen-file derivation inventory is SHA-256 `5CFBE670CA4A296DF7228C182B494673FE72A81D3B0487EF131441FF1CD9B267`; the installed index is 4,878 bytes, SHA-256 `81D6FAC36B547D9104FBD5F9934609CE436B9A2139CB47D6441AB7E850F72F68`. Derivation sources and both actual native-zero receipts are under `out/recipe-compatibility/package-c1-fixture-export-root-01/` and `out/seven-recipe-compatibility/candidate-c1-fixture-derive-{a,b}-01-*`. Text checkout framing is not part of the decoded-package identity.
+
+Both focused test executions used `--no-build` after build 25 and reported .NET 10.0.10. The integration test DLL was 486,912 bytes, SHA-256 `717132C7CA630979A017A09B2414F74DAA40FCB761F09D7BF550AE1BFEB26E1A`, measured before the first run and after each run; this is not a whole-runtime file census. Full console output, exact arguments and actual native receipts are retained under `out/seven-recipe-compatibility/c1-seven-recipe-package-{first,stability}-01-*`. The corresponding TRXs are:
+
+- `c1-seven-recipe-package-first-results-01/c1-seven-recipe-package-first-01.trx`: SHA-256 `A9BD32561A51043EB327951664898DCF9CD1957B15B1BD03135C1D8FF65A5140`.
+- `c1-seven-recipe-package-stability-results-01/c1-seven-recipe-package-stability-01.trx`: SHA-256 `EB8D37F73A5B54A1014F1D5CD2AFD48E9AC0EDC484142736023422006076FC45`.
+
+Those are local focused results, not full-suite or hosted conclusions. The synthetic approval instant is `2026-09-06T12:00:00+00:00`; the actual ZIP timestamp representation is `2026-09-06T12:00:00-04:00`. These are retained separately, not normalized or described as the same instant.
+
+Schema 1 does not persist definition ID, original inputs or recipe fingerprint; the fixture's external case binding supplies comparison expectations, not package authority. Loading or enriching a package creates no `ApprovedArtifact`, teacher acceptance, source authentication, recipe migration, schema ratification, managed deployment or release permission. Existing schema-1, ADR-007/010, rights, protected-seat, real-review and publication holds remain.

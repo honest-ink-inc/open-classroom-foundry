@@ -1,0 +1,26 @@
+{
+  "format": "ocf.changed-file-manifest.v1",
+  "preparedDate": "2026-09-05",
+  "sourceBaseline": "453e87b80ea0abc3e1a022de6289a0e58aac67e9",
+  "scope": "The two changed records in the first record-only follow-up commit that contains this manifest. The preceding layout-console-files.json remains historical and unchanged.",
+  "normalization": "Strict UTF-8; literal CRLF converted to LF, no other normalization. Length and SHA-256 apply to those canonical bytes, not platform checkout representation.",
+  "derivation": "Two independent complete file reads produced identical ordered inventories, lengths and SHA-256 values.",
+  "exclusions": [
+    {
+      "path": "docs/governance/layout-console-hosted-files.json",
+      "reason": "Detached manifest: no circular self-hash. Ignored hosted artifacts and local proof receipts are identified in layout-console-hosted-evidence.md."
+    }
+  ],
+  "files": [
+    {
+      "path": "docs/evidence/evidence-ledger.json",
+      "canonicalUtf8Bytes": 60491,
+      "sha256": "91CEB41E96CE1E3DF9BD47EB055ABEB4166651F3A117E23667267655E8046EFA"
+    },
+    {
+      "path": "docs/governance/layout-console-hosted-evidence.md",
+      "canonicalUtf8Bytes": 6517,
+      "sha256": "DFF1860DEEC09D1B6D64A9EA9048B1F9ED95BD91B3A04FDCD884DD6F21FB48AA"
+    }
+  ]
+}

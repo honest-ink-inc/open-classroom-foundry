@@ -185,7 +185,7 @@ public static class SourceLensBuilder
         Id: "source-lens",
         Version: "0.1.0",
         License: "GPL-3.0-or-later",
-        MinimumEngineVersion: EngineIdentity.EngineVersion,
+        MinimumEngineVersion: "0.7.0-alpha",
         InstructionalPurpose: "Turn a teacher-authorized source into disciplined sourcing, context, close-reading, corroboration, and bounded-interpretation inquiry.",
         ProhibitedPurposes:
         [

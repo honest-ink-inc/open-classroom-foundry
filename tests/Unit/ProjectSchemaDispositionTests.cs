@@ -87,7 +87,9 @@ public sealed class ProjectSchemaDispositionTests
             "| [ADR-003](ADR-003-open-ocfproj-package.md) | Open `.ocfproj` project package as the portable source of truth | Accepted |",
             index,
             StringComparison.Ordinal);
-        Assert.Equal("0.7.0-alpha", EngineIdentity.EngineVersion);
+        // The separate seven-recipe implementation act authorizes this engine
+        // candidate, not ADR-010 or a schema-2 writer.
+        Assert.Equal("0.8.0-alpha", EngineIdentity.EngineVersion);
         Assert.Equal("1", EngineIdentity.ProjectSchemaVersion);
         Assert.Null(typeof(ProjectManifest).GetProperty("RecipeHash"));
         Assert.Equal("1.0.0", PortableProjectIdentity.RecipeVersion);

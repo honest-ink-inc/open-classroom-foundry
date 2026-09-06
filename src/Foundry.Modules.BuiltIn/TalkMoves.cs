@@ -124,7 +124,7 @@ public static class TalkMovesBuilder
         Id: "talk-moves-studio",
         Version: "0.1.0",
         License: "GPL-3.0-or-later",
-        MinimumEngineVersion: EngineIdentity.EngineVersion,
+        MinimumEngineVersion: "0.7.0-alpha",
         InstructionalPurpose: "Design equitable, intellectually productive discussion: purposeful questions, multimodal participation, and disciplined facilitation moves.",
         ProhibitedPurposes:
         [

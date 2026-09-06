@@ -44,6 +44,7 @@ public sealed class ReviewForm : Form
     private bool _refreshingNodes;
     private bool _refreshingAcknowledgement;
     private bool _explicitClose;
+    private string? _elementEditRefusal;
     private int _loadedIndex = -1;
 
     public ReviewForm(ReviewSession session)
@@ -387,7 +388,22 @@ public sealed class ReviewForm : Form
             return;
         }
 
-        _session.ReplaceNode(index, expectedRevision, editor.Result);
+        try
+        {
+            _session.ReplaceNode(index, expectedRevision, editor.Result);
+        }
+        catch (InvalidOperationException refusal) when (
+            ReferenceEquals(_session.Draft.Revision, expectedRevision)
+            && _session.Machine.State == JobState.AwaitingTeacherReview)
+        {
+            // Asset binding and validation precede the edit transaction. Keep
+            // the exact reviewed draft and its acknowledgement/preview state;
+            // expose the refusal without creating a revision or approval.
+            _elementEditRefusal = refusal.Message;
+            UpdateActionAvailability();
+            return;
+        }
+
         Refresh(index);
     }
 
@@ -453,6 +469,7 @@ public sealed class ReviewForm : Form
 
     private void Refresh(int selectIndex)
     {
+        _elementEditRefusal = null;
         _refreshingNodes = true;
         _nodeList.BeginUpdate();
         _nodeList.Items.Clear();
@@ -681,8 +698,20 @@ public sealed class ReviewForm : Form
             && _previewReadiness.IsReadyFor(
                 _session.Draft.Revision,
                 _session.ViewContext.PreviewRequest);
-        SetEditStatus(_editorDirty ? UiStrings.PendingEditMustBeAppliedOrRejected : string.Empty);
-        _editStatus.Visible = _editorDirty;
+        if (_editorDirty)
+        {
+            SetEditStatus(UiStrings.PendingEditMustBeAppliedOrRejected);
+        }
+        else if (_elementEditRefusal is not null)
+        {
+            SetEditStatus(UiStrings.ElementEditRefused, _elementEditRefusal);
+        }
+        else
+        {
+            SetEditStatus(string.Empty);
+        }
+
+        _editStatus.Visible = _editorDirty || _elementEditRefusal is not null;
     }
 
     private void SetEditStatus(string template, params object?[] arguments)

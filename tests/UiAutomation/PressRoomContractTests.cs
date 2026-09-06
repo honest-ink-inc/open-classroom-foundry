@@ -359,6 +359,7 @@ public class PressRoomContractTests
             SelectPress(form, "word-search");
             var words = (TextBox)Input(form, "Words to hide, one per line");
             words.Text = "two words on one line";
+            PressRoomGreenInputTests.ConfirmSyntheticInputs(form);
 
             ((Button)ReviewSurfaceContractTests.ByName(form, "Review and approve…")).PerformClick();
 

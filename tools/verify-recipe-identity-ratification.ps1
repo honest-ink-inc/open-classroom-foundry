@@ -12,6 +12,7 @@ Set-StrictMode -Version Latest
 $ErrorActionPreference = "Stop"
 
 $packetRelativePath = "docs/adr/recipe-identity-disposition-packet.md"
+$sampleManifestRelativePath = "tests/Rendering/Fixtures/recipe-first-admission-samples.sha256"
 $expectedC2ChangedFiles = [string[]]@(
     "README.md",
     "docs/README.md",
@@ -55,6 +56,17 @@ $receipt = [ordered]@{
     RatificationIsAncestorOfHead = $false
     ExpectedC2ChangedFiles = $expectedC2ChangedFiles
     ActualC2ChangedFiles = [string[]]@()
+    OriginalDecisionRecordGitBlob = $null
+    HeadDecisionRecordGitBlob = $null
+    OriginalDecisionRecordPreserved = $false
+    DecisionRecordWorkingCopyGitBlob = $null
+    DecisionRecordWorkingCopyNormalization = "UTF-8; literal CRLF to LF only; no Git filters"
+    FirstAdmissionSampleManifestPath = $sampleManifestRelativePath
+    FirstAdmissionSampleManifestC1GitBlob = $null
+    FirstAdmissionSampleManifestHeadGitBlob = $null
+    FirstAdmissionSampleManifestWorkingCopyGitBlob = $null
+    FirstAdmissionSampleManifestWorkingCopyNormalization = "None; raw bytes with --no-filters"
+    FirstAdmissionSampleManifestPreserved = $false
     FailureCode = $null
     FailureMessage = $null
 }
@@ -140,6 +152,103 @@ function Test-GitAncestor {
     Stop-RatificationVerification "git-command-failed" "Git failed while checking ratification ancestry."
 }
 
+function Get-RequiredGitBlobId {
+    param(
+        [Parameter(Mandatory)][string]$Revision,
+        [Parameter(Mandatory)][string]$RelativePath,
+        [Parameter(Mandatory)][string]$FailureCode)
+
+    $entry = Invoke-GitText @("ls-tree", $Revision, "--", $RelativePath) "resolving a protected record's Git blob"
+    $pattern = '^(?:100644|100755) blob (?<hash>[0-9a-f]{40})\t' + [regex]::Escape($RelativePath) + '$'
+    $match = [regex]::Match($entry, $pattern)
+    if (-not $match.Success) {
+        Stop-RatificationVerification $FailureCode "A protected ratification artifact is missing or is not one regular Git blob."
+    }
+
+    return $match.Groups["hash"].Value
+}
+
+function Get-RequiredIndexBlobId {
+    param(
+        [Parameter(Mandatory)][string]$RelativePath,
+        [Parameter(Mandatory)][string]$FailureCode)
+
+    $entry = Invoke-GitText @("ls-files", "--stage", "--", $RelativePath) "checking a protected record's staged Git bytes"
+    $pattern = '^(?:100644|100755) (?<hash>[0-9a-f]{40}) 0\t' + [regex]::Escape($RelativePath) + '$'
+    $match = [regex]::Match($entry, $pattern)
+    if (-not $match.Success) {
+        Stop-RatificationVerification $FailureCode "A protected ratification artifact has no single regular stage-zero index entry."
+    }
+
+    return $match.Groups["hash"].Value
+}
+
+function Get-WorkingCopyGitBlobId {
+    param(
+        [Parameter(Mandatory)][string]$RelativePath,
+        [Parameter(Mandatory)][string]$FailureCode)
+
+    $workingPath = Join-Path $repositoryFullPath $RelativePath
+    if (-not [IO.File]::Exists($workingPath) -or
+        (([IO.File]::GetAttributes($workingPath) -band [IO.FileAttributes]::ReparsePoint) -ne 0)) {
+        Stop-RatificationVerification $FailureCode "A protected working-copy record is missing or is not a regular local file."
+    }
+
+    if ($RelativePath -ceq $sampleManifestRelativePath) {
+        # The sample baseline pins raw LF bytes. Neither mutable attributes nor
+        # a clean filter may transform a changed checkout back to the C1 blob.
+        $blobId = (Invoke-GitText @("hash-object", "--no-filters", "--", $workingPath) "hashing raw first-admission sample bytes").Trim()
+        if ($blobId -notmatch '^[0-9a-f]{40}$') {
+            Stop-RatificationVerification $FailureCode "The raw sample bytes did not resolve to one Git blob identity."
+        }
+        return $blobId
+    }
+
+    if ($RelativePath -cne $packetRelativePath) {
+        Stop-RatificationVerification $FailureCode "No working-copy normalization is admitted for this protected record."
+    }
+
+    # Only ordinary UTF-8 CRLF checkout representation is allowed for the
+    # decision packet. Read bounded owned bytes and normalize literal CRLF, not
+    # arbitrary Unicode line separators, encodings, attributes, or clean filters.
+    $stream = [IO.File]::OpenRead($workingPath)
+    try {
+        if ($stream.Length -gt 4 * 1024 * 1024) {
+            Stop-RatificationVerification $FailureCode "The working-copy decision record exceeds its bounded byte limit."
+        }
+        $bytes = [byte[]]::new([int]$stream.Length)
+        $stream.ReadExactly($bytes, 0, $bytes.Length)
+        if ($stream.ReadByte() -ne -1) {
+            Stop-RatificationVerification $FailureCode "The working-copy decision record changed while its bytes were read."
+        }
+    }
+    finally {
+        $stream.Dispose()
+    }
+    try {
+        $strictUtf8 = [Text.UTF8Encoding]::new($false, $true)
+        $normalized = $strictUtf8.GetBytes($strictUtf8.GetString($bytes).Replace("`r`n", "`n"))
+    }
+    catch {
+        Stop-RatificationVerification $FailureCode "The working-copy decision record must contain valid UTF-8 bytes."
+    }
+
+    # Git's blob framing is computed directly so no repository-configured
+    # transformation runs. SHA-1 here identifies a Git object, not an approval
+    # signature; C2 supplies the original admitted object to compare against.
+    $header = [Text.Encoding]::ASCII.GetBytes(
+        "blob " + $normalized.Length.ToString([Globalization.CultureInfo]::InvariantCulture) + [char]0)
+    $hash = [Security.Cryptography.IncrementalHash]::CreateHash([Security.Cryptography.HashAlgorithmName]::SHA1)
+    try {
+        $hash.AppendData($header)
+        $hash.AppendData($normalized)
+        return [Convert]::ToHexString($hash.GetHashAndReset()).ToLowerInvariant()
+    }
+    finally {
+        $hash.Dispose()
+    }
+}
+
 function Get-RecordedCandidateFreeze {
     param([Parameter(Mandatory)][string]$PacketText)
 
@@ -213,11 +322,6 @@ try {
         Write-RatificationReceipt
         Write-Host "Recipe-identity history verification skipped for the explicit local C1 pending state."
         return
-    }
-
-    $packetStatus = (Invoke-GitText @("status", "--porcelain=v1", "--", $packetRelativePath) "checking the packet worktree state").Trim()
-    if (-not [string]::IsNullOrEmpty($packetStatus)) {
-        Stop-RatificationVerification "packet-dirty" "The RATIFIED packet must be verified from committed Git history, not working-tree bytes."
     }
 
     $headPacket = Invoke-GitText @("show", "HEAD:$packetRelativePath") "reading the packet at HEAD"
@@ -312,11 +416,52 @@ try {
         Stop-RatificationVerification "c1-transition-missing" "Recorded C1 did not contain the exact local-only pending transition."
     }
 
+    # Ancestry proves the original act, not that a later commit preserved its
+    # decision or baseline. Compare immutable Git blobs, never current-tree hash
+    # constants that could be replaced in the same change. Factual continuation
+    # belongs in a separate record; a future superseding ADR must deliberately
+    # revise this guard rather than rewriting the first-admission evidence.
+    $originalPacketBlob = Get-RequiredGitBlobId $ratificationCommit $packetRelativePath "decision-record-missing"
+    $headPacketBlob = Get-RequiredGitBlobId $head $packetRelativePath "decision-record-missing"
+    $receipt.OriginalDecisionRecordGitBlob = $originalPacketBlob
+    $receipt.HeadDecisionRecordGitBlob = $headPacketBlob
+    if ($headPacketBlob -cne $originalPacketBlob) {
+        Stop-RatificationVerification "decision-record-drift" "The ratified decision packet differs from the immutable original C2 Git bytes."
+    }
+    $indexPacketBlob = Get-RequiredIndexBlobId $packetRelativePath "packet-dirty"
+    if ($indexPacketBlob -cne $headPacketBlob) {
+        Stop-RatificationVerification "packet-dirty" "The staged decision packet differs from the immutable original C2 Git bytes."
+    }
+    $workingPacketBlob = Get-WorkingCopyGitBlobId $packetRelativePath "decision-record-working-copy-drift"
+    $receipt.DecisionRecordWorkingCopyGitBlob = $workingPacketBlob
+    if ($workingPacketBlob -cne $headPacketBlob) {
+        Stop-RatificationVerification "decision-record-working-copy-drift" "The decision packet's canonical working-copy Git content differs from the original C2 record."
+    }
+    $receipt.OriginalDecisionRecordPreserved = $true
+
+    $originalSampleBlob = Get-RequiredGitBlobId $candidateFreeze $sampleManifestRelativePath "sample-baseline-missing"
+    $headSampleBlob = Get-RequiredGitBlobId $head $sampleManifestRelativePath "sample-baseline-missing"
+    $receipt.FirstAdmissionSampleManifestC1GitBlob = $originalSampleBlob
+    $receipt.FirstAdmissionSampleManifestHeadGitBlob = $headSampleBlob
+    if ($headSampleBlob -cne $originalSampleBlob) {
+        Stop-RatificationVerification "sample-baseline-drift" "The first-admission sample manifest differs from the immutable C1 Git bytes."
+    }
+    $indexSampleBlob = Get-RequiredIndexBlobId $sampleManifestRelativePath "sample-baseline-dirty"
+    if ($indexSampleBlob -cne $headSampleBlob) {
+        Stop-RatificationVerification "sample-baseline-dirty" "The staged sample manifest differs from the immutable C1 Git bytes."
+    }
+    $workingSampleBlob = Get-WorkingCopyGitBlobId $sampleManifestRelativePath "sample-baseline-working-copy-drift"
+    $receipt.FirstAdmissionSampleManifestWorkingCopyGitBlob = $workingSampleBlob
+    if ($workingSampleBlob -cne $headSampleBlob) {
+        Stop-RatificationVerification "sample-baseline-working-copy-drift" "The sample manifest's raw working-copy bytes differ from the immutable C1 evidence."
+    }
+    $receipt.FirstAdmissionSampleManifestPreserved = $true
+
     $receipt.Outcome = "verified"
     $receipt.FailureCode = $null
     $receipt.FailureMessage = $null
     Write-RatificationReceipt
-    Write-Host "Verified recipe-identity C1 $candidateFreeze and record-only C2 $ratificationCommit in HEAD ancestry."
+    Write-Host "Verified recipe-identity C1 $candidateFreeze and record-only C2 $ratificationCommit in HEAD ancestry; original decision and first-admission sample bytes are preserved."
 }
 catch {
     if ($null -eq $receipt.FailureCode) {

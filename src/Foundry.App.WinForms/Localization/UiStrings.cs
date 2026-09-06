@@ -237,6 +237,10 @@ public static class UiStrings
 
     public static string StatusSaved => T("Saved to the library as {0}.");
 
+    public static string StatusSaveFailed => T("The project was not saved. Your approved artifact is still open. Check that the library folder is available and writable, then try again or export a copy.");
+
+    public static string StatusSaveCancelled => T("The save was cancelled. Your approved artifact is still open; you can try again or export a copy.");
+
     public static string SavedArtifactContextMismatch => T("The saved validation context or render profile does not bind to this exact approved artifact.");
 
     public static string SavedProjectNeedsManagedUpgrade => T("This saved project predates exact validation context. Prepare a managed side-by-side compatible copy before reopening it.");
@@ -369,11 +373,19 @@ public static class UiStrings
 
     public static string ModuleMode => T("Studio mode");
 
+    public static string RecipeVersion => T("Recipe version");
+
+    public static string HistoricalRecipeVersion => T("{0} — historical");
+
+    public static string ReplacementRecipeVersion => T("{0} — replacement candidate (held)");
+
     public static string ModuleInputs => T("Module inputs");
 
     public static string ModuleLaneConfirmation => T("Data lane confirmation");
 
     public static string GreenInputAttestation => T("I confirm these inputs are staged, generic, teacher-created, or openly licensed — &Green");
+
+    public static string PressGreenInputAttestation => T("These inputs are generic or staged and authorized for this use, with no student work, identifying classroom material or private/Restricted information — &Green");
 
     public static string ModuleNotes => T("Module notes and safeguards");
 
@@ -646,6 +658,8 @@ public static class UiStrings
     public static string ReviewWarningsAcknowledgementDescription => T("Required warnings must be acknowledged before approval.");
 
     public static string PendingEditMustBeAppliedOrRejected => T("Apply the pending edit or choose Reject to discard it before closing.");
+
+    public static string ElementEditRefused => T("The element edit was refused: {0} The current draft is unchanged.");
 
     public static string NodeEditorWindowTitle => Compose(T("editing one exact draft element"));
 

@@ -295,6 +295,7 @@ public static class ModuleStudioCatalog
     private static readonly ModuleDisplayText AccessPurposeAuthorityRequired =
         Display(AccessPurposeAuthorityRequiredId, AccessPurposeAuthorityFallback);
 
+    /// <summary>The historical, unique-door inventory. No implicit latest-version selection.</summary>
     public static IReadOnlyList<ModuleDoorDefinition> All { get; } =
     [
         BoardDoor(),
@@ -309,6 +310,17 @@ public static class ModuleStudioCatalog
         FamilyDoor(),
     ];
 
+    /// <summary>Explicit opt-in candidates; not an admission or migration decision.</summary>
+    public static IReadOnlyList<ModuleModeDefinition> ReplacementCandidates { get; } =
+    [
+        ByModeKey("board-to-brief") with { Recipe = BuiltInReplacementRecipes.BoardToBrief, Build = BuildBoardReplacement },
+        ByModeKey("lesson-loom") with { Recipe = BuiltInReplacementRecipes.LessonLoom, Build = BuildLessonReplacement },
+        ByModeKey("source-lens") with { Recipe = BuiltInReplacementRecipes.SourceLens, Build = BuildSourceReplacement },
+    ];
+
+    /// <summary>Every compiled exact mode/version, including explicitly held replacements.</summary>
+    public static IReadOnlyList<ModuleModeDefinition> AllVersions { get; } = ExactVersionInventory();
+
     public static ModuleDoorDefinition ById(string id)
         => All.FirstOrDefault(door => string.Equals(door.Id, id, StringComparison.Ordinal))
             ?? throw new ArgumentException($"No module door '{id}' exists.", nameof(id));
@@ -316,6 +328,30 @@ public static class ModuleStudioCatalog
     public static ModuleModeDefinition ByModeKey(string key)
         => All.SelectMany(door => door.Modes).FirstOrDefault(mode => string.Equals(mode.Key, key, StringComparison.Ordinal))
             ?? throw new ArgumentException($"No module mode '{key}' exists.", nameof(key));
+
+    /// <summary>Ordinal exact selection; unknown, padded and missing versions never fall back.</summary>
+    public static ModuleModeDefinition ByModeKey(string key, string recipeVersion)
+        => AllVersions.SingleOrDefault(mode => string.Equals(mode.Key, key, StringComparison.Ordinal)
+            && string.Equals(mode.Recipe.Version, recipeVersion, StringComparison.Ordinal))
+            ?? throw new ArgumentException($"No module mode '{key}' at recipe version '{recipeVersion}' exists.", nameof(recipeVersion));
+
+    private static System.Collections.ObjectModel.ReadOnlyCollection<ModuleModeDefinition> ExactVersionInventory()
+    {
+        ModuleModeDefinition[] modes = [.. All.SelectMany(door => door.Modes), .. ReplacementCandidates];
+        if (modes.GroupBy(mode => (mode.Key, mode.Recipe.Version)).Any(group => group.Count() != 1))
+        {
+            throw new InvalidOperationException("Compiled module mode/version keys must be unique.");
+        }
+
+        if (modes.GroupBy(mode => (mode.Recipe.Id, mode.Recipe.Version))
+            .Any(group => group.Select(mode => RecipeContractFingerprint.ComputeSha256(mode.Recipe))
+                .Distinct(StringComparer.Ordinal).Count() != 1))
+        {
+            throw new InvalidOperationException("Sibling modes must bind the same recipe contract at an exact version.");
+        }
+
+        return Array.AsReadOnly(modes);
+    }
 
     /// <summary>All submitted defaults except absent approved-artifact inputs and non-input notices.</summary>
     public static Dictionary<string, object?> Defaults(ModuleModeDefinition mode)
@@ -637,6 +673,12 @@ public static class ModuleStudioCatalog
     }
 
     private static ModuleBuildOutcome BuildBoard(ModuleInputValues inputs)
+        => BuildBoard(inputs, replacement: false);
+
+    private static ModuleBuildOutcome BuildBoardReplacement(ModuleInputValues inputs)
+        => BuildBoard(inputs, replacement: true);
+
+    private static ModuleBuildOutcome BuildBoard(ModuleInputValues inputs, bool replacement)
     {
         var lines = inputs.Records("lines", 2)
             .Select(row => new BriefLine(row[0], BriefRoleValue(row[1])))
@@ -648,9 +690,22 @@ public static class ModuleStudioCatalog
             inputs.Text("language"),
             inputs.Text("materials-label"),
             inputs.Text("vocabulary-label"));
+        if (!replacement)
+        {
+            return Outcome(result.Document, BoardToBriefBuilder.Recipe, DataLane.Green, result.Issues,
+                document => ValidateBoardHistorical(document, locked));
+        }
 
-        return Outcome(result.Document, BoardToBriefBuilder.Recipe, DataLane.Green, result.Issues,
-            document => ValidateBoard(document, locked));
+        var originalNonTeacherTexts = DocumentText.CollectStrings(new ArtifactDocument(
+            [.. result.Document.Nodes.Where(node => node is not TeacherOnlyNotice)],
+            result.Document.Language));
+        // A teacher-only copy cannot replace an originally non-teacher occurrence.
+        // Locks originally supplied only in notes remain governed by the full document check.
+        var originallyNonTeacherLocks = locked.Where(field => originalNonTeacherTexts
+            .Any(text => LockedFieldValidator.ContainsExactOccurrence(text, field))).ToArray();
+
+        return Outcome(result.Document, BuiltInReplacementRecipes.BoardToBrief, DataLane.Green, result.Issues,
+            document => ValidateBoard(document, locked, originallyNonTeacherLocks));
     }
 
     private static ModuleBuildOutcome BuildDirections(ModuleInputValues inputs)
@@ -766,6 +821,12 @@ public static class ModuleStudioCatalog
     }
 
     private static ModuleBuildOutcome BuildLesson(ModuleInputValues inputs)
+        => BuildLesson(inputs, replacement: false);
+
+    private static ModuleBuildOutcome BuildLessonReplacement(ModuleInputValues inputs)
+        => BuildLesson(inputs, replacement: true);
+
+    private static ModuleBuildOutcome BuildLesson(ModuleInputValues inputs, bool replacement)
     {
         var totalMinutes = inputs.Integer("total-minutes", 1, 240);
         var phases = inputs.Records("phases", 5)
@@ -777,7 +838,8 @@ public static class ModuleStudioCatalog
                 NullIfWhiteSpace(row[4])))
             .ToList();
         var target = new LearningTarget(inputs.Text("target"), inputs.Text("evidence"));
-        var result = LessonLoomBuilder.Build(
+        var builder = replacement ? (LessonBuild)LessonLoomBuilder.Build : LessonLoomBuilder.BuildHistorical;
+        var result = builder(
             inputs.Text("title"),
             target,
             totalMinutes,
@@ -788,11 +850,22 @@ public static class ModuleStudioCatalog
             inputs.Text("language"));
         var decisions = LessonLoomBuilder.Decisions(phases);
 
-        return Outcome(result.Document, LessonLoomBuilder.Recipe, DataLane.Green, result.Issues,
-            document => ValidateLesson(document, target, totalMinutes, decisions));
+        return Outcome(result.Document, replacement ? BuiltInReplacementRecipes.LessonLoom : LessonLoomBuilder.Recipe,
+            DataLane.Green, result.Issues,
+            document => ValidateLesson(document, target, totalMinutes, decisions, replacement));
     }
 
+    private delegate LessonResult LessonBuild(string title, LearningTarget target, int totalMinutes,
+        IReadOnlyList<LessonPhase> phases, IReadOnlyList<string> materials, IReadOnlyList<string> accessRoutes,
+        IReadOnlyList<string>? contingencies, string language);
+
     private static ModuleBuildOutcome BuildSource(ModuleInputValues inputs)
+        => BuildSource(inputs, replacement: false);
+
+    private static ModuleBuildOutcome BuildSourceReplacement(ModuleInputValues inputs)
+        => BuildSource(inputs, replacement: true);
+
+    private static ModuleBuildOutcome BuildSource(ModuleInputValues inputs, bool replacement)
     {
         var metadata = new SourceMetadata(
             inputs.Text("creator"),
@@ -825,11 +898,27 @@ public static class ModuleStudioCatalog
             .Concat(prompts.Sourcing)
             .Concat(prompts.Corroboration)
             .ToList();
+        if (!replacement)
+        {
+            return Outcome(result.Document, SourceLensBuilder.Recipe, DataLane.Green, result.Issues,
+                document => ValidateRequiredStructure(document, "lens.structure", requiredFacts, [],
+                    requiredNode: candidate => candidate.Nodes.OfType<Citation>().Any()
+                        && candidate.Nodes.OfType<TableNode>().Count() >= 2));
+        }
 
-        return Outcome(result.Document, SourceLensBuilder.Recipe, DataLane.Green, result.Issues,
+        // Preserve the builder's rendered values, including optional "not
+        // recorded" cells and citation formatting. This is revision-local
+        // comparison evidence, not authentication of the supplied source.
+        var sourceStructure = new SourceReviewStructure(
+            result.Document.Nodes.OfType<Heading>().Single(heading => heading.Level == 1),
+            result.Document.Nodes.OfType<TableNode>().First(),
+            result.Document.Nodes.OfType<Heading>().First(heading => heading.Level == 2),
+            result.Document.Nodes.OfType<Paragraph>().Single(),
+            result.Document.Nodes.OfType<Citation>().Single());
+
+        return Outcome(result.Document, BuiltInReplacementRecipes.SourceLens, DataLane.Green, result.Issues,
             document => ValidateRequiredStructure(document, "lens.structure", requiredFacts, [],
-                requiredNode: candidate => candidate.Nodes.OfType<Citation>().Any()
-                    && candidate.Nodes.OfType<TableNode>().Count() >= 2));
+                requiredNode: candidate => SourceReviewStructureSurvives(candidate, sourceStructure)));
     }
 
     private static ModuleBuildOutcome BuildFamily(ModuleInputValues inputs)
@@ -873,7 +962,7 @@ public static class ModuleStudioCatalog
                 requiredNotices));
     }
 
-    private static List<ValidationIssue> ValidateBoard(ArtifactDocument document, IReadOnlyList<LockedField> locked)
+    private static List<ValidationIssue> ValidateBoardHistorical(ArtifactDocument document, IReadOnlyList<LockedField> locked)
     {
         var issues = new List<ValidationIssue>();
         if (document.Nodes.OfType<Heading>().Count(heading => heading.Level == 1) != 1)
@@ -882,6 +971,25 @@ public static class ModuleStudioCatalog
         }
 
         issues.AddRange(LockedFieldValidator.Validate(document, locked));
+        return issues;
+    }
+
+    private static List<ValidationIssue> ValidateBoard(
+        ArtifactDocument document,
+        IReadOnlyList<LockedField> locked,
+        IReadOnlyList<LockedField> originallyNonTeacherLocks)
+    {
+        var issues = ValidateBoardHistorical(document, locked);
+        var nonTeacherDocument = new ArtifactDocument(
+            [.. document.Nodes.Where(node => node is not TeacherOnlyNotice)], document.Language);
+        foreach (var issue in LockedFieldValidator.Validate(nonTeacherDocument, originallyNonTeacherLocks))
+        {
+            if (!issues.Contains(issue))
+            {
+                issues.Add(issue with { Message = $"Outside teacher-only notes: {issue.Message}" });
+            }
+        }
+
         return issues;
     }
 
@@ -987,11 +1095,92 @@ public static class ModuleStudioCatalog
         return issues;
     }
 
+    private static bool SourceReviewStructureSurvives(ArtifactDocument document, SourceReviewStructure expected)
+    {
+        // An exact string elsewhere cannot stand in for a source role. Identify
+        // the designated section without fixing its absolute document position;
+        // two competing anchors cannot be resolved by taking the first match.
+        var nodes = document.Nodes;
+        var anchors = nodes.Select((node, index) => (node, index))
+            .Where(item => item.node is Heading heading
+                && heading.Level == expected.ExcerptHeading.Level
+                && string.Equals(heading.Text, expected.ExcerptHeading.Text, StringComparison.Ordinal))
+            .ToArray();
+        if (anchors.Length != 1
+            || nodes.OfType<Heading>().Count(heading => heading.Level == expected.Title.Level
+                && string.Equals(heading.Text, expected.Title.Text, StringComparison.Ordinal)) != 1)
+        {
+            return false;
+        }
+
+        var anchorIndex = anchors[0].index;
+        var titleIndex = -1;
+        for (var index = anchorIndex - 1; index >= 0; index--)
+        {
+            if (nodes[index] is Heading { Level: 1 })
+            {
+                titleIndex = index;
+                break;
+            }
+        }
+
+        if (titleIndex < 0 || nodes[titleIndex] is not Heading title
+            || !string.Equals(title.Text, expected.Title.Text, StringComparison.Ordinal))
+        {
+            return false;
+        }
+
+        // The source card belongs to that title's introductory region, not an
+        // unrelated inquiry or teacher-note section. Separate notes may precede
+        // the card or excerpt; row order is not a field-value association.
+        var sourceCards = nodes.Skip(titleIndex + 1)
+            .TakeWhile(node => node is not Heading)
+            .OfType<TableNode>()
+            .Where(table => table.HeaderRow is not null
+                && table.HeaderRow.SequenceEqual(expected.Metadata.HeaderRow!, StringComparer.Ordinal))
+            .ToArray();
+        if (sourceCards.Length != 1 || nodes.OfType<TableNode>().Count() < 2
+            || sourceCards[0].Rows.Count != expected.Metadata.Rows.Count)
+        {
+            return false;
+        }
+
+        foreach (var expectedRow in expected.Metadata.Rows)
+        {
+            var matchingRows = sourceCards[0].Rows
+                .Where(row => row.Count > 0 && string.Equals(row[0], expectedRow[0], StringComparison.Ordinal))
+                .ToArray();
+            if (matchingRows.Length != 1
+                || !matchingRows[0].SequenceEqual(expectedRow, StringComparer.Ordinal))
+            {
+                return false;
+            }
+        }
+
+        var excerptBody = nodes.Skip(anchorIndex + 1)
+            .TakeWhile(node => node is not Heading heading || heading.Level > expected.ExcerptHeading.Level)
+            .Where(node => node is not TeacherOnlyNotice and not PageBreak)
+            .ToArray();
+        return excerptBody.Length == 2
+            && excerptBody[0] is Paragraph excerpt
+            && string.Equals(excerpt.Text, expected.Excerpt.Text, StringComparison.Ordinal)
+            && excerptBody[1] is Citation citation
+            && string.Equals(citation.Text, expected.Citation.Text, StringComparison.Ordinal);
+    }
+
+    private sealed record SourceReviewStructure(
+        Heading Title,
+        TableNode Metadata,
+        Heading ExcerptHeading,
+        Paragraph Excerpt,
+        Citation Citation);
+
     private static List<ValidationIssue> ValidateLesson(
         ArtifactDocument document,
         LearningTarget target,
         int totalMinutes,
-        IReadOnlyList<InstructionalDecision> decisions)
+        IReadOnlyList<InstructionalDecision> decisions,
+        bool replacement)
     {
         var issues = new List<ValidationIssue>();
         var strings = DocumentText.CollectStrings(document);
@@ -1010,7 +1199,7 @@ public static class ModuleStudioCatalog
         }
         else
         {
-            var sum = 0;
+            long sum = 0;
             var validRows = true;
             foreach (var row in phaseTable.Rows)
             {
@@ -1024,7 +1213,9 @@ public static class ModuleStudioCatalog
                     continue;
                 }
 
-                sum += minutes;
+                // C1 review used unchecked Int32 accumulation, unlike its
+                // checked LINQ builder Sum. Only the replacement repairs it.
+                sum = replacement ? sum + minutes : unchecked((int)sum + minutes);
             }
 
             if (!validRows || sum != totalMinutes)

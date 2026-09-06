@@ -98,7 +98,16 @@ public static class ModulePublicIdentity
     {
         ArgumentNullException.ThrowIfNull(door);
         ArgumentNullException.ThrowIfNull(mode);
-        if (!door.Modes.Contains(mode))
+        // The visible door keeps its historical modes. An exact registered
+        // replacement may share that door's filename suggestion without
+        // pretending to be one of those outgoing mode objects. This is name
+        // selection only, never construction, approval or migration authority.
+        var registeredReplacement = ModuleStudioCatalog.All.Any(candidate => ReferenceEquals(candidate, door))
+            && ModuleStudioCatalog.ReplacementCandidates.Any(candidate => ReferenceEquals(candidate, mode))
+            && door.Modes.Any(historical =>
+                string.Equals(historical.Key, mode.Key, StringComparison.Ordinal)
+                && string.Equals(historical.Recipe.Id, mode.Recipe.Id, StringComparison.Ordinal));
+        if (!door.Modes.Contains(mode) && !registeredReplacement)
         {
             throw new ArgumentException("Module and mode do not match.", nameof(mode));
         }

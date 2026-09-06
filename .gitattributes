@@ -20,3 +20,4 @@ assets/** -text
 .githooks/** text eol=lf
 *.sh text eol=lf
 tests/Rendering/Fixtures/recipe-first-admission-samples.sha256 text eol=lf
+tests/Rendering/Fixtures/engine-0.8.0-alpha-candidate-samples.sha256 text eol=lf

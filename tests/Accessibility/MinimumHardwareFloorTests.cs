@@ -1192,8 +1192,7 @@ public sealed class MinimumHardwareFloorTests
         for (var index = 0; index < list.Items.Count; index++)
         {
             list.SelectedIndex = index;
-            FlushLayout(floor.ClientCanvas);
-            AssertFloor(floor);
+            ExerciseEveryRecipeVersionAtFloor(floor);
         }
     }
 
@@ -1267,9 +1266,21 @@ public sealed class MinimumHardwareFloorTests
             for (var modeIndex = 0; modeIndex < modes.Items.Count; modeIndex++)
             {
                 modes.SelectedIndex = modeIndex;
-                FlushLayout(floor.ClientCanvas);
-                AssertFloor(floor);
+                ExerciseEveryRecipeVersionAtFloor(floor);
             }
+        }
+    }
+
+    private static void ExerciseEveryRecipeVersionAtFloor(FloorHost floor)
+    {
+        var versions = Descendants(floor.ClientCanvas).OfType<ComboBox>()
+            .Single(control => control.Name == "recipe-version");
+        Assert.NotEmpty(versions.Items);
+        for (var versionIndex = 0; versionIndex < versions.Items.Count; versionIndex++)
+        {
+            versions.SelectedIndex = versionIndex;
+            FlushLayout(floor.ClientCanvas);
+            AssertFloor(floor);
         }
     }
 

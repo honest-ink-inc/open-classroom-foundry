@@ -1,0 +1,196 @@
+{
+  "format": "ocf.changed-file-manifest.v1",
+  "preparedDate": "2026-09-05",
+  "sourceBaseline": "554ec87b256c5cbd8f6efba453070f27941c9257",
+  "scope": "The 36 changed files in the first implementation commit that contains this manifest. Later evidence-only continuations do not replace this historical manifest.",
+  "normalization": "Strict UTF-8; literal CRLF converted to LF, no other normalization. Length and SHA-256 apply to those canonical bytes, not platform checkout representation.",
+  "derivation": "Two independent complete file reads produced identical ordered inventories, lengths and SHA-256 values.",
+  "exclusions": [
+    {
+      "path": "docs/governance/accepted-improvement-files.json",
+      "reason": "Detached manifest: no circular self-hash. Ignored generated outputs and receipts are separately identified in accepted-improvement-evidence.md."
+    }
+  ],
+  "files": [
+    {
+      "path": "CONTRIBUTING.md",
+      "canonicalUtf8Bytes": 8085,
+      "sha256": "3A9554123186AF3A98078DE60145E1EDC152FFFD5097187EE04EC86D01176054"
+    },
+    {
+      "path": "README.md",
+      "canonicalUtf8Bytes": 13440,
+      "sha256": "5A6DB835D6361068F1EDAE7D148684752EBD663710464A4CE083FBB31C9C234A"
+    },
+    {
+      "path": "docs/README.md",
+      "canonicalUtf8Bytes": 13393,
+      "sha256": "A8D2A863C966B4F09F60AFC548861B6D219AE2901A1347AE3F5CE5611568DE8E"
+    },
+    {
+      "path": "docs/development/source-build-and-verification.md",
+      "canonicalUtf8Bytes": 6231,
+      "sha256": "35C97DD118DEC796319C8BE129529EF75F580821B962B25D782F7FC50C939468"
+    },
+    {
+      "path": "docs/evidence/evidence-ledger.json",
+      "canonicalUtf8Bytes": 54036,
+      "sha256": "46725C9F78C191FBF552D8A822BE86D85E1DB4553714D314C7B75C72DA1D7BEB"
+    },
+    {
+      "path": "docs/governance/accepted-improvement-evidence.md",
+      "canonicalUtf8Bytes": 16098,
+      "sha256": "59909059DA3D60838AD240F0F2E45523A7CA206708DFD780F5B3914D1D01AA7C"
+    },
+    {
+      "path": "docs/governance/accepted-improvement-register.md",
+      "canonicalUtf8Bytes": 14664,
+      "sha256": "0AF1EFC4F486ABA213970FD187DC0A9E520313182E31ACB2E1FED59BB047552D"
+    },
+    {
+      "path": "docs/governance/content-ownership-use-inventory.md",
+      "canonicalUtf8Bytes": 20431,
+      "sha256": "C58A0AAB61687ACCAE1ACD305D23E6816EA88EE0789BEB6F9A7D3638B30549BB"
+    },
+    {
+      "path": "docs/governance/decision-index.md",
+      "canonicalUtf8Bytes": 5971,
+      "sha256": "F87E4FC40281F72A21A8C344B712E1D0293476AD06F9F932B7323227230A5AD5"
+    },
+    {
+      "path": "docs/governance/sustainability-dependency-inventory.md",
+      "canonicalUtf8Bytes": 4898,
+      "sha256": "DF6446B07BAEF3E818196D9A661276215EFDAF12CBF5AFE6BAC56712C8210C92"
+    },
+    {
+      "path": "docs/handover/2026-09-03-bounded-commission-hardening.md",
+      "canonicalUtf8Bytes": 27551,
+      "sha256": "C82BEDA662236B33C422C4534FBEFF9A8BDA021C9BB0B377E59C7AEBAD94C837"
+    },
+    {
+      "path": "docs/handover/2026-09-05-accepted-improvement-implementation.md",
+      "canonicalUtf8Bytes": 4146,
+      "sha256": "F020E3B00EB2C58257F88A9C32A5F7768095AED8B873D7FEA73DCB9956E866E4"
+    },
+    {
+      "path": "docs/implementation-plan.md",
+      "canonicalUtf8Bytes": 83800,
+      "sha256": "966CAEAA25E0B36DDFCC55225925E19D96D3C4DF35E82334B528D79F4751BE48"
+    },
+    {
+      "path": "docs/localization/reviewed-ui-catalogs.md",
+      "canonicalUtf8Bytes": 10102,
+      "sha256": "0A18F56102073D75E55F2E1BAC194DB21C66A7C7433018794A94580917A6E16F"
+    },
+    {
+      "path": "docs/release/hardening-checklist.md",
+      "canonicalUtf8Bytes": 20622,
+      "sha256": "63966D32B298447DA93EEAEB2CF0043D9FA5E9633640292569C07AAB287FD622"
+    },
+    {
+      "path": "docs/reviews/masters-review-1.0.md",
+      "canonicalUtf8Bytes": 32527,
+      "sha256": "F9A1F6D30760A381A7C0105FD716926FFD0B73B6E2F34E775A753E4C9B3F16A2"
+    },
+    {
+      "path": "src/Foundry.App.WinForms/AllAboardForm.cs",
+      "canonicalUtf8Bytes": 25176,
+      "sha256": "4ED1F8E6CF22BED16D124B6BC401F2C777026F15DA422BF33C73EE11E0D98C2E"
+    },
+    {
+      "path": "src/Foundry.App.WinForms/Localization/UiStrings.cs",
+      "canonicalUtf8Bytes": 54059,
+      "sha256": "1543B0179087D307D964E7A3FADCC81130623338736674C7255BB21BF6E375C9"
+    },
+    {
+      "path": "src/Foundry.App.WinForms/ModuleStudioForm.cs",
+      "canonicalUtf8Bytes": 51826,
+      "sha256": "72DF079282295845FC72ED6BCAE523C877F0A492C1FBD24D7AD39EBA5DCCDEF6"
+    },
+    {
+      "path": "src/Foundry.App.WinForms/PressRoomForm.cs",
+      "canonicalUtf8Bytes": 34430,
+      "sha256": "6426FC17A9EC782B5F8DE72D4E35D77F0DF17C608F745C09D5DA364A55618199"
+    },
+    {
+      "path": "src/Foundry.App.WinForms/ProjectLibrarySaveOperation.cs",
+      "canonicalUtf8Bytes": 667,
+      "sha256": "08991CB54FBCEA82301399321E87003C72ECA20250A94F800D9E09F772979A32"
+    },
+    {
+      "path": "src/Foundry.Application/TranscriptSession.cs",
+      "canonicalUtf8Bytes": 10448,
+      "sha256": "F08971818ABC87D4EF074B46928ACA4AFD4F1AB96C385DAF9070EED87165C4CC"
+    },
+    {
+      "path": "src/Foundry.Infrastructure.Windows/WindowsPdfPrinter.cs",
+      "canonicalUtf8Bytes": 7873,
+      "sha256": "4D29D66BA1708FF21C58222A88BA3D85506E7A4A0735E7967725774BF2BA22C8"
+    },
+    {
+      "path": "src/Foundry.Modules.BuiltIn/LessonLoom.cs",
+      "canonicalUtf8Bytes": 6698,
+      "sha256": "559DA5BB0A244B51B75CC7C3C010CD0A82195DEFE516C410AF8D7BD333C679CC"
+    },
+    {
+      "path": "src/Foundry.Modules.BuiltIn/ModuleStudioCatalog.cs",
+      "canonicalUtf8Bytes": 76271,
+      "sha256": "6EEA37FB1BFF4B2314BE9C582EABE029213FD7F51C6CCD41B50838E8660D0C51"
+    },
+    {
+      "path": "src/Foundry.Modules.DeterministicPress/ChartPress.cs",
+      "canonicalUtf8Bytes": 7346,
+      "sha256": "680CB2AA12C3DEF4D6E5B9690AD40C2B538750BFC0424AAFD38ABA8C355BD99A"
+    },
+    {
+      "path": "src/README.md",
+      "canonicalUtf8Bytes": 3127,
+      "sha256": "28A85687E01E1B2E9E8025AE0EAECA4C17F584661F015EBE93A4ECC5F660D182"
+    },
+    {
+      "path": "tests/Integration/WindowsPdfPrinterCancellationTests.cs",
+      "canonicalUtf8Bytes": 3075,
+      "sha256": "D5B1643FF2B82EC0CE80AB6FCAD2354B506B7EB99E4883A0CC11820C42DB3E7E"
+    },
+    {
+      "path": "tests/README.md",
+      "canonicalUtf8Bytes": 2341,
+      "sha256": "C9BDF89479395725CF567E2C45408D72106F9F8A769D494F6AAAA006C83D4845"
+    },
+    {
+      "path": "tests/UiAutomation/LibrarySaveRecoveryTests.cs",
+      "canonicalUtf8Bytes": 13533,
+      "sha256": "2F2749C1664F7F3969E8B0CFEDE362D75FBBD72B90B2C8255A5C9550FE58C0B6"
+    },
+    {
+      "path": "tests/Unit/AcceptedImprovementScopeTests.cs",
+      "canonicalUtf8Bytes": 8049,
+      "sha256": "AECB61359F779140376B5767858E3593F8017DA62D6C27A0FEC3A2ACA0EE07FC"
+    },
+    {
+      "path": "tests/Unit/ChartPressBoundaryTests.cs",
+      "canonicalUtf8Bytes": 4024,
+      "sha256": "5A8871A00E187782B802F569F198BEFE4E65DAEE104FBCAE2C7C0D286D595B5E"
+    },
+    {
+      "path": "tests/Unit/RecipeRatificationHistoryVerifierTests.cs",
+      "canonicalUtf8Bytes": 26054,
+      "sha256": "D3CBD85D8810E9937AFD2D9F8E7897A050AA9652ED180EC026C7CC771E09D320"
+    },
+    {
+      "path": "tests/Unit/StrandPlanBoundaryTests.cs",
+      "canonicalUtf8Bytes": 3787,
+      "sha256": "8DB3B5A7971316D10F8D178DAD284281B9D45B3F1F59BB4A286DA69610AA4B7C"
+    },
+    {
+      "path": "tests/Unit/TranscriptSessionBoundaryTests.cs",
+      "canonicalUtf8Bytes": 1892,
+      "sha256": "9C681C82FCD848290B8997CC5D3C62E02B2D5E973814D551CFA1309F3B123D33"
+    },
+    {
+      "path": "tools/verify-recipe-identity-ratification.ps1",
+      "canonicalUtf8Bytes": 21315,
+      "sha256": "D28BB61D9890B3D566FA58AB7DBF2A741826AB666B454283A9449EAD7479D453"
+    }
+  ]
+}

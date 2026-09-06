@@ -4,7 +4,7 @@
 
 **Plan version:** 2.0 — regenerated 29 August 2026, applying The Master's Review 1.0 (amendments 1–7; findings F2, F5–F11 incorporated)  
 **Date:** 29 August 2026  
-**Status (3 September 2026):** Foundation and the deterministic press are implemented; SequenceSlate and the reachable Green built-in studios are engineering prototypes, not protected-seat or classroom-validated products. SequenceSlate's constitutionally required AAC/SLP co-design, every other protected-seat review, pilot evidence, packaging, release, and the remaining roadmap stay open. ADR-008 fixes current public display names and ADR-009 corrects the lesson-design display to StrandPlan, while preserving all stable internal identifiers. The bounded commission prepared non-operative governance terms, hardened approval and output seams, and filed ADR-010 as Proposed without convening or ratifying any human decision. See the [current handover](handover/2026-09-03-bounded-commission-hardening.md).
+**Status (6 September 2026):** Foundation and deterministic authoring are implemented; SequenceSlate and reachable Green studios remain engineering prototypes, not protected-seat or classroom-validated products. Governance terms are non-operative; ADR-007/010, real reviews, pilots and release remain held. The authorized engine 0.8.0-alpha and seven side-by-side replacements now have completed fixed-corpus compatibility evidence and a [bounded technical disposition](governance/seven-recipe-technical-disposition.md), not final admission. The last Press parameter-panel classification repair passed final ordered local closing, including 3,078/3,078 full tests twice and paired samples. Implementation commit `630f707` is pushed in draft PR25 with its own successful hosted evidence in the [ledger](evidence/evidence-ledger.json). The typist-selected finite [engineering closeout](governance/2026-09-06-bounded-engineering-closeout.md) ends after this record-only closure earns its own exact-head checks and those conclusions are reported; all other proposals remain available for successive measured commissions. Booklet disposition and shared-engine/human boundaries remain explicit. No predecessor hosted result certifies this later candidate. See the [current handover](handover/2026-09-06-seven-recipe-compatibility.md).
 **License intention:** Application code and first-party recipes under GNU GPL-3.0-or-later; other content and assets governed by explicit, compatible licenses  
 **Initial operating environment:** .NET 10 on managed Windows 10/11 devices, local-first authoring, optional district-governed Azure OpenAI inference  
 
@@ -42,7 +42,7 @@ The public-facing priority sequence remains inspiring:
 11. Symbol Commons
 12. Inquirywright — Source & Inquiry
 
-Preceding the twelve as **Module Zero** is the **Deterministic Press** — the zero-inference printable studio specified in section 10.0. It carries no privacy risk, needs no district AI approval, exercises the entire pipeline except the inference provider, and establishes the trust every later module is measured against.
+Preceding the twelve as **Module Zero** is the **Deterministic Press** — the zero-inference printable studio specified in section 10.0. Its builders do not require an inference provider or cloud deployment. Teacher-entered text can still contain private or unauthorized material: offline operation does not classify that content or waive local policy. Only known generic catalog defaults or explicitly confirmed Green authored inputs may enter its review path; approval remains separate.
 
 The **engineering and release sequence must differ**:
 
@@ -497,7 +497,7 @@ Evidence for district review includes an ACR/VPAT, manual assistive-technology r
 
 ## Documentation and original printables
 
-Choose and declare a separate free-culture license, commonly CC BY or CC BY-SA, after project-specific review. Do not imply that GPL automatically governs every symbol, font, translation, photograph, or curriculum text.
+Choose and declare a separate free-culture license, commonly CC BY or CC BY-SA, after project-specific review. **Later 5 September 2026:** the typist [selected CC BY-SA 4.0 as the proposal to carry forward](governance/2026-09-05-content-license-selection.md); its material scope, licensing authority, matching assent and operative declaration remain unresolved. Do not imply that GPL automatically governs every symbol, font, translation, photograph, or curriculum text.
 
 ## Asset manifest
 
@@ -530,10 +530,10 @@ Each module below states the safe MVP, invariants, proof, and deferrals. Every m
 
 ## 10.0 Deterministic Press (Module Zero)
 
-**Lane:** Structurally Green only — no capture, no inference, no egress is even expressible.  
+**Lane:** Green-only authoring and output policy, not structurally risk-free cargo. The builders have no capture or inference path; arbitrary text must not be classified Green merely because it was typed locally.
 **Problem:** Teachers buy graph paper, ten-frames, handwriting sheets, and flashcard stock with their own money; the atlas's engine promises offline deterministic function, yet every original idea assumed interpretation.
 
-**Scope:** The eight presses of Studio XXI (atlas entries 203–210): Blankforms Press, Handwriting Foundry, Manipulative Mint, Flashcard Flywheel, Foldables Foundry, Booklet Binder, Big Print Shop, and Label Lathe. Inputs are parameters, never prose; a press that wants prose is a different module.
+**Scope:** The eight presses of Studio XXI (atlas entries 203–210): Blankforms Press, Handwriting Foundry, Manipulative Mint, Flashcard Flywheel, Foldables Foundry, Booklet Binder, Big Print Shop, and Label Lathe. Inputs include bounded geometry/settings and teacher-entered list, prompt and label text. The text is placed into deterministic output, not interpreted or generated by a model. Press Room parameter-panel text edits require fresh Green confirmation and invalidate approval. Edits within Gate B separately invalidate revision approval and acknowledgements; they do not repeat the authoring checkbox.
 
 **Architecture position:** No dependency on IInferenceProvider, IOcrService, IRedactionAssistant, or the Amber machinery. Presses exercise IRenderer, IExporter, IPrinter, IProjectStore, and the ApprovedArtifact boundary — Gate B in its lightest form (parameter review plus exact print preview) still passes the architectural approval gate, preserving uniformity.
 
@@ -543,7 +543,7 @@ Each module below states the safe MVP, invariants, proof, and deferrals. Every m
 
 **Acceptance proof:** Measured geometry fixtures; physical print inspection on the hardware bench including the minimum-hardware machine; keyboard-only creation of each MVP artifact; static verification that Module Zero references no inference seam and produces no network egress.
 
-**Defer:** Non-Latin handwriting scripts pending qualified review; Label Lathe until the asset kernel exists; any generated decorative art; any press whose input is prose rather than parameters.
+**Defer:** Non-Latin handwriting scripts pending qualified review; Label Lathe until the asset kernel exists; any generated decorative art; source interpretation or unbounded prose generation. **Correction, 6 September 2026:** the former “no privacy risk,” “Structurally Green” and “parameters, never prose” claims confused deterministic computation with content classification; they do not govern teacher-entered text.
 
 The complete specification is the companion document `open-classroom-foundry-deterministic-press-spec.md`.
 
@@ -797,7 +797,8 @@ Unlimited unsupported languages, speech interpretation, dialect guarantees, pers
 - Cluster-matched instructional routes
 - Short reteach draft
 - One or two hinge questions with conditional teacher responses
-- The approved cluster summary — already teacher-approved Green output — may seed tomorrow's Hinge Question Forge session without persisting any response-level data
+- ~~The approved cluster summary — already teacher-approved Green output — may seed tomorrow's Hinge Question Forge session without persisting any response-level data~~ **Corrected 5 September 2026 (I35):** approval does not change a data lane. A response-derived summary retains the highest input lane, including Amber; suppression, purging raw responses, a teacher checkbox, and the word "anonymous" do not authorize a downgrade or a persistent handoff.
+- A separately authored generic pattern description may enter a new Green planning task only under §4's qualifying-content, rights, and accumulation rules. It must contain no response-derived text, image, quotation, per-check trace, or date-to-roster linkage. Copying or paraphrasing a response-derived summary is not this independent authoring route. Actual Amber operation and any exceptional lane reduction remain subject to the district/privacy/records process; the current production sinks admit Green only.
 - No named group, ranking, or response-level export
 
 **Invariants**

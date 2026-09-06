@@ -88,7 +88,7 @@ internal static class AccessRemixer
         Id: "access-remix",
         Version: "0.1.0",
         License: "GPL-3.0-or-later",
-        MinimumEngineVersion: EngineIdentity.EngineVersion,
+        MinimumEngineVersion: "0.7.0-alpha",
         InstructionalPurpose: "Convert a teacher-created artifact into large-print, chunked, and one-item-per-panel variants without touching a word of it.",
         ProhibitedPurposes:
         [

@@ -168,25 +168,23 @@ jobs:
           }
 
           $failures = @()
-          $actualBaseline = @()
           foreach ($relativePath in $filesA) {
             $ha = (Get-FileHash (Join-Path $rootA $relativePath) -Algorithm SHA256).Hash
             $hb = (Get-FileHash (Join-Path $rootB $relativePath) -Algorithm SHA256).Hash
             if ($ha -ne $hb) { $failures += $relativePath }
-            $portablePath = $relativePath.Replace([IO.Path]::DirectorySeparatorChar, '/')
-            $actualBaseline += "$portablePath $ha"
           }
           Write-Host "$($filesA.Count) files compared byte-for-byte."
           if ($failures.Count -gt 0) { throw "Nondeterministic output: $($failures -join ', ')" }
 
-          $baselinePath = "tests/Rendering/Fixtures/recipe-first-admission-samples.sha256"
-          $expectedBaseline = @(Get-Content -LiteralPath $baselinePath)
-          $baselineDiff = @(Compare-Object -ReferenceObject $expectedBaseline -DifferenceObject $actualBaseline)
-          if ($baselineDiff.Count -gt 0) {
-            throw "First-admission sample baseline drifted:`n$($baselineDiff | Out-String)"
-          }
-          $baselineSha256 = (Get-FileHash -LiteralPath $baselinePath -Algorithm SHA256).Hash
-          Write-Host "First-admission sample baseline matched: $baselineSha256"
+          # C1's complete 40-row baseline remains frozen. The separately named
+          # 0.8 writer candidate retains the other 39 bytes and permits only the
+          # exact engineVersion change inside the canonical task-strip package.
+          pwsh -NoProfile -File tools/verify-sample-baselines.ps1 `
+            -SamplesRoot $rootA `
+            -HistoricalManifestPath tests/Rendering/Fixtures/recipe-first-admission-samples.sha256 `
+            -CandidateManifestPath tests/Rendering/Fixtures/engine-0.8.0-alpha-candidate-samples.sha256 `
+            -HistoricalPackagePath tests/Integration/Fixtures/upgrade/c1-first-admission-task-strip.ocfproj.base64
+          if ($LASTEXITCODE -ne 0) { throw 'First-admission sample baseline drifted or exact 0.8 candidate relation failed.' }
 
       - name: Retain Windows samples for the portable comparison
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1

@@ -1,0 +1,66 @@
+{
+  "format": "ocf.changed-file-manifest.v1",
+  "preparedDate": "2026-09-05",
+  "sourceBaseline": "80f52b09571b4d190ffbb89f63cbe0f43f317fa7",
+  "scope": "The ten non-self changed files in the first fixture-disposal-observation continuation commit containing this manifest. Test-only observations/controls, exact red predecessor hosted evidence and current local closing; no scheduler/deadline/admission-policy repair, recipe admission, main merge or publication. Later continuations do not replace this historical manifest.",
+  "normalization": "Strict UTF-8; literal CRLF converted to LF, no other normalization. Length and SHA-256 apply to those canonical bytes, not platform checkout representation.",
+  "derivation": "Two independent complete file reads produced identical ordered inventories, lengths and SHA-256 values.",
+  "exclusions": [
+    {
+      "path": "docs/governance/fixture-disposal-observation-files.json",
+      "reason": "Detached manifest: no circular self-hash. Ignored generated outputs and receipts are separately identified in fixture-disposal-observations.md."
+    }
+  ],
+  "files": [
+    {
+      "path": "README.md",
+      "canonicalUtf8Bytes": 14034,
+      "sha256": "E99302BCBCEDC30C73A6D0410DAFEE0AFE456F3D6EB1BE09616D8A9B3F28246F"
+    },
+    {
+      "path": "docs/README.md",
+      "canonicalUtf8Bytes": 15187,
+      "sha256": "372A05247DA62D84AA74D7F50F8887408E117D62AD94E10E66F4895F575A2C47"
+    },
+    {
+      "path": "docs/evidence/evidence-ledger.json",
+      "canonicalUtf8Bytes": 71212,
+      "sha256": "DC37F950F3CD8DD4D62C86E920CAE90B052EF28F7835B3260C05A4DDD4F76DAC"
+    },
+    {
+      "path": "docs/evidence/sightings-register.md",
+      "canonicalUtf8Bytes": 24867,
+      "sha256": "03D81C401BACAE080AE84D048241CE96162852FE3DE430A1F3EFA2B76EBCCD25"
+    },
+    {
+      "path": "docs/governance/accepted-improvement-register.md",
+      "canonicalUtf8Bytes": 18562,
+      "sha256": "B508E786154EC2289BF8ABAEB240A00212939E56B04BD0768A91AB5EEE63E61D"
+    },
+    {
+      "path": "docs/governance/fixture-disposal-observations.md",
+      "canonicalUtf8Bytes": 13428,
+      "sha256": "934273D70EB86E72AD19C886255DC42E3B569595B01A8B78F80D8088350C298E"
+    },
+    {
+      "path": "docs/handover/2026-09-05-fixture-disposal-observations.md",
+      "canonicalUtf8Bytes": 2720,
+      "sha256": "D8F4F940D6109AC4358B4AE297B6975A5A08FA50DB4CFF22994721EF366D851B"
+    },
+    {
+      "path": "docs/implementation-plan.md",
+      "canonicalUtf8Bytes": 84284,
+      "sha256": "32B33D581D022A1230491CE070BC7BFEB6F11236992DED1A4393DD191E039506"
+    },
+    {
+      "path": "tests/Unit/FixtureProcessRunner.cs",
+      "canonicalUtf8Bytes": 24194,
+      "sha256": "6EAD28825F068CAEDE07241348C667A3D7E027D30BDA4CF60D953F05B6CD9864"
+    },
+    {
+      "path": "tests/Unit/FixtureProcessRunnerTests.cs",
+      "canonicalUtf8Bytes": 40522,
+      "sha256": "95C74DEFE443CCAD76416FC292F1193BF116E2DEB77C3F369AFE032B9D4F8D52"
+    }
+  ]
+}

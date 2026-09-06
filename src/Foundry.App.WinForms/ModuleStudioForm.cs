@@ -24,10 +24,12 @@ public sealed class ModuleStudioForm : Form
     private readonly Func<string, ReadOnlyMemory<byte>, CancellationToken, Task> _exportWriter;
     private readonly Func<Func<Task>, CancellationToken, Task> _exportWorkRunner;
     private readonly Func<ApprovedArtifact, string, RenderAudience, double, bool, IAssetCatalog?, Task> _printViewOpener;
+    private readonly ProjectLibrarySaveOperation _librarySaver;
     private readonly Func<IWin32Window, IReadOnlyList<BriefLine>?> _boardIntakeRunner;
     private readonly bool _modalReview;
     private readonly ListBox _doorList;
     private readonly ComboBox _modeList;
+    private readonly ComboBox _recipeVersion;
     private readonly FlowLayoutPanel _parameterPanel;
     private readonly ListBox _notes;
     private readonly CheckBox _greenInput;
@@ -78,14 +80,16 @@ public sealed class ModuleStudioForm : Form
         Func<ExportChoice?>? exportPicker = null,
         Func<string, ReadOnlyMemory<byte>, CancellationToken, Task>? exportWriter = null,
         Func<ApprovedArtifact, string, RenderAudience, double, bool, IAssetCatalog?, Task>? printViewOpener = null,
-        Func<IWin32Window, IReadOnlyList<BriefLine>?>? boardIntakeRunner = null)
+        Func<IWin32Window, IReadOnlyList<BriefLine>?>? boardIntakeRunner = null,
+        ProjectLibrarySaveOperation? librarySaver = null)
         : this(
             reviewRunner,
             exportPicker,
             exportWriter,
             printViewOpener,
             boardIntakeRunner,
-            RunExportWorkInBackground)
+            RunExportWorkInBackground,
+            librarySaver)
     {
     }
 
@@ -95,7 +99,8 @@ public sealed class ModuleStudioForm : Form
         Func<string, ReadOnlyMemory<byte>, CancellationToken, Task>? exportWriter,
         Func<ApprovedArtifact, string, RenderAudience, double, bool, IAssetCatalog?, Task>? printViewOpener,
         Func<IWin32Window, IReadOnlyList<BriefLine>?>? boardIntakeRunner,
-        Func<Func<Task>, CancellationToken, Task> exportWorkRunner)
+        Func<Func<Task>, CancellationToken, Task> exportWorkRunner,
+        ProjectLibrarySaveOperation? librarySaver = null)
     {
         _modalReview = reviewRunner is null;
         _reviewRunner = reviewRunner ?? RunModalReview;
@@ -105,6 +110,7 @@ public sealed class ModuleStudioForm : Form
                 AppServices.WriteExportBytesAsync(destination, content, cancellationToken));
         _exportWorkRunner = exportWorkRunner;
         _printViewOpener = printViewOpener ?? AppServices.OpenPrintViewAsync;
+        _librarySaver = librarySaver ?? AppServices.SaveToLibrary;
         _boardIntakeRunner = boardIntakeRunner ?? RunBoardIntake;
 
         Text = UiStrings.WithoutMnemonic(UiStrings.ModuleStudioWindowTitle);
@@ -133,6 +139,14 @@ public sealed class ModuleStudioForm : Form
             Dock = DockStyle.Fill,
             DropDownStyle = ComboBoxStyle.DropDownList,
             AccessibleName = UiStrings.WithoutMnemonic(UiStrings.ModuleMode),
+        };
+
+        _recipeVersion = new ComboBox
+        {
+            Name = "recipe-version",
+            Dock = DockStyle.Fill,
+            DropDownStyle = ComboBoxStyle.DropDownList,
+            AccessibleName = UiStrings.WithoutMnemonic(UiStrings.RecipeVersion),
         };
 
         _parameterPanel = new FlowLayoutPanel
@@ -212,13 +226,16 @@ public sealed class ModuleStudioForm : Form
         {
             Dock = DockStyle.Fill,
             ColumnCount = 2,
+            RowCount = 2,
             AutoSize = false,
-            Height = 32,
+            Height = 64,
         };
         modeRow.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
         modeRow.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
         modeRow.Controls.Add(new Label { Text = UiStrings.ModuleMode, AutoSize = true, Anchor = AnchorStyles.Left }, 0, 0);
         modeRow.Controls.Add(_modeList, 1, 0);
+        modeRow.Controls.Add(new Label { Text = UiStrings.RecipeVersion, AutoSize = true, Anchor = AnchorStyles.Left }, 0, 1);
+        modeRow.Controls.Add(_recipeVersion, 1, 1);
 
         var laneGroup = new GroupBox
         {
@@ -294,7 +311,8 @@ public sealed class ModuleStudioForm : Form
         Controls.Add(_status);
 
         _doorList.SelectedIndexChanged += (_, _) => LoadDoor();
-        _modeList.SelectedIndexChanged += (_, _) => LoadMode();
+        _modeList.SelectedIndexChanged += (_, _) => LoadModeVersions();
+        _recipeVersion.SelectedIndexChanged += (_, _) => LoadMode();
         _greenInput.CheckedChanged += (_, _) => GreenConfirmationChanged();
         _audience.SelectedIndexChanged += (_, _) => OutputOptionChanged();
         _textScale.ValueChanged += (_, _) => OutputOptionChanged();
@@ -308,7 +326,10 @@ public sealed class ModuleStudioForm : Form
         => (_doorList.SelectedItem as DisplayItem<ModuleDoorDefinition>)?.Value;
 
     public ModuleModeDefinition? SelectedMode
-        => (_modeList.SelectedItem as DisplayItem<ModuleModeDefinition>)?.Value;
+        => _modeList.SelectedItem is DisplayItem<ModuleModeDefinition> item
+            && _recipeVersion.SelectedItem is RecipeVersionChoice version
+                ? ModuleStudioCatalog.ByModeKey(item.Value.Key, version.Version)
+                : null;
 
     public ApprovedArtifact? ApprovedResult { get; private set; }
 
@@ -345,6 +366,27 @@ public sealed class ModuleStudioForm : Form
 
         _modeList.SelectedIndex = 0;
         _modeList.Enabled = door.Modes.Count > 1;
+        _loadingFields = false;
+        LoadModeVersions();
+    }
+
+    private void LoadModeVersions()
+    {
+        if (_loadingFields || _modeList.SelectedItem is not DisplayItem<ModuleModeDefinition> item)
+        {
+            return;
+        }
+
+        _loadingFields = true;
+        _recipeVersion.Items.Clear();
+        foreach (var mode in ModuleStudioCatalog.AllVersions.Where(mode => mode.Key == item.Value.Key))
+        {
+            _recipeVersion.Items.Add(new RecipeVersionChoice(mode.Recipe.Version, mode.Recipe.Version != "0.1.0"));
+        }
+
+        _recipeVersion.SelectedIndex = 0;
+        _recipeVersion.Enabled = _recipeVersion.Items.Count > 1;
+        ComboBoxReadingPath.EnsureEveryItemFits(_recipeVersion);
         _loadingFields = false;
         LoadMode();
     }
@@ -656,7 +698,7 @@ public sealed class ModuleStudioForm : Form
             outcome = mode.Build(new ModuleInputValues(
                 _valueReaders.ToDictionary(pair => pair.Key, pair => pair.Value(), StringComparer.Ordinal)));
         }
-        catch (Exception refusal) when (refusal is ArgumentException or InvalidOperationException)
+        catch (Exception refusal) when (refusal is ArgumentException or InvalidOperationException or OverflowException)
         {
             SetStatus(UiStrings.StatusRefused, refusal.Message);
             _parameterPanel.SelectNextControl(null, true, true, true, false);
@@ -755,6 +797,7 @@ public sealed class ModuleStudioForm : Form
     {
         _doorList.Enabled = enabled;
         _modeList.Enabled = enabled && (SelectedDoor?.Modes.Count ?? 0) > 1;
+        _recipeVersion.Enabled = enabled && _recipeVersion.Items.Count > 1;
         _parameterPanel.Enabled = enabled && SelectedMode is { IsBuildAvailable: true };
         _greenInput.Enabled = enabled && SelectedMode is { IsBuildAvailable: true };
         _audience.Enabled = enabled;
@@ -1112,16 +1155,29 @@ public sealed class ModuleStudioForm : Form
             return;
         }
 
-        var name = AppServices.SaveToLibrary(
-            ApprovedResult,
-            PublicFileStem(_context),
-            _context.Door.Id,
-            _context.Mode.Recipe.Id,
-            _context.Mode.Recipe.Version,
-            AppServices.SymbolCatalog(),
-            _validationEnvelope,
-            _renderProfile);
-        SetStatus(UiStrings.StatusSaved, name);
+        ArtifactSinkAuthorizationGate.DemandGreenSave(ApprovedResult);
+        var catalog = AppServices.SymbolCatalog();
+        try
+        {
+            var name = _librarySaver(
+                ApprovedResult,
+                PublicFileStem(_context),
+                _context.Door.Id,
+                _context.Mode.Recipe.Id,
+                _context.Mode.Recipe.Version,
+                catalog,
+                _validationEnvelope,
+                _renderProfile);
+            SetStatus(UiStrings.StatusSaved, name);
+        }
+        catch (OperationCanceledException)
+        {
+            SetStatus(UiStrings.StatusSaveCancelled);
+        }
+        catch (Exception failure) when (failure is IOException or UnauthorizedAccessException)
+        {
+            SetStatus(UiStrings.StatusSaveFailed);
+        }
     }
 
     private void PopulateNotes(

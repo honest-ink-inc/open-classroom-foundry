@@ -1,0 +1,66 @@
+{
+  "format": "ocf.changed-file-manifest.v1",
+  "preparedDate": "2026-09-05",
+  "sourceBaseline": "aa7410085a02359988ac70d9f5a85e2e79968295",
+  "scope": "The ten non-self changed files in the first board-review-integrity continuation commit containing this manifest. Bounded Board catalog review repair, exact predecessor hosted evidence, I35 progress correction and measured local closing. No recipe admission, main merge, publication or human ratification. Later records do not replace this historical manifest.",
+  "normalization": "Strict UTF-8; literal CRLF converted to LF, no other normalization. Length and SHA-256 apply to those canonical bytes, not platform checkout representation.",
+  "derivation": "Two independent complete file reads produced identical ordered inventories, lengths and SHA-256 values.",
+  "exclusions": [
+    {
+      "path": "docs/governance/board-review-integrity-files.json",
+      "reason": "Detached manifest: no circular self-hash. Ignored generated evidence is separately identified in board-review-integrity.md."
+    }
+  ],
+  "files": [
+    {
+      "path": "README.md",
+      "canonicalUtf8Bytes": 14259,
+      "sha256": "ADE4D3382BCA084C972981DC9AA641D7FEE056343AEE61DDD1FFA48EA88A268F"
+    },
+    {
+      "path": "docs/README.md",
+      "canonicalUtf8Bytes": 15951,
+      "sha256": "B2DBA90000296A550ADACBDC5E8CEB38FC47AF64E82BE090F6E1AB271E171B61"
+    },
+    {
+      "path": "docs/evidence/evidence-ledger.json",
+      "canonicalUtf8Bytes": 77616,
+      "sha256": "23CF7347E56A9DA7977E6FEDC6A46C6D227361282675133DE3556D1786CE6379"
+    },
+    {
+      "path": "docs/evidence/sightings-register.md",
+      "canonicalUtf8Bytes": 31272,
+      "sha256": "D3A20E7CBA1EA4742E0AA29AE087053186DA686B9D780B3E54B6362CA6026B74"
+    },
+    {
+      "path": "docs/governance/accepted-improvement-register.md",
+      "canonicalUtf8Bytes": 21875,
+      "sha256": "A0181FE2EA25208C4725DF8E269DAB50B79D7626C439F6F988358974A9F27B92"
+    },
+    {
+      "path": "docs/governance/board-review-integrity.md",
+      "canonicalUtf8Bytes": 19155,
+      "sha256": "F5B7ACFB19B68FA243588715772BA489BCB7550B12E841DF3FD649314A020CC2"
+    },
+    {
+      "path": "docs/handover/2026-09-05-board-review-integrity.md",
+      "canonicalUtf8Bytes": 2841,
+      "sha256": "B24BE4930498878A07152127857BCFBD1881C876B55B446D106385D96F5E0440"
+    },
+    {
+      "path": "docs/implementation-plan.md",
+      "canonicalUtf8Bytes": 84305,
+      "sha256": "38367E72323BBD1DF372333472ED14B0806C42B9541A1CED5864896A4C8FEB6B"
+    },
+    {
+      "path": "src/Foundry.Modules.BuiltIn/ModuleStudioCatalog.cs",
+      "canonicalUtf8Bytes": 81494,
+      "sha256": "B9D68B79B951F7009B9BDCE3B23BD09F72DAD732AB0D6978EDF8C51FDBD451D5"
+    },
+    {
+      "path": "tests/Unit/BoardToBriefReviewIntegrityTests.cs",
+      "canonicalUtf8Bytes": 16444,
+      "sha256": "E9302229260C6B43A97137B00BA44E5C7587C63BF78FCEC0519EE329AA162F3B"
+    }
+  ]
+}
