@@ -1438,6 +1438,41 @@
       "tests": null,
       "record": "docs/governance/fixture-async-waits.md",
       "notes": "Exact-main push after ordinary PR15 merge, attempt 1. Own completed/success conclusion and checkout log read; actual uncompressed csharp.sarif independently inspected: 716012 bytes, SHA-256 E484BF01D349451BDC921DEF5082C6941D3CA40282446E16C3F2FB8A45BF737F, SARIF 2.1.0, CodeQL 2.26.4, one successful invocation and zero results. The 707 execution notifications are all level none; embedded VCS property is absent, so binding comes from API/artifact/checkout evidence. Uploaded ZIP SHA-256 AC60EEA78C0AF74A26DD2D7A1782D67628147D12F64093690F2480E57E682F82 is distinct from the uncompressed hash. Retained under out/pr15-main-hosted/. No later candidate, recipe admission, protected review, site or release conclusion is transferred."
+    },
+    {
+      "id": "ci-34009448897",
+      "kind": "hosted-ci",
+      "runId": 34009448897,
+      "workflow": "CI",
+      "event": "pull_request",
+      "branch": "codex/fixture-disposal-follow-up",
+      "headSha": "a73fe0d70cc30aa2d6fdbdf462cc5d4770d61875",
+      "checkoutSha": "ef005959a7cfc75819564d8e83dfe2b8550e2f28",
+      "conclusion": "failure",
+      "createdUtc": "2026-09-06T03:37:14Z",
+      "receipt": "20260906T034044Z-bca4b527675f4dbe80d49511407845a1",
+      "tests": {
+        "passed": 2645,
+        "total": 2650
+      },
+      "record": "docs/governance/fixture-lifecycle-isolation.md",
+      "notes": "Own attempt-1 conclusion failure. Actual seven TRXs: 2645/2650, no skipped; Unit 1373/1378, other six suites passed. Native copy-caller DisposalFailure retained Queued disposal at 1752 ms against 500 ms, followed by two exact sticky refusals. Later sequential observations at 1772/1777 ms report callback entry/exit 1757 ms and completion without altering the frozen unsafe result. Two distinct synthetic helper failures retain a pending-reader precondition assertion and first-owned-aggregate two-second timeout; original primary sentinel and later outer aggregate observation survived. All messages, stacks and streams retained; no common-cause or cure claim. Outer native/runner 1/1, no timeout, safe/stable, one coherent failed-Unit completeness error. Summary SHA-256 E36594652D54210E394660759044EFD7C26FDDF9FBA723DD669A6348D5E5B94C; Unit TRX 06C14898D0B85D3C454E798637E8AC1965A81BC416E73A6C1D6F21D05EB3175F. Samples, coverage threshold, dependency/vulnerability/SBOM and portable gates skipped; build/format/history/secret scan passed. Retained under out/fixture-async-hosted-pr24/a73fe0d-20260906T034125Z/. Earlier local green and later isolated non-reproductions do not replace this exact run or admit inherited production changes."
+    },
+    {
+      "id": "codeql-34009448866",
+      "kind": "hosted-codeql",
+      "runId": 34009448866,
+      "workflow": "CodeQL SAST",
+      "event": "pull_request",
+      "branch": "codex/fixture-disposal-follow-up",
+      "headSha": "a73fe0d70cc30aa2d6fdbdf462cc5d4770d61875",
+      "checkoutSha": "ef005959a7cfc75819564d8e83dfe2b8550e2f28",
+      "conclusion": "success",
+      "createdUtc": "2026-09-06T03:37:14Z",
+      "receipt": null,
+      "tests": null,
+      "record": "docs/governance/fixture-lifecycle-isolation.md",
+      "notes": "Own attempt-1 conclusion success; exact PR24 synthetic merge into 77bb88f3e07b5d888ce0e5f0cc2601a96c8a9dee, not main. Actual SARIF 2.1.0 / CodeQL 2.26.4: one successful invocation, zero results, 445 execution notifications all none; embedded VCS and configuration-notification properties absent. SARIF is 638634 bytes, SHA-256 7B9D763B2A9F298C7C0C34FA00B7FB03A9A2AD5EF8E461CAB01B581FA07151BE; ZIP is 61256 bytes, SHA-256 2D2B6867D81B68986215278A65F51E638CCB12762387518AFF59DC4F6207974B. API/artifact/checkout binding and actual SARIF were read. Paired CI remains red; no general security, admission, human-review or release clearance. Retained under out/fixture-async-hosted-pr24/a73fe0d-20260906T034125Z/."
     }
   ]
 }

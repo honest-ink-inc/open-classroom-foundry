@@ -1,0 +1,71 @@
+{
+  "format": "ocf.changed-file-manifest.v1",
+  "preparedDate": "2026-09-06",
+  "sourceBaseline": "a73fe0d70cc30aa2d6fdbdf462cc5d4770d61875",
+  "scope": "Eleven non-self changed files in this fixture-lifecycle isolation continuation. Exact predecessor hosted failures and local non-reproductions, red-tested intra-Unit collection metadata, focused/full verification and current-state records. No fixture logic, deadline, production recipe/version, historical sighting closure, compatibility admission, publication or human ratification. Earlier manifests remain historical.",
+  "normalization": "Strict UTF-8; literal CRLF converted to LF, no other normalization. Length and SHA-256 apply to those canonical bytes, not platform checkout representation.",
+  "derivation": "Two independent complete file reads produced identical ordered inventories, lengths and SHA-256 values.",
+  "exclusions": [
+    {
+      "path": "docs/governance/fixture-lifecycle-isolation-files.json",
+      "reason": "Detached manifest: no circular self-hash. Ignored generated evidence is separately identified in fixture-lifecycle-isolation.md."
+    }
+  ],
+  "files": [
+    {
+      "path": "README.md",
+      "canonicalUtf8Bytes": 17496,
+      "sha256": "FA2B7C2A3DA0786A9C59832C646B4C0B73F40C48894F0DADB8E13565D05A948B"
+    },
+    {
+      "path": "docs/README.md",
+      "canonicalUtf8Bytes": 17969,
+      "sha256": "9C67EE362F3F6CB8B7FE6A9416021DD246531A1240F70C59F132F3224CA39188"
+    },
+    {
+      "path": "docs/evidence/evidence-ledger.json",
+      "canonicalUtf8Bytes": 90286,
+      "sha256": "723E69A6AECEAFD760DDF1498E22B771854AA6D1109DA1073FD49CF9F12B5C0A"
+    },
+    {
+      "path": "docs/evidence/sightings-register.md",
+      "canonicalUtf8Bytes": 38524,
+      "sha256": "7CB7EA0643724C77B49BC759A1A9D4B7FC0A10C3462ED33CD8595A04890EE98D"
+    },
+    {
+      "path": "docs/governance/accepted-improvement-register.md",
+      "canonicalUtf8Bytes": 26092,
+      "sha256": "FB6D6F474635FC457268C309BACCCDB6B58345AFFB145005F15D3C979338D0F8"
+    },
+    {
+      "path": "docs/governance/fixture-lifecycle-isolation.md",
+      "canonicalUtf8Bytes": 18073,
+      "sha256": "F36AD7E609C551CFA8DE59CB06B847FC36B643EA493B928240E73F6AFC796E28"
+    },
+    {
+      "path": "docs/handover/2026-09-06-fixture-lifecycle-isolation.md",
+      "canonicalUtf8Bytes": 3716,
+      "sha256": "1C64C89EBE066FD136637F88ED5264D3B4071C492C47DC6FCEB4EDA47F2509FD"
+    },
+    {
+      "path": "docs/implementation-plan.md",
+      "canonicalUtf8Bytes": 84423,
+      "sha256": "0768A1A7489F3449EA6CB561884BFCE75F61EA777D93E4F9934E6818ECF5E822"
+    },
+    {
+      "path": "tests/Unit/BoundedFixtureLifecycleTestGroup.cs",
+      "canonicalUtf8Bytes": 2670,
+      "sha256": "E0E39DF24A8EE63B6B32E90CA6EF9BB5F71C0C33CDA045FA77BBD7DF611D4448"
+    },
+    {
+      "path": "tests/Unit/CiTestRunnerContractTests.cs",
+      "canonicalUtf8Bytes": 94888,
+      "sha256": "B19C4FA788761F3171D0C63BE01ACD8134F33BCDE02E14FA90B3AF1C49374CBD"
+    },
+    {
+      "path": "tests/Unit/FixtureProcessRunnerTests.cs",
+      "canonicalUtf8Bytes": 82568,
+      "sha256": "6D85741D41A4740804C0EEC2D712E728B80DF7237BBB107E755C91101E89ACE7"
+    }
+  ]
+}

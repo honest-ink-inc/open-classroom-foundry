@@ -5,6 +5,7 @@ using Xunit.Abstractions;
 
 namespace Foundry.Tests.Unit;
 
+[Collection(BoundedFixtureLifecycleTestGroup.Name)]
 public sealed class CiTestRunnerContractTests(ITestOutputHelper testOutput)
 {
     private static readonly FixtureProcessRunner PowerShellFixtureRunner = new();

@@ -26,6 +26,10 @@ The machine never appears to be the master teacher. The teacher remains the acco
 
 The audited Writer's Kiosk baseline (commit `c2b670b`, 75 passing tests) lives at [Spacejunk-io/writers-kiosk-csharp](https://github.com/Spacejunk-io/writers-kiosk-csharp); its reusable components were refactored behind interfaces during Release 0.0 rather than copied here wholesale. Release-readiness is tracked honestly, item by item, in the [1.0 hardening checklist](docs/release/hardening-checklist.md) — every open human row there is a reason this is not 1.0.
 
+**6 September continuation:** the [current handover](docs/handover/2026-09-06-fixture-lifecycle-isolation.md) records the previous fixture candidate's actual red CI and green CodeQL. Five failures are retained, including two distinct synthetic controls; unchanged-source isolated passes are non-reproductions, not cures. A narrow Unit collection change passed 94/94 focused tests twice after its membership guard failed twice. ~~Full closing and new own-head verification remain pending.~~ **Struck later 6 September 2026:** corrected ordered local closing passed, including 94/94 focused and 2,651/2,651 full tests twice; final records and new own-head hosted verification remain separate. No deadline or production recipe changed; compatibility, rights, real-review and publication holds remain.
+
+**Later 6 September check:** the first full run was 2,649/2,651, with all 94 fixture controls passing. Two deterministic guard failures exposed new ledger-row ordering and the placement of the independent historical checkout. Both are corrected without weakening guards, changing fixture logic or deleting evidence; ~~fresh full closing remains pending.~~ **Struck later 6 September 2026:** the corrected pair passed at the [recorded source/assembly cutoff](docs/governance/fixture-lifecycle-isolation.md#corrected-full-closing--measured-local-pass). The failed cutoff remains retained and no historical instability finding is closed.
+
 ## What gets built, in order
 
 | Release | Contents | State recorded through 2 Sep 2026 |

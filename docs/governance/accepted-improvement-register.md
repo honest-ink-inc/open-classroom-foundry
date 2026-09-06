@@ -86,6 +86,26 @@ and assembly identities. The prior candidate, failures and proof remain retained
 This does not close S-18, establish a hosted cause or admit the inherited stack;
 I33 remains ACTIVE and the new own-head hosted observations remain separate.
 
+**I33/I34 continuation, 6 September 2026:** the prior candidate's own red CI
+and green CodeQL are now in the ledger, with S-15 recurrence and separate
+S-19/S-20 failure records. Unchanged-source isolated passes do not replace
+that run. The [collection-only continuation](fixture-lifecycle-isolation.md)
+passed 94/94 focused twice after its membership guard failed twice; all
+original cases, fixture logic and deadlines remain. ~~Full closing and new
+own-head hosted verification are pending.~~ **Struck later 6 September 2026:**
+corrected ordered local closing passed, including 94/94 focused and
+2,651/2,651 full twice; final records and new own-head verification remain
+separate. I33/I34 remain ACTIVE, without
+historical diagnosis, cure, compatibility admission or human-review claims.
+
+**Later 6 September:** first full closing rejected ledger equal-time ordering
+and nested historical-checkout placement; both failures and the candidate
+cutoff are retained. Row order and checkout location were corrected without
+altering evidence values, fixture code or guard policy. ~~Fresh full closing
+remains pending.~~ **Struck later 6 September 2026:** the corrected pair
+passed at its recorded source/assembly cutoff; all 94 fixture controls also
+passed in the first failed full run, which remains retained.
+
 ## Complete atlas and release coverage
 
 All 227 numbered rows, their lane tags, distinct refinements and I-number links

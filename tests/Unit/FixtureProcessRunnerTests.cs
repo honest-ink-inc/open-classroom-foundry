@@ -6,6 +6,7 @@ using Xunit.Abstractions;
 
 namespace Foundry.Tests.Unit;
 
+[Collection(BoundedFixtureLifecycleTestGroup.Name)]
 public sealed class FixtureProcessRunnerTests(ITestOutputHelper output)
 {
     private static readonly FixtureProcessLimits ControlLimits = new(
