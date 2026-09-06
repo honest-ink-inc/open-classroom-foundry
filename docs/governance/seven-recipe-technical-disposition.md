@@ -156,4 +156,4 @@ assent, consent/withdrawal/custody, appointments/quorum/recusal, real H0–H7,
 AAC/SLP, curriculum, multilingual, accessibility, print and teacher-pilot evidence
 remain separately required. No synthetic committee, corpus equality or successful
 test enacts them. This technical assessment grants no merge, publication, tag,
-signing, installation, distribution or release authority.
+signing, installation, distribution or release authority. **Note, 6 September 2026:** that remains exactly true — this assessment granted none. The merge that later landed this work on `main` drew its authority from a separate session-specific typist authorization, recorded in [the authorization record](2026-09-06-stack-integration-authorization.md), and conferred no recipe admission. Publication, tagging, signing, installation, distribution and release authority remain ungranted.

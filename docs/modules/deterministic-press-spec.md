@@ -4,33 +4,36 @@
 **Specification version:** 1.0
 **Date:** 29 August 2026
 **Status:** Draft for educator-council and product-owner review
+**Amended:** 6 September 2026 — the 6 September corrections below were originally written in place; they are restored to strike form here. The specification version is deliberately unchanged: versioning is a typist act.
 **Companion to:** Implementation plan 2.0, section 10.0
-**Lane:** Green-only authoring/output policy; arbitrary teacher-entered text is not structurally Green
+**Lane:** ~~Structurally Green only — no lane above Green is expressible in this module~~ **Struck 6 September 2026 (stack integration):** Green-only authoring/output policy; arbitrary teacher-entered text is not structurally Green
 **License intention:** Code GPL-3.0-or-later; original printable templates under the project's declared free-culture content license
 
-This module inherits the shared pedagogical constitution, data-lane contract, accessibility contract, and universal Definition of Done of implementation plan 2.0. **Correction, 6 September 2026:** the former zero-risk, vacuous-gate and universal-policy claims are superseded below. Deterministic local computation does not establish content classification, rights or permission. This draft's acceptance requirements are not a claim that human, physical-print or release review has occurred.
+This module inherits the shared pedagogical constitution, data-lane contract, accessibility contract, and universal Definition of Done of implementation plan 2.0. ~~Where a gate below is described as vacuous, that is a structural property proven by tests, not a waiver.~~ **Correction, 6 September 2026:** the former zero-risk, vacuous-gate and universal-policy claims are superseded below. Deterministic local computation does not establish content classification, rights or permission. This draft's acceptance requirements are not a claim that human, physical-print or release review has occurred.
 
 ---
 
 ## 1. Purpose and position
 
-The Deterministic Press is the Foundry's zero-inference printable studio: parameterized classroom printables with no model, capture, OCR or external network service in its builders. Print fidelity remains an acceptance requirement, not a universal guarantee.
+~~The Deterministic Press is the Foundry's zero-inference printable studio: parameterized, print-perfect classroom classics produced from good geometry and honest ink, with no model, no capture, no OCR, and no network egress anywhere in the module.~~ **Struck 6 September 2026 (stack integration):** The Deterministic Press is the Foundry's zero-inference printable studio: parameterized classroom printables with no model, capture, OCR or external network service in its builders. Print fidelity remains an acceptance requirement, not a universal guarantee.
 
 It is Module Zero for five reasons:
 
-1. **Bounded local inputs.** Geometry and settings are bounded, but teacher-entered lists, prompts and labels can contain private or unauthorized content. Known generic catalog defaults do not certify later edits. New text in the Press Room parameter panel requires explicit Green confirmation before review; student work, identifying classroom material and private/Restricted content are excluded.
-2. **No inference-service dependency.** Deterministic authoring needs no Azure deployment. This does not waive data, rights, safeguarding or local approval requirements and is not permission for every school or jurisdiction.
+1. ~~**Zero privacy risk.** There is no source material — inputs are parameters and teacher-typed lists. Gate A (privacy preflight) and Gate C (safety review) have nothing to inspect, and tests prove it structurally.~~ **Struck 6 September 2026 (stack integration):** **Bounded local inputs.** Geometry and settings are bounded, but teacher-entered lists, prompts and labels can contain private or unauthorized content. Known generic catalog defaults do not certify later edits. New text in the Press Room parameter panel requires explicit Green confirmation before review; student work, identifying classroom material and private/Restricted content are excluded.
+2. ~~**Zero district friction.** No AI policy, no Azure contract, no attestation. Any teacher, any school, any country, from the first release.~~ **Struck 6 September 2026 (stack integration):** **No inference-service dependency.** Deterministic authoring needs no Azure deployment. This does not waive data, rights, safeguarding or local approval requirements and is not permission for every school or jurisdiction.
 3. **Total pipeline exercise.** Projects, the semantic ArtifactDocument, renderers, print, export, bilingual labels, accessibility, provenance, and the ApprovedArtifact boundary all get built and hardened on the safest possible cargo.
 4. **Immediate daily value.** Teachers currently buy graph paper, ten-frames, handwriting sheets, and flashcard stock with their own money.
-5. **Inspectability before expansion.** A teacher can inspect the exact deterministic result and its warnings. That review cannot promise harmlessness or replace specialist and classroom evidence.
+5. ~~**Trust before power.** The first thing a district or teacher evaluates is the thing that cannot hurt anyone. The Foundry earns its later lanes by being flawless in its paper lane.~~ **Struck 6 September 2026 (stack integration):** **Inspectability before expansion.** A teacher can inspect the exact deterministic result and its warnings. That review cannot promise harmlessness or replace specialist and classroom evidence.
 
 **Standalone worthiness is a requirement:** if the program stopped after Module Zero, the studio must still constitute a genuinely useful GPL gift.
 
 ## 2. The governing invariant
 
-> **Presses compute deterministic layouts; they do not interpret or generate content.**
+> ~~**Presses take parameters, never prose.**~~
+>
+> **Struck 6 September 2026 (stack integration):** **Presses compute deterministic layouts; they do not interpret or generate content.**
 
-A press may accept typed dimensions, counts, ranges, list items, toggles, page options and free text. The closed catalog has generic project-authored defaults; arbitrary Text/Lines inputs are not a privacy schema. Source interpretation, captured images and unbounded content generation remain outside this studio.
+~~A press whose input wants to be sentences, sources, or captured images is a different module in a different studio. This single rule is the module's boundary against scope creep into content generation, and it is enforced by the recipe schema: every Deterministic Press recipe declares only enumerated, typed parameters (dimensions, counts, ranges, list items, toggles, page options).~~ **Struck 6 September 2026 (stack integration):** A press may accept typed dimensions, counts, ranges, list items, toggles, page options and free text. The closed catalog has generic project-authored defaults; arbitrary Text/Lines inputs are not a privacy schema. Source interpretation, captured images and unbounded content generation remain outside this studio.
 
 Teacher-typed list content (word lists, term/answer pairs, label text) is data placed verbatim into the output — never interpreted, corrected, completed, or reordered by anything but the teacher.
 
@@ -61,7 +64,7 @@ The three MVP presses are chosen deliberately: together they exercise **paramete
 
 **Current rendering and language boundary (recorded 30 August 2026):** each catalog definition separately declares neutral English for its built-in furniture; that metadata never guesses the language of teacher-entered content. Builders and composers preserve an exact or null whole-document language. The native vector-PDF path uses standard-14 Courier and admits exactly 218 WinAnsi-encodable Unicode code points. Unsupported characters refuse without substitution and select the Unicode HTML/Edge path. HTML/SVG use installed system fonts; no bundled font or universal script coverage is claimed. The complete boundary and protected remainder are in the [artifact language contract](../localization/artifact-language-contract.md).
 
-**Gates:** content classification is not vacuous. In the Press Room authoring parameter panel, a free-text edit clears Green confirmation and approval; incomplete confirmation refuses before building or opening review. Bounded setting changes retain classification but require fresh approval. Confirmation is an author's declaration, not automatic detection or legal clearance. Edits within Gate B invalidate revision approval and acknowledgements but preserve the declared lane; they do not repeat the authoring checkbox. Gate B still requires exact-artifact inspection; render, export, print and save retain their ApprovedArtifact and lane gates. A mutable library package needs its separate exact-document preflight. Content safety and qualified-review responsibilities are not waived by the absence of inference.
+**Gates:** **Struck 6 September 2026 (stack integration):** the prior wording of this paragraph asserted that Gate A and Gate C had nothing to inspect, and that Gate B applied "in its lightest form". It is deliberately **not** reproduced here: `TruthSurfaceDocumentationTests` forbids that sentence's literal reappearance in this file, and writing around a guard would be a worse fault than the deletion this note repairs. Its exact prior wording is preserved, struck, in the [stacked pull-request containment record](../governance/2026-09-06-stacked-pull-request-containment.md), and in this file's own history at `39897d2b58884d000398c5178e87e174f82f5402`. The current statement follows. Content classification is not vacuous. In the Press Room authoring parameter panel, a free-text edit clears Green confirmation and approval; incomplete confirmation refuses before building or opening review. Bounded setting changes retain classification but require fresh approval. Confirmation is an author's declaration, not automatic detection or legal clearance. Edits within Gate B invalidate revision approval and acknowledgements but preserve the declared lane; they do not repeat the authoring checkbox. Gate B still requires exact-artifact inspection; render, export, print and save retain their ApprovedArtifact and lane gates. A mutable library package needs its separate exact-document preflight. Content safety and qualified-review responsibilities are not waived by the absence of inference.
 
 ## 5. Press specifications
 
@@ -110,8 +113,8 @@ Label series, bin cards, and station signs with optional Symbol Commons symbols 
 ## 6. Teacher workflow (common to all presses)
 
 1. Choose a press and form.
-2. Set parameters and enter only authorized generic/staged list, prompt or label content. Every parameter-panel text edit requires fresh Green confirmation; incomplete confirmation leaves authoring review and outputs locked.
-3. Review the exact artifact and — where relevant — overflow and scaling warnings. Confirm physical scale with the print instrument; an onscreen preview is not a physical measurement.
+2. ~~Set parameters beside a live, exact-scale preview; type any list or label content.~~ **Struck 6 September 2026 (stack integration):** Set parameters and enter only authorized generic/staged list, prompt or label content. Every parameter-panel text edit requires fresh Green confirmation; incomplete confirmation leaves authoring review and outputs locked.
+3. ~~Review: parameters, preview at print scale, and — where relevant — overflow and scaling warnings.~~ **Struck 6 September 2026 (stack integration):** Review the exact artifact and — where relevant — overflow and scaling warnings. Confirm physical scale with the print instrument; an onscreen preview is not a physical measurement.
 4. Approve (Gate B, lightweight; produces the ApprovedArtifact).
 5. Print, export, or both.
 6. Optionally save as a Green project (with embedded accessible HTML snapshot per plan section 6.5).
@@ -151,7 +154,7 @@ Output claims stay honest: printed geometry is paper; the module claims high-con
 - Label Lathe until the asset/provenance kernel exists
 - Any generated decorative art (engine-wide policy)
 - ~~Isometric~~/polar graph variants and music-notation content beyond blank staves (Notation Bench, entry 217, is a separate future module) — *isometric dot paper joined the Press's second wave by handover directive, 29 Aug 2026; polar variants and notation content remain deferred*
-- Source interpretation or unbounded prose generation; verbatim teacher-authored text remains within the declared bounded inputs
+- ~~Any press whose input is prose rather than parameters — by definition, forever~~ **Struck 6 September 2026 (stack integration):** Source interpretation or unbounded prose generation; verbatim teacher-authored text remains within the declared bounded inputs
 
 ## 11. Release placement
 
@@ -165,7 +168,7 @@ Output claims stay honest: printed geometry is paper; the module claims high-con
 |---|---|
 | Printer-driver scaling silently destroys dimensional accuracy | Calibration rule page, fit-to-page warnings, stated tolerances, physical bench verification |
 | Guide-face or template rights ambiguity | OFL-or-original policy, geometric derivation of variants, CI provenance hard-fail |
-| Scope creep into content generation or unsafe cargo | Deterministic builders, explicit Green confirmation after parameter-panel text edits, exact-artifact review and no unknown/learner-linked/Restricted route |
+| ~~Scope creep into content generation~~ **Struck 6 September 2026 (stack integration):** Scope creep into content generation or unsafe cargo | ~~"Parameters, never prose" enforced by recipe schema and review~~ **Struck 6 September 2026 (stack integration):** Deterministic builders, explicit Green confirmation after parameter-panel text edits, exact-artifact review and no unknown/learner-linked/Restricted route |
 | Module Zero polish delays SequenceSlate | MVP is fixed at three presses; the remaining five wait for 0.3 by design |
 | Teachers mistake the lightweight Gate B for the full review rhythm | Identical approval vocabulary and surface across all modules; the rhythm is the lesson |
 
@@ -174,4 +177,4 @@ Output claims stay honest: printed geometry is paper; the module claims high-con
 - Median parameter-to-print time per press (target: under the three-minute budget)
 - Reprint rate attributable to dimensional or registration error (target: approaching zero after calibration)
 - Proportion of pilot teachers who use a press again within two weeks unprompted
-- No privacy, egress or inference findings in the measured release scope; report actual checks and failures, never infer absence of risk from deterministic computation
+- ~~Zero privacy, egress, or inference findings — structural, and verified every release~~ **Struck 6 September 2026 (stack integration):** No privacy, egress or inference findings in the measured release scope; report actual checks and failures, never infer absence of risk from deterministic computation

@@ -207,7 +207,7 @@ unchanged strict historical/candidate relation; both coverage measurements are
 These final local results certify the final executable-source cutoff, not a
 later record-only edit or the still-pending draft's own hosted run. Commit/push,
 exact-head CI/CodeQL and the bounded completion record are next; final admission,
-main merge, old-PR closure, publication and human/release work stay held.
+~~main merge, old-PR closure, publication and human/release work stay held.~~ **Struck 6 September 2026:** publication and human/release work remain held. The main merge and the old-PR closures did not stay held: they were separately authorized by the typist later the same day and performed. See the [stack integration authorization](../governance/2026-09-06-stack-integration-authorization.md) and the [containment record](../governance/2026-09-06-stacked-pull-request-containment.md).
 
 **Later 6 September, implementation-head closeout:** ~~commit/push and that
 implementation head's own hosted verification remain pending~~ — struck after
@@ -218,5 +218,5 @@ The exact entries, checkout identity and retained evidence are in the
 records public-source hygiene and the finite completion rule. This record-only
 follow-up must earn its own conclusions, reported to the typist rather than
 predeclared in its own text. Following the existing record-chain stopping rule,
-that successful report completes the selected engineering commission. No main
-merge, old-PR closure, site publication, release or human ratification follows.
+that successful report completes the selected engineering commission. ~~No main
+merge, old-PR closure, site publication, release or human ratification follows.~~ **Struck 6 September 2026:** no site publication, release or human ratification follows. A main merge and the old-PR closures did follow, under the separate typist authorization recorded in [the authorization record](../governance/2026-09-06-stack-integration-authorization.md).
