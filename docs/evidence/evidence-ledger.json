@@ -1508,6 +1508,42 @@
       "tests": null,
       "record": "docs/governance/seven-recipe-compatibility.md",
       "notes": "Own attempt-1 success on the same exact PR24 synthetic checkout, not main. Actual SARIF 2.1.0 / CodeQL 2.26.4: one successful invocation, zero results, 446 execution notifications all level none; configuration-notifications and versionControlProvenance properties absent. Uncompressed SARIF is 639077 bytes, SHA-256 D07C249FE5AB7800857A6398BC83E1F1817758B4DED8600F5F48BB947C2749E3. Actual API, archive, checkout and Git-object parent/tree evidence retained under out/fixture-lifecycle-hosted/7cb257e-20260906T045835Z-6a11e27a596d4a2dbd06508152b05ad1/. Zero results are not a general security, later-candidate, compatibility, human or release clearance."
+    },
+    {
+      "id": "ci-34051141716",
+      "kind": "hosted-ci",
+      "runId": 34051141716,
+      "workflow": "CI",
+      "event": "pull_request",
+      "branch": "codex/seven-recipe-compatibility",
+      "headSha": "630f7078a2f09d0431c2a8a5d46f45da5b8382e5",
+      "checkoutSha": "ebd03ba36b8ac74dd7df24e0fb03754ab4f44579",
+      "conclusion": "success",
+      "createdUtc": "2026-09-06T18:15:35Z",
+      "receipt": "20260906T181905Z-887dcf216d9745d482e3b833f8cdc5ec",
+      "tests": {
+        "passed": 3078,
+        "total": 3078
+      },
+      "record": "docs/governance/2026-09-06-bounded-engineering-closeout.md",
+      "notes": "Own attempt-1 success for implementation draft PR25. Actual API/jobs, checkout logs and all seven TRXs read: 3078/3078 (26 Accessibility, 175 Contract, 418 InstructionalEvals, 381 Integration, 243 Rendering, 328 UiAutomation, 1507 Unit), no skipped/nonpassing results or ancillary failure counters. Native/runner 0/0, no timeout, 428475 ms within unchanged 900-second cap, root exit/EOF observed, safe next-run disposition, clean stable 610-source/seven-DLL records and empty identity/completeness errors with null snapshot error. Summary SHA-256 3DF874DFE4D239AED261164F822F720951AE541A5C8D3960010A97D8071B5FBE; Unit TRX DDFC0A873B4B5E25FBD116505ADA679D820B684C782B06F1E038F26BF2437CAE. All 14 curated files rehashed to their recorded source/copy pins and directly byte-matched their second artifact copies. All three jobs succeeded; only failure-only raw diagnostic retention was skipped. Coverage output records 93% with four generated-source-path warnings. Windows/Linux determinism and current sample guard passed: 40 outputs, 39 unchanged C1 bytes and exact canonical task-strip package writer-stamp relation, not the old all-40 C1 identity. Build, format, original C1/C2 history, secret, dependency, known-vulnerability and scoped SBOM gates passed; the application SBOM explicitly does not claim a release identity. Independent Git-object readback binds ordered parents 39897d2b58884d000398c5178e87e174f82f5402 and this exact head, with identical head/checkout tree 7b335ddc4ff57a5c608f0801f7961d48a6144151. Retained under out/upcoming-draft-hosted-capture-20260906-recovery-01/. This is exact draft evidence, not a main merge, later record-only head, final recipe admission, sighting diagnosis, human approval, publication or release."
+    },
+    {
+      "id": "codeql-34051141718",
+      "kind": "hosted-codeql",
+      "runId": 34051141718,
+      "workflow": "CodeQL SAST",
+      "event": "pull_request",
+      "branch": "codex/seven-recipe-compatibility",
+      "headSha": "630f7078a2f09d0431c2a8a5d46f45da5b8382e5",
+      "checkoutSha": "ebd03ba36b8ac74dd7df24e0fb03754ab4f44579",
+      "conclusion": "success",
+      "createdUtc": "2026-09-06T18:15:35Z",
+      "receipt": null,
+      "tests": null,
+      "sarifSha256": "6D8547898F6948BDD9D55BD7C12452DE93DF11C89FB95CDEF0CD8DFC31183B61",
+      "record": "docs/governance/2026-09-06-bounded-engineering-closeout.md",
+      "notes": "Own attempt-1 success for the same exact implementation draft PR25 head and synthetic checkout, not main. Actual uncompressed csharp.sarif is 648930 bytes, SARIF 2.1.0 / CodeQL 2.26.4, one successful invocation, zero results and 467 execution notifications all level none. Configuration-notification and embedded versionControlProvenance properties are absent; actual API/artifact/archive/checkout and Git-object evidence supply binding. The uploaded ZIP is 61872 bytes, SHA-256 F547C849DD6AF4F0C6E0999D035313FB144498C1BE57C4D2EB691302F2F69418, distinct from the actual SARIF hash. All 18 allowlisted log/SARIF copies were rehashed after inventory-before-extraction; no archive source/project/sample was executed. Retained under out/upcoming-draft-hosted-capture-20260906-recovery-01/. The separately retained local parent-shell inventory error does not change this hosted conclusion. Zero findings do not provide a general security guarantee, later-head evidence, final recipe admission, human-review, publication or release clearance."
     }
   ]
 }

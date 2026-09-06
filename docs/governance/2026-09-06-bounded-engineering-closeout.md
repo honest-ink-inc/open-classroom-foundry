@@ -1,8 +1,9 @@
 # Bounded engineering closeout — 6 September 2026
 
-**Status: implementation, technical assessment and final executable-source local
-closing complete; reviewed commit/push and own-head hosted evidence pending.
-No release or human ratification.**
+**Status: implementation-source engineering closeout complete at `630f707`:
+local closing, reviewed commit/push and its own hosted evidence are measured.
+This record-only closure still requires its own exact-head checks; no release
+or human ratification.**
 
 ## Finite goal and acceptance boundary
 
@@ -270,6 +271,56 @@ was confirmed with the actual scanner present; no skip is authorized or used.
 The earlier full-history scan covered the unchanged 138-commit pre-commit
 history; the new commit must pass its normal staged scan and a fresh history
 scan before push. Own-head hosted results cannot exist before that Git action.
+
+## Reviewed source push and implementation-head closure
+
+~~Pending: reviewed source commit/push and its own hosted conclusions.~~
+**Struck 6 September 2026:** commit
+`630f7078a2f09d0431c2a8a5d46f45da5b8382e5` was normally committed and pushed to
+`codex/seven-recipe-compatibility` in
+[draft PR25](https://github.com/honest-ink-inc/open-classroom-foundry/pull/25).
+Its sole parent is the stated `7cb257e` baseline. The 107-file reviewed delta
+includes the accumulated engineering changes and factual records, not ignored
+raw evidence or private diagnostics. The normal staged hook passed with no
+skip; a fresh all-refs history scan then exited zero, reporting 139 scanned
+commits and no leaks, before the push. That scanner count is not a count of
+all Git objects or a guarantee about every possible secret.
+
+The two exact implementation-head entries in the
+[evidence ledger](../evidence/evidence-ledger.json), `ci-34051141716` and
+`codeql-34051141718`, now record their own successful conclusions after actual
+API, checkout-log, test/SARIF and artifact readback. They do not borrow the
+predecessor's green. The recorded synthetic PR checkout has the current main
+base and exact implementation head as ordered parents, and the same tree as
+that head. It is not a merge into main. The run-specific evidence is retained
+under `out/upcoming-draft-hosted-capture-20260906-recovery-01/`.
+
+The local CodeQL archive-inventory command also retains a separate parent-shell
+error, `Inventory failed`: the inventory itself completed, but the caller
+mistook an unset native-exit variable after a direct PowerShell script call
+for failure. The completed inventory was read before extraction, not overwritten
+or rerun. The subsequent native PowerShell extraction exited zero. This local
+instrument error is neither a CodeQL finding nor a failed hosted run.
+
+This follow-up changes only the factual ledger and current-status/closure prose.
+After adding those records, the documentation/governance/ledger/hygiene
+selection passed **47/47 twice**, with native exits zero, stable inputs and
+no skipped/nonpassing results. The actual TRXs under
+`out/seven-recipe-compatibility/hosted-record-check-01-results/` and
+`hosted-record-check-02-results/` have SHA-256
+`F23218FA94F60B05B081C338FC9B0843754E6AEFD8C76AEAD8D683604EAB2425` and
+`15C1B5311697C86ABDF10B5B6BD738BE4AE5CC89C84BC8DD78B769BC099E7615`.
+Those checks are scoped record checks, not another full executable-source pair.
+
+Its own commit/push and exact-head CI/CodeQL conclusions must be read and
+reported to the typist, not predicted here. The established
+[record-chain stopping rule](../handover/2026-09-01-fifth-forge-menu.md) permits
+the typist to end at a record by accepting its reported conclusions. Under the
+typist's finite-goal instruction, that successful report closes this engineering
+commission without starting another evidence-only commit cycle. A later session
+can append those final observations to the next record if further work resumes.
+No new enhancement, historical-sighting diagnosis or protected decision is
+needed merely to keep this goal running.
 
 ## Human and release handoff retained
 

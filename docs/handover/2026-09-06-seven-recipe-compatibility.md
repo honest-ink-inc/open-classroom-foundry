@@ -4,6 +4,11 @@
 **Branch:** `codex/seven-recipe-compatibility`.
 **Starting source:** `7cb257e7df5dcc55a7414ef482bed035ee2b4fd8`.
 
+**Current cutoff:** the implementation is committed and pushed as `630f707` in
+draft PR25, with its own successful hosted evidence in the ledger. The final
+record-only closure must earn its own exact-head checks; its successful report
+ends the typist-selected engineering goal, not the held human/release work.
+
 This supersedes the [fixture lifecycle continuation](2026-09-06-fixture-lifecycle-isolation.md)
 for current navigation only. Its frozen record and all earlier failures remain
 unchanged. The typist requested that earlier repairs be perfected first.
@@ -203,3 +208,15 @@ These final local results certify the final executable-source cutoff, not a
 later record-only edit or the still-pending draft's own hosted run. Commit/push,
 exact-head CI/CodeQL and the bounded completion record are next; final admission,
 main merge, old-PR closure, publication and human/release work stay held.
+
+**Later 6 September, implementation-head closeout:** ~~commit/push and that
+implementation head's own hosted verification remain pending~~ — struck after
+the reviewed normal commit/push and direct readback of its own CI and CodeQL.
+The exact entries, checkout identity and retained evidence are in the
+[ledger](../evidence/evidence-ledger.json); the
+[bounded closeout](../governance/2026-09-06-bounded-engineering-closeout.md#reviewed-source-push-and-implementation-head-closure)
+records public-source hygiene and the finite completion rule. This record-only
+follow-up must earn its own conclusions, reported to the typist rather than
+predeclared in its own text. Following the existing record-chain stopping rule,
+that successful report completes the selected engineering commission. No main
+merge, old-PR closure, site publication, release or human ratification follows.

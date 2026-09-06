@@ -2,7 +2,7 @@
 
 **Opened:** 6 September 2026 UTC.
 **Source baseline:** `7cb257e7df5dcc55a7414ef482bed035ee2b4fd8`.
-**Status:** fixed-corpus captures, raw comparisons, bounded technical disposition and final executable-source local closing complete; committed-draft own-head hosted closeout pending; not final admission.
+**Status:** fixed-corpus captures, raw comparisons, bounded technical disposition, final executable-source local closing and the committed implementation head's own hosted checks complete. The [record-only closure](2026-09-06-bounded-engineering-closeout.md#reviewed-source-push-and-implementation-head-closure) still requires its own exact-head checks; not final admission.
 
 This is a new record. The [fixture lifecycle cutoff](fixture-lifecycle-isolation.md)
 and its detached manifest remain frozen. Subsequent evidence does not rewrite
