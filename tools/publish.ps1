@@ -135,15 +135,22 @@ function Assert-BuildIdentity {
 function Assert-PortableSourceMetadata {
     param([Parameter(Mandatory)][IO.FileInfo[]]$Files)
 
-    $canonicalSourceLink = "https://raw.githubusercontent.com/honest-ink-inc/open-classroom-foundry/"
-    $legacySourceLink = "https://raw.githubusercontent.com/Spacejunk-io/open-classroom-foundry/"
+    $canonicalSourceLink = "https://raw.githubusercontent.com/honest-ink-inc/honest-ink/"
+    # Every superseded mapping, oldest first. What began as a pair was a shape, not a
+    # special case: the 10 Sep 2026 repository rename (ADR-011) added the second.
+    $legacySourceLinks = @(
+        "https://raw.githubusercontent.com/Spacejunk-io/open-classroom-foundry/",
+        "https://raw.githubusercontent.com/honest-ink-inc/open-classroom-foundry/"
+    )
     foreach ($file in $Files) {
         $text = [Text.Encoding]::UTF8.GetString([IO.File]::ReadAllBytes($file.FullName))
         if ($text.Contains($repositoryRoot, [StringComparison]::OrdinalIgnoreCase)) {
             throw "Compiled release metadata exposed the local repository path."
         }
-        if ($text.Contains($legacySourceLink, [StringComparison]::OrdinalIgnoreCase)) {
-            throw "Compiled release metadata retained the superseded source repository."
+        foreach ($legacySourceLink in $legacySourceLinks) {
+            if ($text.Contains($legacySourceLink, [StringComparison]::OrdinalIgnoreCase)) {
+                throw "Compiled release metadata retained the superseded source repository."
+            }
         }
         if ($file.Name -like "Foundry.*.pdb" -and
             -not $text.Contains($canonicalSourceLink, [StringComparison]::Ordinal)) {

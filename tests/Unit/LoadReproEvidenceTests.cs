@@ -415,7 +415,7 @@ public sealed class LoadReproEvidenceTests
     private static string FindRepositoryRoot()
     {
         var directory = new DirectoryInfo(AppContext.BaseDirectory);
-        while (directory is not null && !File.Exists(Path.Combine(directory.FullName, "OpenClassroomFoundry.slnx")))
+        while (directory is not null && !File.Exists(Path.Combine(directory.FullName, "HonestInk.slnx")))
         {
             directory = directory.Parent;
         }

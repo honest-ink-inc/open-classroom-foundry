@@ -37,7 +37,7 @@ public class HostilePackageDepthTests : IDisposable
     public HostilePackageDepthTests()
     {
         var repo = new DirectoryInfo(AppContext.BaseDirectory);
-        while (repo is not null && !File.Exists(Path.Combine(repo.FullName, "OpenClassroomFoundry.slnx")))
+        while (repo is not null && !File.Exists(Path.Combine(repo.FullName, "HonestInk.slnx")))
         {
             repo = repo.Parent;
         }

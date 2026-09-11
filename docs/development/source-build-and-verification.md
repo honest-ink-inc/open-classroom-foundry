@@ -38,10 +38,10 @@ Install the per-clone hook before any commit:
 pwsh -NoProfile -File tools/install-hooks.ps1
 dotnet --version
 pwsh -NoProfile -File tools/verify-recipe-identity-ratification.ps1 -RequireRatified
-dotnet restore OpenClassroomFoundry.slnx --locked-mode --configfile NuGet.config
+dotnet restore HonestInk.slnx --locked-mode --configfile NuGet.config
 dotnet restore src/Foundry.App.WinForms/Foundry.App.WinForms.csproj --runtime win-x64 --locked-mode -p:NuGetLockFilePath=packages.win-x64.lock.json --configfile NuGet.config
 dotnet tool restore --configfile NuGet.config
-dotnet build OpenClassroomFoundry.slnx --no-restore --configuration Release -warnaserror
+dotnet build HonestInk.slnx --no-restore --configuration Release -warnaserror
 ```
 
 Check each command's exit code before proceeding. `dotnet --version` must equal
@@ -55,9 +55,9 @@ lock files to hide a failed locked restore. The solution locks and separate
 After the Release build, apply formatting and independently verify it:
 
 ```powershell
-dotnet format OpenClassroomFoundry.slnx --no-restore
-dotnet format OpenClassroomFoundry.slnx --no-restore --verify-no-changes
-dotnet build OpenClassroomFoundry.slnx --no-restore --configuration Release -warnaserror -t:Rebuild
+dotnet format HonestInk.slnx --no-restore
+dotnet format HonestInk.slnx --no-restore --verify-no-changes
+dotnet build HonestInk.slnx --no-restore --configuration Release -warnaserror -t:Rebuild
 pwsh -NoProfile -File tools/run-ci-tests.ps1
 pwsh -NoProfile -File tools/run-ci-tests.ps1
 ```

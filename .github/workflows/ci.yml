@@ -96,7 +96,7 @@ jobs:
       - name: Restore checked-in dependency graphs
         shell: pwsh
         run: |
-          dotnet restore OpenClassroomFoundry.slnx --locked-mode --configfile NuGet.config
+          dotnet restore HonestInk.slnx --locked-mode --configfile NuGet.config
           if ($LASTEXITCODE -ne 0) { throw 'Locked solution restore failed.' }
           dotnet restore src/Foundry.App.WinForms/Foundry.App.WinForms.csproj --runtime win-x64 --locked-mode -p:NuGetLockFilePath=packages.win-x64.lock.json --configfile NuGet.config
           if ($LASTEXITCODE -ne 0) { throw 'Locked win-x64 application restore failed.' }
@@ -105,10 +105,10 @@ jobs:
         run: dotnet tool restore --configfile NuGet.config
 
       - name: Build (warnings are errors)
-        run: dotnet build OpenClassroomFoundry.slnx --no-restore --configuration Release
+        run: dotnet build HonestInk.slnx --no-restore --configuration Release
 
       - name: Format gate (whitespace + curated style + analyzers)
-        run: dotnet format OpenClassroomFoundry.slnx --no-restore --verify-no-changes
+        run: dotnet format HonestInk.slnx --no-restore --verify-no-changes
 
       - name: Test with coverage (bounded outer process)
         timeout-minutes: 20
@@ -206,11 +206,11 @@ jobs:
       - name: Repository/build NuGet dependency inventory (direct + transitive)
         shell: pwsh
         run: |
-          $humanInventory = dotnet package list --project OpenClassroomFoundry.slnx --include-transitive --no-restore
+          $humanInventory = dotnet package list --project HonestInk.slnx --include-transitive --no-restore
           if ($LASTEXITCODE -ne 0) { throw 'Human-readable NuGet dependency inventory failed.' }
           $humanInventory | Set-Content repository-build-dependency-inventory.txt -Encoding utf8NoBOM
 
-          $inventoryJson = dotnet package list --project OpenClassroomFoundry.slnx --include-transitive --format json --output-version 1 --no-restore
+          $inventoryJson = dotnet package list --project HonestInk.slnx --include-transitive --format json --output-version 1 --no-restore
           if ($LASTEXITCODE -ne 0) { throw 'Machine-readable NuGet dependency inventory failed.' }
           $inventoryJson | Set-Content repository-build-dependency-inventory.json -Encoding utf8NoBOM
 
@@ -223,7 +223,7 @@ jobs:
       - name: Known-vulnerability audit (direct + transitive)
         shell: pwsh
         run: |
-          $json = dotnet package list --project OpenClassroomFoundry.slnx --vulnerable --include-transitive --format json --output-version 1 --no-restore
+          $json = dotnet package list --project HonestInk.slnx --vulnerable --include-transitive --format json --output-version 1 --no-restore
           if ($LASTEXITCODE -ne 0) { throw 'NuGet vulnerability inventory failed.' }
           $json | Set-Content repository-build-dependency-vulnerabilities.json -Encoding utf8NoBOM
           if ($json -match '"vulnerabilities"\s*:') { throw 'A direct or transitive NuGet dependency has a known vulnerability.' }
@@ -267,7 +267,7 @@ jobs:
             throw 'Could not read the bounded engine version from EngineIdentity.cs.'
           }
           $engineVersion = $Matches.version
-          dotnet tool run dotnet-CycloneDX OpenClassroomFoundry.slnx --output sbom --filename repository-build-sbom.cdx.json --output-format Json --spec-version 1.7 --disable-package-restore --no-serial-number --set-name OpenClassroomFoundry --set-version $engineVersion
+          dotnet tool run dotnet-CycloneDX HonestInk.slnx --output sbom --filename repository-build-sbom.cdx.json --output-format Json --spec-version 1.7 --disable-package-restore --no-serial-number --set-name OpenClassroomFoundry --set-version $engineVersion
           $bom = Get-Content sbom/repository-build-sbom.cdx.json -Raw | ConvertFrom-Json
           if ($bom.specVersion -ne '1.7' -or $bom.bomFormat -ne 'CycloneDX') { throw 'The generated SBOM did not identify itself as CycloneDX 1.7.' }
           $components = @($bom.components)

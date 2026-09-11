@@ -292,7 +292,7 @@ public class LocalSymbolStoreTests : IDisposable
     public void The_composite_catalog_resolves_pack_and_shelf_together()
     {
         var repo = new DirectoryInfo(AppContext.BaseDirectory);
-        while (repo is not null && !File.Exists(Path.Combine(repo.FullName, "OpenClassroomFoundry.slnx")))
+        while (repo is not null && !File.Exists(Path.Combine(repo.FullName, "HonestInk.slnx")))
         {
             repo = repo.Parent;
         }

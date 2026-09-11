@@ -250,11 +250,11 @@ public sealed class CiSupplyChainContractTests
     {
         var workflow = File.ReadAllText(Path.Combine(Root, ".github", "workflows", "ci.yml"));
 
-        Assert.Contains("dotnet restore OpenClassroomFoundry.slnx --locked-mode --configfile NuGet.config", workflow, StringComparison.Ordinal);
+        Assert.Contains("dotnet restore HonestInk.slnx --locked-mode --configfile NuGet.config", workflow, StringComparison.Ordinal);
         Assert.Contains("--runtime win-x64 --locked-mode", workflow, StringComparison.Ordinal);
         Assert.Contains("-p:NuGetLockFilePath=packages.win-x64.lock.json", workflow, StringComparison.Ordinal);
         Assert.Contains(
-            "dotnet format OpenClassroomFoundry.slnx --no-restore --verify-no-changes",
+            "dotnet format HonestInk.slnx --no-restore --verify-no-changes",
             workflow,
             StringComparison.Ordinal);
         Assert.Contains("repository-build-dependency-inventory.json", workflow, StringComparison.Ordinal);
@@ -319,7 +319,7 @@ public sealed class CiSupplyChainContractTests
     public void Auxiliary_workflows_restore_locked_and_state_their_limits()
     {
         var codeQl = File.ReadAllText(Path.Combine(Root, ".github", "workflows", "codeql.yml"));
-        Assert.Contains("dotnet restore OpenClassroomFoundry.slnx --locked-mode --configfile NuGet.config", codeQl, StringComparison.Ordinal);
+        Assert.Contains("dotnet restore HonestInk.slnx --locked-mode --configfile NuGet.config", codeQl, StringComparison.Ordinal);
         Assert.Contains("A green run", codeQl, StringComparison.Ordinal);
         Assert.Contains("cannot prove or configure branch protection", codeQl, StringComparison.Ordinal);
         Assert.Contains("security-events: read", codeQl, StringComparison.Ordinal);
@@ -344,7 +344,7 @@ public sealed class CiSupplyChainContractTests
     private static string FindRepositoryRoot()
     {
         var directory = new DirectoryInfo(AppContext.BaseDirectory);
-        while (directory is not null && !File.Exists(Path.Combine(directory.FullName, "OpenClassroomFoundry.slnx")))
+        while (directory is not null && !File.Exists(Path.Combine(directory.FullName, "HonestInk.slnx")))
         {
             directory = directory.Parent;
         }

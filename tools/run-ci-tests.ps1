@@ -385,7 +385,7 @@ try {
 
     $testArguments = @(
         "test"
-        "OpenClassroomFoundry.slnx"
+        "HonestInk.slnx"
         "--no-build"
         "--configuration", "Release"
         "--logger", "console;verbosity=normal"
