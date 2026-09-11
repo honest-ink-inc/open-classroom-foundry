@@ -23,6 +23,11 @@
   </ItemGroup>
 
   <PropertyGroup>
+    <!-- ADR-011: the program is named Honest Ink, including in the metadata
+         Windows shows in Task Manager and the file's Details tab. Rights and
+         entity strings are deliberately absent; they are not naming decisions. -->
+    <Product>Honest Ink</Product>
+    <AssemblyTitle>Honest Ink</AssemblyTitle>
     <OutputType>WinExe</OutputType>
     <TargetFramework>net10.0-windows10.0.19041.0</TargetFramework>
     <Nullable>enable</Nullable>

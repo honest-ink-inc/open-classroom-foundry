@@ -418,7 +418,7 @@ function Get-CiTestSuiteInventory {
     }
 
     if ([string]::IsNullOrWhiteSpace($SolutionPath)) {
-        $SolutionPath = Join-Path $resolvedRepositoryRoot "OpenClassroomFoundry.slnx"
+        $SolutionPath = Join-Path $resolvedRepositoryRoot "HonestInk.slnx"
     }
 
     $resolvedSolutionPath = [IO.Path]::GetFullPath($SolutionPath)

@@ -36,7 +36,7 @@ public sealed partial class OcfprojUpgradeTests : IDisposable
     public OcfprojUpgradeTests()
     {
         var repository = new DirectoryInfo(AppContext.BaseDirectory);
-        while (repository is not null && !File.Exists(Path.Combine(repository.FullName, "OpenClassroomFoundry.slnx")))
+        while (repository is not null && !File.Exists(Path.Combine(repository.FullName, "HonestInk.slnx")))
         {
             repository = repository.Parent;
         }

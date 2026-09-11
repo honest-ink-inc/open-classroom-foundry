@@ -218,7 +218,7 @@ public class PublishScriptContractTests
         Assert.Contains("<ContinuousIntegrationBuild>true</ContinuousIntegrationBuild>", BuildProperties, StringComparison.Ordinal);
         Assert.Contains("<DeterministicSourcePaths>true</DeterministicSourcePaths>", BuildProperties, StringComparison.Ordinal);
         Assert.Contains("<PathMap>$(MSBuildThisFileDirectory)=/_/</PathMap>", BuildProperties, StringComparison.Ordinal);
-        Assert.Contains("<RepositoryUrl>https://github.com/honest-ink-inc/open-classroom-foundry</RepositoryUrl>", BuildProperties, StringComparison.Ordinal);
+        Assert.Contains("<RepositoryUrl>https://github.com/honest-ink-inc/honest-ink</RepositoryUrl>", BuildProperties, StringComparison.Ordinal);
         Assert.DoesNotContain("<Version>", BuildProperties, StringComparison.Ordinal);
         Assert.DoesNotContain("<AssemblyVersion>", BuildProperties, StringComparison.Ordinal);
         Assert.DoesNotContain("<FileVersion>", BuildProperties, StringComparison.Ordinal);
@@ -236,13 +236,14 @@ public class PublishScriptContractTests
         Assert.DoesNotContain(RepositoryRoot, assemblyText, StringComparison.OrdinalIgnoreCase);
         Assert.DoesNotContain(RepositoryRoot, pdbText, StringComparison.OrdinalIgnoreCase);
         Assert.DoesNotContain("raw.githubusercontent.com/Spacejunk-io/open-classroom-foundry", pdbText, StringComparison.OrdinalIgnoreCase);
-        Assert.Contains("raw.githubusercontent.com/honest-ink-inc/open-classroom-foundry", pdbText, StringComparison.Ordinal);
+        Assert.DoesNotContain("raw.githubusercontent.com/honest-ink-inc/open-classroom-foundry", pdbText, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("raw.githubusercontent.com/honest-ink-inc/honest-ink", pdbText, StringComparison.Ordinal);
     }
 
     private static string FindRepositoryRoot()
     {
         var directory = new DirectoryInfo(AppContext.BaseDirectory);
-        while (directory is not null && !File.Exists(Path.Combine(directory.FullName, "OpenClassroomFoundry.slnx")))
+        while (directory is not null && !File.Exists(Path.Combine(directory.FullName, "HonestInk.slnx")))
         {
             directory = directory.Parent;
         }

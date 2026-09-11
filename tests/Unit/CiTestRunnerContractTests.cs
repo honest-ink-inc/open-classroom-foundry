@@ -34,7 +34,7 @@ public sealed partial class CiTestRunnerContractTests(ITestOutputHelper testOutp
         Assert.Contains("$startInfo.ArgumentList.Add($argument)", runner, StringComparison.Ordinal);
         Assert.DoesNotContain("Start-Process", runner, StringComparison.Ordinal);
         Assert.Contains("\"test\"", runner, StringComparison.Ordinal);
-        Assert.Contains("\"OpenClassroomFoundry.slnx\"", runner, StringComparison.Ordinal);
+        Assert.Contains("\"HonestInk.slnx\"", runner, StringComparison.Ordinal);
         Assert.Contains("\"--no-build\"", runner, StringComparison.Ordinal);
         Assert.Contains("\"--configuration\", \"Release\"", runner, StringComparison.Ordinal);
         Assert.Contains("\"console;verbosity=normal\"", runner, StringComparison.Ordinal);
@@ -835,7 +835,7 @@ public sealed partial class CiTestRunnerContractTests(ITestOutputHelper testOutp
                 Path.Combine(repository, "outside", "Escaped.csproj"),
                 "<Project Sdk=\"Microsoft.NET.Sdk\" />");
             File.WriteAllText(
-                Path.Combine(repository, "OpenClassroomFoundry.slnx"),
+                Path.Combine(repository, "HonestInk.slnx"),
                 """
                 <Solution>
                   <Folder Name="/tests/">
@@ -878,7 +878,7 @@ public sealed partial class CiTestRunnerContractTests(ITestOutputHelper testOutp
                 </Project>
                 """);
             File.WriteAllText(
-                Path.Combine(repository, "OpenClassroomFoundry.slnx"),
+                Path.Combine(repository, "HonestInk.slnx"),
                 """
                 <Solution>
                   <Folder Name="/tools/">
@@ -913,7 +913,7 @@ public sealed partial class CiTestRunnerContractTests(ITestOutputHelper testOutp
                 Path.Combine(repository, "tests", "FSharp", "Foundry.Tests.FSharp.fsproj"),
                 "<Project Sdk=\"Microsoft.NET.Sdk\" />");
             File.WriteAllText(
-                Path.Combine(repository, "OpenClassroomFoundry.slnx"),
+                Path.Combine(repository, "HonestInk.slnx"),
                 """
                 <Solution>
                   <Folder Name="/tests/">
@@ -1200,7 +1200,7 @@ public sealed partial class CiTestRunnerContractTests(ITestOutputHelper testOutp
             File.WriteAllText(Path.Combine(sharedDirectory, "One.csproj"), project);
             File.WriteAllText(Path.Combine(sharedDirectory, "Two.csproj"), project);
             File.WriteAllText(
-                Path.Combine(repository, "OpenClassroomFoundry.slnx"),
+                Path.Combine(repository, "HonestInk.slnx"),
                 """
                 <Solution>
                   <Folder Name="/tests/">
@@ -1847,7 +1847,7 @@ public sealed partial class CiTestRunnerContractTests(ITestOutputHelper testOutp
         }
 
         File.WriteAllText(
-            Path.Combine(repository, "OpenClassroomFoundry.slnx"),
+            Path.Combine(repository, "HonestInk.slnx"),
             "<Solution>" + Environment.NewLine +
             "  <Folder Name=\"/tests/\">" + Environment.NewLine +
             string.Join(Environment.NewLine, projectLines) + Environment.NewLine +
@@ -1903,7 +1903,7 @@ public sealed partial class CiTestRunnerContractTests(ITestOutputHelper testOutp
     {
         var directory = new DirectoryInfo(AppContext.BaseDirectory);
         while (directory is not null
-               && !File.Exists(Path.Combine(directory.FullName, "OpenClassroomFoundry.slnx")))
+               && !File.Exists(Path.Combine(directory.FullName, "HonestInk.slnx")))
         {
             directory = directory.Parent;
         }

@@ -48,12 +48,12 @@ public class ArchitectureRulesTests
     private static string RepoRoot()
     {
         var dir = new DirectoryInfo(AppContext.BaseDirectory);
-        while (dir is not null && !File.Exists(Path.Combine(dir.FullName, "OpenClassroomFoundry.slnx")))
+        while (dir is not null && !File.Exists(Path.Combine(dir.FullName, "HonestInk.slnx")))
         {
             dir = dir.Parent;
         }
 
-        return dir?.FullName ?? throw new InvalidOperationException("Repository root (OpenClassroomFoundry.slnx) not found.");
+        return dir?.FullName ?? throw new InvalidOperationException("Repository root (HonestInk.slnx) not found.");
     }
 
     private static List<string> ProjectReferences(string relativeCsprojPath)

@@ -45,10 +45,10 @@ jobs:
           tools: linked
 
       - name: Restore the checked-in dependency graph
-        run: dotnet restore OpenClassroomFoundry.slnx --locked-mode --configfile NuGet.config
+        run: dotnet restore HonestInk.slnx --locked-mode --configfile NuGet.config
 
       - name: Build for extraction (warnings are errors)
-        run: dotnet build OpenClassroomFoundry.slnx --no-restore --configuration Release
+        run: dotnet build HonestInk.slnx --no-restore --configuration Release
 
       - name: Analyze without changing repository security settings
         uses: github/codeql-action/analyze@cdf488f595d80d6e07e03d4674febd5ab45fa938 # v4.37.9

@@ -46,7 +46,8 @@ public class LocalizationRulesTests
                 // steps) — artifact content, not chrome; content localization
                 // belongs to the document's own Language contract.
                 && !string.Equals(Path.GetFileName(f), "UiaHarness.cs", StringComparison.OrdinalIgnoreCase)
-                // ProductIdentity is ADR-006's single ship-name record: the
+                // ProductIdentity is ADR-006's single ship-name record (and the
+                // only name at all under ADR-011): the
                 // public name never localizes, and the subtitle it holds is
                 // the neutral source that UiStrings composes and localizes.
                 && !string.Equals(Path.GetFileName(f), "ProductIdentity.cs", StringComparison.OrdinalIgnoreCase));
@@ -89,12 +90,12 @@ public class LocalizationRulesTests
     private static string RepoRoot()
     {
         var dir = new DirectoryInfo(AppContext.BaseDirectory);
-        while (dir is not null && !File.Exists(Path.Combine(dir.FullName, "OpenClassroomFoundry.slnx")))
+        while (dir is not null && !File.Exists(Path.Combine(dir.FullName, "HonestInk.slnx")))
         {
             dir = dir.Parent;
         }
 
-        return dir?.FullName ?? throw new InvalidOperationException("Repository root (OpenClassroomFoundry.slnx) not found.");
+        return dir?.FullName ?? throw new InvalidOperationException("Repository root (HonestInk.slnx) not found.");
     }
 
     /// <summary>Cuts a trailing // comment, honoring quotes so "https://" survives inside literals.</summary>

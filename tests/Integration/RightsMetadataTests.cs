@@ -14,7 +14,7 @@ public class RightsMetadataTests
     private static string AssetsRoot()
     {
         var dir = new DirectoryInfo(AppContext.BaseDirectory);
-        while (dir is not null && !File.Exists(Path.Combine(dir.FullName, "OpenClassroomFoundry.slnx")))
+        while (dir is not null && !File.Exists(Path.Combine(dir.FullName, "HonestInk.slnx")))
         {
             dir = dir.Parent;
         }

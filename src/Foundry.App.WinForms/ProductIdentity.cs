@@ -2,8 +2,9 @@
 namespace Foundry.App.WinForms;
 
 /// <summary>
-/// The single ship-name resource (ADR-006). Nothing else in code carries the
-/// public name; internal identifiers remain Foundry.* / OpenClassroomFoundry.
+/// The single ship-name resource (ADR-006; sole name under ADR-011). Nothing
+/// else in code carries the public name; internal identifiers remain
+/// Foundry.* / OpenClassroomFoundry as compatibility contracts, never titles.
 /// </summary>
 public static class ProductIdentity
 {

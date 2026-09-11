@@ -13,7 +13,7 @@
     <DeterministicSourcePaths>true</DeterministicSourcePaths>
     <PathMap>$(MSBuildThisFileDirectory)=/_/</PathMap>
     <RepositoryType>git</RepositoryType>
-    <RepositoryUrl>https://github.com/honest-ink-inc/open-classroom-foundry</RepositoryUrl>
+    <RepositoryUrl>https://github.com/honest-ink-inc/honest-ink</RepositoryUrl>
     <PublishRepositoryUrl>true</PublishRepositoryUrl>
     <EmbedUntrackedSources>false</EmbedUntrackedSources>
     <AnalysisLevel>latest</AnalysisLevel>

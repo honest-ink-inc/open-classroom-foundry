@@ -497,7 +497,7 @@ public sealed class RecipeRatificationHistoryVerifierTests
     {
         var directory = new DirectoryInfo(AppContext.BaseDirectory);
         while (directory is not null &&
-               !File.Exists(Path.Combine(directory.FullName, "OpenClassroomFoundry.slnx")))
+               !File.Exists(Path.Combine(directory.FullName, "HonestInk.slnx")))
         {
             directory = directory.Parent;
         }

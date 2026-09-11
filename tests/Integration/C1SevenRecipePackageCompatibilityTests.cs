@@ -316,7 +316,7 @@ public sealed class C1SevenRecipePackageCompatibilityTests : IDisposable
     {
         var definition = Assert.Single(Definitions, item => item.CaseId == caseId);
         var repository = new DirectoryInfo(AppContext.BaseDirectory);
-        while (repository is not null && !File.Exists(Path.Combine(repository.FullName, "OpenClassroomFoundry.slnx")))
+        while (repository is not null && !File.Exists(Path.Combine(repository.FullName, "HonestInk.slnx")))
         {
             repository = repository.Parent;
         }

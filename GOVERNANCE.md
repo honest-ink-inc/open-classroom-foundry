@@ -1,6 +1,6 @@
 # Governance
 
-This document records how decisions are made in **Honest Ink**. Open Classroom Foundry remains the repository and internal engineering title. The governance record exists from the first commit because a liberation project that dies with its maintainer liberates no one (Master's Review, finding F11).
+This document records how decisions are made in **Honest Ink**, which is the program's only name ([ADR-011](docs/adr/ADR-011-honest-ink-is-the-only-name.md)). The governance record exists from the first commit because a liberation project that dies with its maintainer liberates no one (Master's Review, finding F11).
 
 ## Roles
 

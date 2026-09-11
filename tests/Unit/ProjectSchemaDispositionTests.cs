@@ -208,12 +208,12 @@ public sealed class ProjectSchemaDispositionTests
     private static string RepositoryRoot()
     {
         var directory = new DirectoryInfo(AppContext.BaseDirectory);
-        while (directory is not null && !File.Exists(Path.Combine(directory.FullName, "OpenClassroomFoundry.slnx")))
+        while (directory is not null && !File.Exists(Path.Combine(directory.FullName, "HonestInk.slnx")))
         {
             directory = directory.Parent;
         }
 
         return directory?.FullName
-            ?? throw new InvalidOperationException("Could not find the repository root by walking up to OpenClassroomFoundry.slnx.");
+            ?? throw new InvalidOperationException("Could not find the repository root by walking up to HonestInk.slnx.");
     }
 }

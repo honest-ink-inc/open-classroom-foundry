@@ -59,7 +59,7 @@ The full identifier map and protected-seat consequences remain binding in [ADR-0
 
 The typist found an "Open Classrooms" iOS app; research confirms the source: **OpenClassrooms** (openclassrooms.com) is a major France-based online vocational-education platform — founded 2013, ~2.5 million users, courses in English/French/Spanish, B Corp, institutionally funded — operating squarely in education services, our class of goods and services.
 
-Assessment: the phrase "open classroom" is also a generic 1970s pedagogy term, which cuts both ways — descriptive terms make weak marks, but an established international education brand this close in name and class is a real confusion risk for a public-facing software name. ADR-006 resolved the issue: **Honest Ink — the classroom foundry** is public; Open Classroom Foundry remains the repository and internal engineering title. Counsel confirmation remains mandatory before release.
+Assessment: the phrase "open classroom" is also a generic 1970s pedagogy term, which cuts both ways — descriptive terms make weak marks, but an established international education brand this close in name and class is a real confusion risk for a public-facing software name. ADR-006 resolved the issue: **Honest Ink — the classroom foundry** is public; Open Classroom Foundry remains the repository and internal engineering title. Counsel confirmation remains mandatory before release. *Amended 10 September 2026 (ADR-011): the working title is now retired and the repository is `honest-ink-inc/honest-ink`; the assessment above stands as the record that argued for it.*
 
 ### Symbol Commons — clear, and the search found something better than clearance
 

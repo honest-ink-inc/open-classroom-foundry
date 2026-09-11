@@ -4,7 +4,7 @@
 
 **Plan version:** 2.0 — regenerated 29 August 2026, applying The Master's Review 1.0 (amendments 1–7; findings F2, F5–F11 incorporated)  
 **Date:** 29 August 2026  
-**Status (6 September 2026):** Foundation and deterministic authoring are implemented; SequenceSlate and reachable Green studios remain engineering prototypes, not protected-seat or classroom-validated products. Governance terms are non-operative; ADR-007/010, real reviews, pilots and release remain held. The authorized engine 0.8.0-alpha and seven side-by-side replacements now have completed fixed-corpus compatibility evidence and a [bounded technical disposition](governance/seven-recipe-technical-disposition.md), not final admission. The last Press parameter-panel classification repair passed final ordered local closing, including 3,078/3,078 full tests twice and paired samples. Implementation commit `630f707` is pushed in draft PR25 with its own successful hosted evidence in the [ledger](evidence/evidence-ledger.json). The typist-selected finite [engineering closeout](governance/2026-09-06-bounded-engineering-closeout.md) ends after this record-only closure earns its own exact-head checks and those conclusions are reported; all other proposals remain available for successive measured commissions. Booklet disposition and shared-engine/human boundaries remain explicit. No predecessor hosted result certifies this later candidate. See the [current handover](handover/2026-09-06-seven-recipe-compatibility.md).
+**Status (10 September 2026):** Foundation and deterministic authoring are implemented; SequenceSlate and reachable Green studios remain engineering prototypes, not protected-seat or classroom-validated products. Governance terms are non-operative; ADR-007/010, real reviews, pilots and release remain held. The authorized engine 0.8.0-alpha and seven side-by-side replacements now have completed fixed-corpus compatibility evidence and a [bounded technical disposition](governance/seven-recipe-technical-disposition.md), not final admission. The last Press parameter-panel classification repair passed final ordered local closing, including 3,078/3,078 full tests twice and paired samples. Implementation commit `630f707` is pushed in draft PR25 with its own successful hosted evidence in the [ledger](evidence/evidence-ledger.json). The typist-selected finite [engineering closeout](governance/2026-09-06-bounded-engineering-closeout.md) ends after this record-only closure earns its own exact-head checks and those conclusions are reported; all other proposals remain available for successive measured commissions. Booklet disposition and shared-engine/human boundaries remain explicit. No predecessor hosted result certifies this later candidate. Honest Ink is now the program's only name under [ADR-011](adr/ADR-011-honest-ink-is-the-only-name.md); the repository is `honest-ink-inc/honest-ink`, compatibility identifiers and contributor attributions are unchanged, and the published site stays dark until the typist republishes. See the [current handover](handover/2026-09-10-honest-ink-only-name.md).
 **License intention:** Application code and first-party recipes under GNU GPL-3.0-or-later; other content and assets governed by explicit, compatible licenses  
 **Initial operating environment:** .NET 10 on managed Windows 10/11 devices, local-first authoring, optional district-governed Azure OpenAI inference  
 
@@ -79,7 +79,7 @@ This difference is not demotion. It is disciplined dependency management. Symbol
 
 # 2. Program purpose and liberation test
 
-Honest Ink exists to remove repetitive production labor between a teacher’s perception and a learner’s next useful support. It is an authoring, transformation, and analysis instrument. The teacher remains the accountable author, editor, witness, and decision-maker. Open Classroom Foundry remains the repository and internal engineering title.
+Honest Ink exists to remove repetitive production labor between a teacher’s perception and a learner’s next useful support. It is an authoring, transformation, and analysis instrument. The teacher remains the accountable author, editor, witness, and decision-maker. Honest Ink is the program's only name (ADR-011); `OpenClassroomFoundry` remains an internal engine identifier, never a title.
 
 The program advances educational liberation only if:
 
@@ -545,7 +545,7 @@ Each module below states the safe MVP, invariants, proof, and deferrals. Every m
 
 **Defer:** Non-Latin handwriting scripts pending qualified review; Label Lathe until the asset kernel exists; any generated decorative art; source interpretation or unbounded prose generation. **Correction, 6 September 2026:** the former “no privacy risk,” “Structurally Green” and “parameters, never prose” claims confused deterministic computation with content classification; they do not govern teacher-entered text.
 
-The complete specification is the companion document `open-classroom-foundry-deterministic-press-spec.md`.
+The complete specification is the companion document [modules/deterministic-press-spec.md](modules/deterministic-press-spec.md), archived under its original working-title filename `open-classroom-foundry-deterministic-press-spec.md` in the typist's Codex outputs record.
 
 ## 10.1 SequenceSlate — Visual Support Studio
 
@@ -1554,7 +1554,7 @@ Do not release if:
 
 # 20. Decisions to make before coding beyond the skeleton
 
-1. Public project and executable name after trademark screening — **decided 29 August 2026: the public name is Honest Ink (ADR-006); "Open Classroom Foundry" remains the working/repository title; counsel confirmation is a pre-release checkpoint**
+1. Public project and executable name after trademark screening — **decided 29 August 2026: the public name is Honest Ink (ADR-006); "Open Classroom Foundry" remains the working/repository title; counsel confirmation is a pre-release checkpoint**. **Amended 10 September 2026 (ADR-011): the working title is retired, Honest Ink is the program's only name, and the repository is `honest-ink-inc/honest-ink`. Counsel confirmation remains outstanding.**
 2. Whether Writer’s Kiosk and Foundry remain separate repositories or later share an extracted library repository
 3. Exact Green project save locations permitted by district policy
 4. Local OCR implementation after a Windows/API feasibility spike — **bounded Board-to-Brief implementation added 30 August 2026; installed-language, field-image, human-AT, and release evidence remain open (see §10.2)**
@@ -1584,7 +1584,7 @@ This plan draws upon:
 - The supplied Office of Curriculum and Instruction / Department of IT email
 - Writer’s Kiosk source and test suite at audited commit c2b670b
 - The Honest Ink 227-Idea Atlas (version 2.0; repository document `docs/idea-atlas.md`)
-- The Master's Review 1.0 (open-classroom-foundry-davinci-review.md), whose amendments this version applies
+- The Master's Review 1.0 (repository document `docs/reviews/masters-review-1.0.md`; archived under its original working-title filename `open-classroom-foundry-davinci-review.md`), whose amendments this version applies
 - Accepted ADR-005, ADR-006, ADR-008, and ADR-009, plus the Deterministic Press module specification
 - U.S. Department of Education FERPA guidance on direct and indirect identifiers
 - Official PECS description establishing it as a specific six-phase protocol
