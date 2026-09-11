@@ -55,6 +55,32 @@ if (targetProcess.IsInvalid)
 // is still held, and then delivers one real CTRL+C console event. Keeping this
 // wait in the already-attached sender minimizes—but cannot eliminate—the race
 // between the filesystem observation and asynchronous console delivery.
+//
+// That residual race is real, is still here, and has never been observed to
+// cause a failure. It is written down because it was investigated and because
+// the investigation nearly cost a wrong repair.
+//
+// The batch lock is acquired once and released after the last project, so
+// observing it held proves the batch STARTED and says nothing about how much
+// work remains. "Started" and "not finished" differ by the whole remaining
+// batch, which is why this comment concedes a race it cannot close.
+//
+// On 11 September 2026 that race was measured and found innocent. Sighting
+// S-21 — the host completing its 512-project batch and printing a receipt
+// instead of refusing with upgrade.canceled — looked exactly like this race
+// and was not. A rendezvous was built that parked the host mid-batch with 511
+// projects still to do, proving the signal landed on work in progress; the
+// failure was unchanged. The cause was a per-process "ignore CTRL+C" flag that
+// the host inherited at creation and that Windows consults ahead of every
+// registered handler, so no handler ran in either process. The rendezvous was
+// discarded rather than committed, because a change whose justification is a
+// repair it does not deliver should not be kept.
+//
+// The rendezvous remains the correct shape if this race is ever shown to bite:
+// a synchronisation point that holds the host inside the batch until delivery,
+// never a longer wait and never a raised deadline. Build it when a measurement
+// asks for it, not before — the last hand to assume this race was the cause
+// spent its budget on the wrong layer.
 var detachedFromInheritedConsole = NativeMethods.FreeConsole();
 var detachError = detachedFromInheritedConsole ? 0 : Marshal.GetLastPInvokeError();
 var readinessWatch = Stopwatch.StartNew();
