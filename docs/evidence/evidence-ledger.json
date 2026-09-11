@@ -2013,6 +2013,41 @@
       "tests": null,
       "record": "docs/governance/2026-09-10-name-and-incorporation-evidence.md",
       "notes": "The exact-main CodeQL conclusion after the pull request 28 merge, attempt 1. No SARIF hash is claimed."
+    },
+    {
+      "id": "ci-34559521423",
+      "kind": "hosted-ci",
+      "runId": 34559521423,
+      "workflow": "CI",
+      "event": "pull_request",
+      "branch": "claude/evidence-ledger-name-and-incorporation",
+      "headSha": "5fb69070b0b5ecb9c2ecf49cb0e08ca14b03de08",
+      "checkoutSha": null,
+      "conclusion": "failure",
+      "createdUtc": "2026-09-11T03:43:33Z",
+      "receipt": "20260911T034910Z-9f21d4bd09054b1fb3e3bb75b613c866",
+      "tests": {
+        "passed": 3077,
+        "total": 3078
+      },
+      "record": "docs/governance/2026-09-10-name-and-incorporation-evidence.md",
+      "notes": "Attempt 1, and the observation that opened sighting S-22. One test failed in teardown, not in assertion: the ratification fixture could not remove its own temporary Git repository because another process held it. This conclusion stands and is not withdrawn; the run was not re-run. The pull_request checkout is a synthetic merge that was not separately recorded, so no checkoutSha is claimed."
+    },
+    {
+      "id": "codeql-34559521456",
+      "kind": "hosted-codeql",
+      "runId": 34559521456,
+      "workflow": "CodeQL SAST",
+      "event": "pull_request",
+      "branch": "claude/evidence-ledger-name-and-incorporation",
+      "headSha": "5fb69070b0b5ecb9c2ecf49cb0e08ca14b03de08",
+      "checkoutSha": null,
+      "conclusion": "success",
+      "createdUtc": "2026-09-11T03:43:33Z",
+      "receipt": null,
+      "tests": null,
+      "record": "docs/governance/2026-09-10-name-and-incorporation-evidence.md",
+      "notes": "The paired CodeQL conclusion for the head that produced sighting S-22, attempt 1. It concluded success while CI concluded failure; neither stands in for the other. No SARIF hash is claimed."
     }
   ]
 }
