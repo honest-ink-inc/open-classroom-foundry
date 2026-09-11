@@ -1,6 +1,6 @@
 # Gate 3 — district readiness packet
 
-**From:** Honest Ink, Inc. (Maryland incorporation in progress) · contact@honest-ink.org · **Date:** 29 August 2026 · **Covers:** Honest Ink (engine: Open Classroom Foundry, v0.7.0-alpha, GPL-3.0-or-later)
+**From:** Honest Ink, Inc. (Maryland corporation, Department ID D27600584) · contact@honest-ink.org · **Date:** 29 August 2026, revised 10 September 2026 · **Covers:** Honest Ink, GPL-3.0-or-later — tagged build v0.7.0-alpha; no release is yet authorized
 
 This packet is what the district's IT, privacy, and safeguarding reviewers need in one place. Every claim below is either machine-verified in the repository's test suite or explicitly marked as procedure. The ask at the end is specific: three named seats, one review meeting, and — later, separately — a signature that gates a capability we will not enable without it.
 
@@ -23,7 +23,7 @@ Gate C is a teacher-invoked pause ("I saw something concerning — pause here"),
 ## 4. Deployment and operations
 
 - Install: xcopy-deployable publish; `.intunewin` wrapping planned **with** district IT (Win32 Content Prep over `tools/publish.ps1` output).
-- Signing: Authenticode via the district's certificate or Honest Ink, Inc.'s own OV certificate (entity formation in progress) — an unsigned build is not distributed.
+- Signing: Authenticode via the district's certificate or Honest Ink, Inc.'s own OV certificate (the entity exists as of 29 August 2026; the certificate itself is not yet obtained) — an unsigned build is not distributed.
 - Rollback: signed tags reproduce any prior build; the **kill switch is policy, not code** — set `CloudInferenceEnabled=false` or delete `policy.json` and every device refuses egress on next launch, no redeploy.
 - Updates: staged rollout procedure agreed with IT at deployment time; supply chain: pinned SDK, secret scan and dependency inventory in CI, SHA-256 manifest per release.
 
@@ -60,5 +60,5 @@ Both parties retain the signed instrument; the repository records only its exist
 ## 7. The ask, when review opens
 
 1. Name the three seats (IT, privacy, safeguarding) — governance holds a place for each.
-2. One review meeting against §5, on a date named only after Maryland has answered and the required seats have confirmed availability.
+2. One review meeting against §5, on a date named only after the required seats have confirmed availability. Maryland answered on 8 September 2026; the seats are the remaining condition.
 3. Staff-pilot awareness: the six-week pilot (opening date pending; we will confirm it with you before week 1) is **staff-only, synthetic-material, Green-lane, no student presence** — rungs 1–2 of our own gate ladder, and we welcome an observer.
