@@ -42,6 +42,12 @@ That is a new signature, opened as **S-22** in the [sightings register](../evide
 
 It cannot be reproduced locally at all. PowerShell 7 is absent from the authoring workstation, so all twenty-one cases in that class fail during process start and never reach teardown. This is the second time in one commission that the hosted runner was the only instrument that could see something, and it argues for installing PowerShell 7 before the next one.
 
+## Where this chain stops
+
+Two rows in the ledger above are this pull request's own: `ci-34559521423`, the failure that opened S-22, and `ci-34561148395`, its non-reproduction, each with its paired CodeQL row. They are here only because the sightings register is a ledger-bound record and a run it cites must exist in the ledger; recording the sighting honestly required recording the runs that observed it.
+
+Nothing else about this pull request is measured here. Its final head has no rows, and there is no exact-`main` pair for this record's own merge. That is [the stopping rule this repository has used before](2026-09-06-stacked-pull-request-containment.md) rather than an oversight, and a later commission may close it. Nothing here should be read as claiming that this record's own pull request was measured.
+
 ## What this record is not
 
 It is not a release, a tag, a distribution, or an admission. It confers no recipe admission, schema ratification, or protected-seat finding, and it moves no gate on the pilot ladder. It does not close S-21, which remains open. It does not establish that Honest Ink, Inc. is tax-exempt: Form 1023-EZ is filed and undetermined, and no determination letter exists. It does not clear the name — ADR-006's counsel checkpoint stands — and it does not resolve the attribution question ADR-011 clause 6 referred to that same checkpoint.

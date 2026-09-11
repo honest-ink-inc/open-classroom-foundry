@@ -2048,6 +2048,41 @@
       "tests": null,
       "record": "docs/governance/2026-09-10-name-and-incorporation-evidence.md",
       "notes": "The paired CodeQL conclusion for the head that produced sighting S-22, attempt 1. It concluded success while CI concluded failure; neither stands in for the other. No SARIF hash is claimed."
+    },
+    {
+      "id": "ci-34561148395",
+      "kind": "hosted-ci",
+      "runId": 34561148395,
+      "workflow": "CI",
+      "event": "pull_request",
+      "branch": "claude/evidence-ledger-name-and-incorporation",
+      "headSha": "6ab2ee92dc3e5095afdbc03978e4fa3f4f6ef441",
+      "checkoutSha": null,
+      "conclusion": "success",
+      "createdUtc": "2026-09-11T04:09:52Z",
+      "receipt": "20260911T041302Z-04be03edc0d24ed4a2423eef56a488d3",
+      "tests": {
+        "passed": 3078,
+        "total": 3078
+      },
+      "record": "docs/governance/2026-09-10-name-and-incorporation-evidence.md",
+      "notes": "The non-reproduction of sighting S-22 on the next head, recorded because the register requires a non-reproduction to be measured and kept, and forbidden from closing the row. The case that failed in teardown at 45 seconds on the previous head passed here in 4. The pull_request checkout is a synthetic merge that was not separately recorded, so no checkoutSha is claimed."
+    },
+    {
+      "id": "codeql-34561148226",
+      "kind": "hosted-codeql",
+      "runId": 34561148226,
+      "workflow": "CodeQL SAST",
+      "event": "pull_request",
+      "branch": "claude/evidence-ledger-name-and-incorporation",
+      "headSha": "6ab2ee92dc3e5095afdbc03978e4fa3f4f6ef441",
+      "checkoutSha": null,
+      "conclusion": "success",
+      "createdUtc": "2026-09-11T04:09:52Z",
+      "receipt": null,
+      "tests": null,
+      "record": "docs/governance/2026-09-10-name-and-incorporation-evidence.md",
+      "notes": "The paired CodeQL conclusion for the head that did not reproduce S-22, attempt 1. No SARIF hash is claimed."
     }
   ]
 }
